@@ -1,1 +1,137 @@
-// placeholder — implemented in M1
+//! q-engine-quickjs — quickjs-ng worker behind the q-engine boundary.
+//!
+//! One OS thread owns exactly one Runtime+Context (ADR-0008). All JS execution
+//! happens there; the host side communicates via a channel. Native operations
+//! (timer capability) run on tokio and complete back onto the worker loop as
+//! messages, carrying no JS values across threads. Late completions for
+//! settled/cancelled invocations are dropped (RUN-006, SEC-003).
+
+mod convert;
+mod prelude;
+mod worker;
+
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
+
+use q_engine::{Engine, EngineStats, InvocationSpec, LoadStats, Outcome};
+use worker::{WorkerMsg, WorkerShared};
+
+/// Engine configuration (limits are robustness controls, not a sandbox).
+#[derive(Debug, Clone)]
+pub struct QuickJsConfig {
+    pub heap_limit_bytes: usize,
+    pub stack_limit_bytes: usize,
+    pub pending_op_cap: usize,
+}
+
+impl Default for QuickJsConfig {
+    fn default() -> Self {
+        QuickJsConfig { heap_limit_bytes: 32 << 20, stack_limit_bytes: 512 << 10, pending_op_cap: 1024 }
+    }
+}
+
+/// Maps a generated bundle location to its original source position.
+/// Supplied by the runtime from the pack's embedded source map.
+pub trait SourceMapper: Send + Sync {
+    fn map(&self, line: u32, col: u32) -> Option<q_engine::OriginalLocation>;
+}
+
+pub struct IdentityMapper;
+impl SourceMapper for IdentityMapper {
+    fn map(&self, _line: u32, _col: u32) -> Option<q_engine::OriginalLocation> {
+        None
+    }
+}
+
+pub struct QuickJsEngine {
+    tx: std::sync::mpsc::Sender<WorkerMsg>,
+    shared: Arc<WorkerShared>,
+    handle: Option<JoinHandle<()>>,
+    last_error: Arc<Mutex<Option<String>>>,
+}
+
+impl QuickJsEngine {
+    /// Spawn the single worker thread. `tokio_handle` drives native ops.
+    pub fn spawn(
+        config: QuickJsConfig,
+        store: Arc<q_bridge::RequestStore>,
+        tokio_handle: tokio::runtime::Handle,
+        mapper: Arc<dyn SourceMapper>,
+    ) -> QuickJsEngine {
+        let (tx, rx) = std::sync::mpsc::channel::<WorkerMsg>();
+        let worker_tx = tx.clone();
+        let shared = Arc::new(WorkerShared::new());
+        let last_error = Arc::new(Mutex::new(None));
+        let handle = std::thread::Builder::new()
+            .name("velqu-quickjs".into())
+            .spawn({
+                let tx = worker_tx;
+                let shared = Arc::clone(&shared);
+                let last_error = Arc::clone(&last_error);
+                move || {
+                    let inner = worker::WorkerInner::new(config, store, tokio_handle, mapper, shared.clone(), last_error.clone());
+                    match inner {
+                        Ok(w) => w.run(rx, tx),
+                        Err(e) => {
+                            *last_error.lock().unwrap() = Some(format!("engine init failed: {e}"));
+                            // drain until shutdown so senders do not block
+                            for msg in rx.iter() {
+                                if let WorkerMsg::Shutdown = msg {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+            .expect("spawn quickjs worker thread");
+        QuickJsEngine { tx, shared, handle: Some(handle), last_error }
+    }
+}
+
+impl Engine for QuickJsEngine {
+    fn load(
+        &mut self,
+        bundle: &str,
+        expected_handlers: &BTreeMap<String, String>,
+    ) -> Result<LoadStats, String> {
+        let (reply_tx, reply_rx) = std::sync::mpsc::channel();
+        self.tx
+            .send(WorkerMsg::Load { bundle: bundle.to_string(), expected: expected_handlers.clone(), reply: reply_tx })
+            .map_err(|_| "engine worker gone".to_string())?;
+        reply_rx.recv().map_err(|_| "engine worker died during load".to_string())?
+    }
+
+    fn invoke(&mut self, spec: InvocationSpec, reply: tokio::sync::oneshot::Sender<Outcome>) {
+        if self.tx.send(WorkerMsg::Invoke(Box::new(worker::InvokeJob { spec, reply: Some(reply) }))).is_err() {
+            // worker gone: nothing sensible to reply; record and move on
+            *self.last_error.lock().unwrap() = Some("engine worker gone during invoke".into());
+        }
+    }
+
+    fn cancel(&mut self, invocation_id: u64) {
+        let _ = self.tx.send(WorkerMsg::Cancel { id: invocation_id });
+    }
+
+    fn last_error(&self) -> Option<String> {
+        self.last_error.lock().unwrap().clone()
+    }
+
+    fn stats(&self) -> EngineStats {
+        self.shared.stats()
+    }
+
+    fn shutdown(&mut self) {
+        let _ = self.tx.send(WorkerMsg::Shutdown);
+        if let Some(h) = self.handle.take() {
+            let _ = h.join();
+        }
+    }
+}
+
+impl Drop for QuickJsEngine {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
+}

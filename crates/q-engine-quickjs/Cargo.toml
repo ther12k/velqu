@@ -5,3 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+rquickjs = { workspace = true }
+q-engine = { workspace = true }
+q-bridge = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
