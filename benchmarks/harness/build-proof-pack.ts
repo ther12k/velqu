@@ -1,0 +1,371 @@
+/**
+ * Builds velqu benchmark packs from the frozen fixture contract:
+ *  - fixture pack (9 routes)  → examples/proof/dist/app.qpack
+ *  - route-count packs (N)    → benchmarks/raw/packs/app-N.qpack
+ * Deterministic: identical inputs → byte-identical output (COMP-009).
+ */
+import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+
+const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+
+interface Route {
+  id: string;
+  method: string;
+  path: string;
+  segments: Array<{ kind: "static" | "param" | "wildcard"; value: string }>;
+  handler: string;
+  policy?: string;
+  params?: { schema: string; coerce: string };
+  query?: { schema: string; coerce: string };
+  body?: { schema: string; contentType: string; limitBytes: number };
+  responses: Record<string, { strategy: "native" | "js"; problem?: string }>;
+  nativeLiveness?: { status: number; contentType: string; body: string };
+  security?: Array<{ scheme: string; header: string; problemStatus: number }>;
+  capabilities?: string[];
+}
+
+const seg = (...parts: Array<[string, string]>): Route["segments"] =>
+  parts.map(([kind, value]) => ({ kind: kind as "static", value }));
+
+const JSON_HEADERS_200 = { "200": { schema: null, strategy: "js" as const, problem: null } };
+
+function fixtureRoutes(): Route[] {
+  return [
+    {
+      id: "health.live",
+      method: "GET",
+      path: "/health/live",
+      segments: seg(["static", "health"], ["static", "live"]),
+      handler: "health.live",
+      responses: { ...JSON_HEADERS_200 },
+      nativeLiveness: { status: 200, contentType: "application/json", body: '{"status":"ok"}' },
+    },
+    {
+      id: "js.text",
+      method: "GET",
+      path: "/js-text",
+      segments: seg(["static", "js-text"]),
+      handler: "js.text",
+      responses: { ...JSON_HEADERS_200 },
+    },
+    {
+      id: "js.json",
+      method: "GET",
+      path: "/js-json",
+      segments: seg(["static", "js-json"]),
+      handler: "js.json",
+      responses: { ...JSON_HEADERS_200 },
+    },
+    {
+      id: "hello.get",
+      method: "GET",
+      path: "/hello/:name",
+      segments: seg(["static", "hello"], ["param", "name"]),
+      handler: "hello.get",
+      params: { schema: "sch:hello.params", coerce: "path" },
+      responses: { "200": { schema: null, strategy: "js", problem: null }, "422": { schema: null, strategy: "js", problem: "validation" } },
+    },
+    {
+      id: "users.create",
+      method: "POST",
+      path: "/users",
+      segments: seg(["static", "users"]),
+      handler: "users.create",
+      body: { schema: "sch:users.create.body", contentType: "application/json", limitBytes: 65536 },
+      responses: { "201": { schema: null, strategy: "js", problem: null }, "422": { schema: null, strategy: "js", problem: "validation" } },
+    },
+    {
+      id: "users.get",
+      method: "GET",
+      path: "/users/:id",
+      segments: seg(["static", "users"], ["param", "id"]),
+      handler: "users.get",
+      policy: "auth.session",
+      params: { schema: "sch:users.get.params", coerce: "path" },
+      responses: {
+        "200": { schema: null, strategy: "js", problem: null },
+        "401": { schema: null, strategy: "js", problem: "unauthorized" },
+        "404": { schema: null, strategy: "js", problem: "not-found" },
+      },
+      security: [{ scheme: "bearer", header: "authorization", problemStatus: 401 }],
+    },
+    {
+      id: "async.timer",
+      method: "GET",
+      path: "/async",
+      segments: seg(["static", "async"]),
+      handler: "async.timer",
+      query: { schema: "sch:async.query", coerce: "query" },
+      responses: { ...JSON_HEADERS_200 },
+      capabilities: ["timer"],
+    },
+    {
+      id: "async.cancel",
+      method: "GET",
+      path: "/cancel",
+      segments: seg(["static", "cancel"]),
+      handler: "async.cancel",
+      query: { schema: "sch:cancel.query", coerce: "query" },
+      responses: { ...JSON_HEADERS_200 },
+      capabilities: ["timer"],
+    },
+    {
+      id: "throw.redacted",
+      method: "GET",
+      path: "/throw",
+      segments: seg(["static", "throw"]),
+      handler: "throw.redacted",
+      responses: { ...JSON_HEADERS_200 },
+    },
+  ];
+}
+
+const FIXTURE_BUNDLE = String.raw`
+"use strict";
+var __users = null;
+var __nextUser = 1;
+function users() {
+  if (__users === null) {
+    __users = new Map();
+    __users.set("usr_1", { id: "usr_1", name: "Ada", email: "ada@example.org" });
+  }
+  return __users;
+}
+async function health_live() { return { status: "ok" }; }
+async function js_text() { return "plain"; }
+async function js_json() { return { ok: true }; }
+async function hello_get(ctx) { return { message: "Hello " + ctx.params.name }; }
+async function users_create(ctx) {
+  const id = "usr_" + (__nextUser++);
+  const u = { id, name: ctx.body.name, email: ctx.body.email };
+  users().set(id, u);
+  return { status: 201, value: u };
+}
+async function users_get(ctx) {
+  const u = users().get(ctx.params.id);
+  if (!u) return { __problem: true, problem: "not-found", status: 404, detail: "user not found" };
+  return u;
+}
+async function auth_session(req) {
+  const token = req.headers.authorization;
+  if (token !== "Bearer q-demo-token") {
+    return { __problem: true, problem: "unauthorized", status: 401 };
+  }
+  return { session: { userId: "usr_1" } };
+}
+async function async_timer(ctx) {
+  const waited = await ctx.native.timer.delay(ctx.query.ms);
+  return { waited };
+}
+async function async_cancel(ctx) {
+  const waited = await ctx.native.timer.delay(ctx.query.ms);
+  return { cancelled: false, waited };
+}
+async function throw_redacted() { throw new Error("secret-boom"); }
+__velquRegister("health.live", health_live);
+__velquRegister("js.text", js_text);
+__velquRegister("js.json", js_json);
+__velquRegister("hello.get", hello_get);
+__velquRegister("users.create", users_create);
+__velquRegister("users.get", users_get);
+__velquRegister("auth.session", auth_session);
+__velquRegister("async.timer", async_timer);
+__velquRegister("async.cancel", async_cancel);
+__velquRegister("throw.redacted", throw_redacted);
+`;
+
+const FIXTURE_SCHEMAS: Record<string, unknown> = {
+  "sch:hello.params": {
+    kind: "object",
+    properties: { name: { kind: "string", minLength: 1, maxLength: 60 } },
+    required: ["name"],
+  },
+  "sch:users.create.body": {
+    kind: "object",
+    properties: {
+      name: { kind: "string", minLength: 1, maxLength: 60 },
+      email: { kind: "string", format: "email" },
+    },
+    required: ["name", "email"],
+  },
+  "sch:users.get.params": {
+    kind: "object",
+    properties: { id: { kind: "string", pattern: "^usr_[0-9]+$" } },
+    required: ["id"],
+  },
+  "sch:async.query": {
+    kind: "object",
+    properties: {
+      ms: { kind: "optional", inner: { kind: "integer", minimum: 1, maximum: 1000 }, default: 10 },
+    },
+    required: [],
+  },
+  "sch:cancel.query": {
+    kind: "object",
+    properties: {
+      ms: { kind: "optional", inner: { kind: "integer", minimum: 1, maximum: 5000 }, default: 1000 },
+    },
+    required: [],
+  },
+};
+
+function routeEntry(r: Route, moduleId: string) {
+  return {
+    id: r.id,
+    moduleId,
+    method: r.method,
+    path: r.path,
+    pathSegments: r.segments,
+    handler: r.handler,
+    policy: r.policy ?? null,
+    params: r.params ? { schema: r.params.schema, coerce: r.params.coerce, contentType: null, limitBytes: 0 } : null,
+    query: r.query ? { schema: r.query.schema, coerce: r.query.coerce, contentType: null, limitBytes: 0 } : null,
+    body: r.body
+      ? { schema: r.body.schema, coerce: null, contentType: r.body.contentType, limitBytes: r.body.limitBytes }
+      : null,
+    headers: null,
+    responses: r.responses,
+    validationStrategy: "native",
+    nativeLiveness: r.nativeLiveness ?? null,
+    security: r.security ?? [],
+    capabilities: r.capabilities ?? [],
+    deadlineMs: 5000,
+  };
+}
+
+function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: string, appId: string) {
+  const packRoutes = routes.map((r) => routeEntry(r, r.id.split(".")[0]));
+  const handlerTable: Record<string, string> = {};
+  for (const r of routes) handlerTable[r.handler] = r.handler;
+  // policy handlers register too
+  if (routes.some((r) => r.policy === "auth.session")) handlerTable["auth.session"] = "auth.session";
+  // MUST match the Rust canonical form byte-for-byte (q-pack routes_canonical_json):
+  // routes keep Vec order + struct field declaration order; schemas/policies are
+  // BTreeMaps (sorted keys, nested values in IR field order); no deep sorting.
+  const canonical = JSON.stringify({
+    routes: packRoutes,
+    schemas: sortIR(schemas) as Record<string, unknown>,
+    policies: routes.some((r) => r.policy === "auth.session")
+      ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
+      : {},
+    capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
+  });
+  const pack = {
+    formatVersion: 1,
+    kind: "velqu.qpack",
+    runtimeAbi: 1,
+    engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
+    schemaIrVersion: 1,
+    contractVersion: 1,
+    contractHash: sha(canonical).slice(0, 32),
+    builtBy: { compiler: "bench-fixture-0.1.0", typescript: Bun.version, bun: Bun.version },
+    appId,
+    modules: [...new Set(routes.map((r) => r.id.split(".")[0]))],
+    entry: "app.js",
+    bundle,
+    sourceMap: null,
+    routes: packRoutes,
+    schemas: sortIR(schemas) as Record<string, unknown>,
+    policies: routes.some((r) => r.policy === "auth.session")
+      ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
+      : {},
+    capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
+    handlerTable,
+    integrity: { algorithm: "sha256", bundleSha256: sha(bundle), routesSha256: sha(canonical) },
+  };
+  return JSON.stringify(pack);
+}
+
+/**
+ * Sort map-shaped levels to match Rust's BTreeMap-backed serialization:
+ * schemas/policies/properties maps sort by key; ordered arrays stay as-is;
+ * struct-shaped values keep field order.
+ */
+/**
+ * Match Rust serialization exactly:
+ * - schema registry / properties maps are BTreeMaps → keys sorted
+ * - IR nodes serialize as {"kind": tag, ...declared fields in order}
+ *   (skip_serializing_if for absent options)
+ */
+function sortIR(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortIR);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if ("kind" in o) {
+      // IR node: keep authoring (field) order; sort only `properties` map
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(o)) {
+        out[k] = k === "properties" ? sortProperties(o[k]) : sortIR(o[k]);
+      }
+      return out;
+    }
+    // map container: sorted keys
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
+    return out;
+  }
+  return v;
+}
+function sortProperties(v: unknown): Record<string, unknown> {
+  const o = v as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
+  return out;
+}
+
+// ---------------------------------------------------------------- route-count packs
+
+function generatedRoutes(n: number): { routes: Route[]; bundle: string; schemas: Record<string, unknown> } {
+  const routes: Route[] = [fixtureRoutes()[0]]; // keep health/live for probes
+  const parts: string[] = [
+    "\"use strict\";",
+    "async function health_live() { return { status: \"ok\" }; }",
+    '__velquRegister("health.live", health_live);',
+  ];
+  for (let i = 0; i < n; i++) {
+    routes.push({
+      id: `res${i}.get`,
+      method: "GET",
+      path: `/res${i}/item/:id`,
+      segments: seg(["static", `res${i}`], ["static", "item"], ["param", "id"]),
+      handler: `res${i}.get`,
+      params: { schema: `sch:res${i}.params`, coerce: "path" },
+      responses: { "200": { schema: null, strategy: "js", problem: null }, "422": { schema: null, strategy: "js", problem: "validation" } },
+    });
+    parts.push(
+      `async function res${i}_get(ctx) { return { id: ctx.params.id, n: ${n} }; }`,
+      `__velquRegister("res${i}.get", res${i}_get);`,
+    );
+  }
+  const schemas: Record<string, unknown> = {};
+  for (let i = 0; i < n; i++) {
+    schemas[`sch:res${i}.params`] = {
+      kind: "object",
+      properties: { id: { kind: "integer", minimum: 1, maximum: n } },
+      required: ["id"],
+    };
+  }
+  return { routes, bundle: parts.join("\n"), schemas };
+}
+
+// ---------------------------------------------------------------- main
+
+const which = process.argv[2] ?? "fixture";
+if (which === "fixture") {
+  const pack = buildPack(fixtureRoutes(), FIXTURE_SCHEMAS, FIXTURE_BUNDLE, "proof-fixture");
+  mkdirSync("examples/proof/dist", { recursive: true });
+  writeFileSync("examples/proof/dist/app.qpack", pack);
+  console.log(`fixture pack: examples/proof/dist/app.qpack (${pack.length} bytes)`);
+} else {
+  const n = parseInt(which, 10);
+  if (!Number.isInteger(n) || n <= 0) {
+    console.error("usage: bun build-proof-pack.ts [fixture|N]");
+    process.exit(1);
+  }
+  const { routes, bundle, schemas } = generatedRoutes(n);
+  const pack = buildPack(routes, schemas, bundle, `scale-${n}`);
+  mkdirSync("benchmarks/raw/packs", { recursive: true });
+  writeFileSync(`benchmarks/raw/packs/app-${n}.qpack`, pack);
+  console.log(`scale pack: benchmarks/raw/packs/app-${n}.qpack (${pack.length} bytes, ${routes.length} routes)`);
+}

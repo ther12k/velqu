@@ -1,0 +1,61 @@
+{
+  "format": "velqu-route-count-v1",
+  "samples": 40,
+  "generatedAt": "2026-08-17T17:14:18.971Z",
+  "results": [
+    {
+      "candidate": "velqu",
+      "routes": 25,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 3.081,
+      "p95Ms": 3.555,
+      "rssP50Kb": 6324
+    },
+    {
+      "candidate": "velqu",
+      "routes": 1000,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 15.7,
+      "p95Ms": 19.058,
+      "rssP50Kb": 11408
+    },
+    {
+      "candidate": "raw-bun",
+      "routes": 25,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 12.996,
+      "p95Ms": 18.173,
+      "rssP50Kb": 37544
+    },
+    {
+      "candidate": "raw-bun",
+      "routes": 1000,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 13.781,
+      "p95Ms": 16.79,
+      "rssP50Kb": 37544
+    },
+    {
+      "candidate": "elysia2",
+      "routes": 25,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 137.991,
+      "p95Ms": 147.868,
+      "rssP50Kb": 93840
+    },
+    {
+      "candidate": "elysia2",
+      "routes": 1000,
+      "samples": 40,
+      "failures": 0,
+      "p50Ms": 161.158,
+      "p95Ms": 174.443,
+      "rssP50Kb": 117488
+    }
+  ]
+}

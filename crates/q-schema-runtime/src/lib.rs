@@ -15,6 +15,7 @@ use serde_json::{Map, Number, Value};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum SchemaIr {
+    #[serde(rename_all = "camelCase")]
     String {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         min_length: Option<u64>,
@@ -25,12 +26,14 @@ pub enum SchemaIr {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         format: Option<String>,
     },
+    #[serde(rename_all = "camelCase")]
     Integer {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         minimum: Option<i64>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         maximum: Option<i64>,
     },
+    #[serde(rename_all = "camelCase")]
     Number {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         minimum: Option<f64>,
@@ -38,20 +41,25 @@ pub enum SchemaIr {
         maximum: Option<f64>,
     },
     Boolean,
+    #[serde(rename_all = "camelCase")]
     Literal {
         value: Value,
     },
+    #[serde(rename_all = "camelCase")]
     Enum {
         values: Vec<Value>,
     },
+    #[serde(rename_all = "camelCase")]
     Optional {
         inner: Box<SchemaIr>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         default: Option<Value>,
     },
+    #[serde(rename_all = "camelCase")]
     Nullable {
         inner: Box<SchemaIr>,
     },
+    #[serde(rename_all = "camelCase")]
     Array {
         items: Box<SchemaIr>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
