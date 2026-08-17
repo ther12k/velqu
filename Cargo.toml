@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/q-runtime",
+    "crates/q-engine",
+    "crates/q-engine-quickjs",
+    "crates/q-http",
+    "crates/q-router",
+    "crates/q-bridge",
+    "crates/q-pack",
+    "crates/q-schema-runtime",
+    "crates/q-capabilities",
+    "crates/q-bench-support",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED-BEFORE-OWNER-DECISION"
+repository = "private-until-owner-decision"
+
+[workspace.dependencies]
+q-runtime = { path = "crates/q-runtime" }
+q-engine = { path = "crates/q-engine" }
+q-engine-quickjs = { path = "crates/q-engine-quickjs" }
+q-http = { path = "crates/q-http" }
+q-router = { path = "crates/q-router" }
+q-bridge = { path = "crates/q-bridge" }
+q-pack = { path = "crates/q-pack" }
+q-schema-runtime = { path = "crates/q-schema-runtime" }
+q-capabilities = { path = "crates/q-capabilities" }
+q-bench-support = { path = "crates/q-bench-support" }
+
+rquickjs = { version = "=0.12.2", features = ["full-async"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "macros", "signal", "sync", "fs", "process"] }
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "http1"] }
+http-body-util = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+sourcemap = "9"
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

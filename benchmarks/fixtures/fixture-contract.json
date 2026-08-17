@@ -1,0 +1,237 @@
+{
+  "format": "velqu-benchmark-fixture-v1",
+  "frozenAt": "2026-08-17",
+  "description": "Canonical frozen proof/benchmark behavior shared by ALL candidates (velqu, raw-rust, raw-bun, elysia2). Changing any semantic here requires a documented correction; never after results are known.",
+  "server": {
+    "bind": "127.0.0.1",
+    "portEnv": "PORT",
+    "defaultPort": 3000,
+    "protocol": "http/1.1",
+    "keepAlive": true,
+    "compression": "none",
+    "tls": "none",
+    "logging": "startup-line-only",
+    "readySignal": "tcp-accept"
+  },
+  "routes": [
+    {
+      "id": "health.live",
+      "class": "C0",
+      "method": "GET",
+      "path": "/health/live",
+      "request": {},
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "body": "{\"status\":\"ok\"}"
+      },
+      "notes": "Static liveness. In velqu this is served natively without entering JavaScript."
+    },
+    {
+      "id": "js.text",
+      "class": "C1",
+      "method": "GET",
+      "path": "/js-text",
+      "request": {},
+      "response": {
+        "status": 200,
+        "contentType": "text/plain; charset=utf-8",
+        "match": "exact-bytes",
+        "body": "plain"
+      },
+      "notes": "JavaScript-computed plaintext."
+    },
+    {
+      "id": "js.json",
+      "class": "C2",
+      "method": "GET",
+      "path": "/js-json",
+      "request": {},
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "body": "{\"ok\":true}"
+      },
+      "notes": "JavaScript small-object JSON response (JSON.stringify semantics, no spaces)."
+    },
+    {
+      "id": "hello.get",
+      "class": "C3",
+      "method": "GET",
+      "path": "/hello/:name",
+      "request": {
+        "pathParams": { "name": { "type": "string", "minLength": 1, "maxLength": 60 } }
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "bodyTemplate": "{\"message\":\"Hello NAME\"}",
+        "example": { "name": "Rafi", "body": "{\"message\":\"Hello Rafi\"}" }
+      },
+      "validation": {
+        "case": "name longer than 60 characters",
+        "status": 422,
+        "match": "semantic",
+        "require": ["body is JSON", "body identifies failing field 'name'"],
+        "velquProblem": {
+          "type": "https://velqu.dev/problems/validation",
+          "title": "Validation failed",
+          "status": 422,
+          "errors": [{ "path": "name", "code": "maxLength" }]
+        }
+      }
+    },
+    {
+      "id": "users.create",
+      "class": "C3",
+      "method": "POST",
+      "path": "/users",
+      "request": {
+        "body": {
+          "contentType": "application/json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "email": { "type": "string", "format": "email" }
+            },
+            "required": ["name", "email"]
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "body": "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}"
+      },
+      "validPayload": "{\"name\":\"Ada\",\"email\":\"ada@example.org\"}",
+      "validation": {
+        "cases": [
+          { "case": "malformed JSON body", "payload": "{\"name\":", "status": 422 },
+          { "case": "schema-invalid email", "payload": "{\"name\":\"Ada\",\"email\":\"not-an-email\"}", "status": 422, "require": "body identifies failing field 'email'" }
+        ],
+        "match": "semantic",
+        "velquProblem": {
+          "type": "https://velqu.dev/problems/validation",
+          "title": "Validation failed",
+          "status": 422
+        }
+      },
+      "notes": "Deterministic in a fresh process: first created user is usr_1. Cold samples never POST before the measured request."
+    },
+    {
+      "id": "users.get",
+      "class": "C4",
+      "method": "GET",
+      "path": "/users/:id",
+      "policy": {
+        "id": "auth.session",
+        "header": "authorization",
+        "validToken": "Bearer q-demo-token",
+        "session": { "userId": "usr_1" },
+        "unauthorized": {
+          "status": 401,
+          "match": "semantic",
+          "require": ["status 401", "JSON body"],
+          "velquProblem": {
+            "type": "https://velqu.dev/problems/unauthorized",
+            "title": "Unauthorized",
+            "status": 401
+          }
+        }
+      },
+      "request": {
+        "pathParams": { "id": { "type": "string", "pattern": "^usr_[0-9]+$" } }
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "body": "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}"
+      },
+      "notFound": {
+        "status": 404,
+        "match": "semantic",
+        "require": ["status 404", "JSON body"],
+        "velquProblem": {
+          "type": "https://velqu.dev/problems/not-found",
+          "title": "Not Found",
+          "status": 404
+        }
+      },
+      "notes": "Lazy in-memory service seeds fixture user usr_1 on first use (C5 lazy-service behavior is exercised by this route's first call in a fresh process)."
+    },
+    {
+      "id": "async.timer",
+      "class": "C5",
+      "method": "GET",
+      "path": "/async",
+      "request": {
+        "query": { "ms": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 10, "coerce": "string-to-integer" } }
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "bodyTemplate": "{\"waited\":MS}",
+        "example": { "query": "?ms=50", "body": "{\"waited\":50}" }
+      },
+      "notes": "Native timer capability resolved through a JavaScript promise. Proves async bridge."
+    },
+    {
+      "id": "async.cancel",
+      "class": "C5",
+      "method": "GET",
+      "path": "/cancel",
+      "request": {
+        "query": { "ms": { "type": "integer", "minimum": 1, "maximum": 5000, "default": 1000, "coerce": "string-to-integer" } }
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "match": "exact-bytes",
+        "bodyTemplate": "{\"cancelled\":false,\"waited\":MS}"
+      },
+      "abortCase": {
+        "description": "Client aborts ~10ms after sending with ms=1000. No response is asserted; the server MUST remain healthy: a follow-up GET /health/live must return 200 within 1s.",
+        "assert": "server-healthy-after-abort"
+      },
+      "notes": "Cancellation matrix is proven by internal conformance tests; this route proves black-box stability."
+    },
+    {
+      "id": "throw.redacted",
+      "class": "R",
+      "method": "GET",
+      "path": "/throw",
+      "request": {},
+      "response": {
+        "status": 500,
+        "match": "semantic",
+        "require": ["status 500", "body does not contain 'secret' or stack traces"],
+        "velquProblem": {
+          "type": "https://velqu.dev/problems/internal",
+          "title": "Internal Server Error",
+          "status": 500
+        }
+      },
+      "notes": "Handler throws Error('secret-boom'). velqu must return a redacted problem; candidates must not leak 'secret-boom'."
+    }
+  ],
+  "routeCountFixtures": {
+    "description": "Deterministically generated route sets for startup scaling. N in {25, 1000}. Routes are GET /item/:id (id integer 1..N valid). Measured request: GET /item/7 -> 200 {\"id\":7,\"n\":N}. Same handler complexity and schema class for every route.",
+    "generator": "item-id-route-generator-v1"
+  },
+  "fairness": {
+    "releaseBuilds": true,
+    "idiomaticPerStack": true,
+    "samePayloads": true,
+    "sameValidationSemantics": true,
+    "noHiddenPreRunningServer": true,
+    "noCompression": true,
+    "noTls": true
+  }
+}

@@ -1,0 +1,356 @@
+{
+  "bundle_content_digest_sha256": "a4ed24a7c399780e692f254d123d2cf32ceb3744ed347d8c509fc8c7b1ef8a29",
+  "file_count_excluding_manifest": 69,
+  "files": [
+    {
+      "bytes": 26119,
+      "path": "MASTER_AGENT_PROMPT.md",
+      "sha256": "a8604f0709d3dab8165d5787734c700def67211e6ec1733a987c35441ea48d75"
+    },
+    {
+      "bytes": 6267,
+      "path": "README.md",
+      "sha256": "fac4cbbbec17aa2d362966144b55eec93e1762817b6284abbd567d08dc7300ca"
+    },
+    {
+      "bytes": 624,
+      "path": "VALIDATION.json",
+      "sha256": "e505f7ed7978cac04868c31d1f74a4cafdcf35cc42f7be0bf70b308db4551d34"
+    },
+    {
+      "bytes": 5992,
+      "path": "architecture/capabilities-and-services.md",
+      "sha256": "9dfbd3955acd774088fce4d01dc6f148ad209d3703fc7495b6684d7e954d6721"
+    },
+    {
+      "bytes": 5515,
+      "path": "architecture/cold-start-model.md",
+      "sha256": "575390763c71384206e528cbd91b1a5f4a430c1c9232689baa533b05103b435b"
+    },
+    {
+      "bytes": 6764,
+      "path": "architecture/compiler-and-build.md",
+      "sha256": "2393a76df6bd456750cccdfe5e01685b769eb7a319419e3012d36ff65a985cb6"
+    },
+    {
+      "bytes": 5435,
+      "path": "architecture/concurrency-and-isolation.md",
+      "sha256": "f113039982fa27b45a98234a287e2ad06e6ef15da4749be57639f536bccb7ec0"
+    },
+    {
+      "bytes": 5136,
+      "path": "architecture/contract-type-system.md",
+      "sha256": "e3140ac80453ab0e64c0dbb8aa1469a50e79267224fd6ad3d8c14f4cd64c15c1"
+    },
+    {
+      "bytes": 1058,
+      "path": "architecture/index.md",
+      "sha256": "f17ebb5999f3b7f81cca6aa39de39f8869383ef7709f1a79580e00b02547600f"
+    },
+    {
+      "bytes": 6859,
+      "path": "architecture/lifecycle-policies-and-plugins.md",
+      "sha256": "c23b74850b2cf187a9f6a189dc2f17f8966d3860d5927742239bc78c66a11c03"
+    },
+    {
+      "bytes": 4872,
+      "path": "architecture/observability-and-diagnostics.md",
+      "sha256": "008daeb85fbafd2f1ddfef94089c2e21d59fe5979f33c841c3f1562def2704ea"
+    },
+    {
+      "bytes": 6805,
+      "path": "architecture/overview.md",
+      "sha256": "c8b26aeb2c235c50dd5dc25d5199376f106a6dfdd191cc4271fd6a077bba2912"
+    },
+    {
+      "bytes": 5080,
+      "path": "architecture/packaging-and-deployment.md",
+      "sha256": "8eb1fa896baa0ceff96363985ab1955b3d0c467ca4ce5bdcfef964508e287962"
+    },
+    {
+      "bytes": 5876,
+      "path": "architecture/quickjs-engine.md",
+      "sha256": "b145f1c2d290d7c0580908e923e0fe378e24bafa57b67bd1544f2c579022b3be"
+    },
+    {
+      "bytes": 7297,
+      "path": "architecture/request-response-bridge.md",
+      "sha256": "79de93ff179c8f6ac3f8c771f1ca7dc284f266427db8a1a90d988e388ca9c88d"
+    },
+    {
+      "bytes": 9512,
+      "path": "architecture/review-and-corrections.md",
+      "sha256": "70eb7deef3a52c15229788520a1212c30691174d9c6e51e08ef8fc38a5bfb6d0"
+    },
+    {
+      "bytes": 5989,
+      "path": "architecture/routing-and-http.md",
+      "sha256": "32a2e8d2be1466e4e585f1a549b7501bb294a92521ecaf1a3ebccd5905895e43"
+    },
+    {
+      "bytes": 6168,
+      "path": "architecture/rust-host-runtime.md",
+      "sha256": "647c88d9428dbd5a50fcba5cc8b2ad17a91eed05502f4a148aeb6531e9c42eb5"
+    },
+    {
+      "bytes": 6181,
+      "path": "architecture/schema-and-validation.md",
+      "sha256": "d18937eb5bec5dd24f3ea35ec90e4a927a16fd97e9326d5c82893e8dc76c5160"
+    },
+    {
+      "bytes": 5523,
+      "path": "architecture/treaty-client.md",
+      "sha256": "572764ae15ecc1753ccf831f3fec49fe9589a762923e2197ee2a7a7281f93707"
+    },
+    {
+      "bytes": 13798,
+      "path": "bundle-report.md",
+      "sha256": "9490709dc3befc36f83d18bf25d4b329c839a41114df3b16c7d7776dbed077d0"
+    },
+    {
+      "bytes": 2491,
+      "path": "decisions/0001-rust-quickjs-bun-toolchain.md",
+      "sha256": "54f919dafb15e69e8a755756cf30dec25809c7bf19da006540362121fb82ba63"
+    },
+    {
+      "bytes": 2190,
+      "path": "decisions/0002-cold-start-first.md",
+      "sha256": "8ad92344d446abc9528b8846ad859e3a0048fbe038bd69a1731b0d1ca674db82"
+    },
+    {
+      "bytes": 2009,
+      "path": "decisions/0003-no-node-compatibility.md",
+      "sha256": "586e9d21b85289b7d277394630e105e07345e4967b3640e82b4f7731fa7bada4"
+    },
+    {
+      "bytes": 1966,
+      "path": "decisions/0004-static-contract-no-app-dry-run.md",
+      "sha256": "e8084cb567461f13b6300171df1da57e3161473b938b7df8fa392a1cd8eee363"
+    },
+    {
+      "bytes": 1756,
+      "path": "decisions/0005-native-routing-lazy-bridge.md",
+      "sha256": "0f65d8aa5403a6a675479db2d79cfe06260a1fd3145fe46830b307b43acf9508"
+    },
+    {
+      "bytes": 2071,
+      "path": "decisions/0006-engine-adapter-quickjs-ng.md",
+      "sha256": "0b2184b6f824f67a9483b0483908df5723968eb3c751622a5539d0a832af62ce"
+    },
+    {
+      "bytes": 1690,
+      "path": "decisions/0007-treaty-dual-contract-mode.md",
+      "sha256": "19b9385885c7f819b0013d8f5793ae8fbfe7b40d74f9f7d32ef349fff040c634"
+    },
+    {
+      "bytes": 1677,
+      "path": "decisions/0008-one-runtime-per-worker.md",
+      "sha256": "4923c2a740c97f421e0fc818ab15f2fc62e1382bb6d87e9982bfd863305cd1be"
+    },
+    {
+      "bytes": 1434,
+      "path": "decisions/0009-schema-ir-explicit-fallback.md",
+      "sha256": "d4d0bb1044659bc4640a43070c6c8e8502acef6cc0b228471951795b1ec9f47a"
+    },
+    {
+      "bytes": 1552,
+      "path": "decisions/0010-capability-plugin-model.md",
+      "sha256": "e809b5442830d99e7d3fcf5e174350945d921655218a20d493be937e3d55568e"
+    },
+    {
+      "bytes": 1589,
+      "path": "decisions/0011-rfc9457-typed-results.md",
+      "sha256": "0b7a31b6dfa098289af7c6039764dcba44acbe70bf8d16f1152484af87ae8bcf"
+    },
+    {
+      "bytes": 1796,
+      "path": "decisions/0012-evidence-before-performance-claims.md",
+      "sha256": "771d11c726c500822554f539e38f98a29158d33a25671ae8d9e7f4e300bac282"
+    },
+    {
+      "bytes": 1310,
+      "path": "decisions/0013-rust-only-initially.md",
+      "sha256": "2264d2d5d68c31f6274fd34e583f808ab36c88cc4cd07fccbeb4e363631cc0d6"
+    },
+    {
+      "bytes": 1624,
+      "path": "decisions/0014-version-pinned-bytecode.md",
+      "sha256": "494563f25382399ec1c30fc24d7dfdf04854808d1b353c93845fd8e819a0db92"
+    },
+    {
+      "bytes": 1453,
+      "path": "decisions/index.md",
+      "sha256": "3649c9eacf7f1d3180dc4d01ec3f7d26e94567e4eb7515fa2f7a45325d36da32"
+    },
+    {
+      "bytes": 7815,
+      "path": "delivery/backlog.md",
+      "sha256": "0996f41034d9bde0eaf5d4d74abe86602dd3b16d47b9c7baf6559c84e81e971a"
+    },
+    {
+      "bytes": 485,
+      "path": "delivery/index.md",
+      "sha256": "d7760eb2458dd59162fc5d2f2a365bfdbfde95fb5958256eea440337a410558c"
+    },
+    {
+      "bytes": 6469,
+      "path": "delivery/mvp.md",
+      "sha256": "89eefb0bc23c76e0022b1978f154224758faa7f1604ecba695604ce01c85d484"
+    },
+    {
+      "bytes": 20106,
+      "path": "delivery/prd.md",
+      "sha256": "37afc5c732296301a9e471983c60b1721f31e43d8fe85b23f326a8166bf30b4c"
+    },
+    {
+      "bytes": 6772,
+      "path": "delivery/risks-and-open-questions.md",
+      "sha256": "167543e8ca29a0aedfaf364abb6c2c24ef91ad20227bc158a652ba2dfd5ba705"
+    },
+    {
+      "bytes": 2987,
+      "path": "delivery/roadmap.md",
+      "sha256": "b7e3ba796398bebed2563bfe901bc07e657faabb5796c037054c2019aceb15a9"
+    },
+    {
+      "bytes": 5230,
+      "path": "delivery/traceability.md",
+      "sha256": "5ec6f471976421eb2350cb22951d0266c8fd6ea86d1b7ccb18f2efe6e76bdc65"
+    },
+    {
+      "bytes": 5987,
+      "path": "engineering/benchmark-methodology.md",
+      "sha256": "f0e729feb7b1b930b3ec2ef91db22961b111cea3b236776ac01a0caa61cdec3d"
+    },
+    {
+      "bytes": 4549,
+      "path": "engineering/coding-standards.md",
+      "sha256": "010879fd4332eb0cf2f7ed681e48ab522bf3a53c67f7794aae590298a0e10846"
+    },
+    {
+      "bytes": 4132,
+      "path": "engineering/compatibility-and-versioning.md",
+      "sha256": "786070ef7abf5e1bacb06a596a0ee23cadf5944feb7180a550498cb28adfd5c8"
+    },
+    {
+      "bytes": 599,
+      "path": "engineering/index.md",
+      "sha256": "3134d61f7e6a632126e610822782e987d054a38e4f545013d6f3acd9b904c085"
+    },
+    {
+      "bytes": 5620,
+      "path": "engineering/performance-budgets.md",
+      "sha256": "0b3d05ab1c7af0119fb72b65785fb0840a352bd1c54e6555e4c33239587afe0c"
+    },
+    {
+      "bytes": 4284,
+      "path": "engineering/release-gates.md",
+      "sha256": "713362beb8d1066bfa9f896b4613f9b439ecd2df7a4aab2c56236a58a3bfb824"
+    },
+    {
+      "bytes": 4751,
+      "path": "engineering/repository-layout.md",
+      "sha256": "be78853950c0594dae60b444e61b36c055333cbf4b424cb4fb7d3c499f99c743"
+    },
+    {
+      "bytes": 5599,
+      "path": "engineering/security-model.md",
+      "sha256": "b2aa7fd01928c71dd544c8a0f0ad62bf26b89ec76e46ee8613263feac5cf2c16"
+    },
+    {
+      "bytes": 5129,
+      "path": "engineering/testing-and-conformance.md",
+      "sha256": "599682daba76bf2f2d2868b59740d49857a6ebff672a9fe7c313ccc59da8c0ec"
+    },
+    {
+      "bytes": 4657,
+      "path": "engineering/tooling-and-build.md",
+      "sha256": "4dc8bba2c02c4b3921e649518080292b640ad69f88969b2b5c51318f291e4fa5"
+    },
+    {
+      "bytes": 1260,
+      "path": "index.md",
+      "sha256": "335fa6620684a8ec3d3e1a218b0b0d44ba45c48c43ca08ec4956fd0e10c89f0a"
+    },
+    {
+      "bytes": 1367,
+      "path": "log.md",
+      "sha256": "5eb18c8f414f7c4c86a70f9ef1ee6834bcd419432f57a84294c4eb4ee07d8562"
+    },
+    {
+      "bytes": 4861,
+      "path": "project/charter.md",
+      "sha256": "76c95cd54f427004663c692abe95a30f7ee17388999cc503f31b616506539293"
+    },
+    {
+      "bytes": 5193,
+      "path": "project/competitive-strategy.md",
+      "sha256": "130a9f63d336620f93d2cf008d19155e3435ac6f55a1e0356cc12822bc0e0928"
+    },
+    {
+      "bytes": 701,
+      "path": "project/index.md",
+      "sha256": "951bcf3515d78437acf5e977c6c8684dcba85776def698c671014b0a723e8696"
+    },
+    {
+      "bytes": 4166,
+      "path": "project/personas-and-journeys.md",
+      "sha256": "ef6596736ad011ea29ba44cd4e9f9e2fb0ac9cbe7ac8654c86ba55060bb1edad"
+    },
+    {
+      "bytes": 4370,
+      "path": "project/principles.md",
+      "sha256": "f5512d8dcb77d98ad4df552e3803c590be385f3b25c9317dd9050b5e5ce23d8a"
+    },
+    {
+      "bytes": 8202,
+      "path": "project/requirements.md",
+      "sha256": "54a9ce6ee818143cfeccb133eea1f1f10c91d88eabe9753eb3465b111940a4dd"
+    },
+    {
+      "bytes": 3719,
+      "path": "project/scope-and-non-goals.md",
+      "sha256": "f09c030bc62badee383e11d598580a63876320b66013115aa8e1ce5ecd1d4914"
+    },
+    {
+      "bytes": 4648,
+      "path": "project/vision-and-positioning.md",
+      "sha256": "0331d6cf33a6a514513507c644a2c9ccb113932522951a221691616a2c606540"
+    },
+    {
+      "bytes": 3490,
+      "path": "references/design-session.md",
+      "sha256": "a007b2b14f8e6578292b5488508e0597e846d2cea873b3bdec06d14fb89e1485"
+    },
+    {
+      "bytes": 3735,
+      "path": "references/elysia-2-and-eden.md",
+      "sha256": "7392ac4d09f1c96434bf2296b6b9aae54d5b887c74d2ac7ab27f088869e58656"
+    },
+    {
+      "bytes": 515,
+      "path": "references/index.md",
+      "sha256": "8ca8eb76beb887da7a2dc9ba750cdfb13ee5c9705432f387c73b494c32496e8c"
+    },
+    {
+      "bytes": 3100,
+      "path": "references/llrt-quickjs-rquickjs.md",
+      "sha256": "690c8bff557cc194a4199e5a30c7390f3f0cd37365e6b510dff3ebc5f0bd077f"
+    },
+    {
+      "bytes": 3105,
+      "path": "references/okf-format.md",
+      "sha256": "c3561f36039a39a892eac85c32721516c123e846771e0289c2e385bc9db2e438"
+    },
+    {
+      "bytes": 4414,
+      "path": "references/source-register.md",
+      "sha256": "79ba21367c393253b5ac4daaf221e2aea5f900f1b9baf5876d5824c463511a24"
+    }
+  ],
+  "format": "project-q-okf-manifest-v1",
+  "generated_at": "2026-08-17T19:27:58+07:00",
+  "okf_version": "0.2",
+  "status": "draft-unverified",
+  "working_name": "Project Q"
+}

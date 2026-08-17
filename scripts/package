@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Build the final handoff archive with SHA-256. Excludes build caches and node_modules.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+ARCHIVE="velqu-m0-m2-${STAMP}.zip"
+git ls-files -z --cached --others --exclude-standard \
+  | grep -zv -E '^target/(dist/)?(release|debug)/' \
+  | xargs -0 zip -q "$ARCHIVE"
+sha256sum "$ARCHIVE" | tee "${ARCHIVE}.sha256"
+echo "archive: $ARCHIVE"

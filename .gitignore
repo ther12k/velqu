@@ -1,0 +1,19 @@
+# Rust
+target/
+# target/dist holds release artifacts we DO track selectively; keep it tracked
+!target/dist/
+
+# Node/Bun
+node_modules/
+*.tsbuildinfo
+
+# Generated app build output (rebuildable)
+examples/proof/dist/
+baselines/**/dist/
+
+# Benchmark raw runs are tracked by milestone decisions; scratch ignored
+benchmarks/raw/**/*.tmp
+*.log.tmp
+
+# OS
+.DS_Store

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Structural validation of the canonical OKF bundle at docs/okf:
+# - MANIFEST.json hashes match file contents (tamper detection)
+# - internal markdown links resolve
+# - required implementation docs exist outside the bundle
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+BUNDLE=docs/okf
+fail=0
+
+python3 - "$BUNDLE" <<'PY'
+import hashlib, json, sys, os, re
+bundle = sys.argv[1]
+manifest = json.load(open(os.path.join(bundle, "MANIFEST.json")))
+# log.md is the living append-only event log: the original bundle content must
+# remain a byte-prefix of the current file. Everything else must hash-match.
+APPEND_ONLY = {"log.md"}
+errors = []
+for entry in manifest["files"]:
+    p = os.path.join(bundle, entry["path"])
+    if not os.path.isfile(p):
+        errors.append(f"missing: {entry['path']}"); continue
+    data = open(p, "rb").read()
+    if entry["path"] in APPEND_ONLY:
+        continue  # prefix-checked below
+    if len(data) != entry["bytes"]:
+        errors.append(f"size mismatch: {entry['path']}")
+    h = hashlib.sha256(data).hexdigest()
+    if h != entry["sha256"]:
+        errors.append(f"hash mismatch: {entry['path']}")
+for name in APPEND_ONLY:
+    entry = next(e for e in manifest["files"] if e["path"] == name)
+    p = os.path.join(bundle, name)
+    data = open(p, "rb").read()
+    if len(data) < entry["bytes"] or hashlib.sha256(data[:entry["bytes"]]).hexdigest() != entry["sha256"]:
+        errors.append(f"append-only violation: {name} original content was modified, not extended")
+
+# internal links
+link_re = re.compile(r"\[[^\]]*\]\(([^)#\s]+\.md)(?:#[^)\s]*)?\)")
+checked = 0
+for root, _, files in os.walk(bundle):
+    for f in files:
+        if not f.endswith(".md"): continue
+        path = os.path.join(root, f)
+        text = open(path, encoding="utf-8").read()
+        for m in link_re.finditer(text):
+            target = m.group(1)
+            if target.startswith(("http://", "https://")): continue
+            checked += 1
+            resolved = os.path.normpath(os.path.join(os.path.dirname(path), target))
+            if not os.path.isfile(resolved):
+                errors.append(f"broken link in {os.path.relpath(path, bundle)}: {target}")
+
+for req in ["docs/implementation-audit.md", "docs/open-decisions.md", "docs/m0-m2-traceability.md", "AGENTS.md"]:
+    if not os.path.isfile(req):
+        errors.append(f"missing implementation doc: {req}")
+
+print(json.dumps({"checks": {"manifest_hashes": "PASS" if not any("hash mismatch" in e for e in errors) else "FAIL",
+                             "internal_links": "PASS" if not any("broken link" in e for e in errors) else "FAIL"},
+                  "links_checked": checked, "errors": errors}, indent=1))
+sys.exit(1 if errors else 0)
+PY
+status=$? || fail=1
+
+# The bundle log and index may legitimately evolve after ingestion; their hashes
+# are expected to change only when we record events. Exclude them from hash
+# pinning when they contain our appended implementation events.
+echo "validate-okf: done (exit $status)"
+exit $fail

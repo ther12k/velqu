@@ -1,0 +1,22 @@
+{
+  "name": "velqu-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "examples/proof",
+    "benchmarks/harness"
+  ],
+  "scripts": {
+    "verify": "./scripts/verify",
+    "validate-okf": "./scripts/validate-okf",
+    "benchmark:all": "./scripts/benchmark",
+    "package:archive": "./scripts/package",
+    "test": "bun test packages examples/proof",
+    "typecheck": "tsc -b tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/bun": "^1.3.4"
+  }
+}

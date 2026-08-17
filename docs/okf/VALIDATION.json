@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "bundle_relative_sources": "PASS",
+    "concept_frontmatter": "PASS",
+    "duplicate_source_ids": "PASS",
+    "internal_links": "PASS",
+    "reserved_files": "PASS",
+    "root_index": "PASS"
+  },
+  "counts": {
+    "concept_documents": 60,
+    "internal_links_checked": 168,
+    "markdown_files": 68,
+    "reserved_files": 8
+  },
+  "errors": [],
+  "format": "project-q-okf-validation-v1",
+  "generated_at": "2026-08-17T19:27:58+07:00",
+  "note": "Local structural validation only; not external certification or implementation verification.",
+  "okf_version": "0.2",
+  "status": "PASS",
+  "warnings": []
+}

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Full benchmark suite (matched candidates). Long-running; produces
+# benchmarks/raw/* + benchmarks/summaries/* + benchmark manifest.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+bun install --silent
+cargo build --release --workspace --quiet
+(cd baselines/raw-rust && cargo build --release --quiet)
+
+bun benchmarks/harness/run-all.ts "$@"
