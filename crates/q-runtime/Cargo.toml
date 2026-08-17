@@ -21,7 +21,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 clap = { workspace = true }
+sourcemap = { workspace = true }
 
 [dev-dependencies]
 sha2 = { workspace = true }
+sourcemap = { workspace = true }
 libc = "0.2"

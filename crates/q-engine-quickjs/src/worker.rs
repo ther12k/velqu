@@ -716,7 +716,9 @@ fn map_first_frame_with(mapper: &dyn SourceMapper, stack: &str) -> Option<Source
         }
     }
     let (file, line_no, col) = generated?;
-    let original = if file == "app.js" || file.ends_with(".js") {
+    // bundles evaluate as "eval_script" or the pack entry name; every
+    // generated frame is mappable
+    let original = if !file.ends_with(".rs") {
         mapper.map(line_no, col)
     } else {
         None

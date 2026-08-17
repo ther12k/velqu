@@ -7,6 +7,7 @@
 
 mod problems;
 mod serve;
+mod source_map;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -116,11 +117,12 @@ fn run(args: Args) -> i32 {
         // ---- stage: engine.spawn + bundle.load (one QuickJS worker)
         let t = Instant::now();
         let store = Arc::new(q_bridge::RequestStore::new());
+        let mapper = source_map::mapper_for(&pack);
         let mut engine = QuickJsEngine::spawn(
             QuickJsConfig::default(),
             Arc::clone(&store),
             tokio::runtime::Handle::current(),
-            Arc::new(q_engine_quickjs::IdentityMapper),
+            mapper,
         );
         stages.push(("engine.spawn".into(), t.elapsed().as_secs_f64() * 1000.0));
 

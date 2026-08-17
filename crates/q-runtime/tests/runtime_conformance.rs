@@ -708,3 +708,145 @@ fn graceful_shutdown_exits_zero() {
     let status = child.wait().unwrap();
     assert!(status.success(), "graceful shutdown must exit 0, got {status:?}");
 }
+
+#[test]
+fn source_mapped_exception_identifies_original_location() {
+    use sourcemap::SourceMapBuilder;
+    // generated bundle with the throw on line 2
+    let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\n__velquRegister(\"t\", thrower);\n";
+    let mut b = SourceMapBuilder::new(None);
+    b.add(1, 0, 41, 4, Some("src/modules/users/routes.ts"), None, false);
+    let map_json = {
+        let mut out = Vec::new();
+        let sm = b.into_sourcemap();
+        sm.to_writer(&mut out).unwrap();
+        String::from_utf8(out).unwrap()
+    };
+
+    let dir = temp_dir("sourcemap");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.source_map = Some(map_json);
+    // recompute integrity for the modified bundle
+    {
+        use sha2::{Digest, Sha256};
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    // single-route handler table must match the new bundle
+    pack.handler_table = std::collections::BTreeMap::from([("t".to_string(), "t".to_string())]);
+    let throw_route = pack.routes.iter().position(|r| r.id == "throw.redacted").unwrap();
+    let route = pack.routes[throw_route].clone();
+    pack.routes = vec![route];
+    pack.routes[0].handler = "t".into();
+    pack.policies.clear();
+    // recompute integrity again (routes changed too)
+    {
+        use sha2::{Digest, Sha256};
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("sourcemap.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack").arg(&pack_path)
+        .arg("--port").arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn().unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+    let _ = http(port, "GET /throw HTTP/1.1\r\nhost: t\r\n", None);
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("origin-boom"),
+        "engine detail must reach internal stderr log: {err}"
+    );
+    assert!(
+        err.contains("src/modules/users/routes.ts") && err.contains("42"),
+        "original source location must be mapped into diagnostics: {err}"
+    );
+}
+
+#[test]
+fn body_and_header_limits_reject_oversize() {
+    let dir = temp_dir("limits");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // body over the route limit (65536) → 413 problem
+    let big = vec![b'{'];
+    let mut huge = br#"{"name":""#.to_vec();
+    huge.extend(std::iter::repeat(b'a').take(70_000));
+    let _ = big;
+    let r = http(
+        port,
+        "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(&huge),
+    );
+    assert_eq!(r.status, 413, "oversize body must be 413, got {}: {}", r.status, r.text());
+
+    // header block over 32 KiB → 431 (below hyper's own buffer cap)
+    let mut req = String::from("GET /js-text HTTP/1.1\r\nhost: t\r\n");
+    req.push_str(&format!("x-big: {}\r\n", "h".repeat(33_000)));
+    req.push_str("connection: close\r\n\r\n");
+    let r = http(port, &req, None);
+    assert_eq!(r.status, 431, "oversize headers must be 431, got {}", r.status);
+
+    server.stop();
+}
+
+#[test]
+fn queue_limit_returns_503_when_saturated() {
+    let dir = temp_dir("queue");
+    let pack_path = write_pack(&dir);
+    // config: queue of 1
+    let cfg = dir.join("limits.json");
+    std::fs::write(&cfg, serde_json::to_vec(&serde_json::json!({"maxQueue": 1})).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack").arg(&pack_path)
+        .arg("--config").arg(&cfg)
+        .arg("--port").arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn().unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // request 1 occupies the single admission slot for ~1.5s
+    let mut slow = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    slow.write_all(b"GET /cancel?ms=1500 HTTP/1.1\r\nhost: t\r\nconnection: close\r\n\r\n").unwrap();
+    std::thread::sleep(Duration::from_millis(100)); // let it enter the pipeline
+    // request 2 while saturated → 503
+    let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 503, "saturated queue must 503, got {}", r.status);
+    drop(slow);
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+fn wait_tcp(port: u16, deadline: Duration) {
+    let end = Instant::now() + deadline;
+    while TcpStream::connect(("127.0.0.1", port)).is_err() {
+        if Instant::now() > end {
+            panic!("server not ready");
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}

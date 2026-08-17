@@ -160,6 +160,10 @@ impl HttpHost {
                         let service = ReqService { host: host.clone(), handler: Arc::clone(&handler) };
                         let conn = hyper::server::conn::http1::Builder::new()
                             .keep_alive(true)
+                            // hyper's default 8 KiB buffer would reject large
+                            // headers itself; size it so OUR header accounting
+                            // produces a proper 431 problem instead
+                            .max_buf_size((host.shared.limits.max_header_bytes + 64 * 1024).min(512 * 1024))
                             .header_read_timeout(host.shared.limits.header_read_timeout)
                             .timer(hyper_util::rt::TokioTimer::new())
                             .serve_connection(io, service);
@@ -225,7 +229,21 @@ where
             let (result, _route, _stage) = out;
             match result {
                 Ok(plain) => Ok(render(plain)),
-                Err(e) => Err(e),
+                // service errors abort the connection in hyper; limits become
+                // proper problem responses instead
+                Err(e) => {
+                    let (status, which) = match &e {
+                        HttpError::Limited { status, which } => (*status, *which),
+                        HttpError::BadBody(_) => (400, "body"),
+                        HttpError::QueueFull => (503, "queue"),
+                        HttpError::Io(_) => (500, "io"),
+                    };
+                    Ok(problem_response(
+                        status,
+                        which,
+                        &[],
+                    ))
+                }
             }
         })
     }
