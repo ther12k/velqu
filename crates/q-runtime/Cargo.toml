@@ -4,4 +4,24 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "q-runtime"
+path = "src/main.rs"
+
 [dependencies]
+q-pack = { workspace = true }
+q-router = { workspace = true }
+q-bridge = { workspace = true }
+q-engine = { workspace = true }
+q-engine-quickjs = { workspace = true }
+q-http = { workspace = true }
+q-schema-runtime = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+clap = { workspace = true }
+
+[dev-dependencies]
+sha2 = { workspace = true }
+libc = "0.2"
