@@ -836,6 +836,15 @@ dependencies = [
 [[package]]
 name = "q-bench-support"
 version = "0.1.0"
+dependencies = [
+ "q-bridge",
+ "q-engine",
+ "q-engine-quickjs",
+ "q-schema-runtime",
+ "serde",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "q-bridge"

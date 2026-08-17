@@ -4,4 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "q-bridge-bench"
+path = "src/bin/bridge_bench.rs"
+
 [dependencies]
+q-engine = { workspace = true }
+q-engine-quickjs = { workspace = true }
+q-bridge = { workspace = true }
+q-schema-runtime = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
