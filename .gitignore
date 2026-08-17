@@ -17,3 +17,5 @@ benchmarks/raw/**/*.tmp
 
 # OS
 .DS_Store
+packages/*/dist/
+*.tsbuildinfo

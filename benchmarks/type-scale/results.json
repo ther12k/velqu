@@ -1,0 +1,29 @@
+{
+  "format": "velqu-type-scale-v1",
+  "results": [
+    {
+      "routes": 100,
+      "freshTscMs": 4812,
+      "peakRssBytes": 443523072,
+      "declarationBytes": 14261,
+      "errors": null,
+      "negativeCaught": "CAUGHT"
+    },
+    {
+      "routes": 500,
+      "freshTscMs": 2897,
+      "peakRssBytes": 465444864,
+      "declarationBytes": 71861,
+      "errors": null,
+      "negativeCaught": "CAUGHT"
+    },
+    {
+      "routes": 1000,
+      "freshTscMs": 5803,
+      "peakRssBytes": 489463808,
+      "declarationBytes": 143861,
+      "errors": null,
+      "negativeCaught": "CAUGHT"
+    }
+  ]
+}
