@@ -34,6 +34,10 @@ startup; everything below is consumed as-is.
       "moduleId": "users",
       "method": "GET",                // canonical uppercase
       "path": "/users/:id",           // canonical path; :name = param, *rest = terminal wildcard
+      "pathSegments": [               // pre-compiled segments (additive v1 field): the runtime
+        { "kind": "static", "value": "users" },   // consumes this with ZERO parsing/compilation
+        { "kind": "param", "value": "id" }
+      ],
       "handler": "users.get",         // key into handlerTable
       "policy": "auth.session",       // policy id or null
       "params":  { "schema": "sch:users.get.params",  "coerce": "path" },
