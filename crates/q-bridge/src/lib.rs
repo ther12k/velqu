@@ -110,10 +110,18 @@ impl RequestStore {
         let mut slots = self.slots.lock().unwrap();
         let mut free = self.free.lock().unwrap();
         let slot = if let Some(idx) = free.pop() {
-            slots[idx] = Slot { generation, meta: Some(meta), state: SlotState::Active };
+            slots[idx] = Slot {
+                generation,
+                meta: Some(meta),
+                state: SlotState::Active,
+            };
             idx
         } else {
-            slots.push(Slot { generation, meta: Some(meta), state: SlotState::Active });
+            slots.push(Slot {
+                generation,
+                meta: Some(meta),
+                state: SlotState::Active,
+            });
             slots.len() - 1
         };
         drop(slots);
@@ -152,14 +160,20 @@ impl RequestStore {
         let slots = self.slots.lock().unwrap();
         let s = slots.get(slot).ok_or(BridgeError::NoSuchSlot)?;
         if s.generation != generation || s.state != SlotState::Active {
-            self.counters.expired_accesses.fetch_add(1, Ordering::Relaxed);
+            self.counters
+                .expired_accesses
+                .fetch_add(1, Ordering::Relaxed);
             return Err(BridgeError::Expired);
         }
         let meta = s.meta.as_ref().expect("active slot has meta");
         let out = f(meta);
         drop(slots);
-        self.counters.materialized_fields.fetch_add(cost_fields, Ordering::Relaxed);
-        self.counters.materialized_bytes.fetch_add(cost_bytes, Ordering::Relaxed);
+        self.counters
+            .materialized_fields
+            .fetch_add(cost_fields, Ordering::Relaxed);
+        self.counters
+            .materialized_bytes
+            .fetch_add(cost_bytes, Ordering::Relaxed);
         Ok(out)
     }
 
@@ -189,9 +203,7 @@ mod tests {
     fn access_materializes_and_counts() {
         let store = RequestStore::new();
         let (slot, gen) = store.insert(meta(Some(br#"{"a":1}"#.to_vec())));
-        let body = store
-            .access(slot, gen, 1, 7, |m| m.body.clone())
-            .unwrap();
+        let body = store.access(slot, gen, 1, 7, |m| m.body.clone()).unwrap();
         assert_eq!(body.unwrap(), br#"{"a":1}"#.to_vec());
         let snap = store.snapshot();
         assert_eq!(snap.host_calls, 1);
@@ -206,15 +218,24 @@ mod tests {
         let (slot, gen1) = store.insert(meta(None));
         store.settle(slot, gen1);
         // retained wrapper fails deterministically
-        assert_eq!(store.access(slot, gen1, 0, 0, |_| ()), Err(BridgeError::Expired));
+        assert_eq!(
+            store.access(slot, gen1, 0, 0, |_| ()),
+            Err(BridgeError::Expired)
+        );
         assert_eq!(store.snapshot().expired_accesses, 1);
         assert_eq!(store.live_slots(), 0);
         // slot reuse gets a new generation; old handle still denied
         let (_slot2, gen2) = store.insert(meta(None));
         assert_ne!(gen1, gen2);
-        assert_eq!(store.access(slot, gen1, 0, 0, |_| ()), Err(BridgeError::Expired));
+        assert_eq!(
+            store.access(slot, gen1, 0, 0, |_| ()),
+            Err(BridgeError::Expired)
+        );
         // wrong-owner (stale generation on live slot) denied
-        assert_eq!(store.access(slot, gen2 + 100, 0, 0, |_| ()), Err(BridgeError::Expired));
+        assert_eq!(
+            store.access(slot, gen2 + 100, 0, 0, |_| ()),
+            Err(BridgeError::Expired)
+        );
     }
 
     #[test]

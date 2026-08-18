@@ -4,5 +4,11 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@q/compiler": "workspace:*"
+  },
+  "bin": {
+    "q": "./src/index.ts"
+  }
 }

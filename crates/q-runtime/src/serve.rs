@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use q_engine::Engine as _;
-use q_engine_quickjs::QuickJsEngine;
 use q_engine::{BodyOut, InvocationSpec, Outcome, ResponseStrategy};
+use q_engine_quickjs::QuickJsEngine;
 use q_http::{HandlerResult, HttpError, PlainResponse, RequestContext};
 use q_router::MatchResult;
 use q_schema_runtime::{validate_params, validate_query, Source};
@@ -24,9 +24,17 @@ pub struct ServeState {
     pub invocation_clock: AtomicU64,
 }
 
+#[allow(clippy::type_complexity)]
 pub fn make_handler(
     state: Arc<ServeState>,
-) -> impl Fn(RequestContext) -> std::pin::Pin<Box<dyn std::future::Future<Output = (HandlerResult, String, &'static str)> + Send>> + Clone + Send + Sync + 'static {
+) -> impl Fn(
+    RequestContext,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = (HandlerResult, String, &'static str)> + Send>,
+> + Clone
+       + Send
+       + Sync
+       + 'static {
     move |ctx: RequestContext| {
         let state = Arc::clone(&state);
         Box::pin(async move {
@@ -70,7 +78,10 @@ fn log_completion(
     );
 }
 
-async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, String, &'static str) {
+async fn pipeline(
+    state: &ServeState,
+    ctx: &RequestContext,
+) -> (HandlerResult, String, &'static str) {
     // ---- native routing BEFORE any JavaScript (RUN-002)
     match state.router.resolve(&ctx.method, &ctx.path) {
         MatchResult::NotFound => {
@@ -87,7 +98,11 @@ async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, S
             resp.headers.push(("allow".into(), allow.join(", ")));
             (Ok(resp), "(method-not-allowed)".into(), "routing")
         }
-        MatchResult::Found { route_index, params, head } => {
+        MatchResult::Found {
+            route_index,
+            params,
+            head,
+        } => {
             let route = &state.pack.routes[route_index];
             let route_id = route.id.clone();
 
@@ -224,8 +239,11 @@ async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, S
                 .then_some(200)
                 .or_else(|| route.responses.keys().next().and_then(|k| k.parse().ok()))
                 .unwrap_or(200);
-            let allowed_statuses: Vec<u16> =
-                route.responses.keys().filter_map(|k| k.parse().ok()).collect();
+            let allowed_statuses: Vec<u16> = route
+                .responses
+                .keys()
+                .filter_map(|k| k.parse().ok())
+                .collect();
             let response_strategy = match route.responses.get(&default_status.to_string()) {
                 Some(decl) => match decl.strategy {
                     q_pack::Strategy::Native => ResponseStrategy::Native,
@@ -264,7 +282,11 @@ async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, S
 
             // client gone (connection dropped) → cancel invocation
             let mapped = match outcome {
-                Outcome::Response { status, body, headers } => {
+                Outcome::Response {
+                    status,
+                    body,
+                    headers,
+                } => {
                     let mut resp = match body {
                         BodyOut::JsonText(text) => PlainResponse {
                             status,
@@ -279,13 +301,19 @@ async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, S
                         }
                         BodyOut::Text(t) => PlainResponse {
                             status,
-                            headers: vec![("content-type".into(), "text/plain; charset=utf-8".into())],
+                            headers: vec![(
+                                "content-type".into(),
+                                "text/plain; charset=utf-8".into(),
+                            )],
                             body: t.into_bytes(),
                             head_only: head,
                         },
                         BodyOut::Bytes(b) => PlainResponse {
                             status,
-                            headers: vec![("content-type".into(), "application/octet-stream".into())],
+                            headers: vec![(
+                                "content-type".into(),
+                                "application/octet-stream".into(),
+                            )],
                             body: b,
                             head_only: head,
                         },
@@ -307,7 +335,11 @@ async fn pipeline(state: &ServeState, ctx: &RequestContext) -> (HandlerResult, S
                         &p.errors,
                         &ctx.request_id,
                     );
-                    (Ok(json_response(p.status, &body)), route_id, "engine.problem")
+                    (
+                        Ok(json_response(p.status, &body)),
+                        route_id,
+                        "engine.problem",
+                    )
                 }
                 Outcome::Timeout => {
                     let body = problems::body("timeout", None, None, &[], &ctx.request_id);

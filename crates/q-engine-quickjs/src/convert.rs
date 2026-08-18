@@ -82,7 +82,11 @@ pub fn any_js_to_json(v: &Value<'_>) -> rquickjs::Result<Json> {
         }
     }
     // functions, symbols, etc. cannot be serialized
-    Err(rquickjs::Error::FromJs { from: "function/symbol", to: "json", message: None })
+    Err(rquickjs::Error::FromJs {
+        from: "function/symbol",
+        to: "json",
+        message: None,
+    })
 }
 
 /// Engine-side JSON.stringify (strategy A response path). Returns None when

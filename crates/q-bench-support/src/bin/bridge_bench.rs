@@ -88,10 +88,16 @@ struct Case {
 
 fn json_ok(out: &Outcome, expected: &Value) -> bool {
     match out {
-        Outcome::Response { body: BodyOut::Json(v), .. } => v == expected,
-        Outcome::Response { body: BodyOut::JsonText(t), .. } => {
-            serde_json::from_str::<Value>(t).map(|v| &v == expected).unwrap_or(false)
-        }
+        Outcome::Response {
+            body: BodyOut::Json(v),
+            ..
+        } => v == expected,
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => serde_json::from_str::<Value>(t)
+            .map(|v| &v == expected)
+            .unwrap_or(false),
         _ => false,
     }
 }
@@ -113,7 +119,11 @@ fn main() {
     let warmup: usize = 200;
     let _ = std::fs::create_dir_all(&out_dir);
 
-    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
     // NO rt.enter(): an entered context makes Handle::block_on skip driving
     // spawned tasks (timer ops would never fire)
     let store = Arc::new(q_bridge::RequestStore::new());
@@ -124,9 +134,21 @@ fn main() {
         Arc::new(IdentityMapper),
     );
     let table: std::collections::BTreeMap<String, String> = [
-        "a.pass", "a.touch", "a.nested", "b.pass", "b.touch", "b.nested",
-        "out.int", "out.str", "out.obj", "out.nested", "out.array",
-        "out.problem", "out.bytes", "promise.int", "five.scalars",
+        "a.pass",
+        "a.touch",
+        "a.nested",
+        "b.pass",
+        "b.touch",
+        "b.nested",
+        "out.int",
+        "out.str",
+        "out.obj",
+        "out.nested",
+        "out.array",
+        "out.problem",
+        "out.bytes",
+        "promise.int",
+        "five.scalars",
     ]
     .iter()
     .map(|k| (k.to_string(), String::new()))
@@ -146,7 +168,11 @@ fn main() {
             body: Some(small_object()),
             params: None,
             query: None,
-            strategy: if native { ResponseStrategy::Native } else { ResponseStrategy::Js },
+            strategy: if native {
+                ResponseStrategy::Native
+            } else {
+                ResponseStrategy::Js
+            },
             native_body: native,
             check: Box::new(move |o| json_ok(o, &expected)),
         });
@@ -163,7 +189,11 @@ fn main() {
             body: Some(nested_object()),
             params: None,
             query: None,
-            strategy: if native { ResponseStrategy::Native } else { ResponseStrategy::Js },
+            strategy: if native {
+                ResponseStrategy::Native
+            } else {
+                ResponseStrategy::Js
+            },
             native_body: native,
             check: Box::new(move |o| json_ok(o, &expected)),
         });
@@ -180,73 +210,138 @@ fn main() {
             body: Some(records_100()),
             params: None,
             query: None,
-            strategy: if native { ResponseStrategy::Native } else { ResponseStrategy::Js },
+            strategy: if native {
+                ResponseStrategy::Native
+            } else {
+                ResponseStrategy::Js
+            },
             native_body: native,
             check: Box::new(move |o| json_ok(o, &expected)),
         });
     }
     // outputs
     cases.push(Case {
-        name: "output.int", handler: "out.int", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
+        name: "output.int",
+        handler: "out.int",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!(42))),
     });
     cases.push(Case {
-        name: "output.str", handler: "out.str", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
-        check: Box::new(|o| matches!(o, Outcome::Response { body: BodyOut::Text(ref t), .. } if t == "velqu")),
+        name: "output.str",
+        handler: "out.str",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
+        check: Box::new(
+            |o| matches!(o, Outcome::Response { body: BodyOut::Text(ref t), .. } if t == "velqu"),
+        ),
     });
     cases.push(Case {
-        name: "output.obj.a", handler: "out.obj", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
+        name: "output.obj.a",
+        handler: "out.obj",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!({"ok": true, "n": 1}))),
     });
     cases.push(Case {
-        name: "output.obj.b", handler: "out.obj", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Native, native_body: false,
+        name: "output.obj.b",
+        handler: "out.obj",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Native,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!({"ok": true, "n": 1}))),
     });
     cases.push(Case {
-        name: "output.nested.b", handler: "out.nested", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Native, native_body: false,
+        name: "output.nested.b",
+        handler: "out.nested",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Native,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!({"a": {"b": {"c": [1, 2, 3]}}}))),
     });
     cases.push(Case {
-        name: "output.array100.a", handler: "out.array", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
+        name: "output.array100.a",
+        handler: "out.array",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
         check: Box::new(|o| match o {
-            Outcome::Response { body: BodyOut::JsonText(t), .. } => {
-                serde_json::from_str::<Value>(t).map(|v| v.as_array().map_or(false, |a| a.len() == 100)).unwrap_or(false)
-            }
+            Outcome::Response {
+                body: BodyOut::JsonText(t),
+                ..
+            } => serde_json::from_str::<Value>(t)
+                .map(|v| matches!(v.as_array(), Some(a) if a.len() == 100))
+                .unwrap_or(false),
             _ => false,
         }),
     });
     cases.push(Case {
-        name: "output.array100.b", handler: "out.array", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Native, native_body: false,
-        check: Box::new(|o| json_ok_arr100(o)),
+        name: "output.array100.b",
+        handler: "out.array",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Native,
+        native_body: false,
+        check: Box::new(json_ok_arr100),
     });
     cases.push(Case {
-        name: "output.problem", handler: "out.problem", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
-        check: Box::new(|o| matches!(o, Outcome::Problem(p) if p.problem_id == "not-found" && p.status == 404)),
+        name: "output.problem",
+        handler: "out.problem",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
+        check: Box::new(
+            |o| matches!(o, Outcome::Problem(p) if p.problem_id == "not-found" && p.status == 404),
+        ),
     });
     cases.push(Case {
-        name: "output.bytes", handler: "out.bytes", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
-        check: Box::new(|o| matches!(o, Outcome::Response { body: BodyOut::Bytes(ref b), .. } if b == b"hello")),
+        name: "output.bytes",
+        handler: "out.bytes",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
+        check: Box::new(
+            |o| matches!(o, Outcome::Response { body: BodyOut::Bytes(ref b), .. } if b == b"hello"),
+        ),
     });
     cases.push(Case {
-        name: "promise.completion", handler: "promise.int", body: None, params: None, query: None,
-        strategy: ResponseStrategy::Js, native_body: false,
+        name: "promise.completion",
+        handler: "promise.int",
+        body: None,
+        params: None,
+        query: None,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!(7))),
     });
     cases.push(Case {
-        name: "input.scalars5", handler: "five.scalars",
+        name: "input.scalars5",
+        handler: "five.scalars",
         body: None,
         params: Some(json!({"a": 10, "b": 20})),
         query: Some(json!({"c": 12})),
-        strategy: ResponseStrategy::Js, native_body: false,
+        strategy: ResponseStrategy::Js,
+        native_body: false,
         check: Box::new(|o| json_ok(o, &json!({"sum": 42}))),
     });
 
@@ -285,7 +380,8 @@ fn main() {
         }
     }
 
-    let mut sum_file = std::fs::File::create(format!("{out_dir}/bridge-summary.json")).expect("summary out");
+    let mut sum_file =
+        std::fs::File::create(format!("{out_dir}/bridge-summary.json")).expect("summary out");
     let _ = writeln!(
         sum_file,
         "{}",
@@ -328,7 +424,11 @@ fn run_case(
         params: case.params.clone(),
         query: case.query.clone(),
         headers: None,
-        body: if case.native_body { case.body.clone() } else { None },
+        body: if case.native_body {
+            case.body.clone()
+        } else {
+            None
+        },
         allowed_statuses: vec![200, 201, 404],
         default_status: 200,
         response_strategy: case.strategy,
@@ -337,9 +437,8 @@ fn run_case(
     let (tx, rx) = tokio::sync::oneshot::channel();
     let t0 = Instant::now();
     engine.invoke(spec, tx);
-    let _ = rt_handle.block_on(async {
-        tokio::time::timeout(std::time::Duration::from_millis(1500), rx).await
-    });
+    let _ = rt_handle
+        .block_on(async { tokio::time::timeout(std::time::Duration::from_millis(1500), rx).await });
     let d = t0.elapsed().as_secs_f64() * 1e6;
     // correctness via a second invocation whose outcome we keep
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
@@ -357,7 +456,11 @@ fn run_case(
         params: case.params.clone(),
         query: case.query.clone(),
         headers: None,
-        body: if case.native_body { case.body.clone() } else { None },
+        body: if case.native_body {
+            case.body.clone()
+        } else {
+            None
+        },
         allowed_statuses: vec![200, 201, 404],
         default_status: 200,
         response_strategy: case.strategy,
@@ -378,7 +481,10 @@ fn run_case(
 
 fn json_ok_arr100(out: &Outcome) -> bool {
     match out {
-        Outcome::Response { body: BodyOut::Json(v), .. } => v.as_array().map_or(false, |a| a.len() == 100),
+        Outcome::Response {
+            body: BodyOut::Json(v),
+            ..
+        } => matches!(v.as_array(), Some(a) if a.len() == 100),
         _ => false,
     }
 }

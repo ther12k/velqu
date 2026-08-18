@@ -93,7 +93,11 @@ pub struct FieldError {
 
 impl FieldError {
     fn new(path: &str, code: &str, message: impl Into<String>) -> Self {
-        FieldError { path: path.into(), code: code.into(), message: message.into() }
+        FieldError {
+            path: path.into(),
+            code: code.into(),
+            message: message.into(),
+        }
     }
 }
 
@@ -115,10 +119,10 @@ fn is_email(s: &str) -> bool {
 
 fn is_uuid(s: &str) -> bool {
     s.len() == 36
-        && s.as_bytes()
-            .iter()
-            .enumerate()
-            .all(|(i, b)| matches!(i, 8 | 13 | 18 | 23) && *b == b'-' || !matches!(i, 8 | 13 | 18 | 23) && b.is_ascii_hexdigit())
+        && s.as_bytes().iter().enumerate().all(|(i, b)| {
+            matches!(i, 8 | 13 | 18 | 23) && *b == b'-'
+                || !matches!(i, 8 | 13 | 18 | 23) && b.is_ascii_hexdigit()
+        })
 }
 
 /// Validate + normalize a value from `source` against `ir`.
@@ -130,7 +134,12 @@ pub fn validate(ir: &SchemaIr, value: &Value, source: Source) -> ValidationResul
     }
 }
 
-fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool) -> ValidationResult {
+fn validate_node(
+    ir: &SchemaIr,
+    value: &Value,
+    path: &str,
+    coerce_strings: bool,
+) -> ValidationResult {
     match ir {
         SchemaIr::Optional { inner, default } => {
             if value.is_null() {
@@ -145,51 +154,75 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             validate_node(inner, value, path, coerce_strings)
         }
         SchemaIr::Union { members } => {
-            let mut last = Vec::new();
+            let mut _last = Vec::new();
             for m in members {
                 match validate_node(m, value, path, coerce_strings) {
                     Ok(v) => return Ok(v),
-                    Err(e) => last = e,
+                    Err(e) => _last = e,
                 }
             }
-            Err(vec![FieldError::new(path, "union", format!("value matched none of {} union members", members.len()))])
+            Err(vec![FieldError::new(
+                path,
+                "union",
+                format!("value matched none of {} union members", members.len()),
+            )])
         }
-        SchemaIr::String { min_length, max_length, pattern, format } => {
-            let s = if coerce_strings {
-                match value.as_str() {
-                    Some(s) => s.to_string(),
-                    None => return Err(vec![FieldError::new(path, "type", "expected string")]),
-                }
-            } else {
-                match value.as_str() {
-                    Some(s) => s.to_string(),
-                    None => return Err(vec![FieldError::new(path, "type", "expected string")]),
-                }
+        SchemaIr::String {
+            min_length,
+            max_length,
+            pattern,
+            format,
+        } => {
+            let s = match value.as_str() {
+                Some(s) => s.to_string(),
+                None => return Err(vec![FieldError::new(path, "type", "expected string")]),
             };
             if let Some(min) = min_length {
                 if (s.len() as u64) < *min {
-                    return Err(vec![FieldError::new(path, "minLength", format!("must be at least {} characters", min))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "minLength",
+                        format!("must be at least {} characters", min),
+                    )]);
                 }
             }
             if let Some(max) = max_length {
                 if (s.len() as u64) > *max {
-                    return Err(vec![FieldError::new(path, "maxLength", format!("must be at most {} characters", max))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "maxLength",
+                        format!("must be at most {} characters", max),
+                    )]);
                 }
             }
             if let Some(p) = pattern {
                 // Only the ^usr_[0-9]+$-style subset is expected; enforce via a tiny matcher
                 if !simple_pattern_match(p, &s) {
-                    return Err(vec![FieldError::new(path, "pattern", format!("must match {}", p))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "pattern",
+                        format!("must match {}", p),
+                    )]);
                 }
             }
             if let Some(f) = format {
                 let ok = match f.as_str() {
                     "email" => is_email(&s),
                     "uuid" => is_uuid(&s),
-                    other => return Err(vec![FieldError::new(path, "format", format!("unknown format {}", other))]),
+                    other => {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "format",
+                            format!("unknown format {}", other),
+                        )])
+                    }
                 };
                 if !ok {
-                    return Err(vec![FieldError::new(path, "format", format!("must be a valid {}", f))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "format",
+                        format!("must be a valid {}", f),
+                    )]);
                 }
             }
             Ok(Value::String(s))
@@ -198,12 +231,20 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             let n = coerce_int(value, coerce_strings, path)?;
             if let Some(min) = minimum {
                 if n < *min {
-                    return Err(vec![FieldError::new(path, "minimum", format!("must be at least {}", min))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "minimum",
+                        format!("must be at least {}", min),
+                    )]);
                 }
             }
             if let Some(max) = maximum {
                 if n > *max {
-                    return Err(vec![FieldError::new(path, "maximum", format!("must be at most {}", max))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "maximum",
+                        format!("must be at most {}", max),
+                    )]);
                 }
             }
             Ok(Value::Number(Number::from(n)))
@@ -212,22 +253,38 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             let n = coerce_number(value, coerce_strings, path)?;
             if let Some(min) = minimum {
                 if n < *min {
-                    return Err(vec![FieldError::new(path, "minimum", format!("must be at least {}", min))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "minimum",
+                        format!("must be at least {}", min),
+                    )]);
                 }
             }
             if let Some(max) = maximum {
                 if n > *max {
-                    return Err(vec![FieldError::new(path, "maximum", format!("must be at most {}", max))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "maximum",
+                        format!("must be at most {}", max),
+                    )]);
                 }
             }
-            Number::from_f64(n).map(Value::Number).ok_or_else(|| vec![FieldError::new(path, "type", "not a finite number")])
+            Number::from_f64(n)
+                .map(Value::Number)
+                .ok_or_else(|| vec![FieldError::new(path, "type", "not a finite number")])
         }
         SchemaIr::Boolean => {
             let b = if coerce_strings {
                 match value.as_str() {
                     Some("true") => true,
                     Some("false") => false,
-                    _ => return Err(vec![FieldError::new(path, "type", "expected boolean (true/false)")]),
+                    _ => {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "type",
+                            "expected boolean (true/false)",
+                        )])
+                    }
                 }
             } else {
                 match value.as_bool() {
@@ -241,7 +298,11 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             if value == lit {
                 Ok(lit.clone())
             } else {
-                Err(vec![FieldError::new(path, "literal", format!("must equal {}", lit))])
+                Err(vec![FieldError::new(
+                    path,
+                    "literal",
+                    format!("must equal {}", lit),
+                )])
             }
         }
         SchemaIr::Enum { values } => {
@@ -251,19 +312,31 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
                 Err(vec![FieldError::new(path, "enum", "value not in enum")])
             }
         }
-        SchemaIr::Array { items, min_items, max_items } => {
+        SchemaIr::Array {
+            items,
+            min_items,
+            max_items,
+        } => {
             let arr = match value.as_array() {
                 Some(a) => a,
                 None => return Err(vec![FieldError::new(path, "type", "expected array")]),
             };
             if let Some(min) = min_items {
                 if (arr.len() as u64) < *min {
-                    return Err(vec![FieldError::new(path, "minItems", format!("must have at least {} items", min))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "minItems",
+                        format!("must have at least {} items", min),
+                    )]);
                 }
             }
             if let Some(max) = max_items {
                 if (arr.len() as u64) > *max {
-                    return Err(vec![FieldError::new(path, "maxItems", format!("must have at most {} items", max))]);
+                    return Err(vec![FieldError::new(
+                        path,
+                        "maxItems",
+                        format!("must have at most {} items", max),
+                    )]);
                 }
             }
             let mut out = Vec::with_capacity(arr.len());
@@ -273,7 +346,10 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             }
             Ok(Value::Array(out))
         }
-        SchemaIr::Object { properties, required } => {
+        SchemaIr::Object {
+            properties,
+            required,
+        } => {
             let obj = match value.as_object() {
                 Some(o) => o,
                 None => return Err(vec![FieldError::new(path, "type", "expected object")]),
@@ -282,13 +358,21 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
             let mut errors = Vec::new();
             for key in obj.keys() {
                 if !properties.contains_key(key) {
-                    errors.push(FieldError::new(&join_path(path, key), "additional", "unknown field"));
+                    errors.push(FieldError::new(
+                        &join_path(path, key),
+                        "additional",
+                        "unknown field",
+                    ));
                 }
             }
             for req in required {
                 if !obj.contains_key(req) {
                     // an optional-with-default member cannot also be required; enforced by compiler
-                    errors.push(FieldError::new(&join_path(path, req), "required", "missing required field"));
+                    errors.push(FieldError::new(
+                        &join_path(path, req),
+                        "required",
+                        "missing required field",
+                    ));
                 }
             }
             if !errors.is_empty() {
@@ -311,7 +395,10 @@ fn validate_node(ir: &SchemaIr, value: &Value, path: &str, coerce_strings: bool)
                             errors.append(&mut e);
                         }
                     }
-                } else if let Some(SchemaIr::Optional { default: Some(d), .. }) = properties.get(key).map(|b| b.as_ref()) {
+                } else if let Some(SchemaIr::Optional {
+                    default: Some(d), ..
+                }) = properties.get(key).map(|b| b.as_ref())
+                {
                     out.insert(key.clone(), d.clone());
                 }
             }
@@ -430,8 +517,24 @@ mod tests {
     fn user_body_ir() -> SchemaIr {
         SchemaIr::Object {
             properties: BTreeMap::from([
-                ("name".to_string(), Box::new(SchemaIr::String { min_length: Some(1), max_length: Some(60), pattern: None, format: None })),
-                ("email".to_string(), Box::new(SchemaIr::String { min_length: None, max_length: None, pattern: None, format: Some("email".into()) })),
+                (
+                    "name".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: Some(1),
+                        max_length: Some(60),
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "email".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: Some("email".into()),
+                    }),
+                ),
             ]),
             required: vec!["name".into(), "email".into()],
         }
@@ -439,28 +542,52 @@ mod tests {
 
     #[test]
     fn body_accepts_valid_user() {
-        let v = validate(&user_body_ir(), &json!({"name": "Ada", "email": "ada@example.org"}), Source::Body);
+        let v = validate(
+            &user_body_ir(),
+            &json!({"name": "Ada", "email": "ada@example.org"}),
+            Source::Body,
+        );
         assert!(v.is_ok());
     }
 
     #[test]
     fn body_rejects_bad_email_identifying_field() {
-        let err = validate(&user_body_ir(), &json!({"name": "Ada", "email": "not-an-email"}), Source::Body).unwrap_err();
+        let err = validate(
+            &user_body_ir(),
+            &json!({"name": "Ada", "email": "not-an-email"}),
+            Source::Body,
+        )
+        .unwrap_err();
         assert!(err.iter().any(|e| e.path == "email" && e.code == "format"));
     }
 
     #[test]
     fn body_rejects_missing_and_unknown_fields() {
         let err = validate(&user_body_ir(), &json!({"name": "Ada"}), Source::Body).unwrap_err();
-        assert!(err.iter().any(|e| e.code == "required" && e.path == "email"));
-        let err = validate(&user_body_ir(), &json!({"name": "Ada", "email": "a@b.co", "extra": 1}), Source::Body).unwrap_err();
-        assert!(err.iter().any(|e| e.code == "additional" && e.path == "extra"));
+        assert!(err
+            .iter()
+            .any(|e| e.code == "required" && e.path == "email"));
+        let err = validate(
+            &user_body_ir(),
+            &json!({"name": "Ada", "email": "a@b.co", "extra": 1}),
+            Source::Body,
+        )
+        .unwrap_err();
+        assert!(err
+            .iter()
+            .any(|e| e.code == "additional" && e.path == "extra"));
     }
 
     #[test]
     fn path_coerces_integer_and_enforces_range() {
         let ir = SchemaIr::Object {
-            properties: BTreeMap::from([("id".to_string(), Box::new(SchemaIr::Integer { minimum: Some(1), maximum: Some(25) }))]),
+            properties: BTreeMap::from([(
+                "id".to_string(),
+                Box::new(SchemaIr::Integer {
+                    minimum: Some(1),
+                    maximum: Some(25),
+                }),
+            )]),
             required: vec!["id".into()],
         };
         let ok = validate_params(&ir, &[("id".into(), "7".into())]).unwrap();
@@ -477,7 +604,10 @@ mod tests {
             properties: BTreeMap::from([(
                 "ms".to_string(),
                 Box::new(SchemaIr::Optional {
-                    inner: Box::new(SchemaIr::Integer { minimum: Some(1), maximum: Some(1000) }),
+                    inner: Box::new(SchemaIr::Integer {
+                        minimum: Some(1),
+                        maximum: Some(1000),
+                    }),
                     default: Some(json!(10)),
                 }),
             )]),
@@ -496,13 +626,23 @@ mod tests {
         let ir = SchemaIr::Object {
             properties: BTreeMap::from([(
                 "id".to_string(),
-                Box::new(SchemaIr::String { min_length: None, max_length: None, pattern: Some("^usr_[0-9]+$".into()), format: None }),
+                Box::new(SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: Some("^usr_[0-9]+$".into()),
+                    format: None,
+                }),
             )]),
             required: vec!["id".into()],
         };
         assert!(validate_params(&ir, &[("id".into(), "usr_1".into())]).is_ok());
-        assert!(validate_params(&ir, &[("id".into(), "user_1".into())]).unwrap_err()[0].code == "pattern");
-        assert!(validate_params(&ir, &[("id".into(), "usr_".into())]).unwrap_err()[0].code == "pattern");
+        assert!(
+            validate_params(&ir, &[("id".into(), "user_1".into())]).unwrap_err()[0].code
+                == "pattern"
+        );
+        assert!(
+            validate_params(&ir, &[("id".into(), "usr_".into())]).unwrap_err()[0].code == "pattern"
+        );
     }
 
     #[test]
@@ -510,7 +650,12 @@ mod tests {
         let ir = SchemaIr::Object {
             properties: BTreeMap::from([(
                 "name".to_string(),
-                Box::new(SchemaIr::String { min_length: Some(1), max_length: Some(60), pattern: None, format: None }),
+                Box::new(SchemaIr::String {
+                    min_length: Some(1),
+                    max_length: Some(60),
+                    pattern: None,
+                    format: None,
+                }),
             )]),
             required: vec!["name".into()],
         };

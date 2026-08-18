@@ -36,6 +36,7 @@ struct Args {
     config: Option<PathBuf>,
 }
 
+#[allow(clippy::needless_return)]
 fn main() {
     let args = Args::parse();
     let code = run(args);

@@ -27,7 +27,11 @@ pub struct QuickJsConfig {
 
 impl Default for QuickJsConfig {
     fn default() -> Self {
-        QuickJsConfig { heap_limit_bytes: 32 << 20, stack_limit_bytes: 512 << 10, pending_op_cap: 1024 }
+        QuickJsConfig {
+            heap_limit_bytes: 32 << 20,
+            stack_limit_bytes: 512 << 10,
+            pending_op_cap: 1024,
+        }
     }
 }
 
@@ -70,7 +74,14 @@ impl QuickJsEngine {
                 let shared = Arc::clone(&shared);
                 let last_error = Arc::clone(&last_error);
                 move || {
-                    let inner = worker::WorkerInner::new(config, store, tokio_handle, mapper, shared.clone(), last_error.clone());
+                    let inner = worker::WorkerInner::new(
+                        config,
+                        store,
+                        tokio_handle,
+                        mapper,
+                        shared.clone(),
+                        last_error.clone(),
+                    );
                     match inner {
                         Ok(w) => w.run(rx, tx),
                         Err(e) => {
@@ -86,7 +97,12 @@ impl QuickJsEngine {
                 }
             })
             .expect("spawn quickjs worker thread");
-        QuickJsEngine { tx, shared, handle: Some(handle), last_error }
+        QuickJsEngine {
+            tx,
+            shared,
+            handle: Some(handle),
+            last_error,
+        }
     }
 }
 
@@ -98,13 +114,26 @@ impl Engine for QuickJsEngine {
     ) -> Result<LoadStats, String> {
         let (reply_tx, reply_rx) = std::sync::mpsc::channel();
         self.tx
-            .send(WorkerMsg::Load { bundle: bundle.to_string(), expected: expected_handlers.clone(), reply: reply_tx })
+            .send(WorkerMsg::Load {
+                bundle: bundle.to_string(),
+                expected: expected_handlers.clone(),
+                reply: reply_tx,
+            })
             .map_err(|_| "engine worker gone".to_string())?;
-        reply_rx.recv().map_err(|_| "engine worker died during load".to_string())?
+        reply_rx
+            .recv()
+            .map_err(|_| "engine worker died during load".to_string())?
     }
 
     fn invoke(&mut self, spec: InvocationSpec, reply: tokio::sync::oneshot::Sender<Outcome>) {
-        if self.tx.send(WorkerMsg::Invoke(Box::new(worker::InvokeJob { spec, reply: Some(reply) }))).is_err() {
+        if self
+            .tx
+            .send(WorkerMsg::Invoke(Box::new(worker::InvokeJob {
+                spec,
+                reply: Some(reply),
+            })))
+            .is_err()
+        {
             // worker gone: nothing sensible to reply; record and move on
             *self.last_error.lock().unwrap() = Some("engine worker gone during invoke".into());
         }

@@ -10,7 +10,11 @@ use q_pack::{PathSegment, RouteEntry, SegKind};
 #[derive(Debug, thiserror::Error)]
 pub enum RouterError {
     #[error("route collision: {method} {a} and {b} are canonically equivalent")]
-    Collision { method: String, a: String, b: String },
+    Collision {
+        method: String,
+        a: String,
+        b: String,
+    },
     #[error("route {route}: wildcard must be terminal ({path})")]
     NonTerminalWildcard { route: String, path: String },
     #[error("route {route}: empty path segment in {path}")]
@@ -28,10 +32,16 @@ pub struct CompiledRoute {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MatchResult {
     /// route index into the pack's routes vec + extracted path params
-    Found { route_index: usize, params: Vec<(String, String)>, head: bool },
+    Found {
+        route_index: usize,
+        params: Vec<(String, String)>,
+        head: bool,
+    },
     NotFound,
     /// 405: methods allowed for the matched path (sorted, includes HEAD when GET present)
-    MethodNotAllowed { allow: Vec<String> },
+    MethodNotAllowed {
+        allow: Vec<String>,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -56,7 +66,10 @@ impl Router {
                         });
                     }
                     SegKind::Static if seg.value.is_empty() => {
-                        return Err(RouterError::EmptySegment { route: r.id.clone(), path: r.path.clone() });
+                        return Err(RouterError::EmptySegment {
+                            route: r.id.clone(),
+                            path: r.path.clone(),
+                        });
                     }
                     _ => {}
                 }
@@ -95,17 +108,25 @@ impl Router {
             }
         }
         // build match structures: bucket by leading static segment when present
-        let mut static_index: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+        let mut static_index: std::collections::HashMap<String, Vec<usize>> =
+            std::collections::HashMap::new();
         let mut fallback = Vec::new();
         for c in &compiled {
             match c.segments.first() {
-                Some(PathSegment { kind: SegKind::Static, value }) if c.segments.len() > 1 || !c.has_params => {
+                Some(PathSegment {
+                    kind: SegKind::Static,
+                    value,
+                }) if c.segments.len() > 1 || !c.has_params => {
                     static_index.entry(value.clone()).or_default().push(c.index);
                 }
                 _ => fallback.push(c.index),
             }
         }
-        Ok(Router { routes: compiled, static_index, fallback })
+        Ok(Router {
+            routes: compiled,
+            static_index,
+            fallback,
+        })
     }
 
     pub fn route_count(&self) -> usize {
@@ -128,6 +149,7 @@ impl Router {
             None => self.static_index.get("").cloned().unwrap_or_default(),
         };
 
+        #[allow(clippy::type_complexity)]
         let mut best: Option<(usize, Vec<(String, String)>, u32)> = None;
         for idx in candidates {
             let c = &self.routes[idx];
@@ -137,12 +159,20 @@ impl Router {
             let mut params = Vec::new();
             let mut specificity = 0u32;
             let mut ok = true;
-            if c.segments.last().map_or(false, |s| s.kind == SegKind::Wildcard) {
+            if c.segments
+                .last()
+                .is_some_and(|s| s.kind == SegKind::Wildcard)
+            {
                 // terminal wildcard: prefix segments must match
                 if segments.len() < c.segments.len() - 1 {
                     continue;
                 }
-                for (cs, ps) in c.segments.iter().take(c.segments.len() - 1).zip(segments.iter()) {
+                for (cs, ps) in c
+                    .segments
+                    .iter()
+                    .take(c.segments.len() - 1)
+                    .zip(segments.iter())
+                {
                     match cs.kind {
                         SegKind::Static => {
                             if cs.value != *ps {
@@ -178,19 +208,25 @@ impl Router {
                             params.push((cs.value.clone(), (*ps).to_string()));
                             specificity += 1;
                         }
-                        SegKind::Wildcard => unreachable!("non-terminal wildcards rejected at build"),
+                        SegKind::Wildcard => {
+                            unreachable!("non-terminal wildcards rejected at build")
+                        }
                     }
                 }
             }
             if !ok {
                 continue;
             }
-            if best.as_ref().map_or(true, |(_, _, s)| specificity > *s) {
+            if best.as_ref().is_none_or(|(_, _, s)| specificity > *s) {
                 best = Some((idx, params, specificity));
             }
         }
         if let Some((idx, params, _)) = best {
-            return MatchResult::Found { route_index: idx, params, head };
+            return MatchResult::Found {
+                route_index: idx,
+                params,
+                head,
+            };
         }
         MatchResult::NotFound
     }
@@ -251,7 +287,14 @@ mod tests {
             query: None,
             body: None,
             headers: None,
-            responses: BTreeMap::from([("200".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: None })]),
+            responses: BTreeMap::from([(
+                "200".into(),
+                ResponseDecl {
+                    schema: None,
+                    strategy: Strategy::Js,
+                    problem: None,
+                },
+            )]),
             validation_strategy: Strategy::Native,
             native_liveness: None,
             security: vec![],
@@ -261,29 +304,56 @@ mod tests {
     }
 
     fn st(v: &str) -> PathSegment {
-        PathSegment { kind: SegKind::Static, value: v.into() }
+        PathSegment {
+            kind: SegKind::Static,
+            value: v.into(),
+        }
     }
     fn pm(v: &str) -> PathSegment {
-        PathSegment { kind: SegKind::Param, value: v.into() }
+        PathSegment {
+            kind: SegKind::Param,
+            value: v.into(),
+        }
     }
     fn wc() -> PathSegment {
-        PathSegment { kind: SegKind::Wildcard, value: String::new() }
+        PathSegment {
+            kind: SegKind::Wildcard,
+            value: String::new(),
+        }
     }
 
     #[test]
     fn static_param_wildcard_matching() {
         let routes = vec![
-            route("health", "GET", vec![st("health"), st("live")], "/health/live"),
-            route("hello", "GET", vec![st("hello"), pm("name")], "/hello/:name"),
+            route(
+                "health",
+                "GET",
+                vec![st("health"), st("live")],
+                "/health/live",
+            ),
+            route(
+                "hello",
+                "GET",
+                vec![st("hello"), pm("name")],
+                "/hello/:name",
+            ),
             route("files", "GET", vec![st("files"), wc()], "/files/*"),
         ];
         let r = Router::build(&routes).unwrap();
-        assert!(matches!(r.resolve("GET", "/health/live"), MatchResult::Found { .. }));
+        assert!(matches!(
+            r.resolve("GET", "/health/live"),
+            MatchResult::Found { .. }
+        ));
         match r.resolve("GET", "/hello/Rafi") {
-            MatchResult::Found { params, .. } => assert_eq!(params, vec![("name".to_string(), "Rafi".to_string())]),
+            MatchResult::Found { params, .. } => {
+                assert_eq!(params, vec![("name".to_string(), "Rafi".to_string())])
+            }
             other => panic!("{other:?}"),
         }
-        assert!(matches!(r.resolve("GET", "/files/a/b/c"), MatchResult::Found { .. }));
+        assert!(matches!(
+            r.resolve("GET", "/files/a/b/c"),
+            MatchResult::Found { .. }
+        ));
         assert!(matches!(r.resolve("GET", "/nope"), MatchResult::NotFound));
     }
 
@@ -292,7 +362,9 @@ mod tests {
         let routes = vec![route("only-get", "GET", vec![st("x")], "/x")];
         let r = Router::build(&routes).unwrap();
         match r.resolve("POST", "/x") {
-            MatchResult::MethodNotAllowed { allow } => assert_eq!(allow, vec!["GET".to_string(), "HEAD".to_string()]),
+            MatchResult::MethodNotAllowed { allow } => {
+                assert_eq!(allow, vec!["GET".to_string(), "HEAD".to_string()])
+            }
             other => panic!("{other:?}"),
         }
     }
@@ -318,7 +390,10 @@ mod tests {
             MatchResult::Found { route_index, .. } => assert_eq!(route_index, 1),
             other => panic!("{other:?}"),
         }
-        assert!(matches!(r.resolve("GET", "/a/other"), MatchResult::Found { route_index: 0, .. }));
+        assert!(matches!(
+            r.resolve("GET", "/a/other"),
+            MatchResult::Found { route_index: 0, .. }
+        ));
     }
 
     #[test]
@@ -327,7 +402,10 @@ mod tests {
             route("a", "GET", vec![st("u"), pm("id")], "/u/:id"),
             route("b", "GET", vec![st("u"), pm("uid")], "/u/:uid"),
         ];
-        assert!(matches!(Router::build(&routes), Err(RouterError::Collision { .. })));
+        assert!(matches!(
+            Router::build(&routes),
+            Err(RouterError::Collision { .. })
+        ));
     }
 
     #[test]
@@ -342,6 +420,9 @@ mod tests {
     #[test]
     fn non_terminal_wildcard_rejected() {
         let routes = vec![route("w", "GET", vec![wc(), st("x")], "/*/x")];
-        assert!(matches!(Router::build(&routes), Err(RouterError::NonTerminalWildcard { .. })));
+        assert!(matches!(
+            Router::build(&routes),
+            Err(RouterError::NonTerminalWildcard { .. })
+        ));
     }
 }

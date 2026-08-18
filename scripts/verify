@@ -12,12 +12,16 @@ fail() { echo "FAIL: $1"; overall=1; }
 step "OKF bundle structural validation"
 ./scripts/validate-okf || fail "validate-okf"
 
-step "Rust workspace (fmt + clippy + tests, release-independent)"
+step "Rust workspace formatting"
 cargo fmt --all --check 2>&1 | tail -3 || fail "cargo fmt"
+
+step "Rust workspace clippy"
 if ! cargo clippy --workspace --all-targets --quiet -- -D warnings 2>clippy.log; then
   tail -20 clippy.log; fail "cargo clippy"
 fi
 rm -f clippy.log
+
+step "Rust workspace tests"
 if ! cargo test --workspace --quiet 2>test.log; then
   tail -40 test.log; fail "cargo test"
 fi
@@ -28,15 +32,28 @@ if ! cargo build --release --workspace --quiet 2>build.log; then
   tail -20 build.log; fail "cargo build release"
 fi
 rm -f build.log
+if ! (cd baselines/raw-rust && cargo build --release --quiet 2>rustbase.log); then
+  tail -20 baselines/raw-rust/rustbase.log; fail "raw-rust build release"
+fi
+rm -f baselines/raw-rust/rustbase.log
 
-step "TypeScript install + typecheck + unit tests"
+step "TypeScript install + typecheck"
 bun install --silent || fail "bun install"
 if ! bun run typecheck; then fail "tsc"; fi
-if ! bun test packages examples/proof 2>buntest.log; then
+
+step "Build proof app"
+if ! bun packages/cli/src/index.ts build --project examples/proof; then fail "proof app build"; fi
+
+step "TypeScript test suites (packages + examples + conformance)"
+if ! bun test packages examples/proof conformance 2>buntest.log; then
   tail -40 buntest.log; fail "bun test"
 fi
 rm -f buntest.log
 
 step "Summary"
-if [ "$overall" -eq 0 ]; then echo "verify: ALL PASS"; else echo "verify: FAILURES PRESENT"; fi
+if [ "$overall" -eq 0 ]; then
+  echo "verify: ALL PASS (M0–M2 verified)"
+else
+  echo "verify: FAILURES PRESENT"
+fi
 exit $overall

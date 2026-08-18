@@ -37,7 +37,12 @@ fn fixture_pack() -> q_pack::QPack {
         S::Object {
             properties: BTreeMap::from([(
                 "name".into(),
-                Box::new(S::String { min_length: Some(1), max_length: Some(60), pattern: None, format: None }),
+                Box::new(S::String {
+                    min_length: Some(1),
+                    max_length: Some(60),
+                    pattern: None,
+                    format: None,
+                }),
             )]),
             required: vec!["name".into()],
         },
@@ -48,11 +53,21 @@ fn fixture_pack() -> q_pack::QPack {
             properties: BTreeMap::from([
                 (
                     "name".into(),
-                    Box::new(S::String { min_length: Some(1), max_length: Some(60), pattern: None, format: None }),
+                    Box::new(S::String {
+                        min_length: Some(1),
+                        max_length: Some(60),
+                        pattern: None,
+                        format: None,
+                    }),
                 ),
                 (
                     "email".into(),
-                    Box::new(S::String { min_length: None, max_length: None, pattern: None, format: Some("email".into()) }),
+                    Box::new(S::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: Some("email".into()),
+                    }),
                 ),
             ]),
             required: vec!["name".into(), "email".into()],
@@ -63,7 +78,12 @@ fn fixture_pack() -> q_pack::QPack {
         S::Object {
             properties: BTreeMap::from([(
                 "id".into(),
-                Box::new(S::String { min_length: None, max_length: None, pattern: Some("^usr_[0-9]+$".into()), format: None }),
+                Box::new(S::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: Some("^usr_[0-9]+$".into()),
+                    format: None,
+                }),
             )]),
             required: vec!["id".into()],
         },
@@ -74,7 +94,10 @@ fn fixture_pack() -> q_pack::QPack {
             properties: BTreeMap::from([(
                 "ms".into(),
                 Box::new(S::Optional {
-                    inner: Box::new(S::Integer { minimum: Some(1), maximum: Some(1000) }),
+                    inner: Box::new(S::Integer {
+                        minimum: Some(1),
+                        maximum: Some(1000),
+                    }),
                     default: Some(json!(10)),
                 }),
             )]),
@@ -82,32 +105,44 @@ fn fixture_pack() -> q_pack::QPack {
         },
     );
 
-    let route = |id: &str, method: &str, path: &str, segments: Vec<PathSegment>, handler: &str| RouteEntry {
-        id: id.into(),
-        module_id: id.split('.').next().unwrap().into(),
-        method: method.into(),
-        path: path.into(),
-        path_segments: segments,
-        handler: handler.into(),
-        policy: None,
-        params: None,
-        query: None,
-        body: None,
-        headers: None,
-        responses: BTreeMap::from([(
-            "200".into(),
-            ResponseDecl { schema: None, strategy: Strategy::Js, problem: None },
-        )]),
-        validation_strategy: Strategy::Native,
-        native_liveness: None,
-        security: vec![],
-        capabilities: vec![],
-        deadline_ms: 5000,
+    let route = |id: &str, method: &str, path: &str, segments: Vec<PathSegment>, handler: &str| {
+        RouteEntry {
+            id: id.into(),
+            module_id: id.split('.').next().unwrap().into(),
+            method: method.into(),
+            path: path.into(),
+            path_segments: segments,
+            handler: handler.into(),
+            policy: None,
+            params: None,
+            query: None,
+            body: None,
+            headers: None,
+            responses: BTreeMap::from([(
+                "200".into(),
+                ResponseDecl {
+                    schema: None,
+                    strategy: Strategy::Js,
+                    problem: None,
+                },
+            )]),
+            validation_strategy: Strategy::Native,
+            native_liveness: None,
+            security: vec![],
+            capabilities: vec![],
+            deadline_ms: 5000,
+        }
     };
 
     let mut routes = vec![
         {
-            let mut r = route("health.live", "GET", "/health/live", seg(&[("s", "health"), ("s", "live")]), "health.live");
+            let mut r = route(
+                "health.live",
+                "GET",
+                "/health/live",
+                seg(&[("s", "health"), ("s", "live")]),
+                "health.live",
+            );
             r.native_liveness = Some(LivenessSpec {
                 status: 200,
                 content_type: "application/json".into(),
@@ -115,10 +150,28 @@ fn fixture_pack() -> q_pack::QPack {
             });
             r
         },
-        route("js.text", "GET", "/js-text", seg(&[("s", "js-text")]), "js.text"),
-        route("js.json", "GET", "/js-json", seg(&[("s", "js-json")]), "js.json"),
+        route(
+            "js.text",
+            "GET",
+            "/js-text",
+            seg(&[("s", "js-text")]),
+            "js.text",
+        ),
+        route(
+            "js.json",
+            "GET",
+            "/js-json",
+            seg(&[("s", "js-json")]),
+            "js.json",
+        ),
         {
-            let mut r = route("hello.get", "GET", "/hello/:name", seg(&[("s", "hello"), ("p", "name")]), "hello.get");
+            let mut r = route(
+                "hello.get",
+                "GET",
+                "/hello/:name",
+                seg(&[("s", "hello"), ("p", "name")]),
+                "hello.get",
+            );
             r.params = Some(SourceBinding {
                 schema: Some("sch:hello.params".into()),
                 coerce: Some("path".into()),
@@ -127,12 +180,22 @@ fn fixture_pack() -> q_pack::QPack {
             });
             r.responses.insert(
                 "422".into(),
-                ResponseDecl { schema: None, strategy: Strategy::Js, problem: Some("validation".into()) },
+                ResponseDecl {
+                    schema: None,
+                    strategy: Strategy::Js,
+                    problem: Some("validation".into()),
+                },
             );
             r
         },
         {
-            let mut r = route("users.create", "POST", "/users", seg(&[("s", "users")]), "users.create");
+            let mut r = route(
+                "users.create",
+                "POST",
+                "/users",
+                seg(&[("s", "users")]),
+                "users.create",
+            );
             r.body = Some(SourceBinding {
                 schema: Some("sch:users.create.body".into()),
                 coerce: None,
@@ -140,13 +203,33 @@ fn fixture_pack() -> q_pack::QPack {
                 limit_bytes: 65_536,
             });
             r.responses = BTreeMap::from([
-                ("201".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: None }),
-                ("422".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: Some("validation".into()) }),
+                (
+                    "201".into(),
+                    ResponseDecl {
+                        schema: None,
+                        strategy: Strategy::Js,
+                        problem: None,
+                    },
+                ),
+                (
+                    "422".into(),
+                    ResponseDecl {
+                        schema: None,
+                        strategy: Strategy::Js,
+                        problem: Some("validation".into()),
+                    },
+                ),
             ]);
             r
         },
         {
-            let mut r = route("users.get", "GET", "/users/:id", seg(&[("s", "users"), ("p", "id")]), "users.get");
+            let mut r = route(
+                "users.get",
+                "GET",
+                "/users/:id",
+                seg(&[("s", "users"), ("p", "id")]),
+                "users.get",
+            );
             r.policy = Some("auth.session".into());
             r.params = Some(SourceBinding {
                 schema: Some("sch:users.get.params".into()),
@@ -155,9 +238,30 @@ fn fixture_pack() -> q_pack::QPack {
                 limit_bytes: 0,
             });
             r.responses = BTreeMap::from([
-                ("200".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: None }),
-                ("401".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: Some("unauthorized".into()) }),
-                ("404".into(), ResponseDecl { schema: None, strategy: Strategy::Js, problem: Some("not-found".into()) }),
+                (
+                    "200".into(),
+                    ResponseDecl {
+                        schema: None,
+                        strategy: Strategy::Js,
+                        problem: None,
+                    },
+                ),
+                (
+                    "401".into(),
+                    ResponseDecl {
+                        schema: None,
+                        strategy: Strategy::Js,
+                        problem: Some("unauthorized".into()),
+                    },
+                ),
+                (
+                    "404".into(),
+                    ResponseDecl {
+                        schema: None,
+                        strategy: Strategy::Js,
+                        problem: Some("not-found".into()),
+                    },
+                ),
             ]);
             r.security = vec![SecurityReq {
                 scheme: "bearer".into(),
@@ -167,7 +271,13 @@ fn fixture_pack() -> q_pack::QPack {
             r
         },
         {
-            let mut r = route("async.timer", "GET", "/async", seg(&[("s", "async")]), "async.timer");
+            let mut r = route(
+                "async.timer",
+                "GET",
+                "/async",
+                seg(&[("s", "async")]),
+                "async.timer",
+            );
             r.query = Some(SourceBinding {
                 schema: Some("sch:async.query".into()),
                 coerce: Some("query".into()),
@@ -178,7 +288,13 @@ fn fixture_pack() -> q_pack::QPack {
             r
         },
         {
-            let mut r = route("async.cancel", "GET", "/cancel", seg(&[("s", "cancel")]), "async.cancel");
+            let mut r = route(
+                "async.cancel",
+                "GET",
+                "/cancel",
+                seg(&[("s", "cancel")]),
+                "async.cancel",
+            );
             r.query = Some(SourceBinding {
                 schema: Some("sch:async.query".into()),
                 coerce: Some("query".into()),
@@ -188,7 +304,13 @@ fn fixture_pack() -> q_pack::QPack {
             r.capabilities = vec!["timer".into()];
             r
         },
-        route("throw.redacted", "GET", "/throw", seg(&[("s", "throw")]), "throw.redacted"),
+        route(
+            "throw.redacted",
+            "GET",
+            "/throw",
+            seg(&[("s", "throw")]),
+            "throw.redacted",
+        ),
     ];
 
     // timer schema reuse for cancel needs a wider maximum
@@ -198,7 +320,10 @@ fn fixture_pack() -> q_pack::QPack {
             properties: BTreeMap::from([(
                 "ms".into(),
                 Box::new(S::Optional {
-                    inner: Box::new(S::Integer { minimum: Some(1), maximum: Some(5000) }),
+                    inner: Box::new(S::Integer {
+                        minimum: Some(1),
+                        maximum: Some(5000),
+                    }),
                     default: Some(json!(1000)),
                 }),
             )]),
@@ -239,7 +364,12 @@ fn fixture_pack() -> q_pack::QPack {
             bun: String::new(),
         },
         app_id: "proof-fixture".into(),
-        modules: vec!["health".into(), "hello".into(), "users".into(), "async".into()],
+        modules: vec![
+            "health".into(),
+            "hello".into(),
+            "users".into(),
+            "async".into(),
+        ],
         entry: "app.js".into(),
         bundle,
         source_map: None,
@@ -268,6 +398,7 @@ fn fixture_pack() -> q_pack::QPack {
     pack
 }
 
+#[allow(dead_code)]
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
@@ -338,6 +469,7 @@ __velquRegister("throw.redacted", throw_redacted);
 
 struct Server {
     child: Child,
+    #[allow(dead_code)]
     port: u16,
     log_lines: std::sync::mpsc::Receiver<String>,
 }
@@ -380,7 +512,11 @@ impl Server {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
-        Server { child, port, log_lines: rx }
+        Server {
+            child,
+            port,
+            log_lines: rx,
+        }
     }
 
     fn drain_logs(&self) -> Vec<String> {
@@ -420,7 +556,9 @@ impl Resp {
 
 fn http(port: u16, req: &str, body: Option<&[u8]>) -> Resp {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
-    stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
     let mut raw = req.to_string();
     raw.push_str("connection: close\r\n");
     if let Some(b) = body {
@@ -464,7 +602,11 @@ fn parse_http(raw: &[u8]) -> Resp {
     {
         body.truncate(len);
     }
-    Resp { status, headers, body }
+    Resp {
+        status,
+        headers,
+        body,
+    }
 }
 
 fn write_pack(dir: &std::path::Path) -> PathBuf {
@@ -534,21 +676,41 @@ fn full_runtime_conformance() {
 
     // C3 negative: name too long → 422 identifying field
     let long = "x".repeat(61);
-    let r = http(port, &format!("GET /hello/{} HTTP/1.1\r\nhost: t\r\n", long), None);
+    let r = http(
+        port,
+        &format!("GET /hello/{} HTTP/1.1\r\nhost: t\r\n", long),
+        None,
+    );
     assert_eq!(r.status, 422, "body: {}", r.text());
     let j = r.json();
-    assert_eq!(j["type"], "https://velqu.dev/problems/validation", "body: {}", r.text());
+    assert_eq!(
+        j["type"],
+        "https://velqu.dev/problems/validation",
+        "body: {}",
+        r.text()
+    );
     assert_eq!(j["errors"][0]["path"], "name");
     assert_eq!(j["errors"][0]["code"], "maxLength");
 
     // POST /users happy → 201 exact bytes
     let body = br#"{"name":"Ada","email":"ada@example.org"}"#;
-    let r = http(port, "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n", Some(body));
+    let r = http(
+        port,
+        "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(body),
+    );
     assert_eq!(r.status, 201, "body: {}", r.text());
-    assert_eq!(r.text(), "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}");
+    assert_eq!(
+        r.text(),
+        "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}"
+    );
 
     // malformed JSON → 422
-    let r = http(port, "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n", Some(br#"{name:"#));
+    let r = http(
+        port,
+        "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(br#"{name:"#),
+    );
     assert_eq!(r.status, 422);
     assert_eq!(r.json()["status"], 422);
 
@@ -573,7 +735,10 @@ fn full_runtime_conformance() {
         None,
     );
     assert_eq!(r.status, 200, "body: {}", r.text());
-    assert_eq!(r.text(), "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}");
+    assert_eq!(
+        r.text(),
+        "{\"id\":\"usr_1\",\"name\":\"Ada\",\"email\":\"ada@example.org\"}"
+    );
 
     // C4: unknown user → typed 404
     let r = http(
@@ -600,7 +765,11 @@ fn full_runtime_conformance() {
     assert!(!text.contains("at "), "stack leaked: {text}");
 
     // 404 unknown path (JSON problem)
-    let r = http(port, "GET /definitely/not/here HTTP/1.1\r\nhost: t\r\n", None);
+    let r = http(
+        port,
+        "GET /definitely/not/here HTTP/1.1\r\nhost: t\r\n",
+        None,
+    );
     assert_eq!(r.status, 404);
     assert_eq!(r.json()["title"], "Not Found");
 
@@ -608,7 +777,10 @@ fn full_runtime_conformance() {
     let r = http(port, "POST /js-text HTTP/1.1\r\nhost: t\r\n", Some(b""));
     assert_eq!(r.status, 405);
     let allow = r.header("allow").expect("Allow header").to_string();
-    assert!(allow.contains("GET") && allow.contains("HEAD"), "allow: {allow}");
+    assert!(
+        allow.contains("GET") && allow.contains("HEAD"),
+        "allow: {allow}"
+    );
 
     // logs: stage evidence — C0 served natively; JS routes via engine
     std::thread::sleep(Duration::from_millis(100));
@@ -617,14 +789,20 @@ fn full_runtime_conformance() {
         .iter()
         .filter(|l| l.contains("/health/live") && l.contains("\"stage\":\"native\""))
         .count();
-    assert!(native >= 2, "C0 must be served at the native stage: {logs:?}");
+    assert!(
+        native >= 2,
+        "C0 must be served at the native stage: {logs:?}"
+    );
     let engine_stage = logs
         .iter()
         .filter(|l| l.contains("\"stage\":\"engine\""))
         .count();
     assert!(engine_stage >= 5, "JS routes must log engine stage");
     let redacted_logs = logs.iter().any(|l| l.contains("secret-boom"));
-    assert!(!redacted_logs || true, "internal error detail goes to stderr, not stdout logs");
+    assert!(
+        !redacted_logs,
+        "internal error detail goes to stderr, not stdout logs"
+    );
 
     server.stop();
 }
@@ -648,9 +826,16 @@ fn tampered_pack_fails_before_ready() {
         .arg(free_port().to_string())
         .output()
         .expect("run tampered pack");
-    assert_ne!(out.status.code(), Some(0), "tampered pack must exit non-zero");
+    assert_ne!(
+        out.status.code(),
+        Some(0),
+        "tampered pack must exit non-zero"
+    );
     let err = String::from_utf8_lossy(&out.stderr);
-    assert!(err.contains("sha256 mismatch") || err.contains("integrity"), "stderr: {err}");
+    assert!(
+        err.contains("sha256 mismatch") || err.contains("integrity"),
+        "stderr: {err}"
+    );
 }
 
 #[test]
@@ -663,7 +848,8 @@ fn client_abort_leaves_server_healthy() {
     // start a long /cancel request, then drop the connection mid-flight
     {
         let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
-        s.write_all(b"GET /cancel?ms=1000 HTTP/1.1\r\nhost: t\r\n\r\n").unwrap();
+        s.write_all(b"GET /cancel?ms=1000 HTTP/1.1\r\nhost: t\r\n\r\n")
+            .unwrap();
         std::thread::sleep(Duration::from_millis(20));
         drop(s);
     }
@@ -671,7 +857,10 @@ fn client_abort_leaves_server_healthy() {
     let t0 = Instant::now();
     let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 200);
-    assert!(t0.elapsed() < Duration::from_secs(1), "server unhealthy after abort");
+    assert!(
+        t0.elapsed() < Duration::from_secs(1),
+        "server unhealthy after abort"
+    );
 
     // and JS still works afterwards
     let r = http(port, "GET /js-json HTTP/1.1\r\nhost: t\r\n", None);
@@ -706,7 +895,10 @@ fn graceful_shutdown_exits_zero() {
         libc::kill(child.id() as i32, libc::SIGTERM);
     }
     let status = child.wait().unwrap();
-    assert!(status.success(), "graceful shutdown must exit 0, got {status:?}");
+    assert!(
+        status.success(),
+        "graceful shutdown must exit 0, got {status:?}"
+    );
 }
 
 #[test]
@@ -715,7 +907,15 @@ fn source_mapped_exception_identifies_original_location() {
     // generated bundle with the throw on line 2
     let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\n__velquRegister(\"t\", thrower);\n";
     let mut b = SourceMapBuilder::new(None);
-    b.add(1, 0, 41, 4, Some("src/modules/users/routes.ts"), None, false);
+    b.add(
+        1,
+        0,
+        41,
+        4,
+        Some("src/modules/users/routes.ts"),
+        None,
+        false,
+    );
     let map_json = {
         let mut out = Vec::new();
         let sm = b.into_sourcemap();
@@ -741,7 +941,11 @@ fn source_mapped_exception_identifies_original_location() {
     }
     // single-route handler table must match the new bundle
     pack.handler_table = std::collections::BTreeMap::from([("t".to_string(), "t".to_string())]);
-    let throw_route = pack.routes.iter().position(|r| r.id == "throw.redacted").unwrap();
+    let throw_route = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "throw.redacted")
+        .unwrap();
     let route = pack.routes[throw_route].clone();
     pack.routes = vec![route];
     pack.routes[0].handler = "t".into();
@@ -760,11 +964,14 @@ fn source_mapped_exception_identifies_original_location() {
     let port = free_port();
     let bin = env!("CARGO_BIN_EXE_q-runtime");
     let mut child = Command::new(bin)
-        .arg("--pack").arg(&pack_path)
-        .arg("--port").arg(port.to_string())
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
     wait_tcp(port, Duration::from_secs(10));
     let _ = http(port, "GET /throw HTTP/1.1\r\nhost: t\r\n", None);
     std::thread::sleep(Duration::from_millis(150));
@@ -791,21 +998,31 @@ fn body_and_header_limits_reject_oversize() {
     // body over the route limit (65536) → 413 problem
     let big = vec![b'{'];
     let mut huge = br#"{"name":""#.to_vec();
-    huge.extend(std::iter::repeat(b'a').take(70_000));
+    huge.extend(vec![b'a'; 70_000]);
     let _ = big;
     let r = http(
         port,
         "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
         Some(&huge),
     );
-    assert_eq!(r.status, 413, "oversize body must be 413, got {}: {}", r.status, r.text());
+    assert_eq!(
+        r.status,
+        413,
+        "oversize body must be 413, got {}: {}",
+        r.status,
+        r.text()
+    );
 
     // header block over 32 KiB → 431 (below hyper's own buffer cap)
     let mut req = String::from("GET /js-text HTTP/1.1\r\nhost: t\r\n");
     req.push_str(&format!("x-big: {}\r\n", "h".repeat(33_000)));
     req.push_str("connection: close\r\n\r\n");
     let r = http(port, &req, None);
-    assert_eq!(r.status, 431, "oversize headers must be 431, got {}", r.status);
+    assert_eq!(
+        r.status, 431,
+        "oversize headers must be 431, got {}",
+        r.status
+    );
 
     server.stop();
 }
@@ -816,24 +1033,33 @@ fn queue_limit_returns_503_when_saturated() {
     let pack_path = write_pack(&dir);
     // config: queue of 1
     let cfg = dir.join("limits.json");
-    std::fs::write(&cfg, serde_json::to_vec(&serde_json::json!({"maxQueue": 1})).unwrap()).unwrap();
+    std::fs::write(
+        &cfg,
+        serde_json::to_vec(&serde_json::json!({"maxQueue": 1})).unwrap(),
+    )
+    .unwrap();
 
     let port = free_port();
     let bin = env!("CARGO_BIN_EXE_q-runtime");
     let mut child = Command::new(bin)
-        .arg("--pack").arg(&pack_path)
-        .arg("--config").arg(&cfg)
-        .arg("--port").arg(port.to_string())
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--config")
+        .arg(&cfg)
+        .arg("--port")
+        .arg(port.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
     wait_tcp(port, Duration::from_secs(10));
 
     // request 1 occupies the single admission slot for ~1.5s
     let mut slow = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    slow.write_all(b"GET /cancel?ms=1500 HTTP/1.1\r\nhost: t\r\nconnection: close\r\n\r\n").unwrap();
+    slow.write_all(b"GET /cancel?ms=1500 HTTP/1.1\r\nhost: t\r\nconnection: close\r\n\r\n")
+        .unwrap();
     std::thread::sleep(Duration::from_millis(100)); // let it enter the pipeline
-    // request 2 while saturated → 503
+                                                    // request 2 while saturated → 503
     let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 503, "saturated queue must 503, got {}", r.status);
     drop(slow);

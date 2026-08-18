@@ -238,11 +238,7 @@ where
                         HttpError::QueueFull => (503, "queue"),
                         HttpError::Io(_) => (500, "io"),
                     };
-                    Ok(problem_response(
-                        status,
-                        which,
-                        &[],
-                    ))
+                    Ok(problem_response(status, which, &[]))
                 }
             }
         })
@@ -287,7 +283,11 @@ impl HttpHost {
     }
 }
 
-async fn handle_one<H, F>(host: &HttpHost, req: Request<Incoming>, handler: &H) -> (HandlerResult, String, &'static str)
+async fn handle_one<H, F>(
+    host: &HttpHost,
+    req: Request<Incoming>,
+    handler: &H,
+) -> (HandlerResult, String, &'static str)
 where
     H: Fn(RequestContext) -> F + Send + Sync,
     F: std::future::Future<Output = (HandlerResult, String, &'static str)> + Send,
@@ -301,7 +301,10 @@ where
     // URI limit
     if path.len() + query_raw_len(&uri) > limits.max_uri_bytes {
         return (
-            Err(HttpError::Limited { status: 414, which: "uri" }),
+            Err(HttpError::Limited {
+                status: 414,
+                which: "uri",
+            }),
             "admission".into(),
             "admission",
         );
@@ -311,7 +314,10 @@ where
     let mut header_bytes = 0usize;
     if req.headers().len() > limits.max_headers {
         return (
-            Err(HttpError::Limited { status: 431, which: "headers" }),
+            Err(HttpError::Limited {
+                status: 431,
+                which: "headers",
+            }),
             "admission".into(),
             "admission",
         );
@@ -323,7 +329,10 @@ where
     }
     if header_bytes > limits.max_header_bytes {
         return (
-            Err(HttpError::Limited { status: 431, which: "headers" }),
+            Err(HttpError::Limited {
+                status: 431,
+                which: "headers",
+            }),
             "admission".into(),
             "admission",
         );
@@ -337,14 +346,23 @@ where
                 let bytes = collected.to_bytes();
                 if bytes.len() > limits.max_body_bytes {
                     return (
-                        Err(HttpError::Limited { status: 413, which: "body" }),
+                        Err(HttpError::Limited {
+                            status: 413,
+                            which: "body",
+                        }),
                         "admission".into(),
                         "admission",
                     );
                 }
                 body = Some(bytes.to_vec());
             }
-            Err(e) => return (Err(HttpError::BadBody(e.to_string())), "admission".into(), "admission"),
+            Err(e) => {
+                return (
+                    Err(HttpError::BadBody(e.to_string())),
+                    "admission".into(),
+                    "admission",
+                )
+            }
         }
     }
 
@@ -377,8 +395,10 @@ fn render(p: PlainResponse) -> Response<http_body_util::Full<hyper::body::Bytes>
         let mut r = builder
             .body(http_body_util::Full::new(hyper::body::Bytes::new()))
             .expect("static response");
-        r.headers_mut()
-            .insert("content-length", HeaderValue::from_str(&p.body.len().to_string()).unwrap());
+        r.headers_mut().insert(
+            "content-length",
+            HeaderValue::from_str(&p.body.len().to_string()).unwrap(),
+        );
         return r;
     }
     builder
@@ -386,7 +406,11 @@ fn render(p: PlainResponse) -> Response<http_body_util::Full<hyper::body::Bytes>
         .expect("static response")
 }
 
-fn problem_response(status: u16, detail: &str, extra: &[(String, String)]) -> Response<http_body_util::Full<hyper::body::Bytes>> {
+fn problem_response(
+    status: u16,
+    detail: &str,
+    extra: &[(String, String)],
+) -> Response<http_body_util::Full<hyper::body::Bytes>> {
     let mut plain = PlainResponse {
         status,
         headers: vec![("content-type".into(), "application/json".into())],

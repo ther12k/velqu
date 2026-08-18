@@ -4,5 +4,11 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "dependencies": {
+    "typescript": "^5.9.3",
+    "@q/contract": "workspace:*",
+    "@q/schema": "workspace:*",
+    "@q/core": "workspace:*"
+  }
 }

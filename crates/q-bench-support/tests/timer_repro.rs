@@ -1,11 +1,15 @@
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use q_engine::{BodyOut, Engine as _, InvocationSpec, Outcome, ResponseStrategy};
 use q_engine_quickjs::{IdentityMapper, QuickJsConfig, QuickJsEngine};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 #[test]
 fn timer_promise_in_bench_context() {
-    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
     let _enter = rt.enter();
     let store = Arc::new(q_bridge::RequestStore::new());
     let mut engine = QuickJsEngine::spawn(
@@ -50,7 +54,13 @@ __velquRegister("promise.int", promise_int);
         .and_then(|r| r.ok());
     println!("outcome in {:?}: {:?}", t0.elapsed(), outcome);
     assert!(
-        matches!(outcome, Some(Outcome::Response { body: BodyOut::JsonText(_), .. })),
+        matches!(
+            outcome,
+            Some(Outcome::Response {
+                body: BodyOut::JsonText(_),
+                ..
+            })
+        ),
         "timer promise must settle in bench context"
     );
     engine.shutdown();

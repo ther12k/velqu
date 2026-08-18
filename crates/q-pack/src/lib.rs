@@ -61,18 +61,13 @@ pub struct PathSegment {
     pub value: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Strategy {
     #[serde(rename = "native")]
     Native,
+    #[default]
     #[serde(rename = "js")]
     Js,
-}
-
-impl Default for Strategy {
-    fn default() -> Self {
-        Strategy::Js
-    }
 }
 
 impl Strategy {
@@ -221,8 +216,8 @@ impl QPack {
     /// Load + fully verify a pack. Fails before any serving can happen.
     pub fn load_and_verify(path: &std::path::Path) -> Result<QPack, PackError> {
         let bytes = std::fs::read(path)?;
-        let pack: QPack = serde_json::from_slice(&bytes)
-            .map_err(|e| PackError::Malformed(e.to_string()))?;
+        let pack: QPack =
+            serde_json::from_slice(&bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
         pack.verify()?;
         Ok(pack)
     }
@@ -251,7 +246,10 @@ impl QPack {
             ));
         }
         if self.contract_version != CONTRACT_VERSION {
-            return reject(format!("contract version {} not supported", self.contract_version));
+            return reject(format!(
+                "contract version {} not supported",
+                self.contract_version
+            ));
         }
         if self.engine.name != ENGINE_NAME
             || self.engine.version != ENGINE_VERSION
@@ -266,7 +264,9 @@ impl QPack {
         // integrity
         let bundle_hash = hex(&Sha256::digest(self.bundle.as_bytes()));
         if bundle_hash != self.integrity.bundle_sha256 {
-            return reject("integrity failure: bundle sha256 mismatch (tampered or corrupt pack)".into());
+            return reject(
+                "integrity failure: bundle sha256 mismatch (tampered or corrupt pack)".into(),
+            );
         }
         let routes_canonical = self.routes_canonical_json();
         let routes_hash = hex(&Sha256::digest(routes_canonical.as_bytes()));
@@ -274,7 +274,10 @@ impl QPack {
             return reject("integrity failure: routes/schemas/policies sha256 mismatch".into());
         }
         if self.integrity.algorithm != "sha256" {
-            return reject(format!("unsupported integrity algorithm {}", self.integrity.algorithm));
+            return reject(format!(
+                "unsupported integrity algorithm {}",
+                self.integrity.algorithm
+            ));
         }
         // handler table sanity
         if self.handler_table.is_empty() {
@@ -293,10 +296,16 @@ impl QPack {
             }
             if let Some(p) = &route.policy {
                 if !self.policies.contains_key(p) {
-                    return reject(format!("route {} references unknown policy {}", route.id, p));
+                    return reject(format!(
+                        "route {} references unknown policy {}",
+                        route.id, p
+                    ));
                 }
             }
-            for binding in [&route.params, &route.query, &route.body].into_iter().flatten() {
+            for binding in [&route.params, &route.query, &route.body]
+                .into_iter()
+                .flatten()
+            {
                 if let Some(key) = &binding.schema {
                     if !self.schemas.contains_key(key) {
                         return reject(format!(
@@ -354,8 +363,14 @@ mod tests {
             method: "GET".into(),
             path: "/health/live".into(),
             path_segments: vec![
-                PathSegment { kind: SegKind::Static, value: "health".into() },
-                PathSegment { kind: SegKind::Static, value: "live".into() },
+                PathSegment {
+                    kind: SegKind::Static,
+                    value: "health".into(),
+                },
+                PathSegment {
+                    kind: SegKind::Static,
+                    value: "live".into(),
+                },
             ],
             handler: "health.live".into(),
             policy: None,
@@ -365,7 +380,11 @@ mod tests {
             headers: None,
             responses: BTreeMap::from([(
                 "200".into(),
-                ResponseDecl { schema: None, strategy: Strategy::Js, problem: None },
+                ResponseDecl {
+                    schema: None,
+                    strategy: Strategy::Js,
+                    problem: None,
+                },
             )]),
             validation_strategy: Strategy::Native,
             native_liveness: Some(LivenessSpec {
@@ -407,7 +426,8 @@ mod tests {
             integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new() },
         };
         pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
-        pack.integrity.routes_sha256 = hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+        pack.integrity.routes_sha256 =
+            hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
         pack
     }
 
@@ -419,15 +439,19 @@ mod tests {
     #[test]
     fn rejects_tampered_bundle() {
         let mut p = minimal_pack();
-        p.bundle.push_str(" ");
-        assert!(matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("bundle sha256 mismatch")));
+        p.bundle.push(' ');
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("bundle sha256 mismatch"))
+        );
     }
 
     #[test]
     fn rejects_tampered_routes() {
         let mut p = minimal_pack();
         p.routes[0].path = "/tampered".into();
-        assert!(matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("routes/schemas/policies sha256 mismatch")));
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("routes/schemas/policies sha256 mismatch"))
+        );
     }
 
     #[test]
@@ -447,7 +471,9 @@ mod tests {
         let mut p = minimal_pack();
         p.routes.push(p.routes[0].clone());
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
-        assert!(matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("duplicate route id")));
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("duplicate route id"))
+        );
     }
 
     #[test]
@@ -455,6 +481,8 @@ mod tests {
         let mut p = minimal_pack();
         p.routes[0].handler = "missing".into();
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
-        assert!(matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("unknown handler table key")));
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("unknown handler table key"))
+        );
     }
 }

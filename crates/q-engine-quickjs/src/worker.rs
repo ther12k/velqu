@@ -34,8 +34,13 @@ pub(crate) enum WorkerMsg {
         reply: std::sync::mpsc::Sender<Result<LoadStats, String>>,
     },
     Invoke(Box<InvokeJob>),
-    Cancel { id: u64 },
-    TimerFired { op_id: u64, result: Result<u64, String> },
+    Cancel {
+        id: u64,
+    },
+    TimerFired {
+        op_id: u64,
+        result: Result<u64, String>,
+    },
     Shutdown,
 }
 
@@ -55,7 +60,11 @@ pub(crate) struct OpRegistry {
 
 impl OpRegistry {
     fn new(op_cap: usize) -> Self {
-        OpRegistry { ops: Mutex::new(HashMap::new()), op_cap, op_clock: AtomicU64::new(1) }
+        OpRegistry {
+            ops: Mutex::new(HashMap::new()),
+            op_cap,
+            op_clock: AtomicU64::new(1),
+        }
     }
 }
 
@@ -153,9 +162,16 @@ impl WorkerInner {
         let ops = Arc::new(OpRegistry::new(config.pending_op_cap));
         MAPPER.with(|m| *m.borrow_mut() = Some(Arc::clone(&mapper)));
         ctx.with(|ctx| -> Result<(), String> {
-            install_natives(&ctx, Arc::clone(&store), Arc::clone(&shared), Arc::clone(&ops), tokio_handle)
-                .map_err(|e| format!("natives failed: {e:?}"))?;
-            ctx.eval::<(), _>(PRELUDE).map_err(|e| format!("prelude failed: {e:?}"))?;
+            install_natives(
+                &ctx,
+                Arc::clone(&store),
+                Arc::clone(&shared),
+                Arc::clone(&ops),
+                tokio_handle,
+            )
+            .map_err(|e| format!("natives failed: {e:?}"))?;
+            ctx.eval::<(), _>(PRELUDE)
+                .map_err(|e| format!("prelude failed: {e:?}"))?;
             Ok(())
         })?;
         Ok(WorkerInner {
@@ -170,7 +186,11 @@ impl WorkerInner {
         })
     }
 
-    pub(crate) fn run(mut self, rx: std::sync::mpsc::Receiver<WorkerMsg>, tx: std::sync::mpsc::Sender<WorkerMsg>) {
+    pub(crate) fn run(
+        mut self,
+        rx: std::sync::mpsc::Receiver<WorkerMsg>,
+        tx: std::sync::mpsc::Sender<WorkerMsg>,
+    ) {
         WORKER_TX.with(|c| *c.borrow_mut() = Some(tx));
         let mut pending: BTreeMap<u64, PendingInvocation> = BTreeMap::new();
         loop {
@@ -197,7 +217,11 @@ impl WorkerInner {
                 },
             };
             match msg {
-                WorkerMsg::Load { bundle, expected, reply } => {
+                WorkerMsg::Load {
+                    bundle,
+                    expected,
+                    reply,
+                } => {
                     let _ = reply.send(self.load(&bundle, &expected));
                 }
                 WorkerMsg::Invoke(job) => {
@@ -217,9 +241,10 @@ impl WorkerInner {
                 }
                 WorkerMsg::Shutdown => break,
             }
-            self.shared
-                .heap_used
-                .store(self.rt.memory_usage().memory_used_size as u64, Ordering::Relaxed);
+            self.shared.heap_used.store(
+                self.rt.memory_usage().memory_used_size as u64,
+                Ordering::Relaxed,
+            );
         }
         // deterministic cleanup: reject outstanding work so continuations unwind
         let ids: Vec<u64> = pending.keys().copied().collect();
@@ -230,37 +255,59 @@ impl WorkerInner {
         self.ops.ops.lock().unwrap().clear();
     }
 
-    fn load(&mut self, bundle: &str, expected: &BTreeMap<String, String>) -> Result<LoadStats, String> {
+    fn load(
+        &mut self,
+        bundle: &str,
+        expected: &BTreeMap<String, String>,
+    ) -> Result<LoadStats, String> {
         let t0 = Instant::now();
         let (register_calls, cache): (usize, BTreeMap<String, Persistent<Function<'static>>>) =
-            self.ctx.with(|ctx| -> Result<(usize, BTreeMap<String, Persistent<Function<'static>>>), String> {
-                ctx.eval::<Value, _>(bundle)
-                    .map_err(|e| format!("bundle evaluation failed: {}", describe_error(&ctx, &e)))?;
-                let handlers: Object = ctx
-                    .globals()
-                    .get::<_, Object>("__velquHandlers")
-                    .map_err(|_| "prelude state missing".to_string())?;
-                let mut count = 0usize;
-                let mut cache = BTreeMap::new();
-                for key in handlers.keys::<String>() {
-                    let key = key.map_err(|e| e.to_string())?;
-                    let f: Function = handlers.get(key.as_str()).map_err(|e| e.to_string())?;
-                    count += 1;
-                    cache.insert(key, Persistent::save(&ctx, f));
-                }
-                Ok((count, cache))
-            })?;
+            self.ctx.with(
+                |ctx| -> Result<(usize, BTreeMap<String, Persistent<Function<'static>>>), String> {
+                    ctx.eval::<Value, _>(bundle).map_err(|e| {
+                        format!("bundle evaluation failed: {}", describe_error(&ctx, &e))
+                    })?;
+                    let handlers: Object = ctx
+                        .globals()
+                        .get::<_, Object>("__velquHandlers")
+                        .map_err(|_| "prelude state missing".to_string())?;
+                    let mut count = 0usize;
+                    let mut cache = BTreeMap::new();
+                    for key in handlers.keys::<String>() {
+                        let key = key.map_err(|e| e.to_string())?;
+                        let f: Function = handlers.get(key.as_str()).map_err(|e| e.to_string())?;
+                        count += 1;
+                        cache.insert(key, Persistent::save(&ctx, f));
+                    }
+                    Ok((count, cache))
+                },
+            )?;
         let eval_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let missing: Vec<&String> = expected.keys().filter(|k| !cache.contains_key(*k)).collect();
-        let extra: Vec<&String> = cache.keys().filter(|k| !expected.contains_key(*k)).collect();
+        let missing: Vec<&String> = expected
+            .keys()
+            .filter(|k| !cache.contains_key(*k))
+            .collect();
+        let extra: Vec<&String> = cache
+            .keys()
+            .filter(|k| !expected.contains_key(*k))
+            .collect();
         if !missing.is_empty() || !extra.is_empty() {
-            return Err(format!("handler table mismatch (missing={missing:?} extra={extra:?})"));
+            return Err(format!(
+                "handler table mismatch (missing={missing:?} extra={extra:?})"
+            ));
         }
         if register_calls != expected.len() {
-            return Err(format!("handler registration count {register_calls} != expected {}", expected.len()));
+            return Err(format!(
+                "handler registration count {register_calls} != expected {}",
+                expected.len()
+            ));
         }
         self.handler_cache = cache;
-        Ok(LoadStats { handlers_registered: register_calls, eval_ms, register_calls })
+        Ok(LoadStats {
+            handlers_registered: register_calls,
+            eval_ms,
+            register_calls,
+        })
     }
 
     fn begin_invocation(&mut self, job: InvokeJob, pending: &mut BTreeMap<u64, PendingInvocation>) {
@@ -330,14 +377,23 @@ impl WorkerInner {
                 let _ = reply.send(o);
             }
             Step::Immediate(outcome) => {
-                if matches!(outcome, Outcome::EngineFailure { .. } | Outcome::ContractViolation(_)) {
+                if matches!(
+                    outcome,
+                    Outcome::EngineFailure { .. } | Outcome::ContractViolation(_)
+                ) {
                     self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
                 }
                 self.store.settle(spec.slot, spec.generation);
                 let _ = reply.send(outcome);
             }
             Step::Watched => {
-                pending.insert(spec.id, PendingInvocation { spec, reply: Some(reply) });
+                pending.insert(
+                    spec.id,
+                    PendingInvocation {
+                        spec,
+                        reply: Some(reply),
+                    },
+                );
             }
         }
     }
@@ -345,10 +401,14 @@ impl WorkerInner {
     fn complete_timer(&mut self, op_id: u64, result: Result<u64, String>) {
         let op = self.ops.ops.lock().unwrap().remove(&op_id);
         let Some(_op) = op else {
-            self.shared.late_completions_dropped.fetch_add(1, Ordering::Relaxed);
+            self.shared
+                .late_completions_dropped
+                .fetch_add(1, Ordering::Relaxed);
             return;
         };
-        self.shared.timer_ops_completed.fetch_add(1, Ordering::Relaxed);
+        self.shared
+            .timer_ops_completed
+            .fetch_add(1, Ordering::Relaxed);
         let _ = self.ctx.with(|ctx| -> rquickjs::Result<()> {
             match result {
                 Ok(ms) => {
@@ -396,7 +456,9 @@ impl WorkerInner {
             .map(|p| p.spec.id)
             .collect();
         for id in due {
-            let Some(mut p) = pending.remove(&id) else { continue };
+            let Some(mut p) = pending.remove(&id) else {
+                continue;
+            };
             self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
             self.store.settle(p.spec.slot, p.spec.generation);
             self.reject_ops_of(id);
@@ -437,12 +499,13 @@ impl WorkerInner {
             let Some(p) = pending.remove(&id) else {
                 // stale entry (cancelled invocation whose promise settled
                 // afterwards) — remove it from the table
-                self.ctx.with(|ctx| -> rquickjs::Result<()> {
-                    let table: Object = ctx.globals().get("__velquSettled")?;
-                    table.remove(id.to_string().as_str())?;
-                    Ok(())
-                })
-                .ok();
+                self.ctx
+                    .with(|ctx| -> rquickjs::Result<()> {
+                        let table: Object = ctx.globals().get("__velquSettled")?;
+                        table.remove(id.to_string().as_str())?;
+                        Ok(())
+                    })
+                    .ok();
                 continue;
             };
             let outcome = self.ctx.with(|ctx| -> Outcome {
@@ -473,7 +536,7 @@ impl WorkerInner {
                     let exc = payload
                         .as_object()
                         .cloned()
-                        .and_then(|o| rquickjs::Exception::from_object(o));
+                        .and_then(rquickjs::Exception::from_object);
                     let (msg, stack) = match exc {
                         Some(e) => (e.message().unwrap_or_default(), e.stack()),
                         None => (
@@ -489,7 +552,10 @@ impl WorkerInner {
             });
             if matches!(outcome, Outcome::Timeout) {
                 self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
-            } else if matches!(outcome, Outcome::EngineFailure { .. } | Outcome::ContractViolation(_)) {
+            } else if matches!(
+                outcome,
+                Outcome::EngineFailure { .. } | Outcome::ContractViolation(_)
+            ) {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
             }
             self.store.settle(p.spec.slot, p.spec.generation);
@@ -550,27 +616,62 @@ fn call_runner<'js>(
     run_fn.call::<_, Value<'js>>((handler_fn, policy_fn, ctx_obj, req_obj))
 }
 
-fn value_to_outcome<'js>(ctx: &rquickjs::Ctx<'js>, spec: &InvocationSpec, value: &Value<'js>) -> Outcome {
+fn value_to_outcome<'js>(
+    ctx: &rquickjs::Ctx<'js>,
+    spec: &InvocationSpec,
+    value: &Value<'js>,
+) -> Outcome {
     if value.is_undefined() || value.is_null() {
-        return Outcome::Response { status: spec.default_status, body: BodyOut::Empty, headers: vec![] };
+        return Outcome::Response {
+            status: spec.default_status,
+            body: BodyOut::Empty,
+            headers: vec![],
+        };
     }
     if value.is_string() {
-        let s = value.clone().get::<rquickjs::Coerced<String>>().map(|c| c.0).unwrap_or_default();
-        return Outcome::Response { status: spec.default_status, body: BodyOut::Text(s), headers: vec![] };
+        let s = value
+            .clone()
+            .get::<rquickjs::Coerced<String>>()
+            .map(|c| c.0)
+            .unwrap_or_default();
+        return Outcome::Response {
+            status: spec.default_status,
+            body: BodyOut::Text(s),
+            headers: vec![],
+        };
     }
     if let Some(bytes) = js_to_bytes(value) {
-        return Outcome::Response { status: spec.default_status, body: BodyOut::Bytes(bytes), headers: vec![] };
+        return Outcome::Response {
+            status: spec.default_status,
+            body: BodyOut::Bytes(bytes),
+            headers: vec![],
+        };
     }
     if let Some(obj) = value.as_object() {
         let is_problem: bool = obj.get("__problem").unwrap_or(false);
         if is_problem {
             return problem_from_object(obj);
         }
-        let explicit_status: Option<f64> = obj
+        // Result envelopes: status().value() → {__ok, status, value};
+        // bare {status, value} pairs (legacy/M1 fixtures) also count. Plain
+        // business objects that merely CONTAIN a "status" field (e.g. health
+        // checks) are bodies, not envelopes.
+        let is_ok_envelope: bool = obj.get("__ok").unwrap_or(false);
+        let has_value_prop: bool = obj
+            .get::<_, Option<rquickjs::Value>>("value")
+            .map(|v| v.is_some())
+            .unwrap_or(false);
+        let status_num: Option<f64> = obj
             .get::<_, Option<rquickjs::Coerced<f64>>>("status")
             .ok()
             .flatten()
             .map(|c| c.0);
+        let is_envelope = is_ok_envelope
+            || (has_value_prop
+                && status_num
+                    .map(|s| (100.0..600.0).contains(&s))
+                    .unwrap_or(false));
+        let explicit_status: Option<f64> = if is_envelope { status_num } else { None };
         let status = match explicit_status {
             Some(s) => s as u16,
             None => spec.default_status,
@@ -599,19 +700,35 @@ fn value_to_outcome<'js>(ctx: &rquickjs::Ctx<'js>, spec: &InvocationSpec, value:
         let value_prop: Option<Value> = obj.get::<_, Option<Value>>("value").ok().flatten();
         let body_value: Value = match value_prop {
             Some(v) if !v.is_undefined() => v,
-            _ => value.clone().into(),
+            _ => value.clone(),
         };
         let body = body_from_value(ctx, spec.response_strategy, &body_value);
-        return Outcome::Response { status, body, headers };
+        return Outcome::Response {
+            status,
+            body,
+            headers,
+        };
     }
     // bare number/bool → JSON
     let body = body_from_value(ctx, spec.response_strategy, value);
-    Outcome::Response { status: spec.default_status, body, headers: vec![] }
+    Outcome::Response {
+        status: spec.default_status,
+        body,
+        headers: vec![],
+    }
 }
 
-fn body_from_value<'js>(ctx: &rquickjs::Ctx<'js>, strategy: ResponseStrategy, v: &Value<'js>) -> BodyOut {
+fn body_from_value<'js>(
+    ctx: &rquickjs::Ctx<'js>,
+    strategy: ResponseStrategy,
+    v: &Value<'js>,
+) -> BodyOut {
     if v.is_string() {
-        let s = v.clone().get::<rquickjs::Coerced<String>>().map(|c| c.0).unwrap_or_default();
+        let s = v
+            .clone()
+            .get::<rquickjs::Coerced<String>>()
+            .map(|c| c.0)
+            .unwrap_or_default();
         return BodyOut::Text(s);
     }
     if let Some(bytes) = js_to_bytes(v) {
@@ -655,15 +772,27 @@ fn problem_from_object(obj: &Object<'_>) -> Outcome {
                     let path: rquickjs::Coerced<String> = o.get("path").ok()?;
                     let code: rquickjs::Coerced<String> = o.get("code").ok()?;
                     let message: rquickjs::Coerced<String> = o.get("message").ok()?;
-                    Some(FieldErrorOut { path: path.0, code: code.0, message: message.0 })
+                    Some(FieldErrorOut {
+                        path: path.0,
+                        code: code.0,
+                        message: message.0,
+                    })
                 })
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    Outcome::Problem(ProblemOut { problem_id, status, detail, errors })
+    Outcome::Problem(ProblemOut {
+        problem_id,
+        status,
+        detail,
+        errors,
+    })
 }
 
-fn describe_exception(ctx: &rquickjs::Ctx<'_>, e: &rquickjs::Error) -> (String, Option<SourceLocation>) {
+fn describe_exception(
+    ctx: &rquickjs::Ctx<'_>,
+    e: &rquickjs::Error,
+) -> (String, Option<SourceLocation>) {
     if matches!(e, rquickjs::Error::Exception) {
         let caught = ctx.catch();
         if let Some(o) = caught.as_object() {
@@ -671,7 +800,10 @@ fn describe_exception(ctx: &rquickjs::Ctx<'_>, e: &rquickjs::Error) -> (String, 
                 let msg = exc.message().unwrap_or_else(|| "unknown exception".into());
                 let stack = exc.stack();
                 let source = stack.as_deref().and_then(map_first_frame);
-                return (format!("{msg}\n{}", stack.clone().unwrap_or_default()), source);
+                return (
+                    format!("{msg}\n{}", stack.clone().unwrap_or_default()),
+                    source,
+                );
             }
         }
     }
@@ -745,7 +877,11 @@ fn install_natives(
     // request field access: JSON-encoded object string (engine-side JSON.parse)
     {
         let store = Arc::clone(&store);
-        let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64, what: String| -> rquickjs::Result<String> {
+        let f = move |ctx: rquickjs::Ctx,
+                      slot: f64,
+                      gen: f64,
+                      what: String|
+              -> rquickjs::Result<String> {
             let json = store
                 .access(slot as usize, gen as u64, 1, 16, |m| {
                     let pairs: &[(String, String)] = match what.as_str() {
@@ -755,7 +891,9 @@ fn install_natives(
                         _ => &[],
                     };
                     let map = serde_json::Map::from_iter(
-                        pairs.iter().map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                        pairs
+                            .iter()
+                            .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
                     );
                     serde_json::to_string(&Json::Object(map)).unwrap_or_else(|_| "{}".into())
                 })
@@ -780,7 +918,9 @@ fn install_natives(
         let store = Arc::clone(&store);
         let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<f64> {
             let len = store
-                .access(slot as usize, gen as u64, 0, 0, |m| m.body.as_deref().map_or(0, |b| b.len()))
+                .access(slot as usize, gen as u64, 0, 0, |m| {
+                    m.body.as_deref().map_or(0, |b| b.len())
+                })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
             Ok(len as f64)
         };
@@ -788,9 +928,15 @@ fn install_natives(
     }
     {
         let store = Arc::clone(&store);
-        let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64, target: TypedArray<'_, u8>| -> rquickjs::Result<()> {
+        let f = move |ctx: rquickjs::Ctx,
+                      slot: f64,
+                      gen: f64,
+                      target: TypedArray<'_, u8>|
+              -> rquickjs::Result<()> {
             let body: Vec<u8> = store
-                .access(slot as usize, gen as u64, 1, 0, |m| m.body.clone().unwrap_or_default())
+                .access(slot as usize, gen as u64, 1, 0, |m| {
+                    m.body.clone().unwrap_or_default()
+                })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
             // SAFETY (reviewed FFI boundary): `target` is a live Uint8Array
             // owned by this native call on this worker thread; its backing
@@ -818,7 +964,10 @@ fn install_natives(
             let op_id = ops.op_clock.fetch_add(1, Ordering::SeqCst);
             let ms = ms.max(0.0) as u64;
             if ops.ops.lock().unwrap().len() >= ops.op_cap {
-                return Err(rquickjs::Exception::throw_message(&ctx, "pending operation limit reached"));
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "pending operation limit reached",
+                ));
             }
             ops.ops.lock().unwrap().insert(
                 op_id,
@@ -826,16 +975,24 @@ fn install_natives(
                     invocation_id: CURRENT_INVOCATION.with(|c| c.get()),
                 },
             );
-            shared_timer.timer_ops_started.fetch_add(1, Ordering::Relaxed);
+            shared_timer
+                .timer_ops_started
+                .fetch_add(1, Ordering::Relaxed);
             let tx = WORKER_TX.with(|c| c.borrow().clone());
             let Some(tx) = tx else {
-                return Err(rquickjs::Exception::throw_message(&ctx, "timer capability unavailable"));
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "timer capability unavailable",
+                ));
             };
             tokio.spawn(async move {
                 tokio::time::sleep(Duration::from_millis(ms)).await;
                 // a failed send means the worker loop is gone; the promise never
                 // settles, which shutdown drain already accounts for
-                let _ = tx.send(WorkerMsg::TimerFired { op_id, result: Ok(ms) });
+                let _ = tx.send(WorkerMsg::TimerFired {
+                    op_id,
+                    result: Ok(ms),
+                });
             });
             Ok(op_id as f64)
         };

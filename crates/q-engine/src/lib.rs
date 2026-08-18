@@ -82,7 +82,10 @@ pub enum Outcome {
     /// undeclared status or shape violation → 500 + contract-failure log
     ContractViolation(String),
     /// JS exception / engine failure → redacted 500, detail logged internally
-    EngineFailure { detail: String, source: Option<SourceLocation> },
+    EngineFailure {
+        detail: String,
+        source: Option<SourceLocation>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]

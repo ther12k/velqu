@@ -1,15 +1,6 @@
 /**
  * @q/treaty — Treaty client: object-like route navigation, typed inputs,
  * status-narrowed non-throwing results (TRT-001..003).
- *
- * Navigation model (M0 sketch): routes are addressed by their route ID
- * segments — `api.hello.get({ name: "Rafi" }).get()` navigates route
- * `hello.get`. The Eden-exact `api.hello({name}).get()` single-segment form
- * is an open API-design decision (docs/open-decisions.md ID-011) because
- * multi-route first segments (`/users` POST vs `/users/:id` GET) collide.
- *
- * Runtime is dependency-free (target ≤8 KiB minified) and imports no server
- * code (TRT-004).
  */
 
 export type TreatyFetch = typeof fetch;
@@ -82,8 +73,7 @@ export type AnyRouteContract = {
 // ---------------------------------------------------------------- client
 
 /**
- * Build a typed client for a published contract. Example:
- * `api.hello.get({ name: "Rafi" }).get()` → GET /hello/:name.
+ * Build a typed client for a published contract.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function treaty<Api extends Record<string, AnyRouteContract>>(options: TreatyOptions): any {
@@ -102,6 +92,18 @@ function makeProxy(
   return new Proxy(function () {} as unknown as object, {
     get(_t, prop: string) {
       if (prop === "then") return undefined; // not a thenable
+      const id = idSegments.join(".");
+      const methodUpper = prop.toUpperCase();
+      if (contract[id] && ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].includes(methodUpper)) {
+        const info = contract[id];
+        const routeUrl = `${base}/${info.path.replace(/^\//, "")}`;
+        return (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
+          if (methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE") {
+            return request(doFetch, routeUrl, methodUpper, (bodyOrOpts ?? {}) as RequestOptions);
+          }
+          return request(doFetch, routeUrl, methodUpper, { ...(maybeOpts ?? {}), body: bodyOrOpts });
+        };
+      }
       const next = [...idSegments, prop];
       return makeProxy(base, doFetch, contract, next);
     },
@@ -206,7 +208,7 @@ export type TreatyClient<Api extends Record<string, AnyRouteContract>> = {
 type NestedChain<K extends string, R extends AnyRouteContract> =
   K extends `${infer Head}.${infer Rest}`
     ? { readonly [P in Head]: NestedChain<Rest, R> }
-    : (params: ParamsForPath<R>) => MethodSuite<R>;
+    : ((params?: ParamsForPath<R>) => MethodSuite<R>) & MethodSuite<R>;
 
 type ParamsForPath<R extends AnyRouteContract> = R extends { path: infer P }
   ? P extends string

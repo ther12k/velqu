@@ -82,9 +82,19 @@ __velquRegister("body.native", native_body);
 
 fn expected_table() -> BTreeMap<String, String> {
     [
-        "js.text", "js.json", "hello.get", "lazy.ctx", "query.read", "body.read",
-        "timer.route", "throw.redacted", "status.undeclared", "status.declared",
-        "problem.notfound", "loop.infinite", "body.native",
+        "js.text",
+        "js.json",
+        "hello.get",
+        "lazy.ctx",
+        "query.read",
+        "body.read",
+        "timer.route",
+        "throw.redacted",
+        "status.undeclared",
+        "status.declared",
+        "problem.notfound",
+        "loop.infinite",
+        "body.native",
     ]
     .iter()
     .map(|k| (k.to_string(), String::new()))
@@ -109,12 +119,20 @@ async fn sync_text_and_json_results() {
     eng.load(BUNDLE, &expected_table()).unwrap();
     let out = run(&mut eng, spec(1, "js.text", &[200], 1000)).await;
     match out {
-        Outcome::Response { status: 200, body: BodyOut::Text(t), .. } => assert_eq!(t, "plain"),
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::Text(t),
+            ..
+        } => assert_eq!(t, "plain"),
         o => panic!("{o:?}"),
     }
     let out = run(&mut eng, spec(2, "js.json", &[200], 1000)).await;
     match out {
-        Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } => {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(t),
+            ..
+        } => {
             assert_eq!(t, "{\"ok\":true}")
         }
         o => panic!("{o:?}"),
@@ -133,7 +151,11 @@ async fn prevalidated_params_flow_into_ctx() {
     s.params = Some(serde_json::json!({ "name": "Rafi" }));
     let out = run(&mut eng, s).await;
     match out {
-        Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } => {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(t),
+            ..
+        } => {
             assert_eq!(t, "{\"message\":\"Hello Rafi\"}")
         }
         o => panic!("{o:?}"),
@@ -157,7 +179,10 @@ async fn lazy_ctx_touches_nothing() {
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Response { .. }));
     let snap = store.snapshot();
-    assert_eq!(snap.host_calls, 0, "RUN-004: unread fields materialize nothing");
+    assert_eq!(
+        snap.host_calls, 0,
+        "RUN-004: unread fields materialize nothing"
+    );
     assert_eq!(snap.materialized_bytes, 0);
     assert_eq!(snap.materialized_fields, 0);
 }
@@ -176,7 +201,10 @@ async fn lazy_query_and_body_materialize_on_access() {
     s.generation = gen;
     let out = run(&mut eng, s).await;
     match out {
-        Outcome::Response { body: BodyOut::JsonText(t), .. } => assert_eq!(t, "{\"ms\":\"42\"}"),
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(t, "{\"ms\":\"42\"}"),
         o => panic!("{o:?}"),
     }
     // body path (lazy json())
@@ -189,7 +217,10 @@ async fn lazy_query_and_body_materialize_on_access() {
     s.generation = gen;
     let out = run(&mut eng, s).await;
     match out {
-        Outcome::Response { body: BodyOut::JsonText(t), .. } => assert_eq!(t, "{\"echo\":\"Ada\"}"),
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(t, "{\"echo\":\"Ada\"}"),
         o => panic!("{o:?}"),
     }
     // native body path (pre-validated)
@@ -200,7 +231,10 @@ async fn lazy_query_and_body_materialize_on_access() {
     s.body = Some(serde_json::json!({ "id": "usr_1", "n": 21 }));
     let out = run(&mut eng, s).await;
     match out {
-        Outcome::Response { body: BodyOut::JsonText(t), .. } => {
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => {
             assert_eq!(t, "{\"id\":\"usr_1\",\"doubled\":42}")
         }
         o => panic!("{o:?}"),
@@ -222,10 +256,16 @@ async fn timer_promise_resolves_with_waited_ms() {
     let out = run(&mut eng, s).await;
     let elapsed = t0.elapsed();
     match out {
-        Outcome::Response { body: BodyOut::JsonText(t), .. } => assert_eq!(t, "{\"waited\":30}"),
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(t, "{\"waited\":30}"),
         o => panic!("{o:?}"),
     }
-    assert!(elapsed >= Duration::from_millis(25), "timer actually waited");
+    assert!(
+        elapsed >= Duration::from_millis(25),
+        "timer actually waited"
+    );
     let stats = eng.stats();
     assert_eq!(stats.timer_ops_started, 1);
     assert_eq!(stats.timer_ops_completed, 1);
@@ -262,7 +302,10 @@ async fn deadline_timeout_interrupts_and_replies() {
     eng.load(BUNDLE, &expected_table()).unwrap();
     // infinite loop: only the interrupt handler saves us
     let out = run(&mut eng, spec(10, "loop.infinite", &[200], 150)).await;
-    assert!(matches!(out, Outcome::Timeout), "runaway loop must hit the deadline, got {out:?}");
+    assert!(
+        matches!(out, Outcome::Timeout),
+        "runaway loop must hit the deadline, got {out:?}"
+    );
     // the worker survives
     let out = run(&mut eng, spec(11, "js.text", &[200], 1000)).await;
     assert!(matches!(out, Outcome::Response { .. }));
@@ -276,7 +319,10 @@ async fn throw_maps_to_engine_failure_with_detail() {
     let out = run(&mut eng, spec(12, "throw.redacted", &[200], 1000)).await;
     match out {
         Outcome::EngineFailure { detail, source } => {
-            assert!(detail.contains("secret-boom"), "internal detail keeps cause for logs");
+            assert!(
+                detail.contains("secret-boom"),
+                "internal detail keeps cause for logs"
+            );
             assert!(source.is_some(), "source location mapped");
         }
         o => panic!("{o:?}"),

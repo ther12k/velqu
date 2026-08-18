@@ -19,3 +19,5 @@ benchmarks/raw/**/*.tmp
 .DS_Store
 packages/*/dist/
 *.tsbuildinfo
+*.zip
+*.zip.sha256
