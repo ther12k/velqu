@@ -35,7 +35,7 @@ rquickjs 0.12.2. Release builds for all candidates. 2026-08-17.
 
 ## Comparative gate (performance budgets)
 
-> Project Q C3 and C4 p95 ≤ 60% of matched Elysia 2 AOT p95
+> Velqu C3 and C4 p95 ≤ 60% of matched Elysia 2 AOT p95
 
 - C3 p95: velqu 4.4ms vs elysia 152.0ms → **2.9%** — PASS (34× lower)
 - C4 p95: velqu 5.0ms vs elysia 149.9ms → **3.3%** — PASS (30× lower)

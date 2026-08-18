@@ -1,13 +1,15 @@
 /**
  * @velqu/contract — published compact contract types (language-neutral shape).
  *
- * The M2 compiler emits `contract.json` (this shape) and a generated
+ * The compiler emits `contract.json` (this shape) and a generated
  * `contract.d.ts` that binds `Api` to it. Client repositories import ONLY this
  * — never server source (TRT-004, PR-006).
  */
 
 /** Status -> response body type map. */
 export type ResponseMap = Record<number, unknown>;
+
+export type HttpMethodUpper = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
 
 /** A single route's compact contract. */
 export interface RouteContract<
@@ -36,8 +38,8 @@ export interface ContractMeta {
 }
 
 /**
- * Published API type: a map of "METHOD /path" or route-id keys to route
- * contracts. Treaty navigates this type; the runtime shape is data.
+ * Published API type: a map of route-id keys to route contracts.
+ * Treaty navigates this type; the runtime shape is data.
  */
 export interface PublishedContract<
   Routes extends Record<string, RouteContract> = Record<string, RouteContract>,

@@ -1,6 +1,6 @@
 ---
 type: Final Report
-title: Project Q (Velqu) M0–M2 Final Report
+title: Velqu (Project Q) M0–M2 Final Report
 status: final
 generated: 2026-08-18
 format: master-agent-prompt §18
@@ -60,11 +60,11 @@ SEC-001..005, OPS-001..002, DX-001..004, PR-001..005.
 - **Rust workspace** (`crates/`): q-pack, q-router, q-bridge, q-schema-runtime,
   q-engine (trait), q-engine-quickjs (single worker thread, prelude, timer
   capability, source mapping), q-http (hyper 1.11 + TokioTimer, limits,
-  graceful shutdown), q-runtime (binary, 4.6 MiB stripped), q-bench-support
+  graceful shutdown), velqu-runtime (binary, 4.6 MiB stripped), q-bench-support
   (bridge microbench).
-- **TypeScript** (`packages/`): @q/schema, @q/core, @q/contract, @q/treaty,
-  @q/compiler (AST extraction + Bun.build + emitters), @q/cli (`q build /
-  inspect / contract diff`), @q/testing (unitTreaty + runtimeTreaty).
+- **TypeScript** (`packages/`): @velqu/schema, @velqu/core, @velqu/contract, @velqu/treaty,
+  @velqu/compiler (AST extraction + Bun.build + emitters), @velqu/cli (`q build /
+  inspect / contract diff`), @velqu/testing (unitTreaty + runtimeTreaty).
 - **Proof app** (`examples/proof/`): 9 frozen-contract routes; compiler emits
   9 deterministic artifacts incl. app.qpack, contract.d.ts, openapi.json,
   contract.lock.json, build-report.
@@ -160,7 +160,7 @@ hyper header_read_timeout requires explicit TokioTimer (documented).
 ## Open owner decisions
 
 OD-001..006 in `docs/open-decisions.md`: public name (Velqu is the working
-name), package scope (@q/* placeholder), repository, license, platform
+name), package scope (@velqu/* placeholder), repository, license, platform
 promise, release/governance. None decided by the implementation agent.
 
 ## Salvage/recommendation if a gate failed

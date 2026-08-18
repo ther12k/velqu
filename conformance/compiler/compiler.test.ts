@@ -4,7 +4,7 @@
  * deterministic rebuilds (COMP-003/COMP-009).
  */
 import { describe, expect, test } from "bun:test";
-import { build, contractDiff, CompileError } from "@velqu/compiler";
+import { build, contractDiff, diffContracts, CompileError } from "@velqu/compiler";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const TMP = "/tmp/velqu-conformance";
@@ -113,5 +113,89 @@ describe("contract lock workflow (PR-006/SCHEMA-007)", () => {
     const b3 = await build({ project: "examples/proof/src/app.ts", outDir: out, updateLock: true });
     expect(b3.lockPreserved).toBe(false);
     expect(contractDiff(out).length).toBe(0);
+  });
+
+  test("semantic diff detects schema structural changes accurately", () => {
+    const lock = {
+      routes: {
+        "users.create": {
+          path: "/users",
+          method: "POST",
+          body: {
+            kind: "object",
+            properties: {
+              name: { kind: "string" },
+              email: { kind: "string" },
+            },
+            required: ["name", "email"],
+          },
+          responses: {
+            "201": {
+              kind: "object",
+              properties: { id: { kind: "string" }, name: { kind: "string" } },
+              required: ["id", "name"],
+            },
+          },
+        },
+      },
+    };
+
+    // Case 1: Added required input field -> BREAKING
+    const addedRequired = {
+      routes: {
+        "users.create": {
+          ...lock.routes["users.create"],
+          body: {
+            kind: "object",
+            properties: {
+              name: { kind: "string" },
+              email: { kind: "string" },
+              role: { kind: "string" },
+            },
+            required: ["name", "email", "role"],
+          },
+        },
+      },
+    };
+    const diff1 = diffContracts(addedRequired, lock);
+    expect(diff1.some((d) => d.kind === "breaking" && d.change.includes("required field added"))).toBe(true);
+
+    // Case 2: Added optional input field -> COMPATIBLE
+    const addedOptional = {
+      routes: {
+        "users.create": {
+          ...lock.routes["users.create"],
+          body: {
+            kind: "object",
+            properties: {
+              name: { kind: "string" },
+              email: { kind: "string" },
+              nickname: { kind: "string" },
+            },
+            required: ["name", "email"],
+          },
+        },
+      },
+    };
+    const diff2 = diffContracts(addedOptional, lock);
+    expect(diff2.some((d) => d.kind === "compatible" && d.change.includes("optional field added"))).toBe(true);
+
+    // Case 3: Removed field from response -> BREAKING
+    const removedRespField = {
+      routes: {
+        "users.create": {
+          ...lock.routes["users.create"],
+          responses: {
+            "201": {
+              kind: "object",
+              properties: { id: { kind: "string" } },
+              required: ["id"],
+            },
+          },
+        },
+      },
+    };
+    const diff3 = diffContracts(removedRespField, lock);
+    expect(diff3.some((d) => d.kind === "breaking" && d.change.includes("response field removed"))).toBe(true);
   });
 });

@@ -9,7 +9,7 @@ milestone: M2
 
 ## Overview
 
-The `@q/schema` package and `q-schema-runtime` crate implement the Schema IR v1
+The `@velqu/schema` package and `q-schema-runtime` crate implement the Schema IR v1
 specification (SCHEMA-001..005).
 
 ## Verification Matrix

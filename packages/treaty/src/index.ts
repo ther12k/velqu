@@ -1,6 +1,11 @@
 /**
- * @velqu/treaty — Treaty client: object-like route navigation, typed inputs,
- * status-narrowed non-throwing results (TRT-001..003).
+ * @velqu/treaty — Eden-inspired, type-safe client with:
+ * - Route-ID dot-navigation: `api.users.get({ id })`
+ * - Exact method narrowing: only declared HTTP method exists on the route client
+ * - Exact body constraint: `post(body)` must match the contract's `body` schema type
+ * - Strict 2xx data vs non-2xx error separation (200 is never in error union)
+ * - Status narrowing: `if (r.error.status === 401)` types `r.error.problem`
+ * - Dependency-free runtime (zero server/compiler imports)
  */
 
 export type TreatyFetch = typeof fetch;
@@ -17,34 +22,65 @@ export interface TreatyOptions {
   fetchImpl?: TreatyFetch;
 }
 
-// ---------------------------------------------------------------- result types
+// ---------------------------------------------------------------- status & response splitting
+
+export type SuccessStatus =
+  | 200
+  | 201
+  | 202
+  | 203
+  | 204
+  | 205
+  | 206
+  | 207
+  | 208
+  | 226;
+
+export type ExtractSuccessStatuses<Resp> = Extract<keyof Resp & number, SuccessStatus>;
+export type ExtractErrorStatuses<Resp> = Exclude<keyof Resp & number, SuccessStatus>;
+
+export type SuccessData<Resp extends Record<number, unknown>> =
+  ExtractSuccessStatuses<Resp> extends never
+    ? unknown
+    : Resp[ExtractSuccessStatuses<Resp>];
+
+// ---------------------------------------------------------------- error types
 
 export interface HttpError<S extends number, P = unknown> {
   readonly status: S;
   readonly problem: P;
 }
+
 export interface NetworkError {
   readonly status: 0;
   readonly kind: "network";
   readonly message: string;
 }
+
 export interface AbortError {
   readonly status: 0;
   readonly kind: "abort";
 }
-export type TreatyError<S extends number = number, P = unknown> = HttpError<S, P> | NetworkError | AbortError;
 
-export type TreatyResult<Resp extends Record<number, unknown>> =
-  | { readonly data: Resp[keyof Resp & number]; readonly error: null }
-  | { readonly data: null; readonly error: TreatyErrorFor<Resp> };
-
-/** error narrowing: `if (r.error.status === 401)` types problem as Resp[401] */
 export type TreatyErrorFor<Resp extends Record<number, unknown>> =
   | NetworkError
   | AbortError
-  | { [S in keyof Resp & number]: { readonly status: S; readonly problem: Resp[S] } }[keyof Resp & number];
+  | (ExtractErrorStatuses<Resp> extends never
+      ? never
+      : {
+          [S in ExtractErrorStatuses<Resp>]: {
+            readonly status: S;
+            readonly problem: Resp[S];
+          };
+        }[ExtractErrorStatuses<Resp>]);
 
-// ---------------------------------------------------------------- path helpers (type level)
+// ---------------------------------------------------------------- result
+
+export type TreatyResult<Resp extends Record<number, unknown>> =
+  | { readonly data: SuccessData<Resp>; readonly error: null }
+  | { readonly data: null; readonly error: TreatyErrorFor<Resp> };
+
+// ---------------------------------------------------------------- path & param extraction
 
 type PathSegments<P extends string> =
   P extends `/${infer Head}/${infer Tail}`
@@ -53,8 +89,8 @@ type PathSegments<P extends string> =
       ? [Last]
       : [];
 
-/** Param names from segments (":id" -> "id"). */
-export type ParamNames<P extends string> = PathSegments<P>[number] extends `:${infer N}` ? N : never;
+type ExtractParam<Segment> = Segment extends `:${infer N}` ? N : never;
+export type ParamNames<P extends string> = ExtractParam<PathSegments<P>[number]>;
 
 export interface RequestOptions<Q = Record<string, never>> {
   query?: Q;
@@ -64,22 +100,111 @@ export interface RequestOptions<Q = Record<string, never>> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyRouteContract = {
-  path: string;
-  method: string;
+  readonly path: string;
+  readonly method: string;
+  readonly params?: unknown;
+  readonly query?: unknown;
+  readonly body?: unknown;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  responses: Record<number, any>;
+  readonly responses: Record<number, any>;
 };
 
-// ---------------------------------------------------------------- client
+// ---------------------------------------------------------------- method narrowing
 
-/**
- * Build a typed client for a published contract.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function treaty<Api extends Record<string, AnyRouteContract>>(options: TreatyOptions): any {
+type QueryOf<R extends AnyRouteContract> = R extends { query: infer Q }
+  ? Q extends Record<string, never>
+    ? Record<string, never>
+    : Q
+  : Record<string, never>;
+
+type BodyOf<R extends AnyRouteContract> = R extends { body: infer B }
+  ? [B] extends [undefined]
+    ? never
+    : [B] extends [Record<string, never>]
+      ? never
+      : B
+  : never;
+
+type GetMethod<R extends AnyRouteContract> = {
+  get(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+};
+
+type PostMethod<R extends AnyRouteContract> = {
+  post(
+    ...args: [BodyOf<R>] extends [never]
+      ? [opts?: RequestOptions<QueryOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+  ): Promise<TreatyResult<R["responses"]>>;
+};
+
+type PutMethod<R extends AnyRouteContract> = {
+  put(
+    ...args: [BodyOf<R>] extends [never]
+      ? [opts?: RequestOptions<QueryOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+  ): Promise<TreatyResult<R["responses"]>>;
+};
+
+type PatchMethod<R extends AnyRouteContract> = {
+  patch(
+    ...args: [BodyOf<R>] extends [never]
+      ? [opts?: RequestOptions<QueryOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+  ): Promise<TreatyResult<R["responses"]>>;
+};
+
+type DeleteMethod<R extends AnyRouteContract> = {
+  delete(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+};
+
+type HeadMethod<R extends AnyRouteContract> = {
+  head(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+};
+
+export type MethodSuiteFor<R extends AnyRouteContract> =
+  (Uppercase<R["method"]> extends "GET" ? GetMethod<R> : unknown) &
+  (Uppercase<R["method"]> extends "POST" ? PostMethod<R> : unknown) &
+  (Uppercase<R["method"]> extends "PUT" ? PutMethod<R> : unknown) &
+  (Uppercase<R["method"]> extends "PATCH" ? PatchMethod<R> : unknown) &
+  (Uppercase<R["method"]> extends "DELETE" ? DeleteMethod<R> : unknown) &
+  (Uppercase<R["method"]> extends "HEAD" ? HeadMethod<R> : unknown);
+
+// ---------------------------------------------------------------- client shape
+
+type ParamsForPath<R extends AnyRouteContract> = R extends { path: infer P }
+  ? P extends string
+    ? [ParamNames<P>] extends [never]
+      ? Record<string, never>
+      : { [N in ParamNames<P>]: string | number }
+    : Record<string, never>
+  : Record<string, never>;
+
+export type CallableOrDirect<R extends AnyRouteContract> =
+  [ParamNames<R["path"]>] extends [never]
+    ? ((params?: Record<string, never>) => MethodSuiteFor<R>) & MethodSuiteFor<R>
+    : (params: ParamsForPath<R>) => MethodSuiteFor<R>;
+
+type FirstSegment<K extends string> = K extends `${infer Head}.${string}` ? Head : K;
+
+type SubApi<Api extends Record<string, AnyRouteContract>, Prefix extends string> = {
+  [K in keyof Api as K extends `${Prefix}.${infer Rest}` ? Rest : never]: Api[K];
+};
+
+export type TreatyClient<Api extends Record<string, AnyRouteContract>> = {
+  [Head in FirstSegment<keyof Api & string>]:
+    [keyof SubApi<Api, Head>] extends [never]
+      ? (Head extends keyof Api ? CallableOrDirect<Api[Head]> : never)
+      : TreatyClient<SubApi<Api, Head>> & (Head extends keyof Api ? CallableOrDirect<Api[Head]> : unknown);
+};
+
+// ---------------------------------------------------------------- implementation
+
+export function treaty<Api extends Record<string, AnyRouteContract>>(
+  options: TreatyOptions,
+): TreatyClient<Api> {
   const doFetch = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/$/, "");
-  return makeProxy(base, doFetch, options.contract, []);
+  return makeProxy(base, doFetch, options.contract, []) as TreatyClient<Api>;
 }
 
 function makeProxy(
@@ -87,8 +212,7 @@ function makeProxy(
   doFetch: typeof fetch,
   contract: Readonly<Record<string, RouteInfo>>,
   idSegments: string[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): any {
+): unknown {
   return new Proxy(function () {} as unknown as object, {
     get(_t, prop: string) {
       if (prop === "then") return undefined; // not a thenable
@@ -126,6 +250,7 @@ function makeProxy(
         put: (body?: unknown, opts?: RequestOptions) => request(doFetch, routeUrl, "PUT", { ...opts, body }),
         patch: (body?: unknown, opts?: RequestOptions) => request(doFetch, routeUrl, "PATCH", { ...opts, body }),
         delete: (opts?: RequestOptions) => request(doFetch, routeUrl, "DELETE", opts),
+        head: (opts?: RequestOptions) => request(doFetch, routeUrl, "HEAD", opts),
       };
     },
   });
@@ -166,10 +291,10 @@ async function request<Resp extends Record<number, unknown>>(
     parsed = text;
   }
   if (res.ok) {
-    return { data: parsed as Resp[keyof Resp & number], error: null } as const;
+    return { data: parsed as SuccessData<Resp>, error: null } as const;
   }
-  const err: HttpError<number, unknown> = { status: res.status, problem: parsed };
-  return { data: null, error: err } as const;
+  const err = { status: res.status as ExtractErrorStatuses<Resp>, problem: parsed };
+  return { data: null, error: err as unknown as TreatyErrorFor<Resp> } as const;
 }
 
 function stripUndefined(q: Record<string, unknown>): Record<string, string> {
@@ -179,39 +304,3 @@ function stripUndefined(q: Record<string, unknown>): Record<string, string> {
   }
   return out;
 }
-
-// ---------------------------------------------------------------- type-level client
-
-type MethodSuite<R extends AnyRouteContract> = {
-  get(opts?: RequestOptions & { query?: QueryOf<R> }): Promise<TreatyResult<R["responses"]>>;
-  post<Body>(body: Body, opts?: RequestOptions): Promise<TreatyResult<R["responses"]>>;
-  put<Body>(body: Body, opts?: RequestOptions): Promise<TreatyResult<R["responses"]>>;
-  patch<Body>(body: Body, opts?: RequestOptions): Promise<TreatyResult<R["responses"]>>;
-  delete(opts?: RequestOptions): Promise<TreatyResult<R["responses"]>>;
-};
-
-type QueryOf<R extends AnyRouteContract> = R extends { query: infer Q }
-  ? Q extends Record<string, never>
-    ? Record<string, never>
-    : Q
-  : Record<string, never>;
-
-/**
- * TreatyClient<Api>: each route id's dot segments become nested callable
- * chains; the final segment is called with path params and returns the
- * method suite.
- */
-export type TreatyClient<Api extends Record<string, AnyRouteContract>> = {
-  [K in keyof Api & string]: NestedChain<K, Api[K]>;
-};
-
-type NestedChain<K extends string, R extends AnyRouteContract> =
-  K extends `${infer Head}.${infer Rest}`
-    ? { readonly [P in Head]: NestedChain<Rest, R> }
-    : ((params?: ParamsForPath<R>) => MethodSuite<R>) & MethodSuite<R>;
-
-type ParamsForPath<R extends AnyRouteContract> = R extends { path: infer P }
-  ? P extends string
-    ? { [N in ParamNames<P>]: string | number }
-    : Record<string, never>
-  : Record<string, never>;

@@ -29,7 +29,7 @@ Sources: `packages/{schema,core,contract,treaty}`, `benchmarks/type-scale/`,
 5. **Non-throwing results (TRT-002)**: declared HTTP failures are values;
    network failures carry `status: 0, kind: "network"`; aborts
    `kind: "abort"` — three-way distinction tested.
-6. **Published-contract mode**: `@q/contract` `RouteContract` shape drives
+6. **Published-contract mode**: `@velqu/contract` `RouteContract` shape drives
    the same Treaty client as source mode would; the compiler (M2) generates
    the `Api` type from the app — hand-written proof exists in the test.
 7. **Negative typing caught**: `@ts-expect-error` fixtures and a

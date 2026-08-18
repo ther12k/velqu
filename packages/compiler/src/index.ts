@@ -1,7 +1,3 @@
-/**
- * @velqu/compiler — build API. Static extraction (never runs the app) + Bun.build
- * bundling + deterministic artifact emission.
- */
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as ts from "typescript";
@@ -9,7 +5,7 @@ import { extractApp, hash } from "./extract";
 import { bundleApp, buildPack, contractFor, contractDts, openapiFor, diffContracts } from "./emit";
 
 export { CompileError } from "./extract";
-export { diffContracts } from "./emit";
+export { diffContracts, type DiffEntry } from "./emit";
 
 export interface BuildOptions {
   project: string;           // path to the app entry (app.ts) or its directory
@@ -57,7 +53,12 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
           params: r.paramsIr,
           query: r.queryIr,
           body: r.bodyIr,
-          responses: Object.keys(r.responses),
+          responses: Object.fromEntries(
+            Object.entries(r.responses).map(([status, decl]) => [
+              status,
+              decl.ir ?? (decl.problem ? { problem: decl.problem } : {}),
+            ]),
+          ),
           security: r.policyId ?? null,
         },
       ]),
@@ -87,6 +88,9 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
           r.paramsIr ? [`sch:${r.id}.params`, r.paramsIr] : null,
           r.queryIr ? [`sch:${r.id}.query`, r.queryIr] : null,
           r.bodyIr ? [`sch:${r.id}.body`, r.bodyIr] : null,
+          ...Object.entries(r.responses).map(([status, decl]) =>
+            decl.ir && !decl.problem ? [`sch:${r.id}.${status}`, decl.ir] : null,
+          ),
         ].filter(Boolean) as [string, unknown][],
       ),
     ),
@@ -98,6 +102,10 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   };
 
   // contract lock (semantic diff base)
+  const lockPath = join(outDir, "contract.lock.json");
+  const lockExists = existsSync(lockPath);
+  const writeLock = !lockExists || (opts.updateLock ?? false);
+
   const lock = {
     formatVersion: 1,
     contractHash: (pack as { contractHash: string }).contractHash,
@@ -114,7 +122,6 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     schemas: schemaManifest,
     capabilities: capabilityManifest,
     strategies: {
-      // SCHEMA-005: every fallback visible
       fallbacks: [] as string[],
       notes: [
         "validation: native (ADR-0015)",
@@ -126,13 +133,6 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     integrity: (pack as { integrity: unknown }).integrity,
     versions: (pack as { engine: unknown; runtimeAbi: number }).engine,
   };
-
-  // The lock is a FROZEN baseline for semantic diff — it must NOT follow
-  // every build, or `q contract diff` would always report "no changes".
-  // First build writes it; later builds preserve it unless updateLock.
-  const lockPath = join(outDir, "contract.lock.json");
-  const lockExists = existsSync(lockPath);
-  const writeLock = !lockExists || (opts.updateLock ?? false);
 
   const files: Record<string, string> = {
     "app.qpack": packJson,
@@ -210,8 +210,6 @@ function renderBuildReportMd(report: Record<string, unknown>, bytes: Record<stri
   ];
   return lines.join("\n");
 }
-
-// ---------------------------------------------------------------- diff CLI helper
 
 export function contractDiff(outDir: string, lockPath?: string): ReturnType<typeof diffContracts> {
   const current = JSON.parse(readFileSync(join(outDir, "contract.json"), "utf8"));

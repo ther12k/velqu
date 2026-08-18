@@ -176,6 +176,15 @@ pub struct PolicyEntry {
 /// QuickJS module bytecode, produced at BUILD time by the exact engine build
 /// (ADR-0014/ADR-0017). The runtime loads it only on an exact version match;
 /// any mismatch or absence falls back to evaluating `bundle` source.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BytecodeTarget {
+    pub arch: String,
+    pub os: String,
+    pub pointer_width: u8,
+    pub endianness: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BundleBytecode {
@@ -183,6 +192,9 @@ pub struct BundleBytecode {
     pub binding: String,
     /// "little" | "big" — bytecode is not endian-portable
     pub endianness: String,
+    /// Compilation target fingerprint (arch, OS, pointer width, endianness)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<BytecodeTarget>,
     /// base64-encoded module bytecode
     pub data: String,
 }

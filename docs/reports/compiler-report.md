@@ -9,7 +9,7 @@ milestone: M2
 
 ## Overview
 
-The `@q/compiler` package implements static contract extraction and artifact
+The `@velqu/compiler` package implements static contract extraction and artifact
 emission without application execution (COMP-001..009).
 
 ## Evidence & Verifications

@@ -14,7 +14,7 @@ not remove causality.
 ## Implementation
 
 - Pack carries an optional embedded source map (`sourceMap` field, sourcemap
-  JSON string). `q-runtime/src/source_map.rs` parses it with the `sourcemap`
+  JSON string). `velqu-runtime/src/source_map.rs` parses it with the `sourcemap`
   crate and implements the engine `SourceMapper` trait; if absent, an
   identity mapper is used.
 - The engine worker extracts QuickJS exception `message` + `stack`
@@ -30,7 +30,7 @@ not remove causality.
 ## Evidence
 
 Test: `source_mapped_exception_identifies_original_location`
-(`crates/q-runtime/tests/runtime_conformance.rs`): a generated bundle whose
+(`crates/velqu-runtime/tests/runtime_conformance.rs`): a generated bundle whose
 line 2 throws is paired with a hand-built map to
 `src/modules/users/routes.ts` line 42 col 5. The binary run produces a 500
 and stderr log containing BOTH `origin-boom` (cause) and the mapped

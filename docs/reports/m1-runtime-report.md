@@ -17,10 +17,10 @@ M1 gate item (M1 gate = runtime/bridge feasibility, which passed).
 
 | M1 gate requirement | Evidence | Status |
 |---|---|---|
-| actual Rust binary serves one QuickJS worker | `target/release/q-runtime`; startup log `handlers:10, engine: quickjs-ng/0.15.1`; binary conformance tests | PASS |
+| actual Rust binary serves one QuickJS worker | `target/release/velqu-runtime`; startup log `handlers:10, engine: quickjs-ng/0.15.1`; binary conformance tests | PASS |
 | handler references cached | engine load → `Persistent<Function>` cache; `load_verifies_handler_table_and_caches`; startup log eval 0.10ms | PASS |
 | native route before JS demonstrated | `x-velqu-stage: native` on C0; 404/405 without engine; logs show `stage:native` for C0 | PASS |
-| text, small JSON, params, JSON input, async, cancel, throw paths pass | `crates/q-runtime/tests/runtime_conformance.rs` — 8 tests; engine tests — 12 | PASS |
+| text, small JSON, params, JSON input, async, cancel, throw paths pass | `crates/velqu-runtime/tests/runtime_conformance.rs` — 8 tests; engine tests — 12 | PASS |
 | opaque request handle expiry/ownership tests | q-bridge 4 tests (expiry, wrong-owner, reuse isolation, unread=0) + engine expired-handle test | PASS |
 | body/header/queue/heap/stack/time limits | 413/431/503 responses tested; heap 32MiB + stack 512KiB set on the engine; deadline interrupt kills runaway loops (test) | PASS |
 | application pack tamper/version mismatch fails before ready | `tampered_pack_fails_before_before_ready` (exit≠0, integrity error); engine mismatch unit tests | PASS |
@@ -32,7 +32,7 @@ M1 gate item (M1 gate = runtime/bridge feasibility, which passed).
 ## Runtime architecture as built
 
 ```
-q-runtime (bin)
+velqu-runtime (bin)
  ├─ q-pack        load+verify (versions, sha256 of bundle + canonical routes)
  ├─ q-router      zero-parse route table (pack pathSegments), 404/405+Allow, HEAD→GET
  ├─ q-http        hyper 1.11 + TokioTimer; header/body/URI limits; queue semaphore (503)
@@ -89,7 +89,7 @@ shutdown with pending work; bounded registry (op cap).
 
 ```bash
 cargo test --workspace              # 45 tests green
-cargo build --release -p q-runtime  # 4.6MB stripped binary
-./target/release/q-runtime --pack examples/proof/dist/app.qpack --port 3000
+cargo build --release -p velqu-runtime  # 4.6MB stripped binary
+./target/release/velqu-runtime --pack examples/proof/dist/app.qpack --port 3000
 bun benchmarks/harness/check-server.ts 3000 --candidate velqu   # 31/31
 ```

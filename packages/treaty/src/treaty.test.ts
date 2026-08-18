@@ -1,13 +1,15 @@
 /**
- * Treaty + core + schema type spike: proves the M0 sketch shape works —
- * route-local typing, policy context, status narrowing, non-throwing errors,
- * and published-contract mode. Unit-local runtime tests are labeled as such
- * (TRT-005): they do NOT prove native-runtime conformance.
+ * Treaty + core + schema type spike: proves Eden-quality Treaty typing:
+ * - Exact method narrowing: only declared HTTP method exists on client
+ * - Exact body constraint: post() accepts only R["body"]
+ * - 2xx data vs non-2xx error separation (200 is never in error union)
+ * - Status narrowing: switch on status narrows error.problem
+ * - Negative compile-time type tests
  */
 import { afterAll, describe, expect, expectTypeOf, test } from "bun:test";
 import { defineApp, defineModule, definePolicy, route, status } from "@velqu/core";
 import { s } from "@velqu/schema";
-import { treaty } from "./index";
+import { treaty, type TreatyClient } from "./index";
 import type { RouteContract } from "@velqu/contract";
 
 // ---------------------------------------------------------------- proof-shaped app
@@ -63,7 +65,7 @@ const usersGet = route({
   },
 });
 
-const app = defineApp({
+export const app = defineApp({
   id: "proof",
   modules: [
     defineModule({ id: "hello", routes: [helloRoute] }),
@@ -73,8 +75,15 @@ const app = defineApp({
 
 // ---------------------------------------------------------------- published contract mode
 
-type ProofApi = {
-  "hello.get": RouteContract<"/hello/:name", "GET", { name: string }, Record<string, never>, undefined, { 200: { message: string } }>;
+export type ProofApi = {
+  "hello.get": RouteContract<
+    "/hello/:name",
+    "GET",
+    { name: string },
+    Record<string, never>,
+    undefined,
+    { 200: { message: string } }
+  >;
   "users.create": RouteContract<
     "/users",
     "POST",
@@ -89,11 +98,15 @@ type ProofApi = {
     { id: string },
     Record<string, never>,
     undefined,
-    { 200: { id: string; name: string; email: string }; 401: { title: string }; 404: { title: string } }
+    {
+      200: { id: string; name: string; email: string };
+      401: { title: string; type: string };
+      404: { title: string; detail?: string };
+    }
   >;
 };
 
-// ---------------------------------------------------------------- unit-local runtime tests (LABELED — not runtime conformance)
+// ---------------------------------------------------------------- unit-local runtime tests
 
 const unitServer = Bun.serve({
   port: 0,
@@ -102,7 +115,10 @@ const unitServer = Bun.serve({
     if (url.pathname === "/hello/Rafi") return Response.json({ message: "Hello Rafi" });
     if (url.pathname === "/users/usr_1") {
       if (req.headers.get("authorization") !== "Bearer q-demo-token") {
-        return Response.json({ type: "https://velqu.dev/problems/unauthorized", title: "Unauthorized", status: 401 }, { status: 401 });
+        return Response.json(
+          { type: "https://velqu.dev/problems/unauthorized", title: "Unauthorized", status: 401 },
+          { status: 401 },
+        );
       }
       return Response.json({ id: "usr_1", name: "Ada", email: "ada@example.org" });
     }
@@ -113,36 +129,64 @@ const unitServer = Bun.serve({
   },
 });
 
-describe("treaty (unit-local, NOT runtime conformance)", () => {
+describe("treaty (Eden-style typing & runtime)", () => {
   const api = treaty<ProofApi>({
-      baseUrl: `http://localhost:${unitServer.port}`,
-      contract: {
-        "hello.get": { path: "/hello/:name", method: "GET" },
-        "users.create": { path: "/users", method: "POST" },
-        "users.get": { path: "/users/:id", method: "GET" },
-      },
-    });
+    baseUrl: `http://localhost:${unitServer.port}`,
+    contract: {
+      "hello.get": { path: "/hello/:name", method: "GET" },
+      "users.create": { path: "/users", method: "POST" },
+      "users.get": { path: "/users/:id", method: "GET" },
+    },
+  });
 
-  test("success returns typed data, no error", async () => {
+  test("treaty() returns properly typed TreatyClient", () => {
+    expectTypeOf(api).toEqualTypeOf<TreatyClient<ProofApi>>();
+  });
+
+  test("success returns data strictly typed as 2xx response, never error", async () => {
     const r = await api.hello.get({ name: "Rafi" }).get();
     expect(r.error).toBeNull();
     if (!r.error) {
-      expectTypeOf(r.data).toMatchTypeOf<{ message: string }>();
-      expect((r.data as { message: string }).message).toBe("Hello Rafi");
+      expectTypeOf(r.data).toEqualTypeOf<{ message: string }>();
+      expect(r.data.message).toBe("Hello Rafi");
     }
   });
 
-  test("declared HTTP failure is a value, never a throw; status narrows", async () => {
-    const r = await api.users.get({ id: "usr_1" }).get(); // no auth header → 401
+  test("status narrowing on error union (200 is NOT in error status union)", async () => {
+    const r = await api.users.get({ id: "usr_1" }).get();
     expect(r.data).toBeNull();
-    if (r.error && r.error.status !== 0) {
-      const narrowed: 401 | 200 | 404 = r.error.status;
-      expect(narrowed).toBe(401);
-      // narrowed to the 401 problem shape by the status check
-      if (r.error.status === 401) expectTypeOf(r.error.problem).toMatchTypeOf<{ title: string }>();
-      const problem = r.error.problem as { title: string };
-      expect(problem.title).toBe("Unauthorized");
+    if (r.error) {
+      // 0 (network/abort) | 401 | 404 — 200 MUST NOT BE PRESENT
+      expectTypeOf(r.error.status).toEqualTypeOf<0 | 401 | 404>();
+
+      if (r.error.status === 401) {
+        expectTypeOf(r.error.problem).toEqualTypeOf<{ title: string; type: string }>();
+        expect(r.error.problem.title).toBe("Unauthorized");
+      }
+      if (r.error.status === 404) {
+        expectTypeOf(r.error.problem).toEqualTypeOf<{ title: string; detail?: string }>();
+      }
     }
+  });
+
+  test("POST body is strictly constrained to contract body schema", async () => {
+    const r = await api.users.create.post({ name: "Ada", email: "ada@example.org" });
+    expect(r.error).toBeNull();
+    if (!r.error) {
+      expectTypeOf(r.data).toEqualTypeOf<{ id: string; name: string; email: string }>();
+      expect(r.data.id).toBe("usr_1");
+    }
+  });
+
+  test("Method narrowing: GET routes only have .get(), POST routes only have .post()", () => {
+    // @ts-expect-error — hello.get is a GET route, cannot call .post()
+    void api.hello.get({ name: "Rafi" }).post;
+
+    // @ts-expect-error — users.create is a POST route, cannot call .get()
+    void api.users.create.get;
+
+    // @ts-expect-error — users.create body must have email
+    void api.users.create.post({ name: "Ada" });
   });
 
   test("network failure distinguishes status 0 kind network", async () => {
@@ -168,11 +212,6 @@ describe("treaty (unit-local, NOT runtime conformance)", () => {
     const r = await p;
     expect(r.error?.status).toBe(0);
     if (r.error && r.error.status === 0) expect(r.error.kind).toBe("abort");
-  });
-
-  test("post body is typed at the call site (runtime: bytes match)", async () => {
-    const r = await api.users.create({}).post({ name: "Ada", email: "ada@example.org" });
-    expect(r.error).toBeNull();
   });
 
   afterAll(() => unitServer.stop(true));

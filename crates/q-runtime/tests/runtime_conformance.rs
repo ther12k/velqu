@@ -1210,15 +1210,22 @@ fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
     let b64 = q_pack::base64_encode(&bytecode_bytes);
 
     pack.bundle_form = Some("module".to_string());
+    let endian = if cfg!(target_endian = "big") {
+        "big"
+    } else {
+        "little"
+    }
+    .to_string();
     pack.bundle_bytecode = Some(q_pack::BundleBytecode {
         quickjs: q_pack::ENGINE_VERSION.to_string(),
         binding: q_pack::ENGINE_BINDING.to_string(),
-        endianness: if cfg!(target_endian = "big") {
-            "big"
-        } else {
-            "little"
-        }
-        .to_string(),
+        endianness: endian.clone(),
+        target: Some(q_pack::BytecodeTarget {
+            arch: std::env::consts::ARCH.to_string(),
+            os: std::env::consts::OS.to_string(),
+            pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+            endianness: endian,
+        }),
         data: b64.clone(),
     });
     pack.integrity.bytecode_sha256 = Some(bc_sha);

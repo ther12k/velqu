@@ -9,7 +9,7 @@ milestone: M2
 
 ## Overview
 
-The `@q/treaty` package implements a type-safe client with object-like route
+The `@velqu/treaty` package implements a type-safe client with object-like route
 navigation, typed inputs, and status-narrowed failure values (TRT-001..006).
 
 ## Evidence & Verifications
@@ -26,7 +26,7 @@ navigation, typed inputs, and status-narrowed failure values (TRT-001..006).
 ## Usage Examples
 
 ```ts
-import { treaty } from "@q/treaty";
+import { treaty } from "@velqu/treaty";
 import type { Api } from "./dist/contract";
 
 const api = treaty<Api>({

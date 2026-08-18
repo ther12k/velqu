@@ -9,7 +9,7 @@ milestone: M0–M2
 
 | Check | Status | Notes |
 |---|---|---|
-| release builds for all | PASS | Rust `--release` (lto=thin, strip); Bun candidates run production JS (no dev mode); q-runtime stripped 4.6MB |
+| release builds for all | PASS | Rust `--release` (lto=thin, strip); Bun candidates run production JS (no dev mode); velqu-runtime stripped 4.6MB |
 | idiomatic framework implementation | PASS | Elysia uses t.Object schemas + guards (its own validation), raw-bun zero-dep idiomatic handlers, raw-rust minimal hyper service |
 | same payload and validation semantics | PASS | one frozen contract; single checker validates all candidates: 27/27 each (velqu 31/31 with exact problem checks) |
 | same status/body incl. byte order | PASS | exact-bytes assertions for C0–C4 bodies; user JSON key order fixed in every candidate |

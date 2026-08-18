@@ -431,22 +431,158 @@ export function diffContracts(current: Record<string, unknown>, lock: Record<str
   const out: DiffEntry[] = [];
   const cur = current.routes as Record<string, Record<string, unknown>>;
   const prev = lock.routes as Record<string, Record<string, unknown>>;
+
   for (const [id, route] of Object.entries(cur)) {
     if (!prev[id]) {
       out.push({ routeId: id, kind: "compatible", change: "route added" });
       continue;
     }
     const p = prev[id];
-    if (p.path !== route.path) out.push({ routeId: id, kind: "breaking", change: `path changed ${p.path} → ${route.path}` });
-    if (p.method !== route.method) out.push({ routeId: id, kind: "breaking", change: `method changed ${p.method} → ${route.method}` });
-    const prevStatuses = Object.keys((p.responses ?? {}) as Record<string, unknown>);
-    const curStatuses = Object.keys((route.responses ?? {}) as Record<string, unknown>);
-    for (const s of prevStatuses) if (!curStatuses.includes(s)) out.push({ routeId: id, kind: "breaking", change: `status ${s} removed` });
-    for (const s of curStatuses) if (!prevStatuses.includes(s)) out.push({ routeId: id, kind: "compatible", change: `status ${s} added` });
+    if (p.path !== route.path) {
+      out.push({ routeId: id, kind: "breaking", change: `path changed ${p.path} → ${route.path}` });
+    }
+    if (p.method !== route.method) {
+      out.push({ routeId: id, kind: "breaking", change: `method changed ${p.method} → ${route.method}` });
+    }
+
+    // Status codes diff
+    const prevResponses = (p.responses ?? {}) as Record<string, unknown>;
+    const curResponses = (route.responses ?? {}) as Record<string, unknown>;
+    const prevStatuses = Array.isArray(prevResponses) ? prevResponses : Object.keys(prevResponses);
+    const curStatuses = Array.isArray(curResponses) ? curResponses : Object.keys(curResponses);
+
+    for (const s of prevStatuses) {
+      if (!curStatuses.includes(s)) {
+        out.push({ routeId: id, kind: "breaking", change: `response status ${s} removed` });
+      }
+    }
+    for (const s of curStatuses) {
+      if (!prevStatuses.includes(s)) {
+        const is2xx = Number(s) >= 200 && Number(s) < 300;
+        out.push({
+          routeId: id,
+          kind: is2xx ? "compatible" : "policy-sensitive",
+          change: `response status ${s} added`,
+        });
+      }
+    }
+
+    // Security diff
     if ((p.security ?? null) !== (route.security ?? null)) {
-      out.push({ routeId: id, kind: "policy-sensitive", change: `security changed ${JSON.stringify(p.security ?? null)} → ${JSON.stringify(route.security ?? null)}` });
+      out.push({
+        routeId: id,
+        kind: "policy-sensitive",
+        change: `security changed ${JSON.stringify(p.security ?? null)} → ${JSON.stringify(route.security ?? null)}`,
+      });
+    }
+
+    // Input Schema Diff (params, query, body)
+    diffSchemaSection(id, "params", p.params as Record<string, unknown> | null, route.params as Record<string, unknown> | null, out, true);
+    diffSchemaSection(id, "query", p.query as Record<string, unknown> | null, route.query as Record<string, unknown> | null, out, true);
+    diffSchemaSection(id, "body", p.body as Record<string, unknown> | null, route.body as Record<string, unknown> | null, out, true);
+
+    // Response Schema Diff for common 2xx responses
+    if (!Array.isArray(prevResponses) && !Array.isArray(curResponses)) {
+      for (const s of curStatuses) {
+        if (prevStatuses.includes(s) && Number(s) >= 200 && Number(s) < 300) {
+          diffSchemaSection(
+            id,
+            `response.${s}`,
+            prevResponses[s] as Record<string, unknown> | null,
+            curResponses[s] as Record<string, unknown> | null,
+            out,
+            false,
+          );
+        }
+      }
     }
   }
-  for (const id of Object.keys(prev)) if (!cur[id]) out.push({ routeId: id, kind: "breaking", change: "route removed" });
+
+  for (const id of Object.keys(prev)) {
+    if (!cur[id]) {
+      out.push({ routeId: id, kind: "breaking", change: "route removed" });
+    }
+  }
   return out;
+}
+
+function diffSchemaSection(
+  routeId: string,
+  section: string,
+  prev: Record<string, unknown> | null,
+  cur: Record<string, unknown> | null,
+  out: DiffEntry[],
+  isInput: boolean,
+) {
+  if (!prev && !cur) return;
+  if (!prev && cur) {
+    const req = (cur.required as string[]) ?? [];
+    if (isInput && req.length > 0) {
+      out.push({ routeId, kind: "breaking", change: `${section}: added required schema with required fields [${req.join(", ")}]` });
+    } else {
+      out.push({ routeId, kind: "compatible", change: `${section}: schema added` });
+    }
+    return;
+  }
+  if (prev && !cur) {
+    out.push({ routeId, kind: isInput ? "compatible" : "breaking", change: `${section}: schema removed` });
+    return;
+  }
+  if (prev && cur) {
+    if (prev.kind !== cur.kind) {
+      out.push({ routeId, kind: "breaking", change: `${section}: type kind changed ${prev.kind} → ${cur.kind}` });
+      return;
+    }
+    if (prev.kind === "object" && cur.kind === "object") {
+      const prevProps = (prev.properties ?? {}) as Record<string, Record<string, unknown>>;
+      const curProps = (cur.properties ?? {}) as Record<string, Record<string, unknown>>;
+      const prevReq = new Set((prev.required as string[]) ?? []);
+      const curReq = new Set((cur.required as string[]) ?? []);
+
+      for (const [propName, curProp] of Object.entries(curProps)) {
+        if (!prevProps[propName]) {
+          const isRequired = curReq.has(propName);
+          if (isInput) {
+            out.push({
+              routeId,
+              kind: isRequired ? "breaking" : "compatible",
+              change: `${section}.${propName}: ${isRequired ? "required" : "optional"} field added to input`,
+            });
+          } else {
+            out.push({
+              routeId,
+              kind: "compatible",
+              change: `${section}.${propName}: field added to response`,
+            });
+          }
+        } else {
+          const prevProp = prevProps[propName];
+          if (prevProp.kind !== curProp.kind) {
+            out.push({
+              routeId,
+              kind: "breaking",
+              change: `${section}.${propName}: type changed ${prevProp.kind} → ${curProp.kind}`,
+            });
+          }
+          if (isInput && !prevReq.has(propName) && curReq.has(propName)) {
+            out.push({
+              routeId,
+              kind: "breaking",
+              change: `${section}.${propName}: optional input field became required`,
+            });
+          }
+        }
+      }
+
+      for (const propName of Object.keys(prevProps)) {
+        if (!curProps[propName]) {
+          if (isInput) {
+            out.push({ routeId, kind: "compatible", change: `${section}.${propName}: input field removed` });
+          } else {
+            out.push({ routeId, kind: "breaking", change: `${section}.${propName}: response field removed` });
+          }
+        }
+      }
+    }
+  }
 }

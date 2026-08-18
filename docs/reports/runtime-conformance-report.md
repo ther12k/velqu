@@ -25,7 +25,7 @@ compiled release binary over HTTP.
 | `q-bridge` | Opaque handle generation & counters | 4 | PASS |
 | `q-engine-quickjs` | Engine lifecycle, promises, cancel, timers, runaway-continuation interrupt, envelope regression | 14 | PASS |
 | `q-http` fuzz | Query/percent-decode robustness | 3 | PASS |
-| `q-runtime` integration | HTTP limits, source maps, shutdown, liveness, response-schema violation, bytecode pack | 10 | PASS |
+| `velqu-runtime` integration | HTTP limits, source maps, shutdown, liveness, response-schema violation, bytecode pack | 10 | PASS |
 | `q-bench-support` | Timer capability in multi-thread runtime | 2 | PASS |
 | **Rust Total** | | **57** | **PASS** |
 | `conformance/compiler` | Static AST extraction, traps, lock workflow | 7 | PASS |
