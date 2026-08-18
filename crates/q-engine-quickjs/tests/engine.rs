@@ -60,10 +60,12 @@ async function timer_route(ctx) {
   return { waited };
 }
 async function thrower(ctx) { throw new Error("secret-boom"); }
-async function undeclared_status(ctx) { return { status: 299, value: { nope: true } }; }
-async function declared_201(ctx) { return { status: 201, value: { id: "usr_1" } }; }
+async function undeclared_status(ctx) { return { __ok: true, status: 299, value: { nope: true } }; }
+async function declared_201(ctx) { return { __ok: true, status: 201, value: { id: "usr_1" } }; }
 async function problem_404(ctx) { return { __problem: true, problem: "not-found", status: 404, detail: "no such user" }; }
 async function infinite(ctx) { while (true) {} }
+async function spin_then(ctx) { return Promise.resolve().then(() => { while (true) {} }); }
+async function biz_status(ctx) { return { status: 200, value: "order-9", filled: false }; }
 async function native_body(ctx) { return { id: ctx.body.id, doubled: ctx.body.n * 2 }; }
 __velquRegister("js.text", js_text);
 __velquRegister("js.json", js_json);
@@ -77,6 +79,8 @@ __velquRegister("status.undeclared", undeclared_status);
 __velquRegister("status.declared", declared_201);
 __velquRegister("problem.notfound", problem_404);
 __velquRegister("loop.infinite", infinite);
+__velquRegister("loop.spin_then", spin_then);
+__velquRegister("biz.status", biz_status);
 __velquRegister("body.native", native_body);
 "#;
 
@@ -94,6 +98,8 @@ fn expected_table() -> BTreeMap<String, String> {
         "status.declared",
         "problem.notfound",
         "loop.infinite",
+        "loop.spin_then",
+        "biz.status",
         "body.native",
     ]
     .iter()
@@ -105,7 +111,7 @@ fn expected_table() -> BTreeMap<String, String> {
 async fn load_verifies_handler_table_and_caches() {
     let (mut eng, _store) = engine();
     let stats = eng.load(BUNDLE, &expected_table()).expect("load");
-    assert_eq!(stats.handlers_registered, 13);
+    assert_eq!(stats.handlers_registered, 15);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -389,4 +395,47 @@ async fn run(eng: &mut QuickJsEngine, spec: InvocationSpec) -> Outcome {
         .await
         .expect("engine reply within timeout")
         .expect("reply channel open")
+}
+
+#[tokio::test]
+async fn runaway_promise_continuation_is_interruptible_and_worker_survives() {
+    let (mut eng, _store) = engine();
+    eng.load(BUNDLE, &expected_table()).unwrap();
+    // the loop runs INSIDE a .then() continuation — drain-time interrupt must kill it
+    let t0 = Instant::now();
+    let out = run(&mut eng, spec(20, "loop.spin_then", &[200], 200)).await;
+    assert!(
+        matches!(out, Outcome::Timeout),
+        "runaway continuation must hit the deadline, got {out:?}"
+    );
+    assert!(
+        t0.elapsed() < Duration::from_secs(3),
+        "interrupt must fire promptly, took {:?}",
+        t0.elapsed()
+    );
+    // worker survives and serves afterwards
+    let out = run(&mut eng, spec(21, "js.text", &[200], 1000)).await;
+    assert!(matches!(out, Outcome::Response { .. }));
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn business_object_with_status_and_value_fields_is_a_body_not_an_envelope() {
+    let (mut eng, _store) = engine();
+    eng.load(BUNDLE, &expected_table()).unwrap();
+    let out = run(&mut eng, spec(22, "biz.status", &[200], 1000)).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(t),
+            ..
+        } => {
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert_eq!(v["status"], 200, "status field is body data");
+            assert_eq!(v["value"], "order-9", "value field is body data");
+            assert_eq!(v["filled"], false);
+        }
+        o => panic!("expected 200 body response, got {o:?}"),
+    }
+    eng.shutdown();
 }

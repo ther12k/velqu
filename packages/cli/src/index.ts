@@ -18,8 +18,13 @@ async function main() {
     case "build": {
       const profile = args.get("profile") ?? "serverless";
       try {
-        const r = await build({ project, outDir: args.get("out") ?? undefined });
+        const r = await build({
+          project,
+          outDir: args.get("out") ?? undefined,
+          updateLock: args.has("update-lock"),
+        });
         console.log(`q build [${profile}]: ${r.routes} routes → ${r.outDir} in ${r.buildMs}ms`);
+        if (r.lockPreserved) console.log("  contract.lock.json: PRESERVED (diff against it; --update-lock to refresh)");
         for (const [k, v] of Object.entries(r.artifactBytes)) console.log(`  ${k}  ${v}B`);
       } catch (e) {
         if (e instanceof CompileError) {

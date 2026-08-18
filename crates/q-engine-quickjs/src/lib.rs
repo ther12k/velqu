@@ -23,6 +23,9 @@ pub struct QuickJsConfig {
     pub heap_limit_bytes: usize,
     pub stack_limit_bytes: usize,
     pub pending_op_cap: usize,
+    /// Watchdog for promise-continuation jobs when no invocation is pending
+    /// (drain-time interrupt arming). Resource robustness control, not a sandbox.
+    pub job_deadline_ms: u64,
 }
 
 impl Default for QuickJsConfig {
@@ -31,6 +34,7 @@ impl Default for QuickJsConfig {
             heap_limit_bytes: 32 << 20,
             stack_limit_bytes: 512 << 10,
             pending_op_cap: 1024,
+            job_deadline_ms: 5_000,
         }
     }
 }

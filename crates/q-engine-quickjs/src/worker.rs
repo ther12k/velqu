@@ -6,7 +6,7 @@
 //! before leaving the closure.
 
 use std::collections::{BTreeMap, HashMap};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -81,6 +81,9 @@ pub(crate) struct WorkerShared {
     pub engine_failures: AtomicU64,
     pub contract_violations: AtomicU64,
     pub heap_used: AtomicU64,
+    /// set by the interrupt handler when it actually fired; distinguishes a
+    /// deadline kill from a genuine error that merely happened near the deadline
+    pub interrupted: AtomicBool,
 }
 
 impl WorkerShared {
@@ -97,6 +100,7 @@ impl WorkerShared {
             engine_failures: AtomicU64::new(0),
             contract_violations: AtomicU64::new(0),
             heap_used: AtomicU64::new(0),
+            interrupted: AtomicBool::new(false),
         }
     }
 
@@ -129,6 +133,10 @@ pub(crate) struct WorkerInner {
     last_error: Arc<Mutex<Option<String>>>,
     sync_deadline: Arc<Mutex<Option<Instant>>>,
     ops: Arc<OpRegistry>,
+    /// in-flight invocations awaiting promise settlement
+    pending: BTreeMap<u64, PendingInvocation>,
+    /// watchdog for drain-time jobs when nothing is pending
+    job_deadline: Duration,
 }
 
 thread_local! {
@@ -153,9 +161,13 @@ impl WorkerInner {
         let sync_deadline = Arc::new(Mutex::new(None::<Instant>));
         {
             let deadline = Arc::clone(&sync_deadline);
+            let fired = Arc::clone(&shared);
             rt.set_interrupt_handler(Some(Box::new(move || {
-                let dl = deadline.lock().unwrap();
-                matches!(*dl, Some(d) if d <= Instant::now())
+                let hit = matches!(*deadline.lock().unwrap(), Some(d) if d <= Instant::now());
+                if hit {
+                    fired.interrupted.store(true, Ordering::SeqCst);
+                }
+                hit
             })));
         }
         let ctx = Context::full(&rt).map_err(|e| format!("quickjs context: {e}"))?;
@@ -183,6 +195,8 @@ impl WorkerInner {
             last_error,
             sync_deadline,
             ops,
+            pending: BTreeMap::new(),
+            job_deadline: Duration::from_millis(config.job_deadline_ms),
         })
     }
 
@@ -192,20 +206,19 @@ impl WorkerInner {
         tx: std::sync::mpsc::Sender<WorkerMsg>,
     ) {
         WORKER_TX.with(|c| *c.borrow_mut() = Some(tx));
-        let mut pending: BTreeMap<u64, PendingInvocation> = BTreeMap::new();
         loop {
-            let next_deadline = pending.values().map(|p| p.spec.deadline).min();
+            let next_deadline = self.pending.values().map(|p| p.spec.deadline).min();
             let msg = match next_deadline {
                 Some(dl) => {
                     let now = Instant::now();
                     if dl <= now {
-                        self.expire_timeouts(&mut pending);
+                        self.expire_timeouts();
                         continue;
                     }
                     match rx.recv_timeout(dl - now) {
                         Ok(m) => m,
                         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                            self.expire_timeouts(&mut pending);
+                            self.expire_timeouts();
                             continue;
                         }
                         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
@@ -225,19 +238,19 @@ impl WorkerInner {
                     let _ = reply.send(self.load(&bundle, &expected));
                 }
                 WorkerMsg::Invoke(job) => {
-                    self.begin_invocation(*job, &mut pending);
+                    self.begin_invocation(*job);
                     self.drain_jobs();
-                    self.finish_resolved(&mut pending);
+                    self.finish_resolved();
                 }
                 WorkerMsg::Cancel { id } => {
-                    self.cancel_invocation(id, &mut pending);
+                    self.cancel_invocation(id);
                     self.drain_jobs();
-                    self.finish_resolved(&mut pending);
+                    self.finish_resolved();
                 }
                 WorkerMsg::TimerFired { op_id, result } => {
                     self.complete_timer(op_id, result);
                     self.drain_jobs();
-                    self.finish_resolved(&mut pending);
+                    self.finish_resolved();
                 }
                 WorkerMsg::Shutdown => break,
             }
@@ -247,9 +260,9 @@ impl WorkerInner {
             );
         }
         // deterministic cleanup: reject outstanding work so continuations unwind
-        let ids: Vec<u64> = pending.keys().copied().collect();
+        let ids: Vec<u64> = self.pending.keys().copied().collect();
         for id in ids {
-            self.cancel_invocation(id, &mut pending);
+            self.cancel_invocation(id);
             self.drain_jobs();
         }
         self.ops.ops.lock().unwrap().clear();
@@ -310,8 +323,9 @@ impl WorkerInner {
         })
     }
 
-    fn begin_invocation(&mut self, job: InvokeJob, pending: &mut BTreeMap<u64, PendingInvocation>) {
+    fn begin_invocation(&mut self, job: InvokeJob) {
         let InvokeJob { spec, reply } = job;
+        self.shared.interrupted.store(false, Ordering::SeqCst);
         self.shared.invocations.fetch_add(1, Ordering::Relaxed);
         if spec.policy_key.is_some() {
             self.shared.policy_calls.fetch_add(1, Ordering::Relaxed);
@@ -364,9 +378,9 @@ impl WorkerInner {
         let Some(reply) = reply else { return }; // cancelled before start
         match step {
             Step::Failed(o) => {
-                // an engine failure whose deadline already passed is a timeout:
-                // the interrupt handler is what broke the runaway execution
-                let o = if spec.deadline <= Instant::now() {
+                // only a CONFIRMED interrupt (flag set by the handler) maps to
+                // Timeout; a genuine error near the deadline stays an error
+                let o = if self.shared.interrupted.swap(false, Ordering::SeqCst) {
                     self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
                     Outcome::Timeout
                 } else {
@@ -387,7 +401,7 @@ impl WorkerInner {
                 let _ = reply.send(outcome);
             }
             Step::Watched => {
-                pending.insert(
+                self.pending.insert(
                     spec.id,
                     PendingInvocation {
                         spec,
@@ -423,8 +437,8 @@ impl WorkerInner {
         });
     }
 
-    fn cancel_invocation(&mut self, id: u64, pending: &mut BTreeMap<u64, PendingInvocation>) {
-        let Some(mut p) = pending.remove(&id) else {
+    fn cancel_invocation(&mut self, id: u64) {
+        let Some(mut p) = self.pending.remove(&id) else {
             return;
         };
         self.shared.cancelled.fetch_add(1, Ordering::Relaxed);
@@ -448,15 +462,16 @@ impl WorkerInner {
         }
     }
 
-    fn expire_timeouts(&mut self, pending: &mut BTreeMap<u64, PendingInvocation>) {
+    fn expire_timeouts(&mut self) {
         let now = Instant::now();
-        let due: Vec<u64> = pending
+        let due: Vec<u64> = self
+            .pending
             .values()
             .filter(|p| p.spec.deadline <= now)
             .map(|p| p.spec.id)
             .collect();
         for id in due {
-            let Some(mut p) = pending.remove(&id) else {
+            let Some(mut p) = self.pending.remove(&id) else {
                 continue;
             };
             self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
@@ -470,7 +485,20 @@ impl WorkerInner {
 
     fn drain_jobs(&mut self) {
         while self.rt.is_job_pending() {
-            match self.rt.execute_pending_job() {
+            // Promise continuations (then/catch/timer reactions) execute HERE.
+            // Arm the interrupt with the nearest pending invocation deadline —
+            // or a job watchdog when nothing is pending — so a runaway loop in
+            // a continuation is interruptible exactly like the sync call path.
+            let deadline = self
+                .pending
+                .values()
+                .map(|p| p.spec.deadline)
+                .min()
+                .unwrap_or_else(|| Instant::now() + self.job_deadline);
+            *self.sync_deadline.lock().unwrap() = Some(deadline);
+            let result = self.rt.execute_pending_job();
+            *self.sync_deadline.lock().unwrap() = None;
+            match result {
                 Ok(false) => break,
                 Ok(true) => {}
                 Err(_job_exc) => {
@@ -484,7 +512,7 @@ impl WorkerInner {
     /// Collect invocations recorded by the prelude watch table, clearing them,
     /// and reply. All JS access stays inside `with` scopes; only 'static
     /// Outcomes leave them.
-    fn finish_resolved(&mut self, pending: &mut BTreeMap<u64, PendingInvocation>) {
+    fn finish_resolved(&mut self) {
         let settled_ids: Vec<u64> = self.ctx.with(|ctx| -> Vec<u64> {
             let table: Object = match ctx.globals().get::<_, Object>("__velquSettled") {
                 Ok(t) => t,
@@ -496,7 +524,7 @@ impl WorkerInner {
                 .collect()
         });
         for id in settled_ids {
-            let Some(p) = pending.remove(&id) else {
+            let Some(p) = self.pending.remove(&id) else {
                 // stale entry (cancelled invocation whose promise settled
                 // afterwards) — remove it from the table
                 self.ctx
@@ -529,8 +557,8 @@ impl WorkerInner {
                 if ok {
                     value_to_outcome(&ctx, &p.spec, &payload)
                 } else {
-                    // rejection whose deadline already passed = deadline kill
-                    if p.spec.deadline <= Instant::now() {
+                    // only a CONFIRMED interrupt is a deadline kill
+                    if self.shared.interrupted.swap(false, Ordering::SeqCst) {
                         return Outcome::Timeout;
                     }
                     let exc = payload
@@ -652,29 +680,18 @@ fn value_to_outcome<'js>(
         if is_problem {
             return problem_from_object(obj);
         }
-        // Result envelopes: status().value() → {__ok, status, value};
-        // bare {status, value} pairs (legacy/M1 fixtures) also count. Plain
-        // business objects that merely CONTAIN a "status" field (e.g. health
-        // checks) are bodies, not envelopes.
-        let is_ok_envelope: bool = obj.get("__ok").unwrap_or(false);
-        let has_value_prop: bool = obj
-            .get::<_, Option<rquickjs::Value>>("value")
-            .map(|v| v.is_some())
-            .unwrap_or(false);
-        let status_num: Option<f64> = obj
-            .get::<_, Option<rquickjs::Coerced<f64>>>("status")
-            .ok()
-            .flatten()
-            .map(|c| c.0);
-        let is_envelope = is_ok_envelope
-            || (has_value_prop
-                && status_num
-                    .map(|s| (100.0..600.0).contains(&s))
-                    .unwrap_or(false));
-        let explicit_status: Option<f64> = if is_envelope { status_num } else { None };
-        let status = match explicit_status {
-            Some(s) => s as u16,
-            None => spec.default_status,
+        // Result envelopes are TAGGED only: status().value() produces
+        // {__ok, status, value}, problems produce {__problem, ...}. A plain
+        // business object that happens to contain `status`/`value` fields is a
+        // BODY, never an envelope.
+        let is_envelope: bool = obj.get("__ok").unwrap_or(false);
+        let status = if is_envelope {
+            match obj.get::<_, Option<rquickjs::Coerced<f64>>>("status") {
+                Ok(Some(c)) => c.0 as u16,
+                _ => spec.default_status,
+            }
+        } else {
+            spec.default_status
         };
         if !spec.allowed_statuses.contains(&status) {
             return Outcome::ContractViolation(format!(
@@ -697,10 +714,13 @@ fn value_to_outcome<'js>(
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
-        let value_prop: Option<Value> = obj.get::<_, Option<Value>>("value").ok().flatten();
-        let body_value: Value = match value_prop {
-            Some(v) if !v.is_undefined() => v,
-            _ => value.clone(),
+        let body_value: Value = if is_envelope {
+            match obj.get::<_, Option<Value>>("value").ok().flatten() {
+                Some(v) if !v.is_undefined() => v,
+                _ => Value::new_undefined(ctx.clone()),
+            }
+        } else {
+            value.clone()
         };
         let body = body_from_value(ctx, spec.response_strategy, &body_value);
         return Outcome::Response {

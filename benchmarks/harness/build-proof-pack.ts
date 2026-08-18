@@ -140,7 +140,7 @@ async function users_create(ctx) {
   const id = "usr_" + (__nextUser++);
   const u = { id, name: ctx.body.name, email: ctx.body.email };
   users().set(id, u);
-  return { status: 201, value: u };
+  return { __ok: true, status: 201, value: u };
 }
 async function users_get(ctx) {
   const u = users().get(ctx.params.id);

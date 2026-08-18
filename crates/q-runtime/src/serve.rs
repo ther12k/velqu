@@ -281,6 +281,56 @@ async fn pipeline(
                 .unwrap_or(Outcome::Timeout);
 
             // client gone (connection dropped) → cancel invocation
+            // SCHEMA-003: declared response bodies are validated at runtime.
+            // Only the native strategy crosses as structured data; the
+            // engine-stringified path (js strategy) is disclosed per-route
+            // in the build report and skipped here.
+            if let Outcome::Response { status, body, .. } = &outcome {
+                if let Some(decl) = route.responses.get(&status.to_string()) {
+                    if let Some(key) = &decl.schema {
+                        if let Some(ir) = state.pack.schemas.get(key) {
+                            let candidate = match body {
+                                BodyOut::Json(v) => Some(v.clone()),
+                                BodyOut::Text(t) => {
+                                    // string responses validate against string-kind IR
+                                    Some(serde_json::Value::String(t.clone()))
+                                }
+                                _ => None,
+                            };
+                            if let Some(v) = candidate {
+                                if let Err(errors) =
+                                    q_schema_runtime::validate(ir, &v, Source::Body)
+                                {
+                                    let detail = format!(
+                                        "route {} response failed its declared schema ({}): {:?}",
+                                        route.id, key, errors
+                                    );
+                                    eprintln!(
+                                        "{}",
+                                        serde_json::json!({
+                                            "level":"error","event":"contract.violation.response",
+                                            "requestId": ctx.request_id, "routeId": route.id, "detail": detail,
+                                        })
+                                    );
+                                    let problem = problems::body(
+                                        "internal",
+                                        None,
+                                        None,
+                                        &[],
+                                        &ctx.request_id,
+                                    );
+                                    let mapped = (
+                                        Ok(json_response(500, &problem)),
+                                        route_id.clone(),
+                                        "engine.response-validation",
+                                    );
+                                    return mapped;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             let mapped = match outcome {
                 Outcome::Response {
                     status,

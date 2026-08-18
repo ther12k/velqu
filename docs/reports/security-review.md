@@ -27,8 +27,21 @@ trust, handle lifetime, secrets redaction, input limits, and capability boundari
 - Exactly one `unsafe` block in the workspace: `crates/q-engine-quickjs/src/worker.rs:784` (`copy_nonoverlapping` to pre-allocated Uint8Array).
 - All JS values are confined to `ctx.with` blocks on a single dedicated OS thread; only Send-safe `'static` Rust types cross the worker channel.
 
-## External Parsers
+## External Parsers — property-fuzz coverage
 
 - Schema regex matching uses `regex` crate in Rust, executed safely within bounded length constraints.
 - HTTP header parsing uses `httparse` via `hyper`.
 - JSON parsing uses `serde_json` with depth and length bounds.
+
+Property-based robustness tests run in every `cargo test` invocation
+(deterministic PRNG, no external dependency):
+
+| Parser | Test | Iterations | Result |
+|---|---|---:|---|
+| Application pack JSON + integrity | `q-pack` `fuzz_pack.rs` (random bytes, single-byte mutation of a valid pack) | 448 + 256 | PASS — never panics; >200/256 single-byte flips rejected by integrity |
+| Query parser + percent-decoder | `q-http` `fuzz_parsers.rs` | 40,000 | PASS — never panics; always returns UTF-8; semantics invariants hold |
+| Schema IR validator | `q-schema-runtime` `fuzz_validator.rs` (arbitrary JSON vs every IR kind, both sources) | 40,000 | PASS — deterministic classification, never panics |
+
+CI (`.github/workflows/verify.yml`) runs `./scripts/verify` on
+x86_64 and aarch64 Linux plus a fast OKF-only job. cargo-fuzz/ASan/TSan
+coverage remains an open hardening item (disclosed, not claimed).

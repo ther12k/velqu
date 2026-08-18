@@ -427,7 +427,7 @@ async function users_create(ctx) {
   const id = "usr_" + (__nextUser++);
   const u = { id, name: ctx.body.name, email: ctx.body.email };
   users().set(id, u);
-  return { status: 201, value: u };
+  return { __ok: true, status: 201, value: u };
 }
 async function users_get(ctx) {
   const u = users().get(ctx.params.id);
@@ -1075,4 +1075,103 @@ fn wait_tcp(port: u16, deadline: Duration) {
         }
         std::thread::sleep(Duration::from_millis(5));
     }
+}
+
+#[test]
+fn response_schema_violation_is_a_controlled_500() {
+    // handler returns a shape that does NOT match its declared response schema
+    let bundle = r#"
+async function bad_shape(ctx) { return { wrong: true }; }
+__velquRegister("bad.shape", bad_shape);
+"#;
+    let dir = temp_dir("respval");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.handler_table =
+        std::collections::BTreeMap::from([("bad.shape".to_string(), "bad.shape".to_string())]);
+    let route = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let mut r = pack.routes[route].clone();
+    r.id = "bad.shape".into();
+    r.handler = "bad.shape".into();
+    r.policy = None;
+    r.responses = {
+        let mut m = std::collections::BTreeMap::new();
+        m.insert(
+            "200".to_string(),
+            q_pack::ResponseDecl {
+                schema: Some("sch:bad.200".to_string()),
+                strategy: q_pack::Strategy::Native,
+                problem: None,
+            },
+        );
+        m
+    };
+    pack.routes = vec![r];
+    pack.policies.clear();
+    pack.schemas.insert(
+        "sch:bad.200".to_string(),
+        q_schema_runtime::SchemaIr::Object {
+            properties: std::collections::BTreeMap::from([(
+                "expected".to_string(),
+                Box::new(q_schema_runtime::SchemaIr::String {
+                    min_length: Some(1),
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                }),
+            )]),
+            required: vec!["expected".into()],
+        },
+    );
+    {
+        use sha2::{Digest, Sha256};
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("respval.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+    let r = http(port, "GET /users/usr_1 HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(
+        r.status,
+        500,
+        "schema-violating response must be a 500, got {}: {}",
+        r.status,
+        r.text()
+    );
+    assert!(r.text().contains("\"status\":500"));
+    assert!(
+        !r.text().contains("wrong"),
+        "violation detail must not leak"
+    );
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("contract.violation.response"),
+        "internal log must carry the response contract violation: {err}"
+    );
 }

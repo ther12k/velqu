@@ -126,6 +126,9 @@ export function schemaRegistry(app: ExtractedApp): Record<string, unknown> {
     put(`sch:${r.id}.params`, r.paramsIr);
     put(`sch:${r.id}.query`, r.queryIr);
     put(`sch:${r.id}.body`, r.bodyIr);
+    for (const [status, decl] of Object.entries(r.responses)) {
+      if (decl.ir && !decl.problem) put(`sch:${r.id}.${status}`, decl.ir);
+    }
   }
   return reg;
 }
@@ -190,7 +193,14 @@ export function buildPack(
       : null,
     headers: null,
     responses: Object.fromEntries(
-      Object.entries(r.responses).map(([k, v]) => [k, { schema: null, strategy: v.strategy, problem: v.problem ?? null }]),
+      Object.entries(r.responses).map(([k, v]) => [
+        k,
+        {
+          schema: v.ir && !v.problem ? `sch:${r.id}.${k}` : null,
+          strategy: v.strategy,
+          problem: v.problem ?? null,
+        },
+      ]),
     ),
     validationStrategy: "native",
     nativeLiveness: r.liveness,
@@ -288,13 +298,11 @@ export function contractDts(app: ExtractedApp, contractHash: string): string {
     `export interface Api {`,
   ];
   for (const r of app.routes) {
-    const respTypes = Object.entries(r.responses).map(([status]) => {
-      if (status === "422") return `{ errors: { path: string; code: string; message: string }[]; title: string }`;
-      if (status === "401") return `{ title: string }`;
-      if (status === "404") return `{ title: string }`;
-      return "{}";
-    });
-    const respTs = Object.entries(r.responses).map(([status], i) => `  ${status}: ${respTypes[i] === "{}" ? successTypeOf(r) : respTypes[i]}`);
+    const respTs = Object.entries(r.responses).map(([status, decl]) => {
+      if (decl.problem) return problemTypeOf(status);
+      if (decl.ir) return tsTypeOfIr(decl.ir);
+      return "Record<string, unknown>";
+    }).map((t, i) => `  ${Object.keys(r.responses)[i]}: ${t}`);
     lines.push(
       `  "${r.id}": RouteContract<`,
       `    "${r.path}",`,
@@ -311,10 +319,9 @@ export function contractDts(app: ExtractedApp, contractHash: string): string {
   return lines.join("\n");
 }
 
-function successTypeOf(r: RouteInfo): string {
-  // success (2xx) bodies: derive from response schema? we didn't store success IR;
-  // use the response map's first 2xx schema via route extraction (params-style IR not kept)
-  return "Record<string, unknown>";
+function problemTypeOf(status: string): string {
+  if (status === "422") return `{ errors: { path: string; code: string; message: string }[]; title: string }`;
+  return `{ title: string }`;
 }
 
 export function openapiFor(app: ExtractedApp): Record<string, unknown> {
@@ -364,7 +371,10 @@ export function openapiFor(app: ExtractedApp): Record<string, unknown> {
           status,
           {
             description: decl.problem ? `problem: ${decl.problem}` : "success",
-            content: decl.problem ? undefined : { "application/json": {} },
+            content:
+              decl.ir && !decl.problem
+                ? { "application/json": { schema: irToSchema(decl.ir, `${r.id}.resp${status}`) } }
+                : undefined,
           },
         ]),
       ),

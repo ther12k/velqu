@@ -352,6 +352,84 @@ pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
+/// Test-support pack used by the fuzz integration test (deterministic,
+/// integrity-hashed). Not part of the public API contract.
+#[doc(hidden)]
+pub fn minimal_pack_public() -> QPack {
+    use sha2::{Digest, Sha256};
+    let route = RouteEntry {
+        id: "health.live".into(),
+        module_id: "health".into(),
+        method: "GET".into(),
+        path: "/health/live".into(),
+        path_segments: vec![
+            PathSegment {
+                kind: SegKind::Static,
+                value: "health".into(),
+            },
+            PathSegment {
+                kind: SegKind::Static,
+                value: "live".into(),
+            },
+        ],
+        handler: "health.live".into(),
+        policy: None,
+        params: None,
+        query: None,
+        body: None,
+        headers: None,
+        responses: BTreeMap::from([(
+            "200".into(),
+            ResponseDecl {
+                schema: None,
+                strategy: Strategy::Js,
+                problem: None,
+            },
+        )]),
+        validation_strategy: Strategy::Native,
+        native_liveness: None,
+        security: vec![],
+        capabilities: vec![],
+        deadline_ms: 5000,
+    };
+    let mut pack = QPack {
+        format_version: PACK_FORMAT_VERSION,
+        kind: "velqu.qpack".into(),
+        runtime_abi: RUNTIME_ABI,
+        engine: EngineRef {
+            name: ENGINE_NAME.into(),
+            version: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+        },
+        schema_ir_version: SCHEMA_IR_VERSION,
+        contract_version: CONTRACT_VERSION,
+        contract_hash: String::new(),
+        built_by: BuiltBy {
+            compiler: "0.1.0".into(),
+            typescript: String::new(),
+            bun: String::new(),
+        },
+        app_id: "fuzz".into(),
+        modules: vec!["health".into()],
+        entry: "app.js".into(),
+        bundle: "function h(){} __velquRegister('health.live', h);".into(),
+        source_map: None,
+        routes: vec![route],
+        schemas: BTreeMap::new(),
+        policies: BTreeMap::new(),
+        capabilities: vec![],
+        handler_table: BTreeMap::from([("health.live".into(), "health.live".into())]),
+        integrity: Integrity {
+            algorithm: "sha256".into(),
+            bundle_sha256: String::new(),
+            routes_sha256: String::new(),
+        },
+    };
+    pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
+    pack.integrity.routes_sha256 = hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+    pack
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

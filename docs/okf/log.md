@@ -34,3 +34,10 @@
 - **M2 PASS** — static compiler (AST extraction, zero app dry-run; trap/collision/import/dynamic diagnostics all source-located), deterministic pack + 9 artifacts (qpack, manifests, contract.json/.d.ts, openapi.json 3.1, lock, build-report), `q` CLI (build/inspect/contract diff), proof app (9 frozen-contract routes incl. native liveness detection), Treaty runtime-local + unit-local modes, 21 TS conformance tests + 45 Rust tests green via `scripts/verify`.
 - **Evidence** — warm suite 16 cells 0 errors (velqu C2 116k req/s p50 85μs); cold suite re-run 0 failures; type-scale negative checks caught at 100/500/1000.
 - **Handoff** — 14 evidence reports + live traceability (44/44 PASS) + final archive with SHA-256. Stop point: M2; no M3/alpha work started.
+
+## 2026-08-18 (post-M2 enhancement pass)
+
+- **Correctness** — drain-time interrupt arming (runaway `.then()` continuations now interruptible; worker survives); result envelopes restricted to tagged `{__ok}`/`{__problem}` (business objects with `status`/`value` fields are bodies); Timeout mapping requires a confirmed interrupt flag (genuine errors near deadlines are no longer masked).
+- **Contract depth** — response schemas now emitted end-to-end (pack registry, typed `contract.d.ts` success bodies, OpenAPI response content) and enforced at runtime with controlled 500 + `contract.violation.response` diagnostics.
+- **Lock workflow fixed** — `contract.lock.json` is written once and preserved across builds (`--update-lock` to refresh); `q contract diff` now detects real drift (test proves removal → breaking).
+- **Hardening** — property-fuzz suites for pack parser/mutation (tamper >200/256), query/percent-decode, and schema validator (40k cases each, no panics); CI workflow (x86_64 + aarch64) running `scripts/verify`.

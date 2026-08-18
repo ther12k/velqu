@@ -15,6 +15,8 @@ export interface BuildOptions {
   project: string;           // path to the app entry (app.ts) or its directory
   outDir?: string;           // default <project-dir>/../dist or ./dist
   sourceMap?: boolean;       // default true
+  /** rewrite contract.lock.json even if one exists (default: preserve) */
+  updateLock?: boolean;
 }
 
 export interface BuildResult {
@@ -23,6 +25,8 @@ export interface BuildResult {
   routes: number;
   buildMs: number;
   artifactBytes: Record<string, number>;
+  /** true when the contract lock was kept from a previous build */
+  lockPreserved: boolean;
 }
 
 export async function build(opts: BuildOptions): Promise<BuildResult> {
@@ -123,6 +127,13 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     versions: (pack as { engine: unknown; runtimeAbi: number }).engine,
   };
 
+  // The lock is a FROZEN baseline for semantic diff — it must NOT follow
+  // every build, or `q contract diff` would always report "no changes".
+  // First build writes it; later builds preserve it unless updateLock.
+  const lockPath = join(outDir, "contract.lock.json");
+  const lockExists = existsSync(lockPath);
+  const writeLock = !lockExists || (opts.updateLock ?? false);
+
   const files: Record<string, string> = {
     "app.qpack": packJson,
     "route-manifest.json": JSON.stringify(routeManifest, null, 2),
@@ -131,7 +142,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     "contract.json": JSON.stringify(contract, null, 2),
     "contract.d.ts": dts,
     "openapi.json": JSON.stringify(openapi, null, 2),
-    "contract.lock.json": JSON.stringify(lock, null, 2),
+    ...(writeLock ? { "contract.lock.json": JSON.stringify(lock, null, 2) } : {}),
     "build-report.json": JSON.stringify(buildReport, null, 2),
   };
   const artifactBytes: Record<string, number> = {};
@@ -147,6 +158,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     routes: app.routes.length,
     buildMs: Math.round(performance.now() - t0),
     artifactBytes,
+    lockPreserved: lockExists && !writeLock,
   };
 }
 

@@ -10,7 +10,7 @@ export const jsText = route({
   id: "js.text",
   method: "GET",
   path: "/js-text",
-  response: { 200: s.object({}) },
+  response: { 200: s.string() },
   handle: async () => "plain",
 });
 

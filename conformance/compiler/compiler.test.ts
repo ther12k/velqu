@@ -4,8 +4,8 @@
  * deterministic rebuilds (COMP-003/COMP-009).
  */
 import { describe, expect, test } from "bun:test";
-import { build, CompileError } from "@q/compiler";
-import { readFileSync, rmSync } from "node:fs";
+import { build, contractDiff, CompileError } from "@q/compiler";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const TMP = "/tmp/velqu-conformance";
 
@@ -88,3 +88,30 @@ async function expectBuildFails(project: string, pattern: RegExp) {
     }
   }
 }
+
+describe("contract lock workflow (PR-006/SCHEMA-007)", () => {
+  test("lock is written once, preserved on rebuild, and diff detects drift", async () => {
+    const out = "/tmp/velqu-conformance/lock";
+    rmSync(out, { recursive: true, force: true });
+    // first build writes the lock
+    const b1 = await build({ project: "examples/proof/src/app.ts", outDir: out });
+    expect(b1.lockPreserved).toBe(false);
+    const lock1 = readFileSync(`${out}/contract.lock.json`, "utf8");
+    // second build PRESERVES it (byte-identical)
+    await new Promise((r) => setTimeout(r, 20));
+    const b2 = await build({ project: "examples/proof/src/app.ts", outDir: out });
+    expect(b2.lockPreserved).toBe(true);
+    expect(readFileSync(`${out}/contract.lock.json`, "utf8")).toBe(lock1);
+    // drift: remove a route from the CURRENT contract (as if the app changed)
+    const contract = JSON.parse(readFileSync(`${out}/contract.json`, "utf8"));
+    delete contract.routes["users.get"];
+    writeFileSync(`${out}/contract.json`, JSON.stringify(contract));
+    const diffs = contractDiff(out);
+    const removed = diffs.find((d) => d.routeId === "users.get" && d.kind === "breaking");
+    expect(removed).toBeDefined();
+    // update-lock refreshes the baseline
+    const b3 = await build({ project: "examples/proof/src/app.ts", outDir: out, updateLock: true });
+    expect(b3.lockPreserved).toBe(false);
+    expect(contractDiff(out).length).toBe(0);
+  });
+});

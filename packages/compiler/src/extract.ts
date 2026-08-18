@@ -37,7 +37,7 @@ export interface RouteInfo {
   paramsIr: Record<string, unknown> | null;
   queryIr: Record<string, unknown> | null;
   bodyIr: Record<string, unknown> | null;
-  responses: Record<string, { strategy: "native" | "js"; problem?: string }>;
+  responses: Record<string, { strategy: "native" | "js"; problem?: string; ir?: Record<string, unknown> }>;
   /** statically evaluable handler → native liveness (RUN-009) */
   liveness: { status: number; contentType: string; body: string } | null;
   capabilities: string[];
@@ -339,10 +339,9 @@ function routeFromCall(call: ts.CallExpression, file: string, moduleId: string, 
     if (!/^\d+$/.test(statusKey)) {
       throw new CompileError(`response key '${statusKey}' must be a numeric status`, nodeLoc(p, file));
     }
-    const ir = schemaFromNode(p.initializer, file);
     responses[statusKey] = {
       strategy: "native", // ADR-0015: native default; engine JS available per-route
-      problem: ir.kind === "string" && (ir as { format?: string }).format === undefined ? undefined : undefined,
+      ir: schemaFromNode(p.initializer, file),
     };
   }
   // problem-bearing statuses: policy-declared statuses get problem refs later
