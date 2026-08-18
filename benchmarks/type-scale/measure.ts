@@ -40,7 +40,7 @@ for (const n of Ns) {
   // negative check: a deliberately-wrong param type MUST produce a tsc error
   await Bun.write(
     `${dir}/negative.ts`,
-    `import type { ProofApi } from "./api-types";\nimport { treaty } from "@q/treaty";\n` +
+    `import type { ProofApi } from "./api-types";\nimport { treaty } from "@velqu/treaty";\n` +
       `const api = treaty<ProofApi>({ baseUrl: "http://x", contract: {} });\n` +
       // @ts-expect-error: id must be number
       `api.res7.get({ id: "not-a-number" });\n`,

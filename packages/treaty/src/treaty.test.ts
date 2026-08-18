@@ -5,10 +5,10 @@
  * (TRT-005): they do NOT prove native-runtime conformance.
  */
 import { afterAll, describe, expect, expectTypeOf, test } from "bun:test";
-import { defineApp, defineModule, definePolicy, route, status } from "@q/core";
-import { s } from "@q/schema";
+import { defineApp, defineModule, definePolicy, route, status } from "@velqu/core";
+import { s } from "@velqu/schema";
 import { treaty } from "./index";
-import type { RouteContract } from "@q/contract";
+import type { RouteContract } from "@velqu/contract";
 
 // ---------------------------------------------------------------- proof-shaped app
 

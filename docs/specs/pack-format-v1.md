@@ -161,7 +161,7 @@ copied into the engine.
 ## Runtime CLI contract
 
 ```text
-q-runtime --pack <app.qpack> --port <p> [--host 127.0.0.1] [--config <json>]
+velqu-runtime --pack <app.qpack> --port <p> [--host 127.0.0.1] [--config <json>]
 ```
 
 Limits (defaults, overridable by config): body 1 MiB, header 32 KiB, URI 8 KiB,

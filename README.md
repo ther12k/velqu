@@ -1,13 +1,14 @@
-# Velqu (working name; internal codename "Project Q")
+# VelquJS
 
-Velqu is a **cold-start-first TypeScript backend framework** with a Rust production
-host and a QuickJS-family application engine. This repository is the M0–M2
+VelquJS, or simply **Velqu**, is a cold-start-first TypeScript framework and
+runtime powered by Rust and QuickJS. This repository is the M0–M2
 feasibility implementation authorized by the OKF design bundle in
 [`docs/okf/`](docs/okf/README.md).
 
-> The name "Velqu" is a working name. Public product name, package scope,
-> repository, license, and governance are open owner decisions (see
-> [docs/open-decisions.md](docs/open-decisions.md)).
+> Naming (owner-decided 2026-08-18, ADR-0016): brand **Velqu**, descriptive
+> **VelquJS**, CLI `velqu`, packages `@velqu/*`, runtime binary
+> `velqu-runtime`. Remaining open owner decisions: repository, license,
+> governance (see [docs/open-decisions.md](docs/open-decisions.md)).
 
 ## What is here
 
@@ -38,9 +39,9 @@ bun run verify             # full verification (Rust + TypeScript + conformance)
 Build the proof application and run it under the Rust/QuickJS runtime:
 
 ```bash
-bun run q build --project examples/proof     # == q build (packages/cli)
+bun run velqu build --project examples/proof
 cargo build --release -p q-runtime
-./target/release/q-runtime --pack examples/proof/dist/app.qpack --port 3000
+./target/release/velqu-runtime --pack examples/proof/dist/app.qpack --port 3000
 ```
 
 Run the benchmark suite (matched candidates, fresh-process cold starts):

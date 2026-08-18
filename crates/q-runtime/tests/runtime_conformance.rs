@@ -476,7 +476,7 @@ struct Server {
 
 impl Server {
     fn start(pack_path: &std::path::Path, port: u16) -> Server {
-        let bin = env!("CARGO_BIN_EXE_q-runtime");
+        let bin = env!("CARGO_BIN_EXE_velqu-runtime");
         let mut child = Command::new(bin)
             .arg("--pack")
             .arg(pack_path)
@@ -818,7 +818,7 @@ fn tampered_pack_fails_before_ready() {
     let tampered_path = dir.join("tampered.qpack");
     std::fs::write(&tampered_path, serde_json::to_vec(&tampered).unwrap()).unwrap();
 
-    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
     let out = Command::new(bin)
         .arg("--pack")
         .arg(&tampered_path)
@@ -873,7 +873,7 @@ fn graceful_shutdown_exits_zero() {
     let dir = temp_dir("shutdown");
     let pack_path = write_pack(&dir);
     let port = free_port();
-    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
     let mut child = Command::new(bin)
         .arg("--pack")
         .arg(&pack_path)
@@ -962,7 +962,7 @@ fn source_mapped_exception_identifies_original_location() {
     std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
 
     let port = free_port();
-    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
     let mut child = Command::new(bin)
         .arg("--pack")
         .arg(&pack_path)
@@ -1040,7 +1040,7 @@ fn queue_limit_returns_503_when_saturated() {
     .unwrap();
 
     let port = free_port();
-    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
     let mut child = Command::new(bin)
         .arg("--pack")
         .arg(&pack_path)
@@ -1142,7 +1142,7 @@ __velquRegister("bad.shape", bad_shape);
     std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
 
     let port = free_port();
-    let bin = env!("CARGO_BIN_EXE_q-runtime");
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
     let mut child = Command::new(bin)
         .arg("--pack")
         .arg(&pack_path)

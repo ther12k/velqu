@@ -1,14 +1,14 @@
 {
-  "name": "@q/cli",
+  "name": "@velqu/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@q/compiler": "workspace:*"
+    "@velqu/compiler": "workspace:*"
   },
   "bin": {
-    "q": "./src/index.ts"
+    "velqu": "./src/index.ts"
   }
 }

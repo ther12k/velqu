@@ -1,4 +1,4 @@
-import type { RouteContract } from "@q/contract";
+import type { RouteContract } from "@velqu/contract";
 
 export interface ProofApi {
   "res0.get": RouteContract<"/res0/item/:id", "GET", { id: number }, Record<string, never>, undefined, { 200: { id: number; n: number } }>;

@@ -1,5 +1,5 @@
-import { defineApp, defineModule, route } from "@q/core";
-import { s } from "@q/schema";
+import { defineApp, defineModule, route } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 const r0 = route({
   id: "res0.get",

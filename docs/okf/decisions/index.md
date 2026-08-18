@@ -17,3 +17,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 13. [ADR-0013 — Rust-Only Host for Initial Milestones](0013-rust-only-initially.md)
 14. [ADR-0014 — Version-Pinned Trusted Bytecode](0014-version-pinned-bytecode.md)
 15. [ADR-0015 — Native JSON as Default Input Strategy](0015-native-json-default.md) (accepted during implementation; measured evidence)
+16. [ADR-0016 — Product Naming: Velqu / VelquJS](0016-naming-velqu.md) (owner decision)

@@ -1,5 +1,5 @@
 /**
- * @q/treaty — Treaty client: object-like route navigation, typed inputs,
+ * @velqu/treaty — Treaty client: object-like route navigation, typed inputs,
  * status-narrowed non-throwing results (TRT-001..003).
  */
 

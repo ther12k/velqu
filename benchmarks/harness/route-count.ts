@@ -16,7 +16,7 @@ const CANDS: Cand[] = [
   {
     id: "velqu",
     spawn: (port, n) => ({
-      cmd: `${ROOT}/target/release/q-runtime`,
+      cmd: `${ROOT}/target/release/velqu-runtime`,
       args: ["--pack", `${ROOT}/benchmarks/raw/packs/app-${n}.qpack`, "--port", String(port)],
       env: {},
     }),

@@ -1,5 +1,5 @@
-import { route } from "@q/core";
-import { s } from "@q/schema";
+import { route } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 /** C0: statically evaluable handler → compiler emits native liveness. */
 export const live = route({

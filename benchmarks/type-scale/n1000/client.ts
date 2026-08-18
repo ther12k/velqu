@@ -1,4 +1,4 @@
-import { treaty } from "@q/treaty";
+import { treaty } from "@velqu/treaty";
 import type { ProofApi } from "./api-types";
 
 const api = treaty<ProofApi>({ baseUrl: "http://localhost:9", contract: {

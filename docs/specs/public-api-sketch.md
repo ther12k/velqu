@@ -1,13 +1,13 @@
 # Velqu Public API Sketch — frozen for M0/M2
 
 Status: M0 type-spike target shape. The compiler (M2) must accept exactly these
-forms statically. `@q/*` is the internal placeholder scope (owner decision open).
+forms statically. Packages are `@velqu/*` (owner-decided; ADR-0016). Historical `@q/*` references in earlier docs refer to the same packages.
 
-## Authoring (`@q/core` + `@q/schema`)
+## Authoring (`@velqu/core` + `@velqu/schema`)
 
 ```ts
-import { defineApp, defineModule, route, definePolicy, defineService, status } from "@q/core";
-import { s } from "@q/schema";
+import { defineApp, defineModule, route, definePolicy, defineService, status } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 // schema subset mirrors Schema IR v1 (docs/specs/pack-format-v1.md)
 const CreateUser = s.object({
@@ -62,11 +62,11 @@ status(422).problem("validation", { errors: [{ path: "name", code: "maxLength", 
 Handler return type = union over declared `response` keys; undeclared status is
 a compile error and a controlled runtime contract failure.
 
-## Treaty (`@q/treaty`)
+## Treaty (`@velqu/treaty`)
 
 ```ts
-import { treaty } from "@q/treaty";
-import type { Api } from "@q/contract-source";      // source mode
+import { treaty } from "@velqu/treaty";
+import type { Api } from "@velqu/contract-source";      // source mode
 // or: import type { Api } from "./dist/contract";  // published mode (generated .d.ts)
 
 const api = treaty<Api>({ baseUrl: "http://localhost:3000" });
@@ -85,11 +85,11 @@ if (r.error) {
 - Query/headers passed in first argument alongside path params.
 - Result: `{ data, error: null } | { data: null, error: { status, problem } | { status: 0, kind: "network" | "abort" } }`.
 
-## Local test adapters (`@q/testing`)
+## Local test adapters (`@velqu/testing`)
 
 ```ts
-import { unitTreaty } from "@q/testing";     // executes handlers in-process (Bun) — labeled unit-local
-import { runtimeTreaty } from "@q/testing";  // spawns the actual q-runtime binary — labeled runtime-local
+import { unitTreaty } from "@velqu/testing";     // executes handlers in-process (Bun) — labeled unit-local
+import { runtimeTreaty } from "@velqu/testing";  // spawns the actual q-runtime binary — labeled runtime-local
 ```
 
 TRT-005: unit-local results are never reported as native-runtime conformance.

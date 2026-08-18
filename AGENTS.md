@@ -24,7 +24,7 @@ Primary sources: `docs/okf/MASTER_AGENT_PROMPT.md`, `docs/okf/delivery/prd.md`,
 12. No performance claim without matched, reproducible evidence (p50/p95/p99,
     raw samples retained).
 13. No public name/license/repository/marketing decisions — those are owner
-    decisions tracked in `docs/open-decisions.md`.
+    decisions tracked in `docs/open-decisions.md`. Product naming is decided: Velqu/VelquJS, `@velqu/*`, `velqu` CLI (ADR-0016).
 14. Same-process QuickJS runs trusted application code only; never describe it
     as a hostile-code sandbox.
 15. Do not build alpha-scope features (WebSockets, SSE, Node compat, databases,

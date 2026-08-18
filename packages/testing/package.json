@@ -1,12 +1,12 @@
 {
-  "name": "@q/testing",
+  "name": "@velqu/testing",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@q/treaty": "workspace:*",
-    "@q/core": "workspace:*"
+    "@velqu/treaty": "workspace:*",
+    "@velqu/core": "workspace:*"
   }
 }

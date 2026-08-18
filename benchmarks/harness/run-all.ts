@@ -71,8 +71,8 @@ async function main() {
     },
     artifacts: {
       qRuntimeRelease: {
-        path: "target/release/q-runtime",
-        sha256: await fileHash("target/release/q-runtime"),
+        path: "target/release/velqu-runtime",
+        sha256: await fileHash("target/release/velqu-runtime"),
       },
       proofPack: {
         path: "examples/proof/dist/app.qpack",

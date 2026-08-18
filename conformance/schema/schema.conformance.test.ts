@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { s, type Schema, type Infer } from "@q/schema";
+import { s, type Schema, type Infer } from "@velqu/schema";
 
 describe("Schema IR v1 builders (SCHEMA-001)", () => {
   test("string schema options and IR structure", () => {

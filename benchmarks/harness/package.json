@@ -1,5 +1,5 @@
 {
-  "name": "@q/bench-harness",
+  "name": "@velqu/bench-harness",
   "private": true,
   "version": "0.1.0"
 }

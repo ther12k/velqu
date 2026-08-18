@@ -912,26 +912,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "q-runtime"
-version = "0.1.0"
-dependencies = [
- "clap",
- "libc",
- "q-bridge",
- "q-engine",
- "q-engine-quickjs",
- "q-http",
- "q-pack",
- "q-router",
- "q-schema-runtime",
- "serde",
- "serde_json",
- "sha2",
- "sourcemap",
- "tokio",
-]
-
-[[package]]
 name = "q-schema-runtime"
 version = "0.1.0"
 dependencies = [
@@ -1373,6 +1353,26 @@ checksum = "2cefc03fd367c0c6d4305de1b312cf00248c4114f4a0418ce6a6af769e3b0bd9"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "velqu-runtime"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "libc",
+ "q-bridge",
+ "q-engine",
+ "q-engine-quickjs",
+ "q-http",
+ "q-pack",
+ "q-router",
+ "q-schema-runtime",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sourcemap",
+ "tokio",
 ]
 
 [[package]]

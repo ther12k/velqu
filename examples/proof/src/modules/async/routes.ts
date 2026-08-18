@@ -1,5 +1,5 @@
-import { route } from "@q/core";
-import { s } from "@q/schema";
+import { route } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 /** C5: native timer capability through a JS promise. */
 export const timer = route({

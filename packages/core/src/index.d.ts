@@ -1,10 +1,10 @@
 /**
- * @q/core — static authoring primitives. Pure data constructors: no side
+ * @velqu/core — static authoring primitives. Pure data constructors: no side
  * effects, no I/O, no server runtime code. The compiler reads the literal
  * arguments of these calls WITHOUT executing handlers or service factories
  * (COMP-002); `handle`/`check`/factories never run at build time.
  */
-import type { Schema } from "@q/schema";
+import type { Schema } from "@velqu/schema";
 export type ProblemId = "validation" | "unauthorized" | "not-found" | "method" | "body" | "limit" | "timeout" | "internal";
 export interface FieldIssue {
     readonly path: string;

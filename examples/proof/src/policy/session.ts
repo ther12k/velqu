@@ -1,4 +1,4 @@
-import { definePolicy, status } from "@q/core";
+import { definePolicy, status } from "@velqu/core";
 
 export interface Session {
   userId: string;

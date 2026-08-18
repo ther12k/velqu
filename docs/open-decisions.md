@@ -10,8 +10,8 @@ status: active
 
 | ID | Decision | Status | Notes |
 |---|---|---|---|
-| OD-001 | Final public product name | OPEN | "Velqu" is the owner-supplied working name for this implementation; bundle codename "Project Q" retained in historical docs |
-| OD-002 | Public package scope/import path | OPEN | internal placeholder `@q/*` |
+| OD-001 | Final public product name | **DECIDED (2026-08-18)** | Velqu (brand) / VelquJS (descriptive) — ADR-0016 |
+| OD-002 | Public package scope/import path | **DECIDED (2026-08-18)** | `@velqu/*`, CLI `velqu`, runtime binary `velqu-runtime` — ADR-0016 |
 | OD-003 | Public repository/organization | OPEN | no remote created |
 | OD-004 | License | OPEN | crates carry `UNLICENSED-BEFORE-OWNER-DECISION` |
 | OD-005 | First platform support promise | OPEN | only Linux x86_64 tested here |

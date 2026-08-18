@@ -7,9 +7,9 @@
  */
 
 import { describe, expect, expectTypeOf, test } from "bun:test";
-import { treaty } from "@q/treaty";
-import { runtimeTreaty, unitTreaty } from "@q/testing";
-import type { RouteContract } from "@q/contract";
+import { treaty } from "@velqu/treaty";
+import { runtimeTreaty, unitTreaty } from "@velqu/testing";
+import type { RouteContract } from "@velqu/contract";
 import { readFileSync } from "node:fs";
 
 // ---------------------------------------------------------------- published Api type
@@ -32,8 +32,8 @@ const proofContract = {
 describe("Treaty client bundle isolation (TRT-004)", () => {
   test("packages/treaty contains zero imports of server/compiler runtime", () => {
     const treatySrc = readFileSync("packages/treaty/src/index.ts", "utf8");
-    expect(treatySrc).not.toContain("@q/core");
-    expect(treatySrc).not.toContain("@q/compiler");
+    expect(treatySrc).not.toContain("@velqu/core");
+    expect(treatySrc).not.toContain("@velqu/compiler");
     expect(treatySrc).not.toContain("bun:");
     expect(treatySrc).not.toContain("node:");
     expect(treatySrc).not.toContain("rquickjs");

@@ -1,9 +1,9 @@
 {
-  "name": "@q/proof-app",
+  "name": "@velqu/proof-app",
   "private": true,
   "version": "0.1.0",
   "dependencies": {
-    "@q/core": "workspace:*",
-    "@q/schema": "workspace:*"
+    "@velqu/core": "workspace:*",
+    "@velqu/schema": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
-import { route } from "@q/core";
-import { s } from "@q/schema";
+import { route } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 export const hello = route({
   id: "hello.get",

@@ -1,8 +1,8 @@
 /**
- * @q/cli — the `q` command: build / inspect / contract diff / dev-notes.
+ * @velqu/cli — the `velqu` command: build / inspect / contract diff / dev-notes.
  * (Dev server is P1; M2 provides build + inspection + diff per DX-006.)
  */
-import { build, contractDiff, CompileError } from "@q/compiler";
+import { build, contractDiff, CompileError } from "@velqu/compiler";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -23,7 +23,7 @@ async function main() {
           outDir: args.get("out") ?? undefined,
           updateLock: args.has("update-lock"),
         });
-        console.log(`q build [${profile}]: ${r.routes} routes → ${r.outDir} in ${r.buildMs}ms`);
+        console.log(`velqu build [${profile}]: ${r.routes} routes → ${r.outDir} in ${r.buildMs}ms`);
         if (r.lockPreserved) console.log("  contract.lock.json: PRESERVED (diff against it; --update-lock to refresh)");
         for (const [k, v] of Object.entries(r.artifactBytes)) console.log(`  ${k}  ${v}B`);
       } catch (e) {
@@ -71,7 +71,7 @@ async function main() {
         console.log("fallbacks:", report.strategies.fallbacks.length ? report.strategies.fallbacks : "none");
         for (const n of report.strategies.notes) console.log(`  ${n}`);
       } else {
-        console.error("usage: q inspect <routes|route <id>|capabilities|fallbacks>");
+        console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks>");
         process.exit(1);
       }
       break;
@@ -79,7 +79,7 @@ async function main() {
     case "contract": {
       const sub = rest[0];
       if (sub !== "diff") {
-        console.error("usage: q contract diff --against <contract.lock.json>");
+        console.error("usage: velqu contract diff --against <contract.lock.json>");
         process.exit(1);
       }
       const dist = args.get("dist") ?? distFor(project);
@@ -100,9 +100,9 @@ async function main() {
     default:
       console.log(`q — Velqu build & inspection CLI (M2 scope)
 usage:
-  q build --project <dir|entry> [--profile serverless] [--out <dir>]
-  q inspect routes|route <id>|capabilities|fallbacks [--dist <dir>]
-  q contract diff --against <contract.lock.json>`);
+  velqu build --project <dir|entry> [--profile serverless] [--out <dir>]
+  velqu inspect routes|route <id>|capabilities|fallbacks [--dist <dir>]
+  velqu contract diff --against <contract.lock.json>`);
       process.exit(cmd ? 1 : 0);
   }
 }

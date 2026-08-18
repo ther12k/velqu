@@ -1,4 +1,4 @@
-import { defineService } from "@q/core";
+import { defineService } from "@velqu/core";
 
 export interface User {
   id: string;

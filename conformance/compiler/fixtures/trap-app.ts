@@ -1,5 +1,5 @@
-import { route, defineApp, defineModule, defineService } from "@q/core";
-import { s } from "@q/schema";
+import { route, defineApp, defineModule, defineService } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 // TRAP: this global records any module-scope side effect (must stay 0 hits
 // for the route-count we compile; the compiler must never EXECUTE modules).

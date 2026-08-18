@@ -19,7 +19,7 @@ const CANDIDATES: Candidate[] = [
   {
     id: "velqu",
     spawn: (port) => ({
-      cmd: `${ROOT}/target/release/q-runtime`,
+      cmd: `${ROOT}/target/release/velqu-runtime`,
       args: ["--pack", `${ROOT}/examples/proof/dist/app.qpack`, "--port", String(port)],
       env: {},
     }),

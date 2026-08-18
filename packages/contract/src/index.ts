@@ -1,5 +1,5 @@
 /**
- * @q/contract — published compact contract types (language-neutral shape).
+ * @velqu/contract — published compact contract types (language-neutral shape).
  *
  * The M2 compiler emits `contract.json` (this shape) and a generated
  * `contract.d.ts` that binds `Api` to it. Client repositories import ONLY this

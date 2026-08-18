@@ -1,5 +1,5 @@
 /**
- * @q/compiler — static contract extraction.
+ * @velqu/compiler — static contract extraction.
  *
  * The compiler NEVER executes application code (COMP-002): it reads the
  * TypeScript AST of route/policy/service declarations, extracts literal
@@ -397,8 +397,8 @@ export function extractApp(entryFile: string): ExtractedApp {
     noEmit: true,
     allowImportingTsExtensions: true,
     paths: {
-      "@q/core": ["packages/core/src/index.ts"],
-      "@q/schema": ["packages/schema/src/index.ts"],
+      "@velqu/core": ["packages/core/src/index.ts"],
+      "@velqu/schema": ["packages/schema/src/index.ts"],
     },
     baseUrl: ".",
   });

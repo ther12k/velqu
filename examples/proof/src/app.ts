@@ -1,4 +1,4 @@
-import { defineApp, defineModule } from "@q/core";
+import { defineApp, defineModule } from "@velqu/core";
 import health from "./modules/health/routes";
 import hello from "./modules/hello/routes";
 import usersRoutes from "./modules/users/routes";

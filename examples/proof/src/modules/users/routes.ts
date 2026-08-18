@@ -1,5 +1,5 @@
-import { route, status } from "@q/core";
-import { s } from "@q/schema";
+import { route, status } from "@velqu/core";
+import { s } from "@velqu/schema";
 import { resolve } from "./service";
 import { sessionPolicy } from "../../policy/session";
 

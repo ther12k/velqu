@@ -10,84 +10,84 @@
       },
     },
     "benchmarks/harness": {
-      "name": "@q/bench-harness",
+      "name": "@velqu/bench-harness",
       "version": "0.1.0",
     },
     "examples/proof": {
-      "name": "@q/proof-app",
+      "name": "@velqu/proof-app",
       "version": "0.1.0",
       "dependencies": {
-        "@q/core": "workspace:*",
-        "@q/schema": "workspace:*",
+        "@velqu/core": "workspace:*",
+        "@velqu/schema": "workspace:*",
       },
     },
     "packages/cli": {
-      "name": "@q/cli",
+      "name": "@velqu/cli",
       "version": "0.1.0",
       "bin": {
-        "q": "./src/index.ts",
+        "velqu": "./src/index.ts",
       },
       "dependencies": {
-        "@q/compiler": "workspace:*",
+        "@velqu/compiler": "workspace:*",
       },
     },
     "packages/compiler": {
-      "name": "@q/compiler",
+      "name": "@velqu/compiler",
       "version": "0.1.0",
       "dependencies": {
-        "@q/contract": "workspace:*",
-        "@q/core": "workspace:*",
-        "@q/schema": "workspace:*",
+        "@velqu/contract": "workspace:*",
+        "@velqu/core": "workspace:*",
+        "@velqu/schema": "workspace:*",
         "typescript": "^5.9.3",
       },
     },
     "packages/contract": {
-      "name": "@q/contract",
+      "name": "@velqu/contract",
       "version": "0.1.0",
     },
     "packages/core": {
-      "name": "@q/core",
+      "name": "@velqu/core",
       "version": "0.1.0",
     },
     "packages/schema": {
-      "name": "@q/schema",
+      "name": "@velqu/schema",
       "version": "0.1.0",
     },
     "packages/testing": {
-      "name": "@q/testing",
+      "name": "@velqu/testing",
       "version": "0.1.0",
       "dependencies": {
-        "@q/core": "workspace:*",
-        "@q/treaty": "workspace:*",
+        "@velqu/core": "workspace:*",
+        "@velqu/treaty": "workspace:*",
       },
     },
     "packages/treaty": {
-      "name": "@q/treaty",
+      "name": "@velqu/treaty",
       "version": "0.1.0",
     },
   },
   "packages": {
-    "@q/bench-harness": ["@q/bench-harness@workspace:benchmarks/harness"],
-
-    "@q/cli": ["@q/cli@workspace:packages/cli"],
-
-    "@q/compiler": ["@q/compiler@workspace:packages/compiler"],
-
-    "@q/contract": ["@q/contract@workspace:packages/contract"],
-
-    "@q/core": ["@q/core@workspace:packages/core"],
-
-    "@q/proof-app": ["@q/proof-app@workspace:examples/proof"],
-
-    "@q/schema": ["@q/schema@workspace:packages/schema"],
-
-    "@q/testing": ["@q/testing@workspace:packages/testing"],
-
-    "@q/treaty": ["@q/treaty@workspace:packages/treaty"],
-
     "@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 
     "@types/node": ["@types/node@26.2.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg=="],
+
+    "@velqu/bench-harness": ["@velqu/bench-harness@workspace:benchmarks/harness"],
+
+    "@velqu/cli": ["@velqu/cli@workspace:packages/cli"],
+
+    "@velqu/compiler": ["@velqu/compiler@workspace:packages/compiler"],
+
+    "@velqu/contract": ["@velqu/contract@workspace:packages/contract"],
+
+    "@velqu/core": ["@velqu/core@workspace:packages/core"],
+
+    "@velqu/proof-app": ["@velqu/proof-app@workspace:examples/proof"],
+
+    "@velqu/schema": ["@velqu/schema@workspace:packages/schema"],
+
+    "@velqu/testing": ["@velqu/testing@workspace:packages/testing"],
+
+    "@velqu/treaty": ["@velqu/treaty@workspace:packages/treaty"],
 
     "bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 

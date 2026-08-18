@@ -1,5 +1,5 @@
 /**
- * @q/compiler — build API. Static extraction (never runs the app) + Bun.build
+ * @velqu/compiler — build API. Static extraction (never runs the app) + Bun.build
  * bundling + deterministic artifact emission.
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";

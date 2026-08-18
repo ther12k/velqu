@@ -4,16 +4,16 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@q/core": [
+      "@velqu/core": [
         "../../packages/core/src/index.ts"
       ],
-      "@q/schema": [
+      "@velqu/schema": [
         "../../packages/schema/src/index.ts"
       ],
-      "@q/treaty": [
+      "@velqu/treaty": [
         "../../packages/treaty/src/index.ts"
       ],
-      "@q/contract": [
+      "@velqu/contract": [
         "../../packages/contract/src/index.ts"
       ]
     }

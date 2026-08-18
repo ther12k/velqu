@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { runtimeTreaty } from "@q/testing";
+import { runtimeTreaty } from "@velqu/testing";
 
 const proofContract = {
   "health.live": { path: "/health/live", method: "GET" },

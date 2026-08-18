@@ -1,9 +1,9 @@
 /**
- * @q/testing — Treaty local test adapters. The two modes are LABELED and
+ * @velqu/testing — Treaty local test adapters. The two modes are LABELED and
  * reported separately (TRT-005): unit-local executes handlers in-process
- * under Bun; runtime-local drives the ACTUAL q-runtime binary over HTTP.
+ * under Bun; runtime-local drives the ACTUAL velqu-runtime binary over HTTP.
  */
-import { treaty } from "@q/treaty";
+import { treaty } from "@velqu/treaty";
 
 // ---------------------------------------------------------------- unit-local
 
@@ -86,7 +86,7 @@ export interface RuntimeTreatyOptions {
 }
 
 /**
- * RUNTIME-LOCAL mode — spawns the actual q-runtime binary with the pack and
+ * RUNTIME-LOCAL mode — spawns the actual velqu-runtime binary with the pack and
  * drives real HTTP. THIS is native-runtime conformance evidence.
  */
 export async function runtimeTreaty<Api extends Record<string, never> = Record<string, never>>(
@@ -99,14 +99,14 @@ export async function runtimeTreaty<Api extends Record<string, never> = Record<s
   const candidates = [
     opts.qRuntimeBin,
     process.env.VELQU_RUNTIME,
-    resolve("./target/release/q-runtime"),
-    resolve("./target/debug/q-runtime"),
-    resolve(process.cwd(), "target/release/q-runtime"),
-    resolve(process.cwd(), "target/debug/q-runtime"),
+    resolve("./target/release/velqu-runtime"),
+    resolve("./target/debug/velqu-runtime"),
+    resolve(process.cwd(), "target/release/velqu-runtime"),
+    resolve(process.cwd(), "target/debug/velqu-runtime"),
   ].filter(Boolean);
   const bin = candidates.find((p) => existsSync(p!));
   if (!bin) {
-    throw new Error(`runtimeTreaty: q-runtime binary not found (looked in: ${candidates.join(", ")})`);
+    throw new Error(`runtimeTreaty: velqu-runtime binary not found (looked in: ${candidates.join(", ")})`);
   }
   const port = opts.port ?? freePort();
   const proc = Bun.spawn([bin, "--pack", opts.packPath, "--port", String(port)], {
@@ -123,7 +123,7 @@ export async function runtimeTreaty<Api extends Record<string, never> = Record<s
       c.terminate?.();
       break;
     } catch {
-      if (Date.now() > deadline) throw new Error("q-runtime did not start");
+      if (Date.now() > deadline) throw new Error("velqu-runtime did not start");
       await Bun.sleep(10);
     }
   }

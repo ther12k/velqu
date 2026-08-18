@@ -1,5 +1,5 @@
 /**
- * @q/schema — Schema IR v1 builders.
+ * @velqu/schema — Schema IR v1 builders.
  *
  * Each builder returns a value whose RUNTIME representation is exactly the
  * Schema IR JSON node consumed by the Rust runtime (docs/specs/pack-format-v1.md)

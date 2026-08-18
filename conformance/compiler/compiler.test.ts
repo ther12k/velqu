@@ -4,7 +4,7 @@
  * deterministic rebuilds (COMP-003/COMP-009).
  */
 import { describe, expect, test } from "bun:test";
-import { build, contractDiff, CompileError } from "@q/compiler";
+import { build, contractDiff, CompileError } from "@velqu/compiler";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const TMP = "/tmp/velqu-conformance";

@@ -1,5 +1,5 @@
 {
-  "name": "@q/compiler",
+  "name": "@velqu/compiler",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
   "types": "./src/index.ts",
   "dependencies": {
     "typescript": "^5.9.3",
-    "@q/contract": "workspace:*",
-    "@q/schema": "workspace:*",
-    "@q/core": "workspace:*"
+    "@velqu/contract": "workspace:*",
+    "@velqu/schema": "workspace:*",
+    "@velqu/core": "workspace:*"
   }
 }

@@ -3,8 +3,8 @@
  * Same shape per route; no cross-route type dependencies (avoids known
  * quadratic patterns).
  */
-import { defineApp, defineModule, route } from "@q/core";
-import { s } from "@q/schema";
+import { defineApp, defineModule, route } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 const N = parseInt(process.argv[2] ?? "100", 10);
 const outDir = process.argv[3];
@@ -13,7 +13,7 @@ if (!outDir) {
   process.exit(1);
 }
 
-let src = `import { defineApp, defineModule, route } from "@q/core";\nimport { s } from "@q/schema";\n\n`;
+let src = `import { defineApp, defineModule, route } from "@velqu/core";\nimport { s } from "@velqu/schema";\n\n`;
 
 const routes: string[] = [];
 for (let i = 0; i < N; i++) {
@@ -31,13 +31,13 @@ for (let i = 0; i < N; i++) {
 src += `\nexport const app = defineApp({ id: "scale-${N}", modules: [ defineModule({ id: "res", routes: [${routes.join(", ")}] }) ] });\n`;
 
 // client file: one positive + one negative call through the published-contract shape
-let client = `import { treaty } from "@q/treaty";\nimport type { ProofApi } from "./api-types";\n\nconst api = treaty<ProofApi>({ baseUrl: "http://localhost:9", contract: {`;
+let client = `import { treaty } from "@velqu/treaty";\nimport type { ProofApi } from "./api-types";\n\nconst api = treaty<ProofApi>({ baseUrl: "http://localhost:9", contract: {`;
 for (let i = 0; i < N; i++) {
   client += `\n  "res${i}.get": { path: "/res${i}/item/:id", method: "GET" },`;
 }
 client += `\n} });\n\nconst ok = await api.res7.get({ id: 7 }).get();\nif (ok.data) console.log(ok.data.id);\n`;
 
-let types = `import type { RouteContract } from "@q/contract";\n\nexport interface ProofApi {\n`;
+let types = `import type { RouteContract } from "@velqu/contract";\n\nexport interface ProofApi {\n`;
 for (let i = 0; i < N; i++) {
   types += `  "res${i}.get": RouteContract<"/res${i}/item/:id", "GET", { id: number }, Record<string, never>, undefined, { 200: { id: number; n: number } }>;\n`;
 }
@@ -55,10 +55,10 @@ await Bun.write(
         noEmit: true,
         baseUrl: ".",
         paths: {
-          "@q/core": ["../../packages/core/src/index.ts"],
-          "@q/schema": ["../../packages/schema/src/index.ts"],
-          "@q/treaty": ["../../packages/treaty/src/index.ts"],
-          "@q/contract": ["../../packages/contract/src/index.ts"],
+          "@velqu/core": ["../../packages/core/src/index.ts"],
+          "@velqu/schema": ["../../packages/schema/src/index.ts"],
+          "@velqu/treaty": ["../../packages/treaty/src/index.ts"],
+          "@velqu/contract": ["../../packages/contract/src/index.ts"],
         },
       },
       include: ["*.ts"],

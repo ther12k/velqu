@@ -12,7 +12,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@q/*": [
+      "@velqu/*": [
         "packages/*/src/index.ts"
       ]
     }

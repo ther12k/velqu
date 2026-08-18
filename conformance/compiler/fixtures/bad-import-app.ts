@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { route, defineApp, defineModule } from "@q/core";
-import { s } from "@q/schema";
+import { route, defineApp, defineModule } from "@velqu/core";
+import { s } from "@velqu/schema";
 
 export const r = route({
   id: "bad.get",

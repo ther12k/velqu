@@ -41,3 +41,8 @@
 - **Contract depth** — response schemas now emitted end-to-end (pack registry, typed `contract.d.ts` success bodies, OpenAPI response content) and enforced at runtime with controlled 500 + `contract.violation.response` diagnostics.
 - **Lock workflow fixed** — `contract.lock.json` is written once and preserved across builds (`--update-lock` to refresh); `q contract diff` now detects real drift (test proves removal → breaking).
 - **Hardening** — property-fuzz suites for pack parser/mutation (tamper >200/256), query/percent-decode, and schema validator (40k cases each, no panics); CI workflow (x86_64 + aarch64) running `scripts/verify`.
+
+## 2026-08-18 (naming decided — ADR-0016)
+
+- **Decision (owner)** — Brand **Velqu**, descriptive **VelquJS**, CLI `velqu`, packages `@velqu/*`, runtime binary `velqu-runtime`; ranking Velqu > VelquJS > VelquTS. OD-001/OD-002 closed; repository/license/governance remain open.
+- **Migration** — workspace packages, imports, tsconfig paths, generated contract.d.ts, CLI, and the runtime binary renamed. Internal Rust crate names (`q-*`) intentionally unchanged (internal units); historical bundle/reports keep original wording (provenance preserved; ADR-0016 is the mapping).
