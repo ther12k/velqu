@@ -28,3 +28,9 @@
 - **Correction (evidence-driven)** — bridge benchmark: native (Rust serde) JSON inputs beat engine JSON.parse by 11–42% on this host (counter to the review's expectation) → adopted as compiler default; ADR-0015.
 - **Negative result preserved** — 1,000-route cold start p50 15.7ms is +409% over 25 routes (budget ≤20%): FAIL recorded honestly; absolute value still ~10× faster than matched Elysia candidate.
 - **Treaty deviation** — route-id navigation chosen over Eden-exact single-segment form (ambiguity on `/users`); open decision ID-011.
+
+## 2026-08-18 (M2 complete — authorized stop point reached)
+
+- **M2 PASS** — static compiler (AST extraction, zero app dry-run; trap/collision/import/dynamic diagnostics all source-located), deterministic pack + 9 artifacts (qpack, manifests, contract.json/.d.ts, openapi.json 3.1, lock, build-report), `q` CLI (build/inspect/contract diff), proof app (9 frozen-contract routes incl. native liveness detection), Treaty runtime-local + unit-local modes, 21 TS conformance tests + 45 Rust tests green via `scripts/verify`.
+- **Evidence** — warm suite 16 cells 0 errors (velqu C2 116k req/s p50 85μs); cold suite re-run 0 failures; type-scale negative checks caught at 100/500/1000.
+- **Handoff** — 14 evidence reports + live traceability (44/44 PASS) + final archive with SHA-256. Stop point: M2; no M3/alpha work started.

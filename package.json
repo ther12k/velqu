@@ -13,7 +13,8 @@
     "benchmark:all": "./scripts/benchmark",
     "package:archive": "./scripts/package",
     "test": "bun test packages examples/proof",
-    "typecheck": "tsc -b tsconfig.json"
+    "typecheck": "tsc -b tsconfig.json",
+    "q": "bun packages/cli/src/index.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

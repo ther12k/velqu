@@ -38,7 +38,8 @@ bun run verify             # full verification (Rust + TypeScript + conformance)
 Build the proof application and run it under the Rust/QuickJS runtime:
 
 ```bash
-bunx q build --project examples/proof --profile serverless
+bun run q build --project examples/proof     # == q build (packages/cli)
+cargo build --release -p q-runtime
 ./target/release/q-runtime --pack examples/proof/dist/app.qpack --port 3000
 ```
 

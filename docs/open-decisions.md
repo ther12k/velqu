@@ -31,6 +31,7 @@ status: active
 | ID-008 | Source maps | Bun.build sourcemap at build; Rust maps QuickJS exception line/col through the map before logging | M1 requirement |
 | ID-009 | Liveness (C0) | static JSON responses configured in the pack, served by Rust before JS | RUN-009 |
 | ID-010 | Problem URNs | `https://velqu.dev/problems/*` registry frozen in pack-format spec | RFC 9457-compatible; placeholder domain until OD-002 |
+| ID-011 | Treaty navigation ergonomics | Route-id segments (`api.hello.get({name}).get()`) instead of Eden-exact single-segment (`api.hello({name})`) | single-segment form is ambiguous when one prefix hosts multiple routes (`/users` POST vs `/users/:id` GET); route-id form is collision-free, typed, compiler-friendly; owner may revisit final ergonomics |
 
 Each material change to these defaults during implementation will add a new
 ADR under `docs/okf/decisions/` and update this register.
