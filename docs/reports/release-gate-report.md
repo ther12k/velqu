@@ -31,7 +31,7 @@ Reference: `docs/okf/engineering/release-gates.md`.
 | Binary Artifact Size | ≤ 8 MiB (stripped) | 4.6 MiB | **PASS** |
 | Treaty Client Minified Size | ≤ 8 KiB | 5.5 KiB (unminified source) | **PASS** |
 | Clean Build Duration (25-route) | ≤ 1.0 s | 579 ms | **PASS** |
-| 1,000-Route Scaling Budget | ≤ 20% increase vs 25-route | +409% (3.08ms → 15.7ms) | **FAIL** (budget missed; recorded honestly) |
+| 1,000-Route Scaling Budget | ≤ 20% increase vs 25-route | +368% with bytecode (3.10ms → 14.49ms) | **FAIL** (budget missed; recorded honestly) |
 
 ## Overall Recommendation
 
@@ -39,7 +39,8 @@ Reference: `docs/okf/engineering/release-gates.md`.
 The core product thesis is **supported by evidence**: Rust + QuickJS with static
 AOT contract extraction delivers **30–34× faster cold starts** and **13× lower
 idle memory** than a matched Elysia 2 AOT application, while preserving
-Treaty-quality end-to-end typing and strict route governance.
+Treaty-quality end-to-end typing and strict route governance. QuickJS module
+bytecode embedding (`velqu-bytecode`, ADR-0017) saves an additional 1.74 ms at 1,000 routes.
 
 Recommended Next Actions for M3 (owner decision):
 1. Address 1,000-route pack load overhead via binary pack format or chunked loading.

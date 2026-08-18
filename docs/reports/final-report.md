@@ -44,6 +44,11 @@ SEC-001..005, OPS-001..002, DX-001..004, PR-001..005.
   input AND response strategy — inputs 11–42% faster than engine JSON.parse
   on this host (reverses the design review's expectation; scope-limited to
   quickjs-ng 0.15.1 / rquickjs 0.12.2).
+- **ADR-0016** (owner decision): product naming decided — Brand **Velqu**,
+  descriptive **VelquJS**, CLI `velqu`, packages `@velqu/*`, runtime binary
+  `velqu-runtime`.
+- **ADR-0017** (measurement-driven): QuickJS module bytecode embedding via
+  `velqu-bytecode` tool — saves 1.74 ms (−10.7%) on 1,000-route cold start.
 - **ID-011**: Treaty route-id navigation (`api.hello.get({name}).get()`)
   instead of Eden-exact single-segment form (collision hazard on shared
   prefixes); owner may revisit ergonomics.
@@ -82,9 +87,9 @@ source-mapped stderr diagnostics. All via the ACTUAL release binary.
 ```bash
 ./scripts/verify
 ```
-→ OKF validation PASS (160 links) · cargo fmt/clippy(-D warnings) PASS ·
-**cargo test 45/45** · release builds PASS · tsc PASS · proof build PASS
-(9 routes, 579 ms) · **bun test 29/29** → `verify: ALL PASS (M0–M2 verified)`.
+→ OKF validation PASS (161 links) · cargo fmt/clippy(-D warnings) PASS ·
+**cargo test 57/57** · release builds PASS · tsc PASS · proof build PASS
+(9 routes, 579 ms) · **bun test 30/30** → `verify: ALL PASS (M0–M2 verified)`.
 
 ## Cold-start evidence
 

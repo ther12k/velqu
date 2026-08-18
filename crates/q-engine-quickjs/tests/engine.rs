@@ -110,19 +110,19 @@ fn expected_table() -> BTreeMap<String, String> {
 #[tokio::test]
 async fn load_verifies_handler_table_and_caches() {
     let (mut eng, _store) = engine();
-    let stats = eng.load(BUNDLE, &expected_table()).expect("load");
+    let stats = eng.load(BUNDLE, None, &expected_table()).expect("load");
     assert_eq!(stats.handlers_registered, 15);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
-    assert!(eng.load(BUNDLE, &bad).is_err());
+    assert!(eng.load(BUNDLE, None, &bad).is_err());
     eng.shutdown();
 }
 
 #[tokio::test]
 async fn sync_text_and_json_results() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let out = run(&mut eng, spec(1, "js.text", &[200], 1000)).await;
     match out {
         Outcome::Response {
@@ -149,7 +149,7 @@ async fn sync_text_and_json_results() {
 #[tokio::test]
 async fn prevalidated_params_flow_into_ctx() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let (slot, gen) = store.insert(q_bridge::RequestMeta::default());
     let mut s = spec(3, "hello.get", &[200], 1000);
     s.slot = slot;
@@ -172,7 +172,7 @@ async fn prevalidated_params_flow_into_ctx() {
 #[tokio::test]
 async fn lazy_ctx_touches_nothing() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
         params: vec![("name".into(), "Rafi".into())],
         query: vec![("ms".into(), "50".into())],
@@ -196,7 +196,7 @@ async fn lazy_ctx_touches_nothing() {
 #[tokio::test]
 async fn lazy_query_and_body_materialize_on_access() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     // query path (lazy)
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
         query: vec![("ms".into(), "42".into())],
@@ -250,7 +250,7 @@ async fn lazy_query_and_body_materialize_on_access() {
 #[tokio::test]
 async fn timer_promise_resolves_with_waited_ms() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
         query: vec![("ms".into(), "30".into())],
         ..Default::default()
@@ -281,7 +281,7 @@ async fn timer_promise_resolves_with_waited_ms() {
 #[tokio::test]
 async fn cancellation_before_completion() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
         query: vec![("ms".into(), "5000".into())],
         ..Default::default()
@@ -305,7 +305,7 @@ async fn cancellation_before_completion() {
 #[tokio::test]
 async fn deadline_timeout_interrupts_and_replies() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     // infinite loop: only the interrupt handler saves us
     let out = run(&mut eng, spec(10, "loop.infinite", &[200], 150)).await;
     assert!(
@@ -321,7 +321,7 @@ async fn deadline_timeout_interrupts_and_replies() {
 #[tokio::test]
 async fn throw_maps_to_engine_failure_with_detail() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let out = run(&mut eng, spec(12, "throw.redacted", &[200], 1000)).await;
     match out {
         Outcome::EngineFailure { detail, source } => {
@@ -339,7 +339,7 @@ async fn throw_maps_to_engine_failure_with_detail() {
 #[tokio::test]
 async fn undeclared_status_is_contract_violation() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let out = run(&mut eng, spec(13, "status.undeclared", &[200], 1000)).await;
     assert!(matches!(out, Outcome::ContractViolation(_)));
     let out = run(&mut eng, spec(14, "status.declared", &[200, 201], 1000)).await;
@@ -353,7 +353,7 @@ async fn undeclared_status_is_contract_violation() {
 #[tokio::test]
 async fn typed_problem_passes_through() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let out = run(&mut eng, spec(15, "problem.notfound", &[200, 404], 1000)).await;
     match out {
         Outcome::Problem(p) => {
@@ -369,7 +369,7 @@ async fn typed_problem_passes_through() {
 #[tokio::test]
 async fn expired_handle_access_fails_deterministically() {
     let (mut eng, store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     // simulate a retained wrapper: settle the slot, then let JS touch it
     let (slot, gen) = store.insert(q_bridge::RequestMeta {
         query: vec![("ms".into(), "1".into())],
@@ -400,7 +400,7 @@ async fn run(eng: &mut QuickJsEngine, spec: InvocationSpec) -> Outcome {
 #[tokio::test]
 async fn runaway_promise_continuation_is_interruptible_and_worker_survives() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     // the loop runs INSIDE a .then() continuation — drain-time interrupt must kill it
     let t0 = Instant::now();
     let out = run(&mut eng, spec(20, "loop.spin_then", &[200], 200)).await;
@@ -422,7 +422,7 @@ async fn runaway_promise_continuation_is_interruptible_and_worker_survives() {
 #[tokio::test]
 async fn business_object_with_status_and_value_fields_is_a_body_not_an_envelope() {
     let (mut eng, _store) = engine();
-    eng.load(BUNDLE, &expected_table()).unwrap();
+    eng.load(BUNDLE, None, &expected_table()).unwrap();
     let out = run(&mut eng, spec(22, "biz.status", &[200], 1000)).await;
     match out {
         Outcome::Response {

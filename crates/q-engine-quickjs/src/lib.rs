@@ -114,12 +114,14 @@ impl Engine for QuickJsEngine {
     fn load(
         &mut self,
         bundle: &str,
+        bytecode: Option<&[u8]>,
         expected_handlers: &BTreeMap<String, String>,
     ) -> Result<LoadStats, String> {
         let (reply_tx, reply_rx) = std::sync::mpsc::channel();
         self.tx
             .send(WorkerMsg::Load {
                 bundle: bundle.to_string(),
+                bytecode: bytecode.map(Vec::from),
                 expected: expected_handlers.clone(),
                 reply: reply_tx,
             })

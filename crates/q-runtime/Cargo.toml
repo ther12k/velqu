@@ -25,5 +25,6 @@ sourcemap = { workspace = true }
 
 [dev-dependencies]
 sha2 = { workspace = true }
+rquickjs = { workspace = true }
 sourcemap = { workspace = true }
 libc = "0.2"

@@ -10,7 +10,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use rquickjs::{Context, Function, Object, Persistent, Promise, Runtime, TypedArray, Value};
+use rquickjs::{
+    Context, Function, Module, Object, Persistent, Promise, Runtime, TypedArray, Value,
+};
 use serde_json::Value as Json;
 
 use crate::convert::{any_js_to_json, engine_stringify, js_to_bytes};
@@ -30,6 +32,8 @@ pub(crate) struct InvokeJob {
 pub(crate) enum WorkerMsg {
     Load {
         bundle: String,
+        /// pre-compiled QuickJS module bytecode (endianness-checked; sha256 already verified)
+        bytecode: Option<Vec<u8>>,
         expected: BTreeMap<String, String>,
         reply: std::sync::mpsc::Sender<Result<LoadStats, String>>,
     },
@@ -232,10 +236,11 @@ impl WorkerInner {
             match msg {
                 WorkerMsg::Load {
                     bundle,
+                    bytecode,
                     expected,
                     reply,
                 } => {
-                    let _ = reply.send(self.load(&bundle, &expected));
+                    let _ = reply.send(self.load(&bundle, bytecode.as_deref(), &expected));
                 }
                 WorkerMsg::Invoke(job) => {
                     self.begin_invocation(*job);
@@ -271,15 +276,30 @@ impl WorkerInner {
     fn load(
         &mut self,
         bundle: &str,
+        bytecode: Option<&[u8]>,
         expected: &BTreeMap<String, String>,
     ) -> Result<LoadStats, String> {
         let t0 = Instant::now();
         let (register_calls, cache): (usize, BTreeMap<String, Persistent<Function<'static>>>) =
             self.ctx.with(
                 |ctx| -> Result<(usize, BTreeMap<String, Persistent<Function<'static>>>), String> {
-                    ctx.eval::<Value, _>(bundle).map_err(|e| {
-                        format!("bundle evaluation failed: {}", describe_error(&ctx, &e))
-                    })?;
+                    if let Some(bc) = bytecode {
+                        // ADR-0017: load pre-compiled bytecode (skips parsing + compilation).
+                        // Safety: caller (WorkerBuilder) verified sha256 and exact engine/ABI
+                        // version match in QPack::verify() before handing us these bytes.
+                        let module = unsafe {
+                            Module::load(ctx.clone(), bc).map_err(|e| {
+                                format!("bytecode load failed: {}", describe_error(&ctx, &e))
+                            })?
+                        };
+                        let (_evaled, _promise) = module.eval().map_err(|e| {
+                            format!("module eval failed: {}", describe_error(&ctx, &e))
+                        })?;
+                    } else {
+                        ctx.eval::<Value, _>(bundle).map_err(|e| {
+                            format!("bundle evaluation failed: {}", describe_error(&ctx, &e))
+                        })?;
+                    }
                     let handlers: Object = ctx
                         .globals()
                         .get::<_, Object>("__velquHandlers")

@@ -153,7 +153,7 @@ fn main() {
     .iter()
     .map(|k| (k.to_string(), String::new()))
     .collect();
-    engine.load(BUNDLE, &table).expect("bundle loads");
+    engine.load(BUNDLE, None, &table).expect("bundle loads");
 
     let mut cases: Vec<Case> = Vec::new();
     // input strategies on small object

@@ -14,10 +14,18 @@ interface Cand {
 
 const CANDS: Cand[] = [
   {
-    id: "velqu",
+    id: "velqu (source)",
     spawn: (port, n) => ({
       cmd: `${ROOT}/target/release/velqu-runtime`,
       args: ["--pack", `${ROOT}/benchmarks/raw/packs/app-${n}.qpack`, "--port", String(port)],
+      env: {},
+    }),
+  },
+  {
+    id: "velqu (bytecode)",
+    spawn: (port, n) => ({
+      cmd: `${ROOT}/target/release/velqu-runtime`,
+      args: ["--pack", `${ROOT}/benchmarks/raw/packs/app-${n}-bc.qpack`, "--port", String(port)],
       env: {},
     }),
   },

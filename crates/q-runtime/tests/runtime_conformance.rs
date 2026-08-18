@@ -371,8 +371,10 @@ fn fixture_pack() -> q_pack::QPack {
             "async".into(),
         ],
         entry: "app.js".into(),
+        bundle_form: None,
         bundle,
         source_map: None,
+        bundle_bytecode: None,
         routes,
         schemas,
         policies: BTreeMap::from([(
@@ -390,6 +392,7 @@ fn fixture_pack() -> q_pack::QPack {
             algorithm: "sha256".into(),
             bundle_sha256: String::new(),
             routes_sha256: String::new(),
+            bytecode_sha256: None,
         },
     };
     use sha2::{Digest, Sha256};
@@ -1173,5 +1176,91 @@ __velquRegister("bad.shape", bad_shape);
     assert!(
         err.contains("contract.violation.response"),
         "internal log must carry the response contract violation: {err}"
+    );
+}
+
+#[test]
+fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
+    let dir = temp_dir("bytecode");
+    let pack_path = write_pack(&dir);
+
+    // 1. Embed valid bytecode
+    let mut pack = q_pack::QPack::load_and_verify(&pack_path).unwrap();
+    let rt = rquickjs::Runtime::new().unwrap();
+    let ctx = rquickjs::Context::full(&rt).unwrap();
+    let bytecode_bytes = ctx
+        .with(|ctx| -> rquickjs::Result<Vec<u8>> {
+            let module = rquickjs::Module::declare(ctx.clone(), "app.js", pack.bundle.as_str())?;
+            module.write(rquickjs::WriteOptions {
+                endianness: rquickjs::WriteOptionsEndianness::Native,
+                ..Default::default()
+            })
+        })
+        .unwrap();
+
+    let bc_sha = {
+        use sha2::{Digest, Sha256};
+        let h = Sha256::digest(&bytecode_bytes);
+        h.iter().map(|b| format!("{b:02x}")).collect::<String>()
+    };
+    let bc_b64 = q_pack::minimal_pack_public(); // dummy call to ensure symbols
+    let _ = bc_b64;
+
+    // encode base64
+    let b64 = q_pack::base64_encode(&bytecode_bytes);
+
+    pack.bundle_form = Some("module".to_string());
+    pack.bundle_bytecode = Some(q_pack::BundleBytecode {
+        quickjs: q_pack::ENGINE_VERSION.to_string(),
+        binding: q_pack::ENGINE_BINDING.to_string(),
+        endianness: if cfg!(target_endian = "big") {
+            "big"
+        } else {
+            "little"
+        }
+        .to_string(),
+        data: b64.clone(),
+    });
+    pack.integrity.bytecode_sha256 = Some(bc_sha);
+
+    let bc_pack_path = dir.join("app-bc.qpack");
+    std::fs::write(&bc_pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    // 2. Server boots with bytecode and serves C0 + C3
+    let port = free_port();
+    let server = Server::start(&bc_pack_path, port);
+    let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"status\":\"ok\"}");
+    let r = http(port, "GET /hello/Rafi HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"message\":\"Hello Rafi\"}");
+    server.stop();
+
+    // 3. Tampered bytecode is rejected before ready
+    let mut tampered_pack = pack.clone();
+    let mut bad_b64 = b64.clone();
+    bad_b64.replace_range(10..11, "Z");
+    tampered_pack.bundle_bytecode.as_mut().unwrap().data = bad_b64;
+    let bad_path = dir.join("bad-bc.qpack");
+    std::fs::write(&bad_path, serde_json::to_vec(&tampered_pack).unwrap()).unwrap();
+
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let out = Command::new(bin)
+        .arg("--pack")
+        .arg(&bad_path)
+        .arg("--port")
+        .arg(free_port().to_string())
+        .output()
+        .unwrap();
+    assert_ne!(
+        out.status.code(),
+        Some(0),
+        "tampered bytecode must exit non-zero"
+    );
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("bytecode sha256 mismatch") || err.contains("integrity"),
+        "stderr: {err}"
     );
 }

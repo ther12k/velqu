@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/q-runtime",
+    "crates/q-bytecode-tool",
     "crates/q-engine",
     "crates/q-engine-quickjs",
     "crates/q-http",

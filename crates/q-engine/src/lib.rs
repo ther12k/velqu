@@ -132,6 +132,7 @@ pub trait Engine: Send {
     fn load(
         &mut self,
         bundle: &str,
+        bytecode: Option<&[u8]>,
         expected_handlers: &BTreeMap<String, String>,
     ) -> Result<LoadStats, String>;
 

@@ -128,7 +128,12 @@ fn run(args: Args) -> i32 {
         stages.push(("engine.spawn".into(), t.elapsed().as_secs_f64() * 1000.0));
 
         let t = Instant::now();
-        let load_stats = match engine.load(&pack.bundle, &pack.handler_table) {
+        // ADR-0017: if the pack carries verified bytecode, skip source eval
+        let bytecode_decoded: Option<Vec<u8>> = pack
+            .bundle_bytecode
+            .as_ref()
+            .and_then(|bc| q_pack::base64_decode(&bc.data));
+        let load_stats = match engine.load(&pack.bundle, bytecode_decoded.as_deref(), &pack.handler_table) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!(

@@ -24,7 +24,7 @@ __velquRegister("promise.int", promise_int);
 "#;
     let table: std::collections::BTreeMap<String, String> =
         [("promise.int".to_string(), String::new())].into();
-    engine.load(bundle, &table).unwrap();
+    engine.load(bundle, None, &table).unwrap();
 
     let (slot, gen) = store.insert(q_bridge::RequestMeta::default());
     let spec = InvocationSpec {

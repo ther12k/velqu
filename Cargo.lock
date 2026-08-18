@@ -856,6 +856,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "q-bytecode-tool"
+version = "0.1.0"
+dependencies = [
+ "q-pack",
+ "rquickjs",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "q-capabilities"
 version = "0.1.0"
 
@@ -1368,6 +1378,7 @@ dependencies = [
  "q-pack",
  "q-router",
  "q-schema-runtime",
+ "rquickjs",
  "serde",
  "serde_json",
  "sha2",

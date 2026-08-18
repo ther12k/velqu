@@ -173,12 +173,29 @@ pub struct PolicyEntry {
     pub provides: Option<String>,
 }
 
+/// QuickJS module bytecode, produced at BUILD time by the exact engine build
+/// (ADR-0014/ADR-0017). The runtime loads it only on an exact version match;
+/// any mismatch or absence falls back to evaluating `bundle` source.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BundleBytecode {
+    pub quickjs: String,
+    pub binding: String,
+    /// "little" | "big" — bytecode is not endian-portable
+    pub endianness: String,
+    /// base64-encoded module bytecode
+    pub data: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Integrity {
     pub algorithm: String,
     pub bundle_sha256: String,
     pub routes_sha256: String,
+    /// required when bundleBytecode is present
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytecode_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,9 +214,16 @@ pub struct QPack {
     pub app_id: String,
     pub modules: Vec<String>,
     pub entry: String,
+    /// "script" (register protocol, M1 form) or "module" (named-export form).
+    /// Absent = "script" (backward compatible).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_form: Option<String>,
     pub bundle: String,
     #[serde(default)]
     pub source_map: Option<String>,
+    /// Optional build-time bytecode (module form only); see BundleBytecode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_bytecode: Option<BundleBytecode>,
     pub routes: Vec<RouteEntry>,
     /// schema IR registry: key -> IR node (q-schema-runtime types)
     #[serde(default)]
@@ -268,8 +292,43 @@ impl QPack {
                 "integrity failure: bundle sha256 mismatch (tampered or corrupt pack)".into(),
             );
         }
-        let routes_canonical = self.routes_canonical_json();
-        let routes_hash = hex(&Sha256::digest(routes_canonical.as_bytes()));
+        if let Some(bc) = &self.bundle_bytecode {
+            if bc.quickjs != ENGINE_VERSION || bc.binding != ENGINE_BINDING {
+                return reject(format!(
+                    "bytecode engine mismatch: pack wants quickjs {} via {}, runtime embeds {} via {} (SEC-001)",
+                    bc.quickjs, bc.binding, ENGINE_VERSION, ENGINE_BINDING
+                ));
+            }
+            let expect_endianness = if cfg!(target_endian = "big") {
+                "big"
+            } else {
+                "little"
+            };
+            if bc.endianness != expect_endianness {
+                return reject(format!(
+                    "bytecode endianness mismatch: {} vs host {}",
+                    bc.endianness, expect_endianness
+                ));
+            }
+            let data = base64_decode(&bc.data)
+                .ok_or_else(|| PackError::Rejected("bytecode is not valid base64".into()))?;
+            let bc_hash = hex(&Sha256::digest(&data));
+            let want = self.integrity.bytecode_sha256.as_ref().ok_or_else(|| {
+                PackError::Rejected(
+                    "bundleBytecode present without integrity.bytecodeSha256".into(),
+                )
+            })?;
+            if bc_hash != *want {
+                return reject(
+                    "integrity failure: bytecode sha256 mismatch (tampered or corrupt)".into(),
+                );
+            }
+        } else if self.integrity.bytecode_sha256.is_some() {
+            return reject(
+                "integrity declares bytecodeSha256 but no bundleBytecode present".into(),
+            );
+        }
+        let routes_hash = self.routes_canonical_sha256();
         if routes_hash != self.integrity.routes_sha256 {
             return reject("integrity failure: routes/schemas/policies sha256 mismatch".into());
         }
@@ -346,10 +405,93 @@ impl QPack {
         };
         serde_json::to_string(&c).expect("canonical serialization cannot fail")
     }
+
+    /// Verification path: hash the canonical form through a Writer adapter —
+    /// semantically identical to hashing `routes_canonical_json()` without
+    /// materializing the (potentially ~500 KiB) string.
+    pub fn routes_canonical_sha256(&self) -> String {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Canonical<'a> {
+            routes: &'a [RouteEntry],
+            schemas: &'a BTreeMap<String, q_schema_runtime::SchemaIr>,
+            policies: &'a BTreeMap<String, PolicyEntry>,
+            capabilities: &'a [String],
+        }
+        let c = Canonical {
+            routes: &self.routes,
+            schemas: &self.schemas,
+            policies: &self.policies,
+            capabilities: &self.capabilities,
+        };
+        let mut hasher = Sha256::new();
+        serde_json::to_writer(&mut hasher, &c).expect("canonical serialization cannot fail");
+        hex(&hasher.finalize())
+    }
 }
 
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+const B64_ALPHA: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Standard base64 encoder (RFC 4648, padded).
+pub fn base64_encode(data: &[u8]) -> String {
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        out.push(B64_ALPHA[((n >> 18) & 63) as usize] as char);
+        out.push(B64_ALPHA[((n >> 12) & 63) as usize] as char);
+        out.push(if chunk.len() > 1 {
+            B64_ALPHA[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            B64_ALPHA[(n & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
+/// Standard base64 decoder (RFC 4648, padded).
+pub fn base64_decode(s: &str) -> Option<Vec<u8>> {
+    let lookup = |c: u8| -> Option<u8> {
+        match c {
+            b'A'..=b'Z' => Some(c - b'A'),
+            b'a'..=b'z' => Some(c - b'a' + 26),
+            b'0'..=b'9' => Some(c - b'0' + 52),
+            b'+' => Some(62),
+            b'/' => Some(63),
+            _ => None,
+        }
+    };
+    let bytes = s.trim().as_bytes();
+    let mut out = Vec::with_capacity(bytes.len() * 3 / 4);
+    for chunk in bytes.chunks(4) {
+        if chunk.len() < 2 {
+            return None;
+        }
+        let c0 = lookup(chunk[0])? as u32;
+        let c1 = lookup(chunk[1])? as u32;
+        out.push(((c0 << 2) | (c1 >> 4)) as u8);
+
+        if chunk.len() > 2 && chunk[2] != b'=' {
+            let c2 = lookup(chunk[2])? as u32;
+            out.push((((c1 & 0x0f) << 4) | (c2 >> 2)) as u8);
+            if chunk.len() > 3 && chunk[3] != b'=' {
+                let c3 = lookup(chunk[3])? as u32;
+                out.push((((c2 & 0x03) << 6) | c3) as u8);
+            }
+        }
+    }
+    Some(out)
 }
 
 /// Test-support pack used by the fuzz integration test (deterministic,
@@ -412,8 +554,10 @@ pub fn minimal_pack_public() -> QPack {
         app_id: "fuzz".into(),
         modules: vec!["health".into()],
         entry: "app.js".into(),
+        bundle_form: None,
         bundle: "function h(){} __velquRegister('health.live', h);".into(),
         source_map: None,
+        bundle_bytecode: None,
         routes: vec![route],
         schemas: BTreeMap::new(),
         policies: BTreeMap::new(),
@@ -423,6 +567,7 @@ pub fn minimal_pack_public() -> QPack {
             algorithm: "sha256".into(),
             bundle_sha256: String::new(),
             routes_sha256: String::new(),
+            bytecode_sha256: None,
         },
     };
     pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
@@ -494,14 +639,16 @@ mod tests {
             app_id: "test".into(),
             modules: vec!["health".into()],
             entry: "app.js".into(),
+            bundle_form: None,
             bundle: "function health_live(){return {status:'ok'}} __velquRegister('health.live', health_live);".into(),
             source_map: None,
+            bundle_bytecode: None,
             routes: vec![route],
             schemas: BTreeMap::new(),
             policies: BTreeMap::new(),
             capabilities: vec![],
             handler_table: BTreeMap::from([("health.live".into(), "health_live".into())]),
-            integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new() },
+            integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new(), bytecode_sha256: None },
         };
         pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
         pack.integrity.routes_sha256 =

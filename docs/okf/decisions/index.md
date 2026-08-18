@@ -18,3 +18,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 14. [ADR-0014 — Version-Pinned Trusted Bytecode](0014-version-pinned-bytecode.md)
 15. [ADR-0015 — Native JSON as Default Input Strategy](0015-native-json-default.md) (accepted during implementation; measured evidence)
 16. [ADR-0016 — Product Naming: Velqu / VelquJS](0016-naming-velqu.md) (owner decision)
+17. [ADR-0017 — QuickJS Bytecode Embedding and Evaluation](0017-bytecode-embedding.md) (accepted during implementation; implements ADR-0014; measured evidence)

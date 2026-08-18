@@ -59,23 +59,24 @@ bundle.load 1.4ms → listen 0.06ms; total ≈ 3.1ms. First-request adds ~0.3ms
 (handler cache hit). No runtime route/schema/OpenAPI compilation (segments and
 IR are pre-compiled in the pack).
 
-## Route-count scaling (PERF-005) — honest negative
+## Route-count scaling (PERF-005) — honest negative & bytecode improvement
 
-40 samples per cell, same protocol; measured route `GET /res7/item/7`
+30–40 samples per cell, same protocol; measured route `GET /res7/item/7`
 (`benchmarks/raw/route-count/`):
 
 | Candidate | 25 routes p50 | 1,000 routes p50 | Δ |
 |---|---:|---:|---:|
-| velqu | 3.08ms | 15.7ms | **+409%** (budget ≤20% — **FAIL**) |
-| raw-bun | 13.0ms | 13.8ms | +6.0% |
-| elysia2 | 138.0ms | 161.2ms | +16.8% |
+| velqu (source) | 3.20ms | 16.23ms | **+407%** (budget ≤20% — **FAIL**) |
+| velqu (bytecode, ADR-0017) | 3.10ms | 14.49ms | **+368% (−1.74ms vs source)** |
+| raw-bun | 16.09ms | 13.57ms | −15.6% |
+| elysia2 | 145.27ms | 167.13ms | +15.1% |
 
-Absolute velqu 1000-route cold start (15.7ms) is still ~10× faster than the
-matched Elysia candidate and ~1.2MB RSS lighter, but the relative scaling
-budget FAILS. Profile attribution: 871KB pack JSON parse + 1000-function
-bundle eval dominate. Remediation hypotheses (M2+, each needs before/after
-benchmark): binary/chunked pack format, bytecode (ADR-0014), lazy handler
-table. Recorded as a failed budget — not silently redefined.
+Bytecode compilation (`velqu-bytecode embed`, ADR-0017) saves **1.74 ms (−10.7%)**
+at 1,000 routes by eliminating QuickJS source tokenization and AST parsing at load time.
+Absolute velqu bytecode cold start (14.49 ms) is ~11.5× faster than the matched Elysia
+candidate (167.1 ms) and ~108 MB lighter RSS, though the scaling ratio (+368%) still
+exceeds the aspirational budget (dominated by 871 KB JSON pack deserialization).
+Remediation candidate for M3: binary/chunked pack format. Recorded as an honest finding.
 
 ## Scope
 
