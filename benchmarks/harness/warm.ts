@@ -20,7 +20,7 @@ const CANDIDATES: Candidate[] = [
     id: "velqu",
     spawn: (port) => ({
       cmd: `${ROOT}/target/release/velqu-runtime`,
-      args: ["--pack", `${ROOT}/examples/proof/dist/app.qpack`, "--port", String(port)],
+      args: ["--pack", `${ROOT}/examples/proof/dist/app.qpack`, "--port", String(port), "--log", "off"],
       env: {},
     }),
   },
@@ -69,8 +69,8 @@ async function runWarmLoad(
   cand: Candidate,
   route: { id: string; path: string },
   concurrency: number,
-  totalRequests: number,
-): Promise<{ rps: number; p50Us: number; p95Us: number; p99Us: number; errors: number; rssKb: number }> {
+  durationSec: number,
+): Promise<{ rps: number; p50Us: number; p95Us: number; p99Us: number; errors: number; rssKb: number; totalRequests: number }> {
   const port = freePort();
   const { cmd, args, env, cwd } = cand.spawn(port);
   const proc = Bun.spawn([cmd, ...args], { env: { ...process.env, ...env }, cwd, stdout: "ignore", stderr: "ignore" });
@@ -96,15 +96,15 @@ async function runWarmLoad(
       try { await fetch(url); } catch {}
     }
 
-    // Measured load with worker pool
+    // Fixed-duration measurement: workers run until deadline
     const latenciesUs: number[] = [];
     let errors = 0;
     let completed = 0;
-    const reqsPerWorker = Math.ceil(totalRequests / concurrency);
+    const deadlineMs = performance.now() + durationSec * 1000;
 
     const t0 = performance.now();
     const workers = Array.from({ length: concurrency }, async () => {
-      for (let i = 0; i < reqsPerWorker; i++) {
+      while (performance.now() < deadlineMs) {
         const start = performance.now();
         try {
           const res = await fetch(url);
@@ -143,6 +143,7 @@ async function runWarmLoad(
       p99Us: p(0.99),
       errors,
       rssKb,
+      totalRequests: completed,
     };
   } catch (e) {
     proc.kill();
@@ -155,33 +156,37 @@ async function main() {
   const outDir = `${ROOT}/benchmarks/raw/warm`;
   mkdirSync(outDir, { recursive: true });
 
-  const totalReqs = parseInt(process.env.WARM_REQS ?? "1000", 10);
-  const concurrency = parseInt(process.env.WARM_CONCURRENCY ?? "10", 10);
+  const durationSec = parseInt(process.env.WARM_DURATION ?? "10", 10);
+  const concurrencyLevels = (process.env.WARM_CONCURRENCY ?? "1,10,50")
+    .split(",")
+    .map((c) => parseInt(c.trim(), 10));
 
-  console.log(`Warm-load benchmark (requests=${totalReqs}, concurrency=${concurrency})`);
+  console.log(`Warm-load benchmark (duration=${durationSec}s, concurrency=[${concurrencyLevels.join(", ")}])`);
   const results: Array<Record<string, unknown>> = [];
 
   for (const cand of CANDIDATES) {
     for (const route of ROUTES) {
-      console.log(`  measuring ${cand.id} on ${route.id}...`);
-      const res = await runWarmLoad(cand, route, concurrency, totalReqs);
-      results.push({
-        candidate: cand.id,
-        routeId: route.id,
-        path: route.path,
-        concurrency,
-        totalRequests: totalReqs,
-        ...res,
-      });
-      console.log(`    ${cand.id.padEnd(9)} ${route.id}: ${res.rps} req/s, p50=${res.p50Us}us, p95=${res.p95Us}us, errors=${res.errors}`);
+      for (const concurrency of concurrencyLevels) {
+        console.log(`  measuring ${cand.id} on ${route.id} c=${concurrency}...`);
+        const res = await runWarmLoad(cand, route, concurrency, durationSec);
+        results.push({
+          candidate: cand.id,
+          routeId: route.id,
+          path: route.path,
+          concurrency,
+          durationSec,
+          ...res,
+        });
+        console.log(`    ${cand.id.padEnd(9)} ${route.id} c=${String(concurrency).padEnd(3)}: ${res.rps} req/s, p50=${res.p50Us}us, p95=${res.p95Us}us, p99=${res.p99Us}us, errors=${res.errors}`);
+      }
     }
   }
 
   const summary = {
-    format: "velqu-warm-load-v1",
+    format: "velqu-warm-load-v2-fixed-duration",
     generatedAt: new Date().toISOString(),
-    concurrency,
-    requestsPerCell: totalReqs,
+    durationSec,
+    concurrencyLevels,
     results,
   };
 

@@ -16,12 +16,36 @@ use serde_json::Value;
 
 use crate::problems;
 
+/// Request logging modes (OPS-001: full mode is opt-in; production default
+/// is Errors to avoid per-request serialization cost).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogMode {
+    /// No per-request logging at all (fastest)
+    Off,
+    /// Log only error responses (4xx/5xx) — production default
+    Errors,
+    /// Log every request completion (development/debug)
+    Full,
+}
+
+impl LogMode {
+    pub fn from_str(s: &str) -> LogMode {
+        match s.to_ascii_lowercase().as_str() {
+            "off" => LogMode::Off,
+            "errors" => LogMode::Errors,
+            "full" => LogMode::Full,
+            _ => LogMode::Errors,
+        }
+    }
+}
+
 pub struct ServeState {
     pub pack: Arc<q_pack::QPack>,
     pub router: q_router::Router,
     pub engine: Mutex<QuickJsEngine>,
     pub store: Arc<q_bridge::RequestStore>,
     pub invocation_clock: AtomicU64,
+    pub log_mode: LogMode,
 }
 
 #[allow(clippy::type_complexity)]
@@ -47,7 +71,7 @@ pub fn make_handler(
 }
 
 fn log_completion(
-    _state: &ServeState,
+    state: &ServeState,
     ctx: &RequestContext,
     result: &HandlerResult,
     route_id: &str,
@@ -60,11 +84,20 @@ fn log_completion(
         Err(HttpError::QueueFull) => (503, 0),
         Err(_) => (400, 0),
     };
+
+    // Skip serialization entirely when mode is Off, or when Errors mode
+    // and this is a successful response.
+    match state.log_mode {
+        LogMode::Off => return,
+        LogMode::Errors if status < 400 => return,
+        _ => {}
+    }
+
     // OPS-001: structured completion log; header values never logged (SEC-004)
     println!(
         "{}",
         serde_json::json!({
-            "level": "info",
+            "level": if status < 400 { "info" } else { "warn" },
             "event": "request.complete",
             "requestId": ctx.request_id,
             "routeId": route_id,

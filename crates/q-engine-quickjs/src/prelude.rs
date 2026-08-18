@@ -67,22 +67,36 @@ globalThis.__velquOpReject = function (opId, reason) {
   if (op) { delete globalThis.__velquOps[opId]; op.reject(new Error(String(reason))); }
 };
 
-// Uniform policy+handler runner. Returns a promise that always settles exactly
-// once, so host-side cancellation/timeouts cannot double-reply.
-globalThis.__velquRun = async function (handlerFn, policyFn, ctx, req) {
-  if (policyFn) {
-    const r = await policyFn(req);
-    if (r && r.__problem) return r;
-    Object.defineProperty(ctx, "session", { value: r.session, enumerable: true });
+// Sync-or-Promise policy+handler runner: synchronous handlers return directly
+// (no Promise allocation, no settlement-table entry, no job-queue drain).
+// Async handlers (or thenable policies) take the Promise path naturally.
+globalThis.__velquIsThenable = function (v) {
+  return v !== null && v !== undefined &&
+    (typeof v === "object" || typeof v === "function") &&
+    typeof v.then === "function";
+};
+
+globalThis.__velquRun = function (handlerFn, policyFn, ctx, req) {
+  if (!policyFn) return handlerFn(ctx);
+
+  var pr = policyFn(req);
+  if (globalThis.__velquIsThenable(pr)) {
+    return pr.then(function (r) {
+      if (r && r.__problem) return r;
+      Object.defineProperty(ctx, "session", { value: r.session, enumerable: true });
+      return handlerFn(ctx);
+    });
   }
-  return await handlerFn(ctx);
+  if (pr && pr.__problem) return pr;
+  Object.defineProperty(ctx, "session", { value: pr.session, enumerable: true });
+  return handlerFn(ctx);
 };
 
 // Settlement watch: the host reads and clears this table after draining jobs.
-// Exactly one entry per invocation id.
+// Exactly one entry per invocation id. Only registered for thenable results.
 globalThis.__velquSettled = Object.create(null);
 globalThis.__velquWatch = function (p, id) {
-  const key = String(id);
+  var key = String(id);
   Promise.resolve(p).then(
     (v) => { globalThis.__velquSettled[key] = { ok: true, v }; },
     (e) => { globalThis.__velquSettled[key] = { ok: false, e }; }

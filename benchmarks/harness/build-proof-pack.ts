@@ -132,22 +132,22 @@ function users() {
   }
   return __users;
 }
-async function health_live() { return { status: "ok" }; }
-async function js_text() { return "plain"; }
-async function js_json() { return { ok: true }; }
-async function hello_get(ctx) { return { message: "Hello " + ctx.params.name }; }
-async function users_create(ctx) {
+function health_live() { return { status: "ok" }; }
+function js_text() { return "plain"; }
+function js_json() { return { ok: true }; }
+function hello_get(ctx) { return { message: "Hello " + ctx.params.name }; }
+function users_create(ctx) {
   const id = "usr_" + (__nextUser++);
   const u = { id, name: ctx.body.name, email: ctx.body.email };
   users().set(id, u);
   return { __ok: true, status: 201, value: u };
 }
-async function users_get(ctx) {
+function users_get(ctx) {
   const u = users().get(ctx.params.id);
   if (!u) return { __problem: true, problem: "not-found", status: 404, detail: "user not found" };
   return u;
 }
-async function auth_session(req) {
+function auth_session(req) {
   const token = req.headers.authorization;
   if (token !== "Bearer q-demo-token") {
     return { __problem: true, problem: "unauthorized", status: 401 };

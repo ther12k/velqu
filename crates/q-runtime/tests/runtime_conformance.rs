@@ -485,10 +485,12 @@ impl Server {
             .arg(pack_path)
             .arg("--port")
             .arg(port.to_string())
+            .arg("--log")
+            .arg("full")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("spawn q-runtime");
+            .expect("spawn velqu-runtime");
         let stdout = child.stdout.take().unwrap();
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {

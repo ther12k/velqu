@@ -21,7 +21,10 @@ use q_http::{HttpHost, Limits};
 use q_pack::QPack;
 
 #[derive(Debug, Parser)]
-#[command(name = "q-runtime", about = "Velqu production host (Rust + QuickJS)")]
+#[command(
+    name = "velqu-runtime",
+    about = "VelquJS production host (Rust + QuickJS)"
+)]
 struct Args {
     /// Path to the application pack (velqu.qpack v1)
     #[arg(long)]
@@ -34,6 +37,9 @@ struct Args {
     /// Optional limits/config JSON overriding defaults
     #[arg(long)]
     config: Option<PathBuf>,
+    /// Request logging mode: off | errors | full (default: errors)
+    #[arg(long, default_value = "errors")]
+    log: String,
 }
 
 #[allow(clippy::needless_return)]
@@ -204,6 +210,7 @@ fn run(args: Args) -> i32 {
             engine: std::sync::Mutex::new(engine),
             store,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
+            log_mode: serve::LogMode::from_str(&args.log),
         });
         let handler = serve::make_handler(Arc::clone(&state));
         let _ = host.serve(listener, handler, shutdown_rx).await;
