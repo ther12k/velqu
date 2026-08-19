@@ -100,15 +100,14 @@
 - **Evidence parity** — report now has exactly one "Verification (current)" section (r4.1 count relabeled historical); claims match the packaged source.
 - verify: ALL PASS — 113 Rust (65 engine + 1 worker unit, 12 runtime, 35 other) + 35 TS tests.
 
-## 2026-08-19 (M2.3-r2 Execution Graph Closure, Automaton Router & Verified Evidence)
+## 2026-08-19 (M2.3-r3 Semantic Function Manifest, Non-Shadowing Method-Aware Automaton & Canonical Benchmark Parity)
 
-- **Decoupled EngineLoadPlan (P0)** — Introduced `EngineLoadPlan::{Numeric{count}, Legacy{expected_handlers}}`. Numeric mode loads and checks exact function vector length directly without legacy `handlerTable` or BTreeMap allocations.
-- **Exact Bidirectional RoutePlan Equivalence (P0)** — `QPack::verify()` enforces strict bidirectional status set equality (`declared_statuses == planned_statuses`), `default_status ∈ declared_statuses`, status ranges `100..=599` (no 0, no duplicates), exact `deadline_ms`, `response_strategy`, `FieldNeeds`, and exact `SchemaId` mapping.
-- **Execution Graph Integrity** — `routes_canonical_json` and `routes_canonical_sha256` now include `functions: &[FunctionDecl]`, cryptographically binding the function manifest to the deployment pack integrity hash.
-- **In-Memory Terminal Router Automaton (M2.3)** — Replaced candidate-scanning router in `q-router` with a Trie/Automaton of `RouterNode`s carrying `Terminal` method masks (`u16`) and `route_by_method: [Option<usize>; 7]`. Matches in a single traversal and derives 405 `Allow` headers in $O(1)$ from method masks without repeat full-route scans.
-- **Numeric Pipeline Completeness** — Active `RouteId`, `PolicyId`, `SchemaId` wired into `InvocationSpec` and `CompiledRoute`. `schemaManifest` emitted by compiler with dense numeric `SchemaId`s.
-- **Terminal Cleanup Hardening** — `finish_timeout` clears settlement entries before and after floating-op rejection cleanup. `quarantine_runtime` wholesale clears the settlement table. Added test `interrupted_watched_chain_retention_is_zero`.
-- **Master Benchmark Suite Regenerated** — Full benchmark run completed (`bun run benchmark:all`): bridge, cold-start (1,680 samples), route-count scaling (40 samples, 25 vs 1,000 routes), warm load (10s fixed duration, c=1, 10, 50 across all candidates), and TypeScript scale.
-- verify: ALL PASS (M0–M2 + M2.2.1 + M2.3 verified) — 137 Rust tests (79 engine, 12 runtime, 46 other) + 35 TS tests.
+- **Semantic Function Manifest Verification (P0)** — Bundle emits `globalThis.__velquFunctionManifest` (`[key, kind, fn]`); `WorkerInner::load` (`EngineLoadPlan::Numeric { functions }`) validates each vector index by exact declared key, kind integer (`RouteHandler=0`, `PolicyHandler=1`), and callable function. 5 new tests prove swapped function entries, route/policy slot mismatches, and key/kind discrepancies fail closed before socket binds.
+- **Method-Aware Automaton & Route-Specific Parameters (P0)** — Router matching uses method-aware backtracking traversal so static routes for other methods (`POST /users/me`) never shadow valid parameter routes (`GET /users/:id`). `CompiledRoute` stores route-specific `param_names`, binding captured segment values to the exact route parameter names without cross-method pollution.
+- **Compiler-Emitted Serialized Router & Hash Separation (P1)** — `SerializedRouter` emitted by compiler and loaded directly via `Router::from_pack` without runtime route parsing. Public contract hash (`public_contract_sha256`) decoupled from internal function reordering, while `routes_sha256` integrity hash covers the complete execution graph.
+- **Pre-cached JSON Stringify & Performance Recovery (P0)** — `stringify_fn` pre-cached in `CachedPrelude` eliminating repeated global JSON property lookups on `Strategy::Js`. Warm load recovered: C0 reaches 110.7k req/s (c=10) and 121.6k req/s (c=50); C1 reaches 62.0k req/s (c=10) and 67.6k req/s (c=50); C2 reaches 59.1k req/s (c=10) and 66.7k req/s (c=50); C3 reaches 58.7k req/s (c=10) and 69.3k req/s (c=50).
+- **Production Roadmap & Task Ledger (M23R2-GATE)** — ADR-0019 accepted; `TASKS.production.json` updated with verified status; `./scripts/validate-production-plan` validates all 120 production tasks through GA.
+- verify: ALL PASS (M0–M2 + M2.2.1 + M2.3 verified) — 146 total tests: 111 Rust tests (82 engine, 12 runtime, 17 other) + 35 TS tests.
+
 
 

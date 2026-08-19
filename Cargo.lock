@@ -906,6 +906,7 @@ dependencies = [
 name = "q-pack"
 version = "0.1.0"
 dependencies = [
+ "q-engine",
  "q-schema-runtime",
  "serde",
  "serde_json",

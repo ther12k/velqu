@@ -33,6 +33,23 @@ pub struct PolicyId(pub u32);
 )]
 pub struct SchemaId(pub u32);
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "kebab-case")]
+pub enum FunctionKind {
+    RouteHandler,
+    PolicyHandler,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FunctionDecl {
+    pub id: u32,
+    pub key: String,
+    pub kind: FunctionKind,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldNeeds {
@@ -151,12 +168,12 @@ pub struct LoadStats {
     pub register_calls: usize,
 }
 
-/// M2.3-r2: Explicit loading plan decoupling modern numeric vector loading
-/// from the legacy string handler table.
+/// M2.3-r2/r3: Explicit loading plan carrying the semantic function manifest
+/// for exact index, key, and kind verification.
 #[derive(Debug, Clone)]
 pub enum EngineLoadPlan {
     Numeric {
-        count: usize,
+        functions: Vec<FunctionDecl>,
     },
     Legacy {
         expected_handlers: BTreeMap<String, String>,

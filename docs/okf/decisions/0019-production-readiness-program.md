@@ -1,7 +1,7 @@
 ---
 type: Architecture Decision Record
 title: ADR-0019 — Production Readiness Program and GA Gates
-status: draft
+status: accepted
 tags:
 - production-readiness
 - roadmap
@@ -14,7 +14,7 @@ tags:
 
 ## Status
 
-Proposed for owner acceptance.
+Accepted (2026-08-19, owner decision and consensus architecture roadmap). Supersedes draft baseline; authorizes ordered development from M2.3 through M8 GA.
 
 ## Context
 

@@ -1,6 +1,6 @@
 {
   "format": "velqu-benchmark-manifest-v1",
-  "generatedAt": "2026-08-19T11:35:42.719Z",
+  "generatedAt": "2026-08-19T14:03:23.764Z",
   "environment": {
     "platform": "linux",
     "kernel": "Linux version 7.0.0-28-generic (buildd@lcy02-amd64-004) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #28~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Jul  1 15:50:57 UTC 2",
@@ -13,11 +13,11 @@
   "artifacts": {
     "qRuntimeRelease": {
       "path": "target/release/velqu-runtime",
-      "sha256": "60f9727266b8d5334449a9b2391dced11514f3ed9af702efcb2ba1b1588446fb"
+      "sha256": "8916fb9ecb1eca8ad5032337cdf7780b75f49acc0869168cca17d5cfd4935279"
     },
     "proofPack": {
       "path": "examples/proof/dist/app.qpack",
-      "sha256": "1a77837e976c53c8b55a84ee756f64f94b803798caa36cb232cbcf4bbe0076fc"
+      "sha256": "3a728eedc162ee07cb1295e666449f6ed5c82f69a6ccc5782dde9e9615e0d056"
     }
   },
   "evidence": {

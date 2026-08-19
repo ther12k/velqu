@@ -216,19 +216,39 @@ fn default_deadline() -> u64 {
     5_000
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum FunctionKind {
-    RouteHandler,
-    PolicyHandler,
+pub use q_engine::{FunctionDecl, FunctionKind};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SerializedStaticEdge {
+    pub segment: String,
+    pub target_node: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct FunctionDecl {
-    pub id: u32,
-    pub key: String,
-    pub kind: FunctionKind,
+pub struct SerializedTerminal {
+    pub method_mask: u16,
+    pub route_by_method: [Option<usize>; 7],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SerializedRouterNode {
+    #[serde(default)]
+    pub static_edges: Vec<SerializedStaticEdge>,
+    #[serde(default)]
+    pub param_edge: Option<usize>,
+    #[serde(default)]
+    pub wildcard_edge: Option<usize>,
+    #[serde(default)]
+    pub terminal: Option<SerializedTerminal>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SerializedRouter {
+    pub nodes: Vec<SerializedRouterNode>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -316,6 +336,8 @@ pub struct QPack {
     pub functions: Vec<FunctionDecl>,
     #[serde(default)]
     pub schema_manifest: Vec<SchemaDecl>,
+    #[serde(default)]
+    pub router: Option<SerializedRouter>,
     pub handler_table: BTreeMap<String, String>,
     pub integrity: Integrity,
 }
@@ -445,7 +467,7 @@ impl QPack {
             }
         }
 
-        // schema manifest validation (M2.3-r2 numeric mode)
+        // schema manifest validation (M2.3-r2/r3 numeric mode)
         if !self.schema_manifest.is_empty() {
             let mut seen_keys = std::collections::BTreeSet::new();
             for (idx, schema_decl) in self.schema_manifest.iter().enumerate() {
@@ -458,11 +480,58 @@ impl QPack {
                 if !seen_keys.insert(&schema_decl.key) {
                     return reject(format!("duplicate schema key {}", schema_decl.key));
                 }
-                if !self.schemas.contains_key(&schema_decl.key) {
+                let Some(actual_ir) = self.schemas.get(&schema_decl.key) else {
                     return reject(format!(
                         "schema manifest key {} not found in schemas table",
                         schema_decl.key
                     ));
+                };
+                if *actual_ir != schema_decl.ir {
+                    return reject(format!(
+                        "schema manifest entry {} ({}) IR does not match declared schema IR",
+                        schema_decl.id, schema_decl.key
+                    ));
+                }
+            }
+        }
+
+        // router validation (if pre-compiled router is present)
+        if let Some(ref r) = self.router {
+            let node_count = r.nodes.len();
+            for (n_idx, node) in r.nodes.iter().enumerate() {
+                for edge in &node.static_edges {
+                    if edge.target_node >= node_count {
+                        return reject(format!(
+                            "router node {n_idx} static edge target {} out of range ({node_count})",
+                            edge.target_node
+                        ));
+                    }
+                }
+                if let Some(target) = node.param_edge {
+                    if target >= node_count {
+                        return reject(format!(
+                            "router node {n_idx} param edge target {target} out of range ({node_count})"
+                        ));
+                    }
+                }
+                if let Some(target) = node.wildcard_edge {
+                    if target >= node_count {
+                        return reject(format!(
+                            "router node {n_idx} wildcard edge target {target} out of range ({node_count})"
+                        ));
+                    }
+                }
+                if let Some(ref t) = node.terminal {
+                    for &opt_r_idx in t.route_by_method.iter() {
+                        if let Some(r_idx) = opt_r_idx {
+                            if r_idx >= self.routes.len() {
+                                return reject(format!(
+                                    "router node {n_idx} terminal route_index {r_idx} out of range ({})",
+                                    self.routes.len()
+                                ));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -799,6 +868,45 @@ impl QPack {
         serde_json::to_writer(&mut hasher, &c).expect("canonical serialization cannot fail");
         hex(&hasher.finalize())
     }
+
+    /// Canonical JSON over the public API contract only (method, path, request/response schemas, security, errors).
+    /// M2.3-r3: Stable across internal function/plan reordering (P1 fix).
+    pub fn public_contract_canonical_json(&self) -> String {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct PublicRoute<'a> {
+            id: &'a str,
+            method: &'a str,
+            path: &'a str,
+            params: Option<&'a str>,
+            query: Option<&'a str>,
+            body: Option<&'a str>,
+            responses: &'a BTreeMap<String, ResponseDecl>,
+            security: &'a [SecurityReq],
+        }
+        let routes: Vec<PublicRoute> = self
+            .routes
+            .iter()
+            .map(|r| PublicRoute {
+                id: &r.id,
+                method: &r.method,
+                path: &r.path,
+                params: r.params.as_ref().and_then(|p| p.schema.as_deref()),
+                query: r.query.as_ref().and_then(|q| q.schema.as_deref()),
+                body: r.body.as_ref().and_then(|b| b.schema.as_deref()),
+                responses: &r.responses,
+                security: &r.security,
+            })
+            .collect();
+        serde_json::to_string(&(&routes, &self.schemas, &self.policies))
+            .expect("canonical serialization cannot fail")
+    }
+
+    pub fn public_contract_sha256(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(self.public_contract_canonical_json().as_bytes());
+        hex(&hasher.finalize())
+    }
 }
 
 pub fn hex(bytes: &[u8]) -> String {
@@ -936,6 +1044,7 @@ pub fn minimal_pack_public() -> QPack {
         capabilities: vec![],
         functions: vec![],
         schema_manifest: vec![],
+        router: None,
         handler_table: BTreeMap::from([("health.live".into(), "health.live".into())]),
         integrity: Integrity {
             algorithm: "sha256".into(),
@@ -1024,6 +1133,7 @@ mod tests {
             capabilities: vec![],
             functions: vec![],
             schema_manifest: vec![],
+            router: None,
             handler_table: BTreeMap::from([("health.live".into(), "health_live".into())]),
             integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new(), bytecode_sha256: None },
         };
@@ -1467,5 +1577,39 @@ mod tests {
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(matches!(err, PackError::Rejected(m) if m.contains("querySchemaId is None")));
+    }
+
+    #[test]
+    fn public_contract_hash_is_stable_when_function_ids_are_reordered() {
+        let mut p1 = minimal_pack();
+        p1.functions = vec![
+            FunctionDecl {
+                id: 0,
+                key: "health.live".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+            FunctionDecl {
+                id: 1,
+                key: "other.route".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+        ];
+        let mut p2 = minimal_pack();
+        p2.functions = vec![
+            FunctionDecl {
+                id: 0,
+                key: "other.route".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+            FunctionDecl {
+                id: 1,
+                key: "health.live".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+        ];
+        // Public contract hash depends on public API routes/schemas, NOT internal function ordering
+        assert_eq!(p1.public_contract_sha256(), p2.public_contract_sha256());
+        // Execution graph hash DOES change because internal layout changed
+        assert_ne!(p1.routes_canonical_sha256(), p2.routes_canonical_sha256());
     }
 }

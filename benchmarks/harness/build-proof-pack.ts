@@ -163,18 +163,19 @@ async function async_cancel(ctx) {
   return { cancelled: false, waited };
 }
 async function throw_redacted() { throw new Error("secret-boom"); }
-globalThis.__velquFunctions = [
-  health_live,
-  js_text,
-  js_json,
-  hello_get,
-  users_create,
-  users_get,
-  async_timer,
-  async_cancel,
-  throw_redacted,
-  auth_session
+globalThis.__velquFunctionManifest = [
+  ["health.live", 0, health_live],
+  ["js.text", 0, js_text],
+  ["js.json", 0, js_json],
+  ["hello.get", 0, hello_get],
+  ["users.create", 0, users_create],
+  ["users.get", 0, users_get],
+  ["async.timer", 0, async_timer],
+  ["async.cancel", 0, async_cancel],
+  ["throw.redacted", 0, throw_redacted],
+  ["auth.session", 1, auth_session]
 ];
+globalThis.__velquFunctions = globalThis.__velquFunctionManifest.map(function (e) { return e[2]; });
 `;
 
 const FIXTURE_SCHEMAS: Record<string, unknown> = {
@@ -267,6 +268,72 @@ function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyT
   };
 }
 
+function buildSerializedRouter(routes: Array<{ method: string; pathSegments: Array<{ kind: string; value: string }> }>) {
+  const methodMap: Record<string, number> = {
+    GET: 0,
+    POST: 1,
+    PUT: 2,
+    PATCH: 3,
+    DELETE: 4,
+    OPTIONS: 5,
+    HEAD: 6,
+  };
+  const nodes: Array<{
+    staticEdges: Array<{ segment: string; targetNode: number }>;
+    paramEdge: number | null;
+    wildcardEdge: number | null;
+    terminal: { methodMask: number; routeByMethod: Array<number | null> } | null;
+  }> = [
+    { staticEdges: [], paramEdge: null, wildcardEdge: null, terminal: null },
+  ];
+
+  for (let rIdx = 0; rIdx < routes.length; rIdx++) {
+    const r = routes[rIdx];
+    let curr = 0;
+    for (const seg of r.pathSegments) {
+      if (seg.kind === "static") {
+        const existing = nodes[curr].staticEdges.find((e) => e.segment === seg.value);
+        if (existing) {
+          curr = existing.targetNode;
+        } else {
+          const next = nodes.length;
+          nodes.push({ staticEdges: [], paramEdge: null, wildcardEdge: null, terminal: null });
+          nodes[curr].staticEdges.push({ segment: seg.value, targetNode: next });
+          curr = next;
+        }
+      } else if (seg.kind === "param") {
+        if (nodes[curr].paramEdge !== null) {
+          curr = nodes[curr].paramEdge!;
+        } else {
+          const next = nodes.length;
+          nodes.push({ staticEdges: [], paramEdge: null, wildcardEdge: null, terminal: null });
+          nodes[curr].paramEdge = next;
+          curr = next;
+        }
+      } else if (seg.kind === "wildcard") {
+        if (nodes[curr].wildcardEdge !== null) {
+          curr = nodes[curr].wildcardEdge!;
+        } else {
+          const next = nodes.length;
+          nodes.push({ staticEdges: [], paramEdge: null, wildcardEdge: null, terminal: null });
+          nodes[curr].wildcardEdge = next;
+          curr = next;
+        }
+      }
+    }
+    if (!nodes[curr].terminal) {
+      nodes[curr].terminal = {
+        methodMask: 0,
+        routeByMethod: [null, null, null, null, null, null, null],
+      };
+    }
+    const mIdx = methodMap[r.method.toUpperCase()] ?? 0;
+    nodes[curr].terminal!.methodMask |= 1 << mIdx;
+    nodes[curr].terminal!.routeByMethod[mIdx] = rIdx;
+  }
+  return { nodes };
+}
+
 function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: string, appId: string) {
   const sortedSchemaKeys = Object.keys(schemas).sort();
   const schemaKeyToId = new Map<string, number>();
@@ -298,6 +365,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
       : []),
   ];
 
+  const router = buildSerializedRouter(packRoutes);
+
   // MUST match the Rust canonical form byte-for-byte (q-pack routes_canonical_json):
   // routes keep Vec order + struct field declaration order; schemas/policies are
   // BTreeMaps (sorted keys, nested values in IR field order); no deep sorting.
@@ -310,6 +379,26 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
     functions,
   });
+
+  const publicRoutes = packRoutes.map((r) => ({
+    id: r.id,
+    method: r.method,
+    path: r.path,
+    params: r.params?.schema ?? null,
+    query: r.query?.schema ?? null,
+    body: r.body?.schema ?? null,
+    responses: r.responses,
+    security: r.security,
+  }));
+  const publicContractCanonical = JSON.stringify([
+    publicRoutes,
+    sortIR(schemas),
+    routes.some((r) => r.policy === "auth.session")
+      ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
+      : {},
+  ]);
+  const contractHash = sha(publicContractCanonical).slice(0, 32);
+
   const pack = {
     formatVersion: 1,
     kind: "velqu.qpack",
@@ -317,7 +406,7 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
     schemaIrVersion: 1,
     contractVersion: 1,
-    contractHash: sha(canonical).slice(0, 32),
+    contractHash,
     builtBy: { compiler: "bench-fixture-0.1.0", typescript: Bun.version, bun: Bun.version },
     appId,
     modules: [...new Set(routes.map((r) => r.id.split(".")[0]))],
@@ -332,6 +421,7 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
     functions,
     schemaManifest,
+    router,
     handlerTable,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle), routesSha256: sha(canonical) },
   };
@@ -399,7 +489,12 @@ function generatedRoutes(n: number): { routes: Route[]; bundle: string; schemas:
     );
     fnNames.push(`res${i}_get`);
   }
-  parts.push(`globalThis.__velquFunctions = [\n  ${fnNames.join(",\n  ")}\n];`);
+  const manifestParts: string[] = [
+    `["health.live", 0, health_live]`,
+    ...Array.from({ length: n }, (_, i) => `["res${i}.get", 0, res${i}_get]`),
+  ];
+  parts.push(`globalThis.__velquFunctionManifest = [\n  ${manifestParts.join(",\n  ")}\n];`);
+  parts.push(`globalThis.__velquFunctions = globalThis.__velquFunctionManifest.map(function (e) { return e[2]; });`);
   const schemas: Record<string, unknown> = {};
   for (let i = 0; i < n; i++) {
     schemas[`sch:res${i}.params`] = {

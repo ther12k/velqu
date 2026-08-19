@@ -70,9 +70,9 @@ fn run(args: Args) -> i32 {
     };
     stages.push(("pack.load".into(), t.elapsed().as_secs_f64() * 1000.0));
 
-    // ---- stage: router.build (consume pre-compiled segments; no parsing)
+    // ---- stage: router.build (consume pre-compiled automaton or segments; no runtime path parsing)
     let t = Instant::now();
-    let router = match q_router::Router::build(&pack.routes) {
+    let router = match q_router::Router::from_pack(&pack) {
         Ok(r) => r,
         Err(e) => {
             eprintln!(
@@ -141,7 +141,7 @@ fn run(args: Args) -> i32 {
             .and_then(|bc| q_pack::base64_decode(&bc.data));
         let load_plan = if !pack.functions.is_empty() {
             q_engine::EngineLoadPlan::Numeric {
-                count: pack.functions.len(),
+                functions: pack.functions.clone(),
             }
         } else {
             q_engine::EngineLoadPlan::Legacy {

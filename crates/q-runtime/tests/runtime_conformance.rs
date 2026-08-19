@@ -565,6 +565,7 @@ fn fixture_pack() -> q_pack::QPack {
         capabilities: vec!["timer".into()],
         functions,
         schema_manifest: vec![],
+        router: None,
         handler_table,
         integrity: Integrity {
             algorithm: "sha256".into(),

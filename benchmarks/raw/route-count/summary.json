@@ -1,79 +1,79 @@
 {
   "format": "velqu-route-count-v1",
   "samples": 40,
-  "generatedAt": "2026-08-19T11:27:10.804Z",
+  "generatedAt": "2026-08-19T13:54:59.826Z",
   "results": [
     {
       "candidate": "velqu (source)",
       "routes": 25,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 3.206,
-      "p95Ms": 4.066,
-      "rssP50Kb": 6356
+      "p50Ms": 3.313,
+      "p95Ms": 4.136,
+      "rssP50Kb": 6568
     },
     {
       "candidate": "velqu (source)",
       "routes": 1000,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 17.624,
-      "p95Ms": 21.495,
-      "rssP50Kb": 12984
+      "p50Ms": 20.204,
+      "p95Ms": 24.466,
+      "rssP50Kb": 14928
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 25,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 2.981,
-      "p95Ms": 3.928,
-      "rssP50Kb": 6340
+      "p50Ms": 3.212,
+      "p95Ms": 4.883,
+      "rssP50Kb": 6564
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 1000,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 17.366,
-      "p95Ms": 26.798,
-      "rssP50Kb": 12856
+      "p50Ms": 17.826,
+      "p95Ms": 22.48,
+      "rssP50Kb": 14712
     },
     {
       "candidate": "raw-bun",
       "routes": 25,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 14.009,
-      "p95Ms": 22.355,
-      "rssP50Kb": 38756
+      "p50Ms": 14.823,
+      "p95Ms": 20.106,
+      "rssP50Kb": 38708
     },
     {
       "candidate": "raw-bun",
       "routes": 1000,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 12.843,
-      "p95Ms": 17.363,
-      "rssP50Kb": 38764
+      "p50Ms": 14.006,
+      "p95Ms": 21.916,
+      "rssP50Kb": 38704
     },
     {
       "candidate": "elysia2",
       "routes": 25,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 151.507,
-      "p95Ms": 192.816,
-      "rssP50Kb": 95496
+      "p50Ms": 153.932,
+      "p95Ms": 186.848,
+      "rssP50Kb": 95016
     },
     {
       "candidate": "elysia2",
       "routes": 1000,
       "samples": 40,
       "failures": 0,
-      "p50Ms": 177.641,
-      "p95Ms": 256.412,
-      "rssP50Kb": 118996
+      "p50Ms": 185.069,
+      "p95Ms": 216.222,
+      "rssP50Kb": 118856
     }
   ]
 }

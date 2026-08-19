@@ -155,7 +155,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "BASE-002",
@@ -180,7 +180,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "BASE-003",
@@ -204,7 +204,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "BASE-004",
@@ -229,7 +229,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "BASE-005",
@@ -254,7 +254,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "BASE-GATE",
@@ -279,7 +279,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-001",
@@ -304,7 +304,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-002",
@@ -329,7 +329,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-003",
@@ -354,7 +354,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-004",
@@ -379,7 +379,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-005",
@@ -403,7 +403,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-006",
@@ -428,7 +428,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-007",
@@ -454,7 +454,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-008",
@@ -479,7 +479,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-009",
@@ -504,7 +504,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M23R2-GATE",
@@ -531,7 +531,7 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "TODO"
+      "status": "PASS"
     },
     {
       "id": "M24-001",

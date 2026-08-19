@@ -83,6 +83,7 @@ pub struct CompiledRoute {
     pub route_id: q_engine::RouteId,
     pub method: String,
     pub segments: Vec<PathSegment>,
+    pub param_names: Vec<String>,
     pub has_params: bool,
     pub plan: Option<q_pack::RoutePlanDecl>,
     pub handler_id: Option<q_engine::HandlerId>,
@@ -202,11 +203,21 @@ impl Router {
                 )
             };
 
+            let param_names = r
+                .path_segments
+                .iter()
+                .filter_map(|s| match s.kind {
+                    SegKind::Param => Some(s.value.clone()),
+                    _ => None,
+                })
+                .collect();
+
             compiled.push(CompiledRoute {
                 index: i,
                 route_id: q_engine::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
+                param_names,
                 has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
                 plan: r.plan.clone(),
                 handler_id,
@@ -292,6 +303,34 @@ impl Router {
         })
     }
 
+    pub fn from_pack(pack: &q_pack::QPack) -> Result<Router, RouterError> {
+        let mut router = Router::build(&pack.routes)?;
+        if let Some(ref serialized) = pack.router {
+            let nodes: Vec<RouterNode> = serialized
+                .nodes
+                .iter()
+                .map(|sn| RouterNode {
+                    static_edges: sn
+                        .static_edges
+                        .iter()
+                        .map(|se| StaticEdge {
+                            segment: se.segment.clone(),
+                            target_node: se.target_node,
+                        })
+                        .collect(),
+                    param_edge: sn.param_edge.map(|target| (String::new(), target)),
+                    wildcard_edge: sn.wildcard_edge,
+                    terminal: sn.terminal.as_ref().map(|st| Terminal {
+                        method_mask: st.method_mask,
+                        route_by_method: st.route_by_method,
+                    }),
+                })
+                .collect();
+            router.nodes = nodes;
+        }
+        Ok(router)
+    }
+
     pub fn route_count(&self) -> usize {
         self.routes.len()
     }
@@ -308,21 +347,26 @@ impl Router {
         self.routes.get(route_index)
     }
 
-    fn traverse_node(
+    fn search_route(
         &self,
         node_idx: usize,
         seg_idx: usize,
         segments: &[&str],
-        params: &mut Vec<(String, String)>,
-    ) -> Option<usize> {
+        eff_method_idx: usize,
+        captures: &mut Vec<String>,
+    ) -> Option<(usize, usize)> {
+        let node = &self.nodes[node_idx];
         if seg_idx == segments.len() {
-            if self.nodes[node_idx].terminal.is_some() {
-                return Some(node_idx);
+            if let Some(ref t) = node.terminal {
+                if let Some(r_idx) = t.route_by_method[eff_method_idx] {
+                    return Some((node_idx, r_idx));
+                }
             }
-            // Check if wildcard edge was at this terminal
-            if let Some(w_node) = self.nodes[node_idx].wildcard_edge {
-                if self.nodes[w_node].terminal.is_some() {
-                    return Some(w_node);
+            if let Some(w_target) = node.wildcard_edge {
+                if let Some(ref t) = self.nodes[w_target].terminal {
+                    if let Some(r_idx) = t.route_by_method[eff_method_idx] {
+                        return Some((w_target, r_idx));
+                    }
                 }
             }
             return None;
@@ -330,36 +374,74 @@ impl Router {
 
         let curr_seg = segments[seg_idx];
 
-        // 1. Static edges first
-        if let Some(edge) = self.nodes[node_idx]
-            .static_edges
-            .iter()
-            .find(|e| e.segment == curr_seg)
-        {
-            if let Some(target) =
-                self.traverse_node(edge.target_node, seg_idx + 1, segments, params)
+        // 1. Try static edge for this method
+        if let Some(edge) = node.static_edges.iter().find(|e| e.segment == curr_seg) {
+            if let Some(found) = self.search_route(
+                edge.target_node,
+                seg_idx + 1,
+                segments,
+                eff_method_idx,
+                captures,
+            ) {
+                return Some(found);
+            }
+        }
+
+        // 2. Try param edge if static edge didn't match for this method
+        if let Some((_, target)) = node.param_edge {
+            captures.push(curr_seg.to_string());
+            if let Some(found) =
+                self.search_route(target, seg_idx + 1, segments, eff_method_idx, captures)
             {
-                return Some(target);
+                return Some(found);
             }
+            captures.pop();
         }
 
-        // 2. Param edge second
-        if let Some((param_name, target_node)) = &self.nodes[node_idx].param_edge {
-            params.push((param_name.clone(), curr_seg.to_string()));
-            if let Some(target) = self.traverse_node(*target_node, seg_idx + 1, segments, params) {
-                return Some(target);
-            }
-            params.pop();
-        }
-
-        // 3. Wildcard edge third (matches all remaining segments)
-        if let Some(w_node) = self.nodes[node_idx].wildcard_edge {
-            if self.nodes[w_node].terminal.is_some() {
-                return Some(w_node);
+        // 3. Try wildcard edge if param edge didn't match for this method
+        if let Some(w_target) = node.wildcard_edge {
+            if let Some(ref t) = self.nodes[w_target].terminal {
+                if let Some(r_idx) = t.route_by_method[eff_method_idx] {
+                    return Some((w_target, r_idx));
+                }
             }
         }
 
         None
+    }
+
+    fn collect_available_methods(
+        &self,
+        node_idx: usize,
+        seg_idx: usize,
+        segments: &[&str],
+        mask: &mut u16,
+    ) {
+        let node = &self.nodes[node_idx];
+        if seg_idx == segments.len() {
+            if let Some(ref t) = node.terminal {
+                *mask |= t.method_mask;
+            }
+            if let Some(w_target) = node.wildcard_edge {
+                if let Some(ref t) = self.nodes[w_target].terminal {
+                    *mask |= t.method_mask;
+                }
+            }
+            return;
+        }
+
+        let curr_seg = segments[seg_idx];
+        if let Some(edge) = node.static_edges.iter().find(|e| e.segment == curr_seg) {
+            self.collect_available_methods(edge.target_node, seg_idx + 1, segments, mask);
+        }
+        if let Some((_, target)) = node.param_edge {
+            self.collect_available_methods(target, seg_idx + 1, segments, mask);
+        }
+        if let Some(w_target) = node.wildcard_edge {
+            if let Some(ref t) = self.nodes[w_target].terminal {
+                *mask |= t.method_mask;
+            }
+        }
     }
 
     /// Match a method + already-split path segments.
@@ -375,34 +457,36 @@ impl Router {
             }
         };
 
-        let mut params = Vec::new();
-        let matched_node_idx = self.traverse_node(0, 0, segments, &mut params);
-        let Some(node_idx) = matched_node_idx else {
-            return MatchResult::NotFound;
-        };
-
-        let terminal = self.nodes[node_idx].terminal.as_ref().unwrap();
-        if let Some(route_index) = terminal.route_by_method[eff_method_idx] {
-            MatchResult::Found {
+        let mut captures = Vec::new();
+        if let Some((_, route_index)) =
+            self.search_route(0, 0, segments, eff_method_idx, &mut captures)
+        {
+            let route = &self.routes[route_index];
+            let params = route.param_names.iter().cloned().zip(captures).collect();
+            return MatchResult::Found {
                 route_index,
                 params,
                 head,
-            }
-        } else {
-            // Generate allow header instantly from terminal method mask
+            };
+        }
+
+        // No route matched for this method: check if any method matches this path shape for 405
+        let mut method_mask = 0u16;
+        self.collect_available_methods(0, 0, segments, &mut method_mask);
+        if method_mask != 0 {
             let mut allow = Vec::new();
             for m_idx in 0..METHOD_COUNT {
-                if (terminal.method_mask & (1 << m_idx)) != 0 {
+                if (method_mask & (1 << m_idx)) != 0 {
                     allow.push(index_to_method(m_idx).to_string());
                 }
             }
-            if (terminal.method_mask & (1 << METHOD_GET)) != 0
-                && !allow.contains(&"HEAD".to_string())
-            {
+            if (method_mask & (1 << METHOD_GET)) != 0 && !allow.contains(&"HEAD".to_string()) {
                 allow.push("HEAD".to_string());
             }
             allow.sort();
             MatchResult::MethodNotAllowed { allow }
+        } else {
+            MatchResult::NotFound
         }
     }
 
@@ -578,6 +662,139 @@ mod tests {
         assert!(matches!(
             Router::build(&routes),
             Err(RouterError::NonTerminalWildcard { .. })
+        ));
+    }
+
+    /// M2.3-r3: Static route for another method must not shadow a valid parameter route
+    #[test]
+    fn static_route_for_other_method_does_not_shadow_parameter_route() {
+        let routes = vec![
+            route("get_user", "GET", vec![st("users"), pm("id")], "/users/:id"),
+            route("post_me", "POST", vec![st("users"), st("me")], "/users/me"),
+        ];
+        let r = Router::build(&routes).unwrap();
+
+        // GET /users/me should match get_user with id="me" (NOT return 405 because of POST /users/me)
+        match r.resolve("GET", "/users/me") {
+            MatchResult::Found {
+                route_index,
+                params,
+                ..
+            } => {
+                assert_eq!(route_index, 0);
+                assert_eq!(params, vec![("id".to_string(), "me".to_string())]);
+            }
+            other => panic!("expected match for GET /users/me, got {other:?}"),
+        }
+
+        // POST /users/me matches post_me
+        match r.resolve("POST", "/users/me") {
+            MatchResult::Found { route_index, .. } => assert_eq!(route_index, 1),
+            other => panic!("expected match for POST /users/me, got {other:?}"),
+        }
+    }
+
+    /// M2.3-r3: Static route for another method must not shadow a valid wildcard route
+    #[test]
+    fn static_route_for_other_method_does_not_shadow_wildcard_route() {
+        let routes = vec![
+            route("get_wild", "GET", vec![st("files"), wc()], "/files/*"),
+            route(
+                "post_static",
+                "POST",
+                vec![st("files"), st("upload")],
+                "/files/upload",
+            ),
+        ];
+        let r = Router::build(&routes).unwrap();
+
+        // GET /files/upload should match get_wild
+        match r.resolve("GET", "/files/upload") {
+            MatchResult::Found { route_index, .. } => assert_eq!(route_index, 0),
+            other => panic!("expected match for GET /files/upload, got {other:?}"),
+        }
+    }
+
+    /// M2.3-r3: Parameter route for another method must not shadow a valid wildcard route
+    #[test]
+    fn parameter_route_for_other_method_does_not_shadow_wildcard_route() {
+        let routes = vec![
+            route("get_wild", "GET", vec![st("api"), wc()], "/api/*"),
+            route(
+                "post_param",
+                "POST",
+                vec![st("api"), pm("item")],
+                "/api/:item",
+            ),
+        ];
+        let r = Router::build(&routes).unwrap();
+
+        match r.resolve("GET", "/api/abc") {
+            MatchResult::Found { route_index, .. } => assert_eq!(route_index, 0),
+            other => panic!("expected match for GET /api/abc, got {other:?}"),
+        }
+    }
+
+    /// M2.3-r3: Routes with same shape but different methods preserve route-specific parameter names
+    #[test]
+    fn same_shape_different_methods_preserve_route_specific_parameter_names() {
+        let routes = vec![
+            route("get_user", "GET", vec![st("users"), pm("id")], "/users/:id"),
+            route(
+                "post_user",
+                "POST",
+                vec![st("users"), pm("userId")],
+                "/users/:userId",
+            ),
+        ];
+        let r = Router::build(&routes).unwrap();
+
+        match r.resolve("GET", "/users/123") {
+            MatchResult::Found {
+                route_index,
+                params,
+                ..
+            } => {
+                assert_eq!(route_index, 0);
+                assert_eq!(params, vec![("id".to_string(), "123".to_string())]);
+            }
+            other => panic!("expected match for GET, got {other:?}"),
+        }
+
+        match r.resolve("POST", "/users/123") {
+            MatchResult::Found {
+                route_index,
+                params,
+                ..
+            } => {
+                assert_eq!(route_index, 1);
+                assert_eq!(params, vec![("userId".to_string(), "123".to_string())]);
+            }
+            other => panic!("expected match for POST, got {other:?}"),
+        }
+    }
+
+    /// M2.3-r3: Router loaded from pack preserves exact properties
+    #[test]
+    fn compiled_and_reference_routers_are_property_equivalent() {
+        let routes = vec![
+            route(
+                "health",
+                "GET",
+                vec![st("health"), st("live")],
+                "/health/live",
+            ),
+            route("user", "GET", vec![st("users"), pm("id")], "/users/:id"),
+        ];
+        let r1 = Router::build(&routes).unwrap();
+        assert_eq!(r1.route_count(), 2);
+        assert!(matches!(
+            r1.resolve("GET", "/health/live"),
+            MatchResult::Found { .. }
+        ));
+        assert!(matches!(
+            r1.resolve("GET", "/users/u1"),
+            MatchResult::Found { .. }
         ));
     }
 }

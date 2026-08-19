@@ -3,24 +3,24 @@
   "results": [
     {
       "routes": 100,
-      "freshTscMs": 2546,
-      "peakRssBytes": 441819136,
+      "freshTscMs": 1845,
+      "peakRssBytes": 440328192,
       "declarationBytes": 14265,
       "errors": null,
       "negativeCaught": "CAUGHT"
     },
     {
       "routes": 500,
-      "freshTscMs": 3461,
-      "peakRssBytes": 461340672,
+      "freshTscMs": 1706,
+      "peakRssBytes": 458440704,
       "declarationBytes": 71865,
       "errors": null,
       "negativeCaught": "CAUGHT"
     },
     {
       "routes": 1000,
-      "freshTscMs": 3509,
-      "peakRssBytes": 484151296,
+      "freshTscMs": 1984,
+      "peakRssBytes": 480452608,
       "declarationBytes": 143865,
       "errors": null,
       "negativeCaught": "CAUGHT"

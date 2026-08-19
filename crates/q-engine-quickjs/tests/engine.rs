@@ -7,7 +7,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use q_engine::{
-    BodyOut, Engine, EngineLoadPlan, HandlerId, InvocationSpec, Outcome, ResponseStrategy,
+    BodyOut, Engine, EngineLoadPlan, FunctionDecl, FunctionKind, HandlerId, InvocationSpec,
+    Outcome, ResponseStrategy,
 };
 use q_engine_quickjs::{IdentityMapper, QuickJsConfig, QuickJsEngine};
 
@@ -2517,10 +2518,26 @@ async fn numeric_handler_dispatch_calls_exact_declared_function() {
     let bundle = r#"
         function fn_a() { return { route: "A" }; }
         function fn_b() { return { route: "B" }; }
+        globalThis.__velquFunctionManifest = [
+            ["route.a", 0, fn_a],
+            ["route.b", 0, fn_b]
+        ];
         globalThis.__velquFunctions = [fn_a, fn_b];
     "#;
     let (mut eng, store) = engine();
-    eng.load(bundle, None, EngineLoadPlan::Numeric { count: 2 })
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "route.a".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "route.b".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    eng.load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap();
 
     let (slot_a, gen_a) = store.insert(q_bridge::RequestMeta::default());
@@ -2586,10 +2603,26 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
             }
             return { __problem: true, problem: "unauthorized", status: 401 };
         }
+        globalThis.__velquFunctionManifest = [
+            ["route.main", 0, route_handler],
+            ["auth.policy", 1, auth_policy]
+        ];
         globalThis.__velquFunctions = [route_handler, auth_policy];
     "#;
     let (mut eng, store) = engine();
-    eng.load(bundle, None, EngineLoadPlan::Numeric { count: 2 })
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "route.main".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "auth.policy".into(),
+            kind: FunctionKind::PolicyHandler,
+        },
+    ];
+    eng.load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap();
 
     // 1. Unauthorized request
@@ -2649,6 +2682,84 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
     eng.shutdown();
 }
 
+/// M2.3-r3: Swapped function manifest entries are rejected at load
+#[tokio::test]
+async fn swapped_function_vector_entries_are_rejected() {
+    let bundle = r#"
+        function fn_a() { return 1; }
+        function fn_b() { return 2; }
+        globalThis.__velquFunctionManifest = [
+            ["fn.b", 0, fn_b],
+            ["fn.a", 0, fn_a]
+        ];
+        globalThis.__velquFunctions = [fn_b, fn_a];
+    "#;
+    let (mut eng, _) = engine();
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "fn.a".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "fn.b".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    let err = eng
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
+        .unwrap_err();
+    assert!(err.contains("key mismatch: bundle has 'fn.b', pack expected 'fn.a'"));
+    eng.shutdown();
+}
+
+/// M2.3-r3: Route function in policy slot is rejected at load
+#[tokio::test]
+async fn route_function_in_policy_slot_is_rejected() {
+    let bundle = r#"
+        function fn_a() { return 1; }
+        globalThis.__velquFunctionManifest = [
+            ["auth.session", 0, fn_a] // kind 0 is RouteHandler, pack expects 1 (PolicyHandler)
+        ];
+        globalThis.__velquFunctions = [fn_a];
+    "#;
+    let (mut eng, _) = engine();
+    let functions = vec![FunctionDecl {
+        id: 0,
+        key: "auth.session".into(),
+        kind: FunctionKind::PolicyHandler,
+    }];
+    let err = eng
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
+        .unwrap_err();
+    assert!(err.contains("kind mismatch: bundle has 0, pack expected 1"));
+    eng.shutdown();
+}
+
+/// M2.3-r3: Policy function in route slot is rejected at load
+#[tokio::test]
+async fn policy_function_in_route_slot_is_rejected() {
+    let bundle = r#"
+        function fn_a() { return 1; }
+        globalThis.__velquFunctionManifest = [
+            ["users.get", 1, fn_a] // kind 1 is PolicyHandler, pack expects 0 (RouteHandler)
+        ];
+        globalThis.__velquFunctions = [fn_a];
+    "#;
+    let (mut eng, _) = engine();
+    let functions = vec![FunctionDecl {
+        id: 0,
+        key: "users.get".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
+    let err = eng
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
+        .unwrap_err();
+    assert!(err.contains("kind mismatch: bundle has 1, pack expected 0"));
+    eng.shutdown();
+}
+
 /// M2.3 strict vector loading: a hole in __velquFunctions must be rejected during load
 #[tokio::test]
 async fn function_vector_hole_rejected_during_load() {
@@ -2657,8 +2768,25 @@ async fn function_vector_hole_rejected_during_load() {
         globalThis.__velquFunctions = [fn_a, undefined, fn_a];
     "#;
     let (mut eng, _) = engine();
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "a".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "b".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 2,
+            key: "c".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
     let err = eng
-        .load(bundle, None, EngineLoadPlan::Numeric { count: 3 })
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
     assert!(err.contains("entry 1 is missing or not callable"));
     eng.shutdown();
@@ -2672,8 +2800,25 @@ async fn function_vector_non_function_rejected_during_load() {
         globalThis.__velquFunctions = [fn_a, 42, fn_a];
     "#;
     let (mut eng, _) = engine();
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "a".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "b".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 2,
+            key: "c".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
     let err = eng
-        .load(bundle, None, EngineLoadPlan::Numeric { count: 3 })
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
     assert!(err.contains("entry 1 is missing or not callable"));
     eng.shutdown();
@@ -2687,8 +2832,20 @@ async fn function_vector_length_mismatch_rejected() {
         globalThis.__velquFunctions = [fn_a];
     "#;
     let (mut eng, _) = engine();
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "a".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "b".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
     let err = eng
-        .load(bundle, None, EngineLoadPlan::Numeric { count: 2 })
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
     assert!(err.contains("function vector length 1 != expected manifest count 2"));
     eng.shutdown();
@@ -2702,7 +2859,12 @@ async fn numeric_out_of_range_handler_id_fails_closed() {
         globalThis.__velquFunctions = [fn_a];
     "#;
     let (mut eng, store) = engine();
-    eng.load(bundle, None, EngineLoadPlan::Numeric { count: 1 })
+    let functions = vec![FunctionDecl {
+        id: 0,
+        key: "a".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
+    eng.load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap();
 
     let (slot, gen) = store.insert(q_bridge::RequestMeta::default());

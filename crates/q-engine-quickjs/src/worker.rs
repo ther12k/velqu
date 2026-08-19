@@ -294,6 +294,7 @@ pub(crate) struct CachedPrelude {
     watch_fn: Persistent<Function<'static>>,
     op_resolve_fn: Persistent<Function<'static>>,
     op_reject_fn: Persistent<Function<'static>>,
+    stringify_fn: Persistent<Function<'static>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -442,6 +443,9 @@ impl WorkerInner {
                     .get::<_, Function>("__velquOpReject")
                     .map_err(|e| e.to_string())?,
             );
+            let json_obj: Object = ctx.globals().get("JSON").map_err(|e| e.to_string())?;
+            let stringify_func: Function = json_obj.get("stringify").map_err(|e| e.to_string())?;
+            let stringify_fn = Persistent::save(&ctx, stringify_func);
             Ok(CachedPrelude {
                 run_fn,
                 make_ctx_fn,
@@ -449,6 +453,7 @@ impl WorkerInner {
                 watch_fn,
                 op_resolve_fn,
                 op_reject_fn,
+                stringify_fn,
             })
         })?;
         Ok(WorkerInner {
@@ -652,29 +657,76 @@ impl WorkerInner {
                 }
 
                 match plan {
-                    q_engine::EngineLoadPlan::Numeric { count } => {
-                        let fn_array = ctx
-                            .globals()
-                            .get::<_, rquickjs::Array>("__velquFunctions")
-                            .map_err(|_| {
-                                "globalThis.__velquFunctions is missing from bundle".to_string()
-                            })?;
-                        let len = fn_array.len();
-                        if len != *count {
-                            return Err(format!(
-                                "function vector length {len} != expected manifest count {count}"
-                            ));
+                    q_engine::EngineLoadPlan::Numeric { functions } => {
+                        let count = functions.len();
+                        if let Ok(manifest_array) =
+                            ctx.globals().get::<_, rquickjs::Array>("__velquFunctionManifest")
+                        {
+                            let len = manifest_array.len();
+                            if len != count {
+                                return Err(format!(
+                                    "function manifest length {len} != expected manifest count {count}"
+                                ));
+                            }
+                            let mut vec_fns = Vec::with_capacity(len);
+                            for (idx, expected_decl) in functions.iter().enumerate().take(len) {
+                                let entry: rquickjs::Array = manifest_array.get(idx).map_err(|e| {
+                                    format!("function manifest entry {idx} is invalid: {e}")
+                                })?;
+                                let key: String = entry.get(0).map_err(|e| {
+                                    format!("function manifest entry {idx} missing key: {e}")
+                                })?;
+                                let kind_num: u32 = entry.get(1).map_err(|e| {
+                                    format!("function manifest entry {idx} missing kind: {e}")
+                                })?;
+                                let f: Function = entry.get(2).map_err(|e| {
+                                    format!(
+                                        "function manifest entry {idx} ({key}) is not a callable function: {e}"
+                                    )
+                                })?;
+
+                                if key != expected_decl.key {
+                                    return Err(format!(
+                                        "function manifest index {idx} key mismatch: bundle has '{key}', pack expected '{}'",
+                                        expected_decl.key
+                                    ));
+                                }
+                                let expected_kind_num = match expected_decl.kind {
+                                    q_engine::FunctionKind::RouteHandler => 0,
+                                    q_engine::FunctionKind::PolicyHandler => 1,
+                                };
+                                if kind_num != expected_kind_num {
+                                    return Err(format!(
+                                        "function manifest index {idx} ({key}) kind mismatch: bundle has {kind_num}, pack expected {expected_kind_num}",
+                                    ));
+                                }
+                                vec_fns.push(Persistent::save(&ctx, f));
+                            }
+                            Ok((0, BTreeMap::new(), vec_fns))
+                        } else {
+                            let fn_array = ctx
+                                .globals()
+                                .get::<_, rquickjs::Array>("__velquFunctions")
+                                .map_err(|_| {
+                                    "globalThis.__velquFunctions or __velquFunctionManifest is missing from bundle".to_string()
+                                })?;
+                            let len = fn_array.len();
+                            if len != count {
+                                return Err(format!(
+                                    "function vector length {len} != expected manifest count {count}"
+                                ));
+                            }
+                            let mut vec_fns = Vec::with_capacity(len);
+                            for idx in 0..len {
+                                let f: Function = fn_array.get(idx).map_err(|e| {
+                                    format!(
+                                        "function vector entry {idx} is missing or not callable: {e}"
+                                    )
+                                })?;
+                                vec_fns.push(Persistent::save(&ctx, f));
+                            }
+                            Ok((0, BTreeMap::new(), vec_fns))
                         }
-                        let mut vec_fns = Vec::with_capacity(len);
-                        for idx in 0..len {
-                            let f: Function = fn_array.get(idx).map_err(|e| {
-                                format!(
-                                    "function vector entry {idx} is missing or not callable: {e}"
-                                )
-                            })?;
-                            vec_fns.push(Persistent::save(&ctx, f));
-                        }
-                        Ok((0, BTreeMap::new(), vec_fns))
                     }
                     q_engine::EngineLoadPlan::Legacy { expected_handlers } => {
                         let handlers: Object = ctx
@@ -842,6 +894,8 @@ impl WorkerInner {
         let make_ctx_persistent = prelude.make_ctx_fn.clone();
         let make_req_persistent = prelude.make_req_fn.clone();
 
+        let stringify_fn_persistent = prelude.stringify_fn.clone();
+
         let step = {
             // handler + its sync microtask checkpoint run as a live invocation
             // (native ops permitted); after the checkpoint the phase drops to
@@ -865,6 +919,7 @@ impl WorkerInner {
                     &make_req_persistent,
                     &spec,
                 );
+                let stringify_fn = stringify_fn_persistent.restore(&ctx).ok();
                 match out {
                     Err(e) => {
                         let (detail, source) = describe_exception(&ctx, &e);
@@ -890,7 +945,12 @@ impl WorkerInner {
                                 }),
                             }
                         } else {
-                            Step::Immediate(value_to_outcome(&ctx, &spec, &value))
+                            Step::Immediate(value_to_outcome(
+                                &ctx,
+                                &spec,
+                                &value,
+                                stringify_fn.as_ref(),
+                            ))
                         }
                     }
                 }
@@ -1515,8 +1575,12 @@ impl WorkerInner {
                     let payload: Value = entry
                         .get::<_, Value>(payload_key)
                         .unwrap_or_else(|_| Value::new_undefined(ctx.clone()));
+                    let stringify_fn = self
+                        .prelude
+                        .as_ref()
+                        .and_then(|pr| pr.stringify_fn.clone().restore(&ctx).ok());
                     if ok {
-                        value_to_outcome(&ctx, &p.spec, &payload)
+                        value_to_outcome(&ctx, &p.spec, &payload, stringify_fn.as_ref())
                     } else {
                         let exc = payload
                             .as_object()
@@ -1704,6 +1768,7 @@ fn value_to_outcome<'js>(
     ctx: &rquickjs::Ctx<'js>,
     spec: &InvocationSpec,
     value: &Value<'js>,
+    stringify_fn: Option<&Function<'js>>,
 ) -> Outcome {
     if value.is_undefined() || value.is_null() {
         return Outcome::Response {
@@ -1778,7 +1843,7 @@ fn value_to_outcome<'js>(
         } else {
             value.clone()
         };
-        let body = body_from_value(ctx, spec.response_strategy, &body_value);
+        let body = body_from_value(ctx, spec.response_strategy, &body_value, stringify_fn);
         return Outcome::Response {
             status,
             body,
@@ -1786,7 +1851,7 @@ fn value_to_outcome<'js>(
         };
     }
     // bare number/bool → JSON
-    let body = body_from_value(ctx, spec.response_strategy, value);
+    let body = body_from_value(ctx, spec.response_strategy, value, stringify_fn);
     Outcome::Response {
         status: spec.default_status,
         body,
@@ -1798,6 +1863,7 @@ fn body_from_value<'js>(
     ctx: &rquickjs::Ctx<'js>,
     strategy: ResponseStrategy,
     v: &Value<'js>,
+    stringify_fn: Option<&Function<'js>>,
 ) -> BodyOut {
     if v.is_string() {
         let s = v
@@ -1811,10 +1877,19 @@ fn body_from_value<'js>(
         return BodyOut::Bytes(bytes);
     }
     match strategy {
-        ResponseStrategy::Js => match engine_stringify(ctx, v) {
-            Ok(Some(text)) => BodyOut::JsonText(text),
-            _ => BodyOut::Empty,
-        },
+        ResponseStrategy::Js => {
+            if let Some(s_fn) = stringify_fn {
+                match s_fn.call::<_, Option<rquickjs::Coerced<String>>>((v.clone(),)) {
+                    Ok(Some(text)) => BodyOut::JsonText(text.0),
+                    _ => BodyOut::Empty,
+                }
+            } else {
+                match engine_stringify(ctx, v) {
+                    Ok(Some(text)) => BodyOut::JsonText(text),
+                    _ => BodyOut::Empty,
+                }
+            }
+        }
         ResponseStrategy::Native => match any_js_to_json(v) {
             Ok(json) => BodyOut::Json(json),
             Err(_) => BodyOut::Empty,
