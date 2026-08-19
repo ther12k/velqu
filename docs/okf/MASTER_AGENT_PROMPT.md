@@ -857,11 +857,30 @@ A stop report must include completed work, evidence, failed gates, salvageable c
 
 ## 16. Exact authorized stop point
 
-Stop after M2 is independently reviewable.
+**Superseded 2026-08-18 (ADR-0018).** The original M2 stop point has been
+satisfied: M0–M2 gates are complete and independently reviewed. ADR-0018
+supersedes the former post-M2 prohibition and authorizes the ordered
+M2.2.1–M2.8, M3, and M4 roadmap:
 
-Do not continue to M3, public alpha, database adapters, multi-worker, WebSocket/SSE, full fetch/crypto, or public release without a new owner instruction.
+- M2.2.1 scheduler correctness closure (microtask checkpoints, invocation
+  ownership, fail-closed policy resolution)
+- M2.3 compiled runtime IR and numeric RoutePlan
+- M2.4 zero-copy ingress and worker-local request bridge
+- M2.5 schema-specialized JSON codecs
+- M2.6 binary QPack v2 and runtime ABI
+- M2.7 capability linker and minimal Web runtime
+- M2.8 native outbound fetch
+- M3 multi-worker service runtime
+- M4 developer experience and public alpha
 
-M2 is complete only when all required gates are PASS or explicitly owner-WAIVED. The agent cannot self-authorize a waiver.
+Each milestone remains an independent review checkpoint; out-of-order
+implementation remains prohibited. Database adapters, WebSocket/SSE, and
+general Node compatibility remain out of scope unless a later ADR authorizes
+them. Public name/license/repository decisions remain owner decisions
+(docs/open-decisions.md).
+
+M2 is complete only when all required gates are PASS or explicitly
+owner-WAIVED. The agent cannot self-authorize a waiver.
 
 ## 17. Final deliverables
 

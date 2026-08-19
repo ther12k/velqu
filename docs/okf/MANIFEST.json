@@ -3,9 +3,9 @@
   "file_count_excluding_manifest": 69,
   "files": [
     {
-      "bytes": 26119,
+      "bytes": 26947,
       "path": "MASTER_AGENT_PROMPT.md",
-      "sha256": "a8604f0709d3dab8165d5787734c700def67211e6ec1733a987c35441ea48d75"
+      "sha256": "831b3e412f377c05c99ea7eed2796dbbdea67fa902d33b1e951ddfb377a7cffa"
     },
     {
       "bytes": 6267,

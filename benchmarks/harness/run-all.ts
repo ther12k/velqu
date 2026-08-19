@@ -40,6 +40,8 @@ async function main() {
   await run("Build Packs", ["bun", "benchmarks/harness/build-proof-pack.ts", "fixture"]);
   await run("Build Scale Packs (25)", ["bun", "benchmarks/harness/build-proof-pack.ts", "25"]);
   await run("Build Scale Packs (1000)", ["bun", "benchmarks/harness/build-proof-pack.ts", "1000"]);
+  await run("Embed Bytecode (25)", ["./target/release/velqu-bytecode", "embed", "--pack", "benchmarks/raw/packs/app-25.qpack", "--out", "benchmarks/raw/packs/app-25-bc.qpack"]);
+  await run("Embed Bytecode (1000)", ["./target/release/velqu-bytecode", "embed", "--pack", "benchmarks/raw/packs/app-1000.qpack", "--out", "benchmarks/raw/packs/app-1000-bc.qpack"]);
 
   // 2. Bridge benchmark
   await run("Bridge Microbenchmark", ["./target/release/q-bridge-bench", "--out-dir", "benchmarks/raw/bridge", "--iters", "2000"]);

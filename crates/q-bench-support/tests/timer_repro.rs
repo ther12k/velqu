@@ -24,15 +24,31 @@ __velquRegister("promise.int", promise_int);
 "#;
     let table: std::collections::BTreeMap<String, String> =
         [("promise.int".to_string(), String::new())].into();
-    engine.load(bundle, None, &table).unwrap();
+    engine
+        .load(
+            bundle,
+            None,
+            q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table,
+            },
+        )
+        .unwrap();
 
     let (slot, gen) = store.insert(q_bridge::RequestMeta::default());
     let spec = InvocationSpec {
         id: 1,
         request_id: "r".into(),
         route_id: "t".into(),
+        route_id_num: None,
         handler_key: "promise.int".into(),
         policy_key: None,
+        handler_id: None,
+        policy_id_num: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
         slot,
         generation: gen,
         params: None,

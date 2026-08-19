@@ -163,16 +163,18 @@ async function async_cancel(ctx) {
   return { cancelled: false, waited };
 }
 async function throw_redacted() { throw new Error("secret-boom"); }
-__velquRegister("health.live", health_live);
-__velquRegister("js.text", js_text);
-__velquRegister("js.json", js_json);
-__velquRegister("hello.get", hello_get);
-__velquRegister("users.create", users_create);
-__velquRegister("users.get", users_get);
-__velquRegister("auth.session", auth_session);
-__velquRegister("async.timer", async_timer);
-__velquRegister("async.cancel", async_cancel);
-__velquRegister("throw.redacted", throw_redacted);
+globalThis.__velquFunctions = [
+  health_live,
+  js_text,
+  js_json,
+  hello_get,
+  users_create,
+  users_get,
+  async_timer,
+  async_cancel,
+  throw_redacted,
+  auth_session
+];
 `;
 
 const FIXTURE_SCHEMAS: Record<string, unknown> = {
@@ -210,7 +212,37 @@ const FIXTURE_SCHEMAS: Record<string, unknown> = {
   },
 };
 
-function routeEntry(r: Route, moduleId: string) {
+function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyToId: Map<string, number> = new Map()) {
+  const defaultStatus = Object.keys(r.responses).includes("200")
+    ? 200
+    : Number(Object.keys(r.responses)[0] ?? 200);
+  const allowedStatuses = Object.keys(r.responses)
+    .map(Number)
+    .filter((n) => !isNaN(n))
+    .sort((a, b) => a - b);
+  const responseStrategy = r.responses["200"]?.strategy ?? (Object.values(r.responses)[0]?.strategy ?? "js");
+
+  const plan = {
+    routeId: routeIdx,
+    handlerId: routeIdx,
+    policyId: r.policy === "auth.session" ? 0 : null,
+    policyHandlerId: r.policy === "auth.session" ? 9 : null,
+    paramsSchemaId: r.params ? (schemaKeyToId.get(r.params.schema) ?? null) : null,
+    querySchemaId: r.query ? (schemaKeyToId.get(r.query.schema) ?? null) : null,
+    headersSchemaId: null,
+    bodySchemaId: r.body ? (schemaKeyToId.get(r.body.schema) ?? null) : null,
+    defaultStatus,
+    allowedStatuses,
+    fieldNeeds: {
+      params: r.params != null,
+      query: r.query != null,
+      headers: r.policy != null,
+      body: r.body != null,
+    },
+    responseStrategy,
+    deadlineMs: 5000,
+  };
+
   return {
     id: r.id,
     moduleId,
@@ -231,15 +263,41 @@ function routeEntry(r: Route, moduleId: string) {
     security: r.security ?? [],
     capabilities: r.capabilities ?? [],
     deadlineMs: 5000,
+    plan,
   };
 }
 
 function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: string, appId: string) {
-  const packRoutes = routes.map((r) => routeEntry(r, r.id.split(".")[0]));
+  const sortedSchemaKeys = Object.keys(schemas).sort();
+  const schemaKeyToId = new Map<string, number>();
+  const schemaManifest: Array<{ id: number; key: string; ir: unknown }> = [];
+  for (let i = 0; i < sortedSchemaKeys.length; i++) {
+    const k = sortedSchemaKeys[i];
+    schemaKeyToId.set(k, i);
+    schemaManifest.push({
+      id: i,
+      key: k,
+      ir: sortIR(schemas[k]),
+    });
+  }
+
+  const packRoutes = routes.map((r, i) => routeEntry(r, r.id.split(".")[0], i, schemaKeyToId));
   const handlerTable: Record<string, string> = {};
   for (const r of routes) handlerTable[r.handler] = r.handler;
   // policy handlers register too
   if (routes.some((r) => r.policy === "auth.session")) handlerTable["auth.session"] = "auth.session";
+
+  const functions = [
+    ...routes.map((r, i) => ({
+      id: i,
+      key: r.handler,
+      kind: "route-handler",
+    })),
+    ...(routes.some((r) => r.policy === "auth.session")
+      ? [{ id: routes.length, key: "auth.session", kind: "policy-handler" }]
+      : []),
+  ];
+
   // MUST match the Rust canonical form byte-for-byte (q-pack routes_canonical_json):
   // routes keep Vec order + struct field declaration order; schemas/policies are
   // BTreeMaps (sorted keys, nested values in IR field order); no deep sorting.
@@ -250,6 +308,7 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
       ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
       : {},
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
+    functions,
   });
   const pack = {
     formatVersion: 1,
@@ -271,6 +330,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
       ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
       : {},
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
+    functions,
+    schemaManifest,
     handlerTable,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle), routesSha256: sha(canonical) },
   };
@@ -318,10 +379,10 @@ function sortProperties(v: unknown): Record<string, unknown> {
 
 function generatedRoutes(n: number): { routes: Route[]; bundle: string; schemas: Record<string, unknown> } {
   const routes: Route[] = [fixtureRoutes()[0]]; // keep health/live for probes
+  const fnNames: string[] = ["health_live"];
   const parts: string[] = [
     "\"use strict\";",
-    "async function health_live() { return { status: \"ok\" }; }",
-    '__velquRegister("health.live", health_live);',
+    "function health_live() { return { status: \"ok\" }; }",
   ];
   for (let i = 0; i < n; i++) {
     routes.push({
@@ -334,10 +395,11 @@ function generatedRoutes(n: number): { routes: Route[]; bundle: string; schemas:
       responses: { "200": { schema: null, strategy: "js", problem: null }, "422": { schema: null, strategy: "js", problem: "validation" } },
     });
     parts.push(
-      `async function res${i}_get(ctx) { return { id: ctx.params.id, n: ${n} }; }`,
-      `__velquRegister("res${i}.get", res${i}_get);`,
+      `function res${i}_get(ctx) { return { id: ctx.params.id, n: ${n} }; }`,
     );
+    fnNames.push(`res${i}_get`);
   }
+  parts.push(`globalThis.__velquFunctions = [\n  ${fnNames.join(",\n  ")}\n];`);
   const schemas: Record<string, unknown> = {};
   for (let i = 0; i < n; i++) {
     schemas[`sch:res${i}.params`] = {

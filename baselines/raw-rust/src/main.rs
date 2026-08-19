@@ -15,8 +15,6 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use serde_json::json;
 
-static REQ_CLOCK: AtomicU64 = AtomicU64::new(1);
-
 struct AppState {
     users: Mutex<Option<HashMap<String, serde_json::Value>>>,
     next_user: AtomicU64,
@@ -113,9 +111,11 @@ async fn handle(req: Request<hyper::body::Incoming>, state: Arc<AppState>) -> Re
         .unwrap_or(false);
 
     match (method.as_str(), path.as_str()) {
-        ("GET", "/health/live") | ("HEAD", "/health/live") => {
-            json_resp(200, json!({"status": "ok"}))
-        }
+        ("GET", "/health/live") | ("HEAD", "/health/live") => Response::builder()
+            .status(200)
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from_static(b"{\"status\":\"ok\"}")))
+            .unwrap(),
         ("GET", "/js-text") => Response::builder()
             .status(200)
             .header("content-type", "text/plain; charset=utf-8")

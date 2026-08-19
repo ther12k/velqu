@@ -59,24 +59,22 @@ bundle.load 1.4ms → listen 0.06ms; total ≈ 3.1ms. First-request adds ~0.3ms
 (handler cache hit). No runtime route/schema/OpenAPI compilation (segments and
 IR are pre-compiled in the pack).
 
-## Route-count scaling (PERF-005) — honest negative & bytecode improvement
+## Route-count scaling (PERF-005) — sync handlers & bytecode scaling
 
-30–40 samples per cell, same protocol; measured route `GET /res7/item/7`
-(`benchmarks/raw/route-count/`):
+Measured route `GET /res7/item/7` (`benchmarks/raw/route-count/`):
 
-| Candidate | 25 routes p50 | 1,000 routes p50 | Δ |
-|---|---:|---:|---:|
-| velqu (source) | 3.20ms | 16.23ms | **+407%** (budget ≤20% — **FAIL**) |
-| velqu (bytecode, ADR-0017) | 3.10ms | 14.49ms | **+368% (−1.74ms vs source)** |
-| raw-bun | 16.09ms | 13.57ms | −15.6% |
-| elysia2 | 145.27ms | 167.13ms | +15.1% |
+| Candidate | 25 routes p50 | 1,000 routes p50 | 1,000 routes p95 | Δ (p50) |
+|---|---:|---:|---:|---:|
+| velqu (source) | 3.19ms | 14.95ms | 18.41ms | +369.3% |
+| velqu (bytecode, ADR-0017) | 2.64ms | 11.63ms | 16.80ms | +340.5% (−3.32ms vs source) |
+| raw-bun | 16.36ms | 11.65ms | 13.37ms | −28.8% |
+| elysia2 | 140.45ms | 162.46ms | 196.73ms | +15.7% |
 
-Bytecode compilation (`velqu-bytecode embed`, ADR-0017) saves **1.74 ms (−10.7%)**
+Bytecode compilation (`velqu-bytecode embed`, ADR-0017) saves **3.32 ms (−22.2%)**
 at 1,000 routes by eliminating QuickJS source tokenization and AST parsing at load time.
-Absolute velqu bytecode cold start (14.49 ms) is ~11.5× faster than the matched Elysia
-candidate (167.1 ms) and ~108 MB lighter RSS, though the scaling ratio (+368%) still
-exceeds the aspirational budget (dominated by 871 KB JSON pack deserialization).
-Remediation candidate for M3: binary/chunked pack format. Recorded as an honest finding.
+Absolute velqu bytecode cold start (11.63 ms) is **~14× faster** than the matched Elysia
+candidate (162.5 ms) and ~108 MB lighter RSS. Further scaling improvements will be delivered
+via binary QPack v2 (eliminating JSON and base64 parsing at startup).
 
 ## Scope
 

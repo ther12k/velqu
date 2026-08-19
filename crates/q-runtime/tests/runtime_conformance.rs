@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
+use q_pack::*;
 use serde_json::{json, Value};
 
 // ---------------------------------------------------------------- fixture pack
@@ -105,7 +106,31 @@ fn fixture_pack() -> q_pack::QPack {
         },
     );
 
-    let route = |id: &str, method: &str, path: &str, segments: Vec<PathSegment>, handler: &str| {
+    let route = |id: &str,
+                 method: &str,
+                 path: &str,
+                 segments: Vec<PathSegment>,
+                 handler: &str,
+                 idx: u32,
+                 policy_idx: Option<u32>,
+                 def_status: u16,
+                 statuses: Vec<u16>,
+                 needs: FieldNeeds| {
+        let plan = RoutePlanDecl {
+            route_id: idx,
+            handler_id: idx,
+            policy_id: policy_idx.map(|_| 0),
+            policy_handler_id: policy_idx,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: def_status,
+            allowed_statuses: statuses,
+            field_needs: needs,
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        };
         RouteEntry {
             id: id.into(),
             module_id: id.split('.').next().unwrap().into(),
@@ -131,6 +156,7 @@ fn fixture_pack() -> q_pack::QPack {
             security: vec![],
             capabilities: vec![],
             deadline_ms: 5000,
+            plan: Some(plan),
         }
     };
 
@@ -142,6 +168,11 @@ fn fixture_pack() -> q_pack::QPack {
                 "/health/live",
                 seg(&[("s", "health"), ("s", "live")]),
                 "health.live",
+                0,
+                None,
+                200,
+                vec![200],
+                FieldNeeds::default(),
             );
             r.native_liveness = Some(LivenessSpec {
                 status: 200,
@@ -156,6 +187,11 @@ fn fixture_pack() -> q_pack::QPack {
             "/js-text",
             seg(&[("s", "js-text")]),
             "js.text",
+            1,
+            None,
+            200,
+            vec![200],
+            FieldNeeds::default(),
         ),
         route(
             "js.json",
@@ -163,6 +199,11 @@ fn fixture_pack() -> q_pack::QPack {
             "/js-json",
             seg(&[("s", "js-json")]),
             "js.json",
+            2,
+            None,
+            200,
+            vec![200],
+            FieldNeeds::default(),
         ),
         {
             let mut r = route(
@@ -171,6 +212,16 @@ fn fixture_pack() -> q_pack::QPack {
                 "/hello/:name",
                 seg(&[("s", "hello"), ("p", "name")]),
                 "hello.get",
+                3,
+                None,
+                200,
+                vec![200, 422],
+                FieldNeeds {
+                    params: true,
+                    query: false,
+                    headers: false,
+                    body: false,
+                },
             );
             r.params = Some(SourceBinding {
                 schema: Some("sch:hello.params".into()),
@@ -195,6 +246,16 @@ fn fixture_pack() -> q_pack::QPack {
                 "/users",
                 seg(&[("s", "users")]),
                 "users.create",
+                4,
+                None,
+                201,
+                vec![201, 422],
+                FieldNeeds {
+                    params: false,
+                    query: false,
+                    headers: false,
+                    body: true,
+                },
             );
             r.body = Some(SourceBinding {
                 schema: Some("sch:users.create.body".into()),
@@ -229,6 +290,16 @@ fn fixture_pack() -> q_pack::QPack {
                 "/users/:id",
                 seg(&[("s", "users"), ("p", "id")]),
                 "users.get",
+                5,
+                Some(10),
+                200,
+                vec![200, 401, 404],
+                FieldNeeds {
+                    params: true,
+                    query: false,
+                    headers: true,
+                    body: false,
+                },
             );
             r.policy = Some("auth.session".into());
             r.params = Some(SourceBinding {
@@ -277,6 +348,16 @@ fn fixture_pack() -> q_pack::QPack {
                 "/async",
                 seg(&[("s", "async")]),
                 "async.timer",
+                6,
+                None,
+                200,
+                vec![200],
+                FieldNeeds {
+                    params: false,
+                    query: true,
+                    headers: false,
+                    body: false,
+                },
             );
             r.query = Some(SourceBinding {
                 schema: Some("sch:async.query".into()),
@@ -294,9 +375,19 @@ fn fixture_pack() -> q_pack::QPack {
                 "/cancel",
                 seg(&[("s", "cancel")]),
                 "async.cancel",
+                7,
+                None,
+                200,
+                vec![200],
+                FieldNeeds {
+                    params: false,
+                    query: true,
+                    headers: false,
+                    body: false,
+                },
             );
             r.query = Some(SourceBinding {
-                schema: Some("sch:async.query".into()),
+                schema: Some("sch:cancel.query".into()),
                 coerce: Some("query".into()),
                 content_type: None,
                 limit_bytes: 0,
@@ -310,7 +401,31 @@ fn fixture_pack() -> q_pack::QPack {
             "/throw",
             seg(&[("s", "throw")]),
             "throw.redacted",
+            8,
+            None,
+            200,
+            vec![200],
+            FieldNeeds::default(),
         ),
+        {
+            let mut r = route(
+                "poison.chain",
+                "GET",
+                "/poison",
+                seg(&[("s", "poison")]),
+                "poison.chain",
+                9,
+                None,
+                200,
+                vec![200],
+                FieldNeeds::default(),
+            );
+            r.deadline_ms = 200;
+            if let Some(ref mut p) = r.plan {
+                p.deadline_ms = 200;
+            }
+            r
+        },
     ];
 
     // timer schema reuse for cancel needs a wider maximum
@@ -344,7 +459,65 @@ fn fixture_pack() -> q_pack::QPack {
     for r in &routes {
         handler_table.insert(r.handler.clone(), r.handler.clone());
     }
-    handler_table.insert("auth.session".into(), "auth.session".into());
+    handler_table.insert("auth.session.check".into(), "auth.session.check".into());
+
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "js.text".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 2,
+            key: "js.json".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 3,
+            key: "hello.get".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 4,
+            key: "users.create".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 5,
+            key: "users.get".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 6,
+            key: "async.timer".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 7,
+            key: "async.cancel".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 8,
+            key: "throw.redacted".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 9,
+            key: "poison.chain".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 10,
+            key: "auth.session.check".into(),
+            kind: FunctionKind::PolicyHandler,
+        },
+    ];
 
     let mut pack = QPack {
         format_version: q_pack::PACK_FORMAT_VERSION,
@@ -381,14 +554,19 @@ fn fixture_pack() -> q_pack::QPack {
             "auth.session".to_string(),
             PolicyEntry {
                 id: "auth.session".into(),
-                handler: "auth.session".into(),
+                // M2.2.1-r3: policy id != handler-table key; the runtime must
+                // resolve the policy through THIS field (fail-closed verified
+                // in QPack::verify and tested below)
+                handler: "auth.session.check".into(),
                 declared_statuses: vec![401],
                 provides: Some("session".into()),
             },
         )]),
         capabilities: vec!["timer".into()],
+        functions,
+        schema_manifest: vec![],
         handler_table,
-        integrity: q_pack::Integrity {
+        integrity: Integrity {
             algorithm: "sha256".into(),
             bundle_sha256: String::new(),
             routes_sha256: String::new(),
@@ -443,8 +621,7 @@ async function auth_session(req) {
     return { __problem: true, problem: "unauthorized", status: 401 };
   }
   return { session: { userId: "usr_1" } };
-}
-async function async_timer(ctx) {
+}async function async_timer(ctx) {
   const waited = await ctx.native.timer.delay(ctx.query.ms);
   return { waited };
 }
@@ -455,17 +632,25 @@ async function async_cancel(ctx) {
 async function throw_redacted() {
   throw new Error("secret-boom");
 }
+function poison_chain(ctx) {
+  const again = () => { Promise.resolve().then(again); };
+  again();
+  return { ok: true };
+}
 
-__velquRegister("health.live", health_live);
-__velquRegister("js.text", js_text);
-__velquRegister("js.json", js_json);
-__velquRegister("hello.get", hello_get);
-__velquRegister("users.create", users_create);
-__velquRegister("users.get", users_get);
-__velquRegister("auth.session", auth_session);
-__velquRegister("async.timer", async_timer);
-__velquRegister("async.cancel", async_cancel);
-__velquRegister("throw.redacted", throw_redacted);
+globalThis.__velquFunctions = [
+  health_live,
+  js_text,
+  js_json,
+  hello_get,
+  users_create,
+  users_get,
+  async_timer,
+  async_cancel,
+  throw_redacted,
+  poison_chain,
+  auth_session
+];
 "#;
 
 // ---------------------------------------------------------------- harness
@@ -637,11 +822,95 @@ fn temp_dir(tag: &str) -> PathBuf {
 }
 
 fn free_port() -> u16 {
+    static NEXT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(19000);
+    for _ in 0..100 {
+        let p = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if std::net::TcpListener::bind(("127.0.0.1", p)).is_ok() {
+            return p;
+        }
+    }
     std::net::TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
         .unwrap()
         .port()
+}
+
+/// M2.2.1-r4.1: poisoning the engine flips readiness while liveness stays
+/// green, and dynamic JS routes fail closed with 503 at the HTTP boundary.
+#[test]
+fn poisoned_runtime_marks_readiness_false() {
+    let dir = temp_dir("readiness");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // healthy: readiness 200 before poisoning (GET and HEAD)
+    let r = http(port, "GET /health/ready HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "ready before poison");
+    let r_head = http(port, "HEAD /health/ready HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r_head.status, 200);
+    assert_eq!(r_head.body.len(), 0, "HEAD /health/ready must emit no body");
+
+    // poison the engine: unquiescable sync microtask chain → 504 timeout
+    let r = http(port, "GET /poison HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 504, "poison route times out, got {}", r.status);
+
+    // liveness stays 200 (process + listener alive)
+    let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "liveness stays green after quarantine");
+
+    // readiness flips to 503 (GET and HEAD both tested; HEAD has no body)
+    let r = http(port, "GET /health/ready HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 503, "readiness fails after quarantine");
+    assert!(r.text().contains("engine quarantined"));
+    let r_head_503 = http(port, "HEAD /health/ready HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r_head_503.status, 503);
+    assert_eq!(
+        r_head_503.body.len(),
+        0,
+        "HEAD /health/ready 503 must emit no body"
+    );
+
+    // dynamic JS routes fail closed at the boundary with 503 + retry-after
+    let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 503, "dynamic JS routes 503 after quarantine");
+    assert_eq!(r.header("retry-after"), Some("1"));
+    assert!(r.text().contains("engine quarantined"));
+
+    server.stop();
+}
+
+/// M2.2.1-r3: the route declares policy "auth.session" whose
+/// PolicyEntry.handler is "auth.session.check" (a DIFFERENT key). The runtime
+/// must resolve the policy through the entry's handler field: enforcement
+/// active (401 without token, 200 with) instead of the old fail-closed
+/// "policy not in cache" engine failure.
+#[test]
+fn policy_id_resolves_declared_handler_key() {
+    let dir = temp_dir("policy-resolve");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // no credentials → policy ran and rejected
+    let r = http(port, "GET /users/usr_1 HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(
+        r.status, 401,
+        "policy handler must execute via entry.handler"
+    );
+    assert_eq!(r.json()["type"], "https://velqu.dev/problems/unauthorized");
+
+    // valid credentials → policy passed, session injected, business handler ran
+    let r = http(
+        port,
+        "GET /users/usr_1 HTTP/1.1\r\nhost: t\r\nauthorization: Bearer q-demo-token\r\n",
+        None,
+    );
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    assert!(r.text().contains("\"Ada\""), "business handler executed");
+
+    server.stop();
 }
 
 // ---------------------------------------------------------------- tests
@@ -878,28 +1147,12 @@ fn graceful_shutdown_exits_zero() {
     let dir = temp_dir("shutdown");
     let pack_path = write_pack(&dir);
     let port = free_port();
-    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
-    let mut child = Command::new(bin)
-        .arg("--pack")
-        .arg(&pack_path)
-        .arg("--port")
-        .arg(port.to_string())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    // wait ready by polling TCP
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while TcpStream::connect(("127.0.0.1", port)).is_err() {
-        if Instant::now() > deadline {
-            panic!("not ready");
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    let mut server = Server::start(&pack_path, port);
     // SIGTERM
     unsafe {
-        libc::kill(child.id() as i32, libc::SIGTERM);
+        libc::kill(server.child.id() as i32, libc::SIGTERM);
     }
-    let status = child.wait().unwrap();
+    let status = server.child.wait().unwrap();
     assert!(
         status.success(),
         "graceful shutdown must exit 0, got {status:?}"
@@ -910,7 +1163,7 @@ fn graceful_shutdown_exits_zero() {
 fn source_mapped_exception_identifies_original_location() {
     use sourcemap::SourceMapBuilder;
     // generated bundle with the throw on line 2
-    let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\n__velquRegister(\"t\", thrower);\n";
+    let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\nglobalThis.__velquFunctions = [thrower];\n";
     let mut b = SourceMapBuilder::new(None);
     b.add(
         1,
@@ -932,18 +1185,11 @@ fn source_mapped_exception_identifies_original_location() {
     let mut pack = fixture_pack();
     pack.bundle = bundle.to_string();
     pack.source_map = Some(map_json);
-    // recompute integrity for the modified bundle
-    {
-        use sha2::{Digest, Sha256};
-        pack.integrity.bundle_sha256 = {
-            let h = Sha256::digest(pack.bundle.as_bytes());
-            h.iter().map(|b| format!("{:02x}", b)).collect()
-        };
-        pack.integrity.routes_sha256 = {
-            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
-            h.iter().map(|b| format!("{:02x}", b)).collect()
-        };
-    }
+    pack.functions = vec![FunctionDecl {
+        id: 0,
+        key: "t".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
     // single-route handler table must match the new bundle
     pack.handler_table = std::collections::BTreeMap::from([("t".to_string(), "t".to_string())]);
     let throw_route = pack
@@ -951,13 +1197,32 @@ fn source_mapped_exception_identifies_original_location() {
         .iter()
         .position(|r| r.id == "throw.redacted")
         .unwrap();
-    let route = pack.routes[throw_route].clone();
+    let mut route = pack.routes[throw_route].clone();
+    route.handler = "t".into();
+    route.plan = Some(RoutePlanDecl {
+        route_id: 0,
+        handler_id: 0,
+        policy_id: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
+        default_status: 200,
+        allowed_statuses: vec![200],
+        field_needs: FieldNeeds::default(),
+        response_strategy: Strategy::Js,
+        deadline_ms: 5000,
+    });
     pack.routes = vec![route];
-    pack.routes[0].handler = "t".into();
     pack.policies.clear();
-    // recompute integrity again (routes changed too)
+    // recompute integrity
     {
         use sha2::{Digest, Sha256};
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
         pack.integrity.routes_sha256 = {
             let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
             h.iter().map(|b| format!("{:02x}", b)).collect()
@@ -1087,11 +1352,16 @@ fn response_schema_violation_is_a_controlled_500() {
     // handler returns a shape that does NOT match its declared response schema
     let bundle = r#"
 async function bad_shape(ctx) { return { wrong: true }; }
-__velquRegister("bad.shape", bad_shape);
+globalThis.__velquFunctions = [bad_shape];
 "#;
     let dir = temp_dir("respval");
     let mut pack = fixture_pack();
     pack.bundle = bundle.to_string();
+    pack.functions = vec![FunctionDecl {
+        id: 0,
+        key: "bad.shape".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
     pack.handler_table =
         std::collections::BTreeMap::from([("bad.shape".to_string(), "bad.shape".to_string())]);
     let route = pack
@@ -1103,6 +1373,26 @@ __velquRegister("bad.shape", bad_shape);
     r.id = "bad.shape".into();
     r.handler = "bad.shape".into();
     r.policy = None;
+    r.params = None;
+    r.query = None;
+    r.body = None;
+    r.headers = None;
+    r.security.clear();
+    r.plan = Some(RoutePlanDecl {
+        route_id: 0,
+        handler_id: 0,
+        policy_id: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
+        default_status: 200,
+        allowed_statuses: vec![200],
+        field_needs: FieldNeeds::default(),
+        response_strategy: Strategy::Native,
+        deadline_ms: 5000,
+    });
     r.responses = {
         let mut m = std::collections::BTreeMap::new();
         m.insert(

@@ -917,6 +917,7 @@ dependencies = [
 name = "q-router"
 version = "0.1.0"
 dependencies = [
+ "q-engine",
  "q-pack",
  "thiserror",
 ]

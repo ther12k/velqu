@@ -201,6 +201,18 @@ describe("treaty (Eden-style typing & runtime)", () => {
     }
   });
 
+  test("runtime rejects missing required path parameter", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({} as any)).toThrow("missing required path parameter \"name\"");
+  });
+
+  test("runtime encodes path parameters and rejects undeclared methods", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => (api.hello.get({ name: "Rafi" }) as any).post()).toThrow("method \"POST\" is not allowed");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => (api.users.create as any).get()).toThrow("method \"GET\" is not allowed");
+  });
+
   test("abort maps to kind abort", async () => {
     const controller = new AbortController();
     const api2 = treaty<ProofApi>({

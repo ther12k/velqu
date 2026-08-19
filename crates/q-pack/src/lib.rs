@@ -117,6 +117,56 @@ pub struct LivenessSpec {
     pub body: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldNeeds {
+    #[serde(default)]
+    pub params: bool,
+    #[serde(default)]
+    pub query: bool,
+    #[serde(default)]
+    pub headers: bool,
+    #[serde(default)]
+    pub body: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RoutePlanDecl {
+    pub route_id: u32,
+    pub handler_id: u32,
+    #[serde(default)]
+    pub policy_id: Option<u32>,
+    #[serde(default)]
+    pub policy_handler_id: Option<u32>,
+    #[serde(default)]
+    pub params_schema_id: Option<u32>,
+    #[serde(default)]
+    pub query_schema_id: Option<u32>,
+    #[serde(default)]
+    pub headers_schema_id: Option<u32>,
+    #[serde(default)]
+    pub body_schema_id: Option<u32>,
+    #[serde(default)]
+    pub default_status: u16,
+    #[serde(default)]
+    pub allowed_statuses: Vec<u16>,
+    #[serde(default)]
+    pub field_needs: FieldNeeds,
+    #[serde(default)]
+    pub response_strategy: Strategy,
+    #[serde(default = "default_deadline")]
+    pub deadline_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaDecl {
+    pub id: u32,
+    pub key: String,
+    pub ir: q_schema_runtime::SchemaIr,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecurityReq {
@@ -157,10 +207,28 @@ pub struct RouteEntry {
     pub capabilities: Vec<String>,
     #[serde(default = "default_deadline")]
     pub deadline_ms: u64,
+    /// M2.3: Precompiled numeric route plan for $O(1)$ dispatch without string parsing
+    #[serde(default)]
+    pub plan: Option<RoutePlanDecl>,
 }
 
 fn default_deadline() -> u64 {
     5_000
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FunctionKind {
+    RouteHandler,
+    PolicyHandler,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FunctionDecl {
+    pub id: u32,
+    pub key: String,
+    pub kind: FunctionKind,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -244,6 +312,10 @@ pub struct QPack {
     pub policies: BTreeMap<String, PolicyEntry>,
     #[serde(default)]
     pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub functions: Vec<FunctionDecl>,
+    #[serde(default)]
+    pub schema_manifest: Vec<SchemaDecl>,
     pub handler_table: BTreeMap<String, String>,
     pub integrity: Integrity,
 }
@@ -350,30 +422,83 @@ impl QPack {
                 self.integrity.algorithm
             ));
         }
+        // function manifest validation (M2.3 numeric mode)
+        if !self.functions.is_empty() {
+            let mut seen_keys = std::collections::BTreeSet::new();
+            for (idx, fn_decl) in self.functions.iter().enumerate() {
+                if fn_decl.id != idx as u32 {
+                    return reject(format!(
+                        "function manifest id {} does not match index {idx} (must be dense 0..N)",
+                        fn_decl.id
+                    ));
+                }
+                if !seen_keys.insert(&fn_decl.key) {
+                    return reject(format!("duplicate function key {}", fn_decl.key));
+                }
+                if !self.handler_table.is_empty() && !self.handler_table.contains_key(&fn_decl.key)
+                {
+                    return reject(format!(
+                        "function manifest key {} not found in handler table",
+                        fn_decl.key
+                    ));
+                }
+            }
+        }
+
+        // schema manifest validation (M2.3-r2 numeric mode)
+        if !self.schema_manifest.is_empty() {
+            let mut seen_keys = std::collections::BTreeSet::new();
+            for (idx, schema_decl) in self.schema_manifest.iter().enumerate() {
+                if schema_decl.id != idx as u32 {
+                    return reject(format!(
+                        "schema manifest id {} does not match index {idx} (must be dense 0..N)",
+                        schema_decl.id
+                    ));
+                }
+                if !seen_keys.insert(&schema_decl.key) {
+                    return reject(format!("duplicate schema key {}", schema_decl.key));
+                }
+                if !self.schemas.contains_key(&schema_decl.key) {
+                    return reject(format!(
+                        "schema manifest key {} not found in schemas table",
+                        schema_decl.key
+                    ));
+                }
+            }
+        }
+
         // handler table sanity
-        if self.handler_table.is_empty() {
-            return reject("empty handler table".into());
+        if self.handler_table.is_empty() && self.functions.is_empty() {
+            return reject("empty handler table and empty function manifest".into());
         }
         let mut seen = std::collections::BTreeSet::new();
-        for route in &self.routes {
+        for (route_idx, route) in self.routes.iter().enumerate() {
             if !seen.insert(route.id.clone()) {
                 return reject(format!("duplicate route id {}", route.id));
             }
-            if !self.handler_table.contains_key(&route.handler) {
+            if !self.handler_table.is_empty() && !self.handler_table.contains_key(&route.handler) {
                 return reject(format!(
                     "route {} references unknown handler table key {}",
                     route.id, route.handler
                 ));
             }
             if let Some(p) = &route.policy {
-                if !self.policies.contains_key(p) {
+                let Some(policy_entry) = self.policies.get(p) else {
                     return reject(format!(
                         "route {} references unknown policy {}",
                         route.id, p
                     ));
+                };
+                if !self.handler_table.is_empty()
+                    && !self.handler_table.contains_key(&policy_entry.handler)
+                {
+                    return reject(format!(
+                        "policy {} references unknown handler {}",
+                        p, policy_entry.handler
+                    ));
                 }
             }
-            for binding in [&route.params, &route.query, &route.body]
+            for binding in [&route.params, &route.query, &route.body, &route.headers]
                 .into_iter()
                 .flatten()
             {
@@ -388,6 +513,236 @@ impl QPack {
             }
             if route.responses.is_empty() {
                 return reject(format!("route {} declares no responses", route.id));
+            }
+            let mut declared_statuses = std::collections::BTreeSet::new();
+            for status_str in route.responses.keys() {
+                let s_num: u16 = status_str.parse().map_err(|_| {
+                    PackError::Rejected(format!(
+                        "route {} has invalid response status code {status_str}",
+                        route.id
+                    ))
+                })?;
+                if !(100..=599).contains(&s_num) {
+                    return reject(format!(
+                        "route {} declared response status code {s_num} outside valid range 100..=599",
+                        route.id
+                    ));
+                }
+                declared_statuses.insert(s_num);
+            }
+
+            // Exact RoutePlan Equivalence (M2.3-r2)
+            if let Some(plan) = &route.plan {
+                if plan.route_id != route_idx as u32 {
+                    return reject(format!(
+                        "route {} plan.route_id {} does not match route index {route_idx}",
+                        route.id, plan.route_id
+                    ));
+                }
+                if plan.deadline_ms != route.deadline_ms {
+                    return reject(format!(
+                        "route {} plan.deadline_ms {} does not match route.deadline_ms {}",
+                        route.id, plan.deadline_ms, route.deadline_ms
+                    ));
+                }
+
+                // Check allowed_statuses uniqueness and validity
+                let mut planned_statuses = std::collections::BTreeSet::new();
+                for &s in &plan.allowed_statuses {
+                    if !(100..=599).contains(&s) {
+                        return reject(format!(
+                            "route {} plan.allowed_statuses contains invalid HTTP status code {s}",
+                            route.id
+                        ));
+                    }
+                    if !planned_statuses.insert(s) {
+                        return reject(format!(
+                            "route {} plan.allowed_statuses contains duplicate status code {s}",
+                            route.id
+                        ));
+                    }
+                }
+
+                // Exact bidirectional equivalence: declared == planned
+                if declared_statuses != planned_statuses {
+                    return reject(format!(
+                        "route {} plan.allowed_statuses {:?} does not match declared response statuses {:?}",
+                        route.id, plan.allowed_statuses, declared_statuses
+                    ));
+                }
+
+                // Default status must be in declared responses
+                if !declared_statuses.contains(&plan.default_status) {
+                    return reject(format!(
+                        "route {} plan.default_status {} is not in declared response statuses {:?}",
+                        route.id, plan.default_status, declared_statuses
+                    ));
+                }
+
+                // Expected response strategy
+                let expected_strategy =
+                    if let Some(decl) = route.responses.get(&plan.default_status.to_string()) {
+                        decl.strategy
+                    } else {
+                        route
+                            .responses
+                            .values()
+                            .next()
+                            .map(|d| d.strategy)
+                            .unwrap_or(Strategy::Js)
+                    };
+                if plan.response_strategy != expected_strategy {
+                    return reject(format!(
+                        "route {} plan.response_strategy {:?} != declared response strategy {:?}",
+                        route.id, plan.response_strategy, expected_strategy
+                    ));
+                }
+
+                // Exact FieldNeeds equivalence
+                let expected_field_needs = FieldNeeds {
+                    params: route.params.is_some(),
+                    query: route.query.is_some(),
+                    body: route.body.is_some(),
+                    headers: route.headers.is_some() || !route.security.is_empty(),
+                };
+                if plan.field_needs != expected_field_needs {
+                    return reject(format!(
+                        "route {} plan.field_needs {:?} != declared needs {:?}",
+                        route.id, plan.field_needs, expected_field_needs
+                    ));
+                }
+
+                // Schema ID validation (if schema manifest is present)
+                if !self.schema_manifest.is_empty() {
+                    let check_schema = |opt_binding: Option<&SourceBinding>,
+                                        opt_id: Option<u32>,
+                                        source_name: &str|
+                     -> Result<(), PackError> {
+                        match (opt_binding.and_then(|b| b.schema.as_ref()), opt_id) {
+                            (Some(key), Some(id)) => {
+                                if (id as usize) >= self.schema_manifest.len() {
+                                    return reject(format!(
+                                        "route {} plan.{}SchemaId {} out of range",
+                                        route.id, source_name, id
+                                    ));
+                                }
+                                if self.schema_manifest[id as usize].key != *key {
+                                    return reject(format!(
+                                        "route {} plan.{}SchemaId {} ({}) != declared schema key {}",
+                                        route.id,
+                                        source_name,
+                                        id,
+                                        self.schema_manifest[id as usize].key,
+                                        key
+                                    ));
+                                }
+                            }
+                            (None, Some(id)) => {
+                                return reject(format!(
+                                    "route {} has no {} schema but declares plan.{}SchemaId {}",
+                                    route.id, source_name, source_name, id
+                                ));
+                            }
+                            (Some(key), None) => {
+                                return reject(format!(
+                                    "route {} declares {} schema {} but plan.{}SchemaId is None",
+                                    route.id, source_name, key, source_name
+                                ));
+                            }
+                            (None, None) => {}
+                        }
+                        Ok(())
+                    };
+                    check_schema(route.params.as_ref(), plan.params_schema_id, "params")?;
+                    check_schema(route.query.as_ref(), plan.query_schema_id, "query")?;
+                    check_schema(route.body.as_ref(), plan.body_schema_id, "body")?;
+                    check_schema(route.headers.as_ref(), plan.headers_schema_id, "headers")?;
+                }
+
+                if !self.functions.is_empty() {
+                    if (plan.handler_id as usize) >= self.functions.len() {
+                        return reject(format!(
+                            "route {} plan.handler_id {} out of range (functions count: {})",
+                            route.id,
+                            plan.handler_id,
+                            self.functions.len()
+                        ));
+                    }
+                    let handler_decl = &self.functions[plan.handler_id as usize];
+                    if handler_decl.key != route.handler {
+                        return reject(format!(
+                            "route {} plan.handler_id {} ({}) does not match route.handler ({})",
+                            route.id, plan.handler_id, handler_decl.key, route.handler
+                        ));
+                    }
+                    if handler_decl.kind != FunctionKind::RouteHandler {
+                        return reject(format!(
+                            "route {} plan.handler_id {} points to non-route function kind {:?}",
+                            route.id, plan.handler_id, handler_decl.kind
+                        ));
+                    }
+                    if let Some(p) = &route.policy {
+                        let policy_entry = self.policies.get(p).unwrap();
+                        let Some(p_fn_id) = plan.policy_handler_id else {
+                            return reject(format!(
+                                "route {} declares policy {} but plan.policy_handler_id is None",
+                                route.id, p
+                            ));
+                        };
+                        if (p_fn_id as usize) >= self.functions.len() {
+                            return reject(format!(
+                                "route {} plan.policy_handler_id {} out of range (functions count: {})",
+                                route.id, p_fn_id, self.functions.len()
+                            ));
+                        }
+                        let policy_fn_decl = &self.functions[p_fn_id as usize];
+                        if policy_fn_decl.key != policy_entry.handler {
+                            return reject(format!(
+                                "route {} policy {} handler {} does not match plan.policy_handler_id {} ({})",
+                                route.id, p, policy_entry.handler, p_fn_id, policy_fn_decl.key
+                            ));
+                        }
+                        if policy_fn_decl.kind != FunctionKind::PolicyHandler {
+                            return reject(format!(
+                                "route {} policy {} plan.policy_handler_id {} points to non-policy function kind {:?}",
+                                route.id, p, p_fn_id, policy_fn_decl.kind
+                            ));
+                        }
+                    } else if plan.policy_handler_id.is_some() {
+                        return reject(format!(
+                            "route {} has no policy but declares plan.policy_handler_id {:?}",
+                            route.id, plan.policy_handler_id
+                        ));
+                    }
+                }
+            } else if !self.functions.is_empty() {
+                return reject(format!(
+                    "route {} missing required plan in numeric pack mode",
+                    route.id
+                ));
+            }
+        }
+        for (policy_id, policy) in &self.policies {
+            if policy.id != *policy_id {
+                return reject(format!("policy key {policy_id} != entry id {}", policy.id));
+            }
+            if !self.handler_table.is_empty() && !self.handler_table.contains_key(&policy.handler) {
+                return reject(format!(
+                    "policy {policy_id} references unknown handler {}",
+                    policy.handler
+                ));
+            }
+            if !self.functions.is_empty() {
+                let found = self
+                    .functions
+                    .iter()
+                    .any(|f| f.key == policy.handler && f.kind == FunctionKind::PolicyHandler);
+                if !found {
+                    return reject(format!(
+                        "policy {policy_id} handler {} not found in function manifest as PolicyHandler",
+                        policy.handler
+                    ));
+                }
             }
         }
         for cap in &self.capabilities {
@@ -408,12 +763,14 @@ impl QPack {
             schemas: &'a BTreeMap<String, q_schema_runtime::SchemaIr>,
             policies: &'a BTreeMap<String, PolicyEntry>,
             capabilities: &'a [String],
+            functions: &'a [FunctionDecl],
         }
         let c = Canonical {
             routes: &self.routes,
             schemas: &self.schemas,
             policies: &self.policies,
             capabilities: &self.capabilities,
+            functions: &self.functions,
         };
         serde_json::to_string(&c).expect("canonical serialization cannot fail")
     }
@@ -429,12 +786,14 @@ impl QPack {
             schemas: &'a BTreeMap<String, q_schema_runtime::SchemaIr>,
             policies: &'a BTreeMap<String, PolicyEntry>,
             capabilities: &'a [String],
+            functions: &'a [FunctionDecl],
         }
         let c = Canonical {
             routes: &self.routes,
             schemas: &self.schemas,
             policies: &self.policies,
             capabilities: &self.capabilities,
+            functions: &self.functions,
         };
         let mut hasher = Sha256::new();
         serde_json::to_writer(&mut hasher, &c).expect("canonical serialization cannot fail");
@@ -545,6 +904,7 @@ pub fn minimal_pack_public() -> QPack {
         security: vec![],
         capabilities: vec![],
         deadline_ms: 5000,
+        plan: None,
     };
     let mut pack = QPack {
         format_version: PACK_FORMAT_VERSION,
@@ -574,6 +934,8 @@ pub fn minimal_pack_public() -> QPack {
         schemas: BTreeMap::new(),
         policies: BTreeMap::new(),
         capabilities: vec![],
+        functions: vec![],
+        schema_manifest: vec![],
         handler_table: BTreeMap::from([("health.live".into(), "health.live".into())]),
         integrity: Integrity {
             algorithm: "sha256".into(),
@@ -630,6 +992,7 @@ mod tests {
             security: vec![],
             capabilities: vec![],
             deadline_ms: 5000,
+            plan: None,
         };
         let mut pack = QPack {
             format_version: PACK_FORMAT_VERSION,
@@ -659,6 +1022,8 @@ mod tests {
             schemas: BTreeMap::new(),
             policies: BTreeMap::new(),
             capabilities: vec![],
+            functions: vec![],
+            schema_manifest: vec![],
             handler_table: BTreeMap::from([("health.live".into(), "health_live".into())]),
             integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new(), bytecode_sha256: None },
         };
@@ -721,5 +1086,386 @@ mod tests {
         assert!(
             matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("unknown handler table key"))
         );
+    }
+
+    /// M2.2.1-r2 (fail closed): a policy entry whose declared handler is not
+    /// in handler_table must be rejected at pack verification — otherwise the
+    /// engine would face a protected route with an unresolvable policy.
+    #[test]
+    fn rejects_policy_with_unknown_handler() {
+        let mut p = minimal_pack();
+        p.routes[0].policy = Some("auth.session".into());
+        p.policies.insert(
+            "auth.session".into(),
+            PolicyEntry {
+                id: "auth.session".into(),
+                handler: "auth.session.missing".into(),
+                declared_statuses: vec![401],
+                provides: Some("session".into()),
+            },
+        );
+        // integrity must cover the mutated routes and policy table so the
+        // structural check is what fires, not the digest check
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().expect_err("policy handler gap must be rejected");
+        assert!(
+            matches!(&err, PackError::Rejected(m) if m.contains("unknown handler")),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    /// A policy whose handler IS present must verify cleanly.
+    #[test]
+    fn accepts_policy_with_resolvable_handler() {
+        let mut p = minimal_pack();
+        p.bundle = format!(
+            "{} __velquRegister('auth.session', function(){{}});",
+            p.bundle
+        );
+        p.integrity.bundle_sha256 = hex(&Sha256::digest(p.bundle.as_bytes()));
+        p.handler_table
+            .insert("auth.session".into(), "auth.session".into());
+        p.routes[0].policy = Some("auth.session".into());
+        p.policies.insert(
+            "auth.session".into(),
+            PolicyEntry {
+                id: "auth.session".into(),
+                handler: "auth.session".into(),
+                declared_statuses: vec![401],
+                provides: Some("session".into()),
+            },
+        );
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        p.verify()
+            .expect("policy with resolvable handler must verify");
+    }
+
+    #[test]
+    fn accepts_valid_numeric_pack() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        p.verify().expect("valid numeric pack must verify");
+    }
+
+    #[test]
+    fn rejects_non_dense_function_manifest() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 1, // should be 0
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("must be dense 0..N")));
+    }
+
+    #[test]
+    fn rejects_out_of_range_handler_id() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 5, // out of range
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("out of range")));
+    }
+
+    #[test]
+    fn rejects_mismatched_handler_id() {
+        let mut p = minimal_pack();
+        p.functions = vec![
+            FunctionDecl {
+                id: 0,
+                key: "other.handler".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+            FunctionDecl {
+                id: 1,
+                key: "health.live".into(),
+                kind: FunctionKind::RouteHandler,
+            },
+        ];
+        p.handler_table
+            .insert("other.handler".into(), "other.handler".into());
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0, // points to other.handler, while route.handler is health.live
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("does not match route.handler"))
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_function_kind() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::PolicyHandler, // wrong kind for route handler!
+        }];
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("non-route function kind")));
+    }
+
+    #[test]
+    fn rejects_undeclared_default_status() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 201, // 201 not in allowed_statuses [200]
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("not in declared response statuses"))
+        );
+    }
+
+    #[test]
+    fn rejects_unmapped_response_status() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        // Route only declares 200, but plan specifies [200, 418]
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200, 418],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("does not match declared response statuses"))
+        );
+    }
+
+    #[test]
+    fn rejects_mismatched_field_needs() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        // Route has no query binding, but plan claims query: true
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds {
+                params: false,
+                query: true,
+                headers: false,
+                body: false,
+            },
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("plan.field_needs")));
+    }
+
+    #[test]
+    fn rejects_mismatched_deadline() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.routes[0].deadline_ms = 5000;
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Js,
+            deadline_ms: 1000, // differs from route.deadline_ms
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("deadline_ms")));
+    }
+
+    #[test]
+    fn rejects_schema_id_mismatch() {
+        let mut p = minimal_pack();
+        p.functions = vec![FunctionDecl {
+            id: 0,
+            key: "health.live".into(),
+            kind: FunctionKind::RouteHandler,
+        }];
+        p.schemas.insert(
+            "sch:health.query".into(),
+            q_schema_runtime::SchemaIr::Object {
+                properties: BTreeMap::new(),
+                required: vec![],
+            },
+        );
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:health.query".into(),
+            ir: q_schema_runtime::SchemaIr::Object {
+                properties: BTreeMap::new(),
+                required: vec![],
+            },
+        }];
+        p.routes[0].query = Some(SourceBinding {
+            schema: Some("sch:health.query".into()),
+            coerce: Some("query".into()),
+            content_type: None,
+            limit_bytes: 0,
+        });
+        // Plan has querySchemaId = None while route declares query schema
+        p.routes[0].plan = Some(RoutePlanDecl {
+            route_id: 0,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds {
+                params: false,
+                query: true,
+                headers: false,
+                body: false,
+            },
+            response_strategy: Strategy::Js,
+            deadline_ms: 5000,
+        });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("querySchemaId is None")));
     }
 }

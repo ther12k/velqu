@@ -21,12 +21,81 @@ pub enum RouterError {
     EmptySegment { route: String, path: String },
 }
 
+pub const METHOD_GET: usize = 0;
+pub const METHOD_POST: usize = 1;
+pub const METHOD_PUT: usize = 2;
+pub const METHOD_PATCH: usize = 3;
+pub const METHOD_DELETE: usize = 4;
+pub const METHOD_OPTIONS: usize = 5;
+pub const METHOD_HEAD: usize = 6;
+pub const METHOD_COUNT: usize = 7;
+
+#[inline]
+pub fn method_to_index(method: &str) -> Option<usize> {
+    match method {
+        "GET" => Some(METHOD_GET),
+        "POST" => Some(METHOD_POST),
+        "PUT" => Some(METHOD_PUT),
+        "PATCH" => Some(METHOD_PATCH),
+        "DELETE" => Some(METHOD_DELETE),
+        "OPTIONS" => Some(METHOD_OPTIONS),
+        "HEAD" => Some(METHOD_HEAD),
+        _ => None,
+    }
+}
+
+pub fn index_to_method(idx: usize) -> &'static str {
+    match idx {
+        METHOD_GET => "GET",
+        METHOD_POST => "POST",
+        METHOD_PUT => "PUT",
+        METHOD_PATCH => "PATCH",
+        METHOD_DELETE => "DELETE",
+        METHOD_OPTIONS => "OPTIONS",
+        METHOD_HEAD => "HEAD",
+        _ => "UNKNOWN",
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Terminal {
+    pub method_mask: u16,
+    pub route_by_method: [Option<usize>; METHOD_COUNT],
+}
+
+#[derive(Debug, Clone)]
+pub struct StaticEdge {
+    pub segment: String,
+    pub target_node: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RouterNode {
+    pub static_edges: Vec<StaticEdge>,
+    pub param_edge: Option<(String, usize)>,
+    pub wildcard_edge: Option<usize>,
+    pub terminal: Option<Terminal>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompiledRoute {
     pub index: usize,
+    pub route_id: q_engine::RouteId,
     pub method: String,
     pub segments: Vec<PathSegment>,
     pub has_params: bool,
+    pub plan: Option<q_pack::RoutePlanDecl>,
+    pub handler_id: Option<q_engine::HandlerId>,
+    pub policy_id: Option<q_engine::PolicyId>,
+    pub policy_handler_id: Option<q_engine::HandlerId>,
+    pub params_schema_id: Option<q_engine::SchemaId>,
+    pub query_schema_id: Option<q_engine::SchemaId>,
+    pub headers_schema_id: Option<q_engine::SchemaId>,
+    pub body_schema_id: Option<q_engine::SchemaId>,
+    pub default_status: u16,
+    pub allowed_statuses: Vec<u16>,
+    pub response_strategy: q_engine::ResponseStrategy,
+    pub deadline_ms: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,13 +116,11 @@ pub enum MatchResult {
 #[derive(Debug, Default)]
 pub struct Router {
     routes: Vec<CompiledRoute>,
-    /// first-static-segment bucket index: HashMap<String, Vec<usize>> + fallback list
-    static_index: std::collections::HashMap<String, Vec<usize>>,
-    fallback: Vec<usize>,
+    nodes: Vec<RouterNode>,
 }
 
 impl Router {
-    /// Build from pack routes; rejects collisions and malformed segments.
+    /// Build from pack routes into an in-memory terminal automaton (M2.3-r2); rejects collisions.
     pub fn build(routes: &[RouteEntry]) -> Result<Router, RouterError> {
         let mut compiled = Vec::with_capacity(routes.len());
         for (i, r) in routes.iter().enumerate() {
@@ -74,58 +141,154 @@ impl Router {
                     _ => {}
                 }
             }
+            let (
+                handler_id,
+                policy_id,
+                policy_handler_id,
+                params_schema_id,
+                query_schema_id,
+                headers_schema_id,
+                body_schema_id,
+                default_status,
+                allowed_statuses,
+                response_strategy,
+                deadline_ms,
+            ) = if let Some(p) = &r.plan {
+                let strategy = match p.response_strategy {
+                    q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
+                    q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                };
+                (
+                    Some(q_engine::HandlerId(p.handler_id)),
+                    p.policy_id.map(q_engine::PolicyId),
+                    p.policy_handler_id.map(q_engine::HandlerId),
+                    p.params_schema_id.map(q_engine::SchemaId),
+                    p.query_schema_id.map(q_engine::SchemaId),
+                    p.headers_schema_id.map(q_engine::SchemaId),
+                    p.body_schema_id.map(q_engine::SchemaId),
+                    p.default_status,
+                    p.allowed_statuses.clone(),
+                    strategy,
+                    p.deadline_ms,
+                )
+            } else {
+                let default_status = r
+                    .responses
+                    .contains_key("200")
+                    .then_some(200)
+                    .or_else(|| r.responses.keys().next().and_then(|k| k.parse().ok()))
+                    .unwrap_or(200);
+                let allowed_statuses: Vec<u16> =
+                    r.responses.keys().filter_map(|k| k.parse().ok()).collect();
+                let response_strategy = match r.responses.get(&default_status.to_string()) {
+                    Some(decl) => match decl.strategy {
+                        q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
+                        q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                    },
+                    None => q_engine::ResponseStrategy::Js,
+                };
+                (
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    default_status,
+                    allowed_statuses,
+                    response_strategy,
+                    r.deadline_ms,
+                )
+            };
+
             compiled.push(CompiledRoute {
                 index: i,
+                route_id: q_engine::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
                 has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
+                plan: r.plan.clone(),
+                handler_id,
+                policy_id,
+                policy_handler_id,
+                params_schema_id,
+                query_schema_id,
+                headers_schema_id,
+                body_schema_id,
+                default_status,
+                allowed_statuses,
+                response_strategy,
+                deadline_ms,
             });
         }
-        // canonical collision detection: same method + same segment shape
-        // (static values equal; param names ignored) = equivalent route.
-        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+        // Build terminal automaton
+        let mut nodes = vec![RouterNode::default()];
         for c in &compiled {
-            if c.segments.iter().any(|s| s.kind == SegKind::Wildcard) {
-                continue; // wildcards bucket separately; equivalence is "rest of path"
-            }
-            let mut key = String::with_capacity(32);
-            key.push_str(&c.method);
+            let mut curr = 0;
             for seg in &c.segments {
                 match seg.kind {
                     SegKind::Static => {
-                        key.push('/');
-                        key.push_str(&seg.value);
+                        let existing = nodes[curr]
+                            .static_edges
+                            .iter()
+                            .find(|e| e.segment == seg.value)
+                            .map(|e| e.target_node);
+                        if let Some(t) = existing {
+                            curr = t;
+                        } else {
+                            let next = nodes.len();
+                            nodes.push(RouterNode::default());
+                            nodes[curr].static_edges.push(StaticEdge {
+                                segment: seg.value.clone(),
+                                target_node: next,
+                            });
+                            curr = next;
+                        }
                     }
-                    _ => key.push_str("/*"),
+                    SegKind::Param => {
+                        if let Some((_, t)) = nodes[curr].param_edge {
+                            curr = t;
+                        } else {
+                            let next = nodes.len();
+                            nodes.push(RouterNode::default());
+                            nodes[curr].param_edge = Some((seg.value.clone(), next));
+                            curr = next;
+                        }
+                    }
+                    SegKind::Wildcard => {
+                        if let Some(t) = nodes[curr].wildcard_edge {
+                            curr = t;
+                        } else {
+                            let next = nodes.len();
+                            nodes.push(RouterNode::default());
+                            nodes[curr].wildcard_edge = Some(next);
+                            curr = next;
+                        }
+                    }
                 }
             }
-            if let Some(prev) = seen.insert(key.clone(), c.index) {
+            let terminal = nodes[curr].terminal.get_or_insert_with(Terminal::default);
+            let method_upper = c.method.to_ascii_uppercase();
+            let Some(m_idx) = method_to_index(&method_upper) else {
+                continue;
+            };
+            if (terminal.method_mask & (1 << m_idx)) != 0 {
+                let prev_idx = terminal.route_by_method[m_idx].unwrap();
                 return Err(RouterError::Collision {
                     method: c.method.clone(),
-                    a: routes[prev].path.clone(),
+                    a: routes[prev_idx].path.clone(),
                     b: routes[c.index].path.clone(),
                 });
             }
+            terminal.method_mask |= 1 << m_idx;
+            terminal.route_by_method[m_idx] = Some(c.index);
         }
-        // build match structures: bucket by leading static segment when present
-        let mut static_index: std::collections::HashMap<String, Vec<usize>> =
-            std::collections::HashMap::new();
-        let mut fallback = Vec::new();
-        for c in &compiled {
-            match c.segments.first() {
-                Some(PathSegment {
-                    kind: SegKind::Static,
-                    value,
-                }) if c.segments.len() > 1 || !c.has_params => {
-                    static_index.entry(value.clone()).or_default().push(c.index);
-                }
-                _ => fallback.push(c.index),
-            }
-        }
+
         Ok(Router {
             routes: compiled,
-            static_index,
-            fallback,
+            nodes,
         })
     }
 
@@ -133,129 +296,120 @@ impl Router {
         self.routes.len()
     }
 
-    /// Match a method + already-split path segments.
-    /// HEAD maps onto GET (head=true); 405 carries `Allow`.
-    pub fn match_path(&self, method: &str, segments: &[&str]) -> MatchResult {
-        let method = method.to_ascii_uppercase();
-        let head = method == "HEAD";
-        let eff_method = if head { "GET" } else { method.as_str() };
-
-        let candidates: Vec<usize> = match segments.first() {
-            Some(first) => {
-                let mut v = self.static_index.get(*first).cloned().unwrap_or_default();
-                v.extend(self.fallback.iter().copied());
-                v
-            }
-            None => self.static_index.get("").cloned().unwrap_or_default(),
-        };
-
-        #[allow(clippy::type_complexity)]
-        let mut best: Option<(usize, Vec<(String, String)>, u32)> = None;
-        for idx in candidates {
-            let c = &self.routes[idx];
-            if c.method != eff_method {
-                continue;
-            }
-            let mut params = Vec::new();
-            let mut specificity = 0u32;
-            let mut ok = true;
-            if c.segments
-                .last()
-                .is_some_and(|s| s.kind == SegKind::Wildcard)
-            {
-                // terminal wildcard: prefix segments must match
-                if segments.len() < c.segments.len() - 1 {
-                    continue;
-                }
-                for (cs, ps) in c
-                    .segments
-                    .iter()
-                    .take(c.segments.len() - 1)
-                    .zip(segments.iter())
-                {
-                    match cs.kind {
-                        SegKind::Static => {
-                            if cs.value != *ps {
-                                ok = false;
-                                break;
-                            }
-                            specificity += 2;
-                        }
-                        _ => {
-                            params.push((cs.value.clone(), (*ps).to_string()));
-                            specificity += 1;
-                        }
-                    }
-                }
-            } else {
-                if c.segments.len() != segments.len() {
-                    continue;
-                }
-                for (cs, ps) in c.segments.iter().zip(segments.iter()) {
-                    match cs.kind {
-                        SegKind::Static => {
-                            if cs.value != *ps {
-                                ok = false;
-                                break;
-                            }
-                            specificity += 2;
-                        }
-                        SegKind::Param => {
-                            if ps.is_empty() {
-                                ok = false;
-                                break;
-                            }
-                            params.push((cs.value.clone(), (*ps).to_string()));
-                            specificity += 1;
-                        }
-                        SegKind::Wildcard => {
-                            unreachable!("non-terminal wildcards rejected at build")
-                        }
-                    }
-                }
-            }
-            if !ok {
-                continue;
-            }
-            if best.as_ref().is_none_or(|(_, _, s)| specificity > *s) {
-                best = Some((idx, params, specificity));
-            }
-        }
-        if let Some((idx, params, _)) = best {
-            return MatchResult::Found {
-                route_index: idx,
-                params,
-                head,
-            };
-        }
-        MatchResult::NotFound
+    /// Retrieve the precompiled numeric route plan for a matched route index
+    #[inline]
+    pub fn route_plan(&self, route_index: usize) -> Option<&q_pack::RoutePlanDecl> {
+        self.routes.get(route_index).and_then(|r| r.plan.as_ref())
     }
 
-    /// Full match including 405 handling: returns MethodNotAllowed with the
-    /// sorted Allow list when the path matches under other method(s).
+    /// Retrieve the compiled route entry for a matched route index
+    #[inline]
+    pub fn compiled_route(&self, route_index: usize) -> Option<&CompiledRoute> {
+        self.routes.get(route_index)
+    }
+
+    fn traverse_node(
+        &self,
+        node_idx: usize,
+        seg_idx: usize,
+        segments: &[&str],
+        params: &mut Vec<(String, String)>,
+    ) -> Option<usize> {
+        if seg_idx == segments.len() {
+            if self.nodes[node_idx].terminal.is_some() {
+                return Some(node_idx);
+            }
+            // Check if wildcard edge was at this terminal
+            if let Some(w_node) = self.nodes[node_idx].wildcard_edge {
+                if self.nodes[w_node].terminal.is_some() {
+                    return Some(w_node);
+                }
+            }
+            return None;
+        }
+
+        let curr_seg = segments[seg_idx];
+
+        // 1. Static edges first
+        if let Some(edge) = self.nodes[node_idx]
+            .static_edges
+            .iter()
+            .find(|e| e.segment == curr_seg)
+        {
+            if let Some(target) =
+                self.traverse_node(edge.target_node, seg_idx + 1, segments, params)
+            {
+                return Some(target);
+            }
+        }
+
+        // 2. Param edge second
+        if let Some((param_name, target_node)) = &self.nodes[node_idx].param_edge {
+            params.push((param_name.clone(), curr_seg.to_string()));
+            if let Some(target) = self.traverse_node(*target_node, seg_idx + 1, segments, params) {
+                return Some(target);
+            }
+            params.pop();
+        }
+
+        // 3. Wildcard edge third (matches all remaining segments)
+        if let Some(w_node) = self.nodes[node_idx].wildcard_edge {
+            if self.nodes[w_node].terminal.is_some() {
+                return Some(w_node);
+            }
+        }
+
+        None
+    }
+
+    /// Match a method + already-split path segments.
+    pub fn match_path(&self, method: &str, segments: &[&str]) -> MatchResult {
+        let method_upper = method.to_ascii_uppercase();
+        let head = method_upper == "HEAD";
+        let eff_method_idx = if head {
+            METHOD_GET
+        } else {
+            match method_to_index(&method_upper) {
+                Some(idx) => idx,
+                None => return MatchResult::NotFound,
+            }
+        };
+
+        let mut params = Vec::new();
+        let matched_node_idx = self.traverse_node(0, 0, segments, &mut params);
+        let Some(node_idx) = matched_node_idx else {
+            return MatchResult::NotFound;
+        };
+
+        let terminal = self.nodes[node_idx].terminal.as_ref().unwrap();
+        if let Some(route_index) = terminal.route_by_method[eff_method_idx] {
+            MatchResult::Found {
+                route_index,
+                params,
+                head,
+            }
+        } else {
+            // Generate allow header instantly from terminal method mask
+            let mut allow = Vec::new();
+            for m_idx in 0..METHOD_COUNT {
+                if (terminal.method_mask & (1 << m_idx)) != 0 {
+                    allow.push(index_to_method(m_idx).to_string());
+                }
+            }
+            if (terminal.method_mask & (1 << METHOD_GET)) != 0
+                && !allow.contains(&"HEAD".to_string())
+            {
+                allow.push("HEAD".to_string());
+            }
+            allow.sort();
+            MatchResult::MethodNotAllowed { allow }
+        }
+    }
+
+    /// Full match including 405 handling: one single traversal into the terminal automaton.
     pub fn resolve(&self, method: &str, path: &str) -> MatchResult {
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        let direct = self.match_path(method, &segments);
-        if !matches!(direct, MatchResult::NotFound) {
-            return direct;
-        }
-        // any method matches this path shape? → 405
-        let mut allow: Vec<String> = Vec::new();
-        for m in ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] {
-            if !matches!(self.match_path(m, &segments), MatchResult::NotFound) {
-                allow.push(m.to_string());
-            }
-        }
-        if allow.is_empty() {
-            MatchResult::NotFound
-        } else {
-            let mut with_head = allow.clone();
-            if allow.contains(&"GET".to_string()) && !with_head.contains(&"HEAD".to_string()) {
-                with_head.push("HEAD".to_string());
-            }
-            with_head.sort();
-            MatchResult::MethodNotAllowed { allow: with_head }
-        }
+        self.match_path(method, &segments)
     }
 }
 
@@ -300,6 +454,7 @@ mod tests {
             security: vec![],
             capabilities: vec![],
             deadline_ms: 5000,
+            plan: None,
         }
     }
 

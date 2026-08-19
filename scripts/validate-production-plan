@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+import json, sys
+from pathlib import Path
+root = Path(__file__).resolve().parents[1]
+obj = json.loads((root/'TASKS.production.json').read_text())
+ids = [t['id'] for t in obj['tasks']]
+errors = []
+if len(ids) != len(set(ids)):
+    errors.append('duplicate task IDs')
+known = set(ids)
+by = {t['id']: t for t in obj['tasks']}
+for t in obj['tasks']:
+    for d in t['depends_on']:
+        if d not in known:
+            errors.append(f"{t['id']}: missing dependency {d}")
+    if not t['acceptance'] or not t['evidence']:
+        errors.append(f"{t['id']}: acceptance/evidence required")
+visiting = set()
+done = set()
+def visit(i):
+    if i in done:
+        return
+    if i in visiting:
+        errors.append(f'cycle at {i}')
+        return
+    visiting.add(i)
+    for d in by[i]['depends_on']:
+        visit(d)
+    visiting.remove(i)
+    done.add(i)
+for i in ids:
+    visit(i)
+print(json.dumps({'production_tasks': len(ids), 'errors': errors}, indent=2))
+sys.exit(1 if errors else 0)

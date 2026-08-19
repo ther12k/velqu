@@ -1,0 +1,3139 @@
+{
+  "schema_version": 1,
+  "project": "Velqu / VelquJS",
+  "baseline": {
+    "archive": "velqu-m0-m2-20260819T093558Z.zip",
+    "sha256": "03a06bbdcc7b4f7626dd5b287983c4f3b6d26ff82e4895923284d76af92debb5"
+  },
+  "status_values": [
+    "TODO",
+    "IN_PROGRESS",
+    "BLOCKED",
+    "PASS",
+    "FAIL",
+    "WAIVED"
+  ],
+  "milestones": [
+    {
+      "id": "BASE",
+      "name": "Baseline Freeze and Program Integration",
+      "outcome": "The current M2.3-r1 baseline, roadmap authority, evidence model, and review packet format are frozen before further code changes.",
+      "gate": "BASE-GATE",
+      "depends_on": []
+    },
+    {
+      "id": "M23R2",
+      "name": "M2.3-r2 \u2014 Exact Numeric Runtime IR and Compiled Router Closure",
+      "outcome": "Current-pack execution is fully numeric, fail-before-ready, route plans are exact, schema identities are operational, and the router resolves directly to a numeric RoutePlan.",
+      "gate": "M23R2-GATE",
+      "depends_on": [
+        "BASE-GATE"
+      ]
+    },
+    {
+      "id": "M24",
+      "name": "M2.4 \u2014 Zero-Copy Ingress and Worker-Local Request Bridge",
+      "outcome": "Requests route before decoding, unread fields are never materialized, and request state is owned by the QuickJS worker without a process-wide request-store mutex.",
+      "gate": "M24-GATE",
+      "depends_on": [
+        "M23R2-GATE"
+      ]
+    },
+    {
+      "id": "M25",
+      "name": "M2.5 \u2014 Schema-Specialized Input and JSON Output Pipeline",
+      "outcome": "The compiler selects measured, schema-aware decoders and encoders while maintaining exact Treaty/OpenAPI/runtime semantics.",
+      "gate": "M25-GATE",
+      "depends_on": [
+        "M24-GATE"
+      ]
+    },
+    {
+      "id": "M26",
+      "name": "M2.6 \u2014 Binary QPack v2 and Reproducible Artifact ABI",
+      "outcome": "Production startup maps a deterministic binary pack with raw bytecode, precompiled router/runtime IR, strict ABI fingerprinting, and no JSON/base64 reconstruction.",
+      "gate": "M26-GATE",
+      "depends_on": [
+        "M25-GATE"
+      ]
+    },
+    {
+      "id": "M27",
+      "name": "M2.7 \u2014 Capability Linker and Minimal Web Runtime",
+      "outcome": "Only declared native capabilities are linked, lifecycle and cancellation are standardized, and a small WinterTC-aligned Web API subset is conformant.",
+      "gate": "M27-GATE",
+      "depends_on": [
+        "M26-GATE"
+      ]
+    },
+    {
+      "id": "M28",
+      "name": "M2.8 \u2014 Native Outbound Fetch",
+      "outcome": "Velqu provides bounded, cancellable, pooled Web fetch with TLS/DNS correctness, streaming backpressure, and explicit SSRF policy.",
+      "gate": "M28-GATE",
+      "depends_on": [
+        "M27-GATE"
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "M3 \u2014 Multi-Worker Service Runtime",
+      "outcome": "Independent QuickJS workers scale across cores with bounded queues, quarantine/replacement, and distinct serverless/service/throughput profiles.",
+      "gate": "M3-GATE",
+      "depends_on": [
+        "M28-GATE"
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "M4 \u2014 Developer Experience and Private Alpha",
+      "outcome": "The actual Rust/QuickJS runtime is pleasant to develop against, Treaty modes are complete, Linux release artifacts exist, and a realistic proof service is private-alpha ready.",
+      "gate": "M4-GATE",
+      "depends_on": [
+        "M3-GATE"
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "M5 \u2014 Production Operations and Real-World Proof",
+      "outcome": "Operational controls, observability, optional Postgres integration, executable cross-framework workloads, and a controlled production canary establish technical production candidacy.",
+      "gate": "M5-GATE",
+      "depends_on": [
+        "M4-GATE"
+      ]
+    },
+    {
+      "id": "M6",
+      "name": "M6 \u2014 Security, Reliability, Platform, and Supply-Chain Hardening",
+      "outcome": "The runtime passes fuzzing, sanitizers, chaos, soak, supported-platform, vulnerability, reproducibility, and artifact-integrity gates.",
+      "gate": "M6-GATE",
+      "depends_on": [
+        "M5-GATE"
+      ]
+    },
+    {
+      "id": "M7",
+      "name": "M7 \u2014 API/ABI Stabilization and Release Candidate",
+      "outcome": "Public APIs, QPack/runtime/capability ABIs, SemVer behavior, migration rules, publishing automation, and RC canaries are stable.",
+      "gate": "M7-GATE",
+      "depends_on": [
+        "M6-GATE"
+      ]
+    },
+    {
+      "id": "M8",
+      "name": "M8 \u2014 Production-Ready GA Gate",
+      "outcome": "All technical and owner gates are closed, signed reproducible artifacts are released, operations and rollback are documented, and the production-readiness review is approved.",
+      "gate": "M8-GATE",
+      "depends_on": [
+        "M7-GATE"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "BASE-001",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Freeze the reviewed source baseline",
+      "objective": "Bind all future work to the exact reviewed archive and a real Git commit.",
+      "depends_on": [],
+      "deliverables": [
+        "SOURCE-BASELINE.md",
+        "SOURCE-COMMIT.txt",
+        "baseline git bundle or patch series"
+      ],
+      "acceptance": [
+        "SOURCE-BASELINE.md records archive name, SHA-256, source commit, toolchain locks, and known M2.3-r1 gaps.",
+        "A git bundle or repository commit is available; later review never relies only on an unversioned ZIP."
+      ],
+      "evidence": [
+        "SOURCE-BASELINE.md",
+        "git rev-parse output",
+        "SHA256SUMS.txt"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "BASE-002",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Adopt ADR-0019 production-readiness program",
+      "objective": "Extend ADR-0018 through technical production candidate, RC, and GA without changing the minimal-core thesis.",
+      "depends_on": [
+        "BASE-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "ADR-0019 is accepted and indexed.",
+        "The roadmap explicitly separates technical production readiness from public GA owner decisions.",
+        "Non-goals remain Node compatibility, hostile-code sandboxing, ORM-in-core, and unauthorized WebSocket/SSE work."
+      ],
+      "evidence": [
+        "ADR file",
+        "decision index link",
+        "OKF validation"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "BASE-003",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Install the production master agent prompt",
+      "objective": "Give one coding agent authority to execute the full ordered program while preserving stop conditions and owner boundaries.",
+      "depends_on": [
+        "BASE-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "AGENTS.md points to the new master prompt.",
+        "The former M2/M4 stop language is superseded unambiguously.",
+        "The agent may continue milestone-to-milestone only after local gates pass."
+      ],
+      "evidence": [
+        "MASTER_PRODUCTION_AGENT_PROMPT.md",
+        "AGENTS.md diff"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "BASE-004",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Create machine-readable task and evidence ledgers",
+      "objective": "Make status, dependencies, claims, tests, reports, and artifacts auditable by tools and the final reviewer.",
+      "depends_on": [
+        "BASE-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "TASKS.json validates against its schema.",
+        "Every task has acceptance and evidence fields.",
+        "Every completed claim links to source/test/raw evidence rather than prose alone."
+      ],
+      "evidence": [
+        "TASKS.json",
+        "TASKS.schema.json",
+        "EVIDENCE_INDEX.json schema"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "BASE-005",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Strengthen source-to-evidence verification",
+      "objective": "Prevent reports from claiming code, tests, or benchmark results absent from the packaged source.",
+      "depends_on": [
+        "BASE-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "verify fails stale generated reports, absent named tests, duplicate current-verification sections, and mismatched artifact hashes.",
+        "Benchmark summaries are generated from raw data.",
+        "Test counts come from captured runner output, not manual arithmetic."
+      ],
+      "evidence": [
+        "verify output",
+        "negative fixtures",
+        "generated report hash comparison"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "BASE-GATE",
+      "milestone": "BASE",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass baseline program gate",
+      "objective": "Authorize implementation only after the baseline, roadmap, prompt, evidence ledger, and review conventions are coherent.",
+      "depends_on": [
+        "BASE-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "BASE-001 through BASE-005 are PASS.",
+        "Working tree is clean.",
+        "A checkpoint commit and review packet exist."
+      ],
+      "evidence": [
+        "BASE review packet",
+        "commit hash",
+        "source archive + checksum"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-001",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Define explicit numeric and legacy engine load plans",
+      "objective": "Separate current numeric packs from legacy string-table compatibility so no current request pays dual-path cost.",
+      "depends_on": [
+        "BASE-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Numeric mode takes FunctionDecl[] as the only vector contract.",
+        "Numeric mode requires __velquFunctions and rejects absent/mismatched vectors before bind.",
+        "Legacy mode is version-gated and cannot be selected accidentally."
+      ],
+      "evidence": [
+        "unit tests",
+        "pack fixtures",
+        "startup failure logs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-002",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Enforce exact function-vector and manifest equivalence",
+      "objective": "Make dense numeric dispatch fail closed for wrong in-range IDs, holes, kinds, duplicates, and length mismatches.",
+      "depends_on": [
+        "M23R2-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Function IDs are dense and pack-local.",
+        "Each vector index is callable and matches exact key/kind.",
+        "No loader compaction or silent fallback occurs."
+      ],
+      "evidence": [
+        "QPack negative tests",
+        "engine load tests",
+        "numeric dispatch counters"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-003",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Enforce exact RoutePlan equivalence",
+      "objective": "Cross-check the execution plan against route contracts before readiness.",
+      "depends_on": [
+        "M23R2-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Declared response status set equals allowedStatuses exactly.",
+        "defaultStatus, deadline, response strategy, policy handler, field needs, and schema bindings match the canonical route.",
+        "Invalid HTTP status values and duplicates are rejected."
+      ],
+      "evidence": [
+        "pack validation tests",
+        "golden plans",
+        "tamper fixtures"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-004",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Operationalize RouteId, PolicyId, and SchemaId",
+      "objective": "Move all current-pack route, policy, and schema identity to deterministic dense numeric indexes while retaining debug names.",
+      "depends_on": [
+        "M23R2-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Compiler assigns stable deterministic IDs.",
+        "All schema references are non-null when a schema exists.",
+        "Debug-name tables preserve human-readable diagnostics without entering the hot path."
+      ],
+      "evidence": [
+        "compiler golden output",
+        "type/pack tests",
+        "inspect output"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-005",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Compile FieldNeeds into a verified bitset",
+      "objective": "Prepare M2.4 request admission decisions from exact route declarations.",
+      "depends_on": [
+        "M23R2-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "FieldNeeds is a compact bitset or equivalent fixed representation.",
+        "Compiler derivation matches route params/query/headers/body/cookies/raw-request requirements.",
+        "Plan tampering or disagreement fails before ready."
+      ],
+      "evidence": [
+        "field-needs conformance matrix",
+        "negative pack tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-006",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Bind the numeric execution graph to pack integrity",
+      "objective": "Detect corruption of function manifests, route plans, and policy-to-handler mappings.",
+      "depends_on": [
+        "M23R2-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "executionGraphSha256 or equivalent covers all execution-critical numeric metadata.",
+        "Public contract hash remains stable when only internal numeric layout changes.",
+        "Tamper fixtures fail before bind."
+      ],
+      "evidence": [
+        "integrity tests",
+        "hash fixtures",
+        "pack spec update"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-007",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement numeric terminal router automaton",
+      "objective": "Replace startup-built candidate scanning with one compiled traversal to a method terminal and RoutePlan.",
+      "depends_on": [
+        "M23R2-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Router returns RouteId/RoutePlan directly.",
+        "405 Allow comes from a terminal method mask without repeated matching.",
+        "Collision and shadow detection occur at compile time.",
+        "No Router::build semantic reconstruction is required for current packs."
+      ],
+      "evidence": [
+        "router conformance",
+        "25/1k/10k route fixtures",
+        "allocation profile"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-008",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Remove current-pack string dispatch and duplicate references",
+      "objective": "Eliminate __velquRegister, handler BTreeMap, per-request handler/policy strings, and duplicate persistent handles for current packs.",
+      "depends_on": [
+        "M23R2-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "numeric_dispatches > 0 and legacy_map_dispatches == 0 for proof app.",
+        "No registration calls in current generated bundles.",
+        "Legacy support lives only in explicit pack-version compatibility code."
+      ],
+      "evidence": [
+        "source inspection check",
+        "runtime counters",
+        "bundle size report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-009",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Finish terminal settlement retention hardening",
+      "objective": "Ensure every timeout, cancel, quarantine, and interrupted watch removes settlement entries and floating operations exactly once.",
+      "depends_on": [
+        "M23R2-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Settlement table remains zero after repeated terminal cycles.",
+        "Timeout metric increments once.",
+        "Queue-empty-or-quarantined invariant holds at every worker message boundary."
+      ],
+      "evidence": [
+        "engine tests",
+        "settlement-table metric",
+        "task/slot gauges"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M23R2-GATE",
+      "milestone": "M23R2",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass M2.3-r2 closure gate",
+      "objective": "Close exact numeric artifact loading, router scope, evidence, and performance before M2.4 consumes RoutePlan.",
+      "depends_on": [
+        "M23R2-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M23R2-001 through M23R2-009 are PASS.",
+        "Warm c=1/10/50 and 25/1,000-route cold evidence is regenerated with raw files and hashes.",
+        "No current-pack string lookup or runtime route reconstruction remains.",
+        "Treaty/OpenAPI/runtime behavior is unchanged."
+      ],
+      "evidence": [
+        "M2.3-r2 report",
+        "raw benchmark data",
+        "fairness audit",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-001",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Freeze ingress ownership and backpressure design",
+      "objective": "Define how Hyper request parts and bodies move from HTTP tasks to one owning QuickJS worker without unbounded buffering.",
+      "depends_on": [
+        "M23R2-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Ownership, cancellation, body-stream, and queue invariants are documented in an ADR.",
+        "No JS value or request slot crosses worker ownership ambiguously."
+      ],
+      "evidence": [
+        "ADR",
+        "sequence diagrams",
+        "negative design review"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-002",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Route before request materialization",
+      "objective": "Match method/path using borrowed HTTP types before query, headers, cookies, or body are decoded.",
+      "depends_on": [
+        "M24-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "C0/C1 routes do not parse query or clone headers.",
+        "Routes without bodies do not collect bodies.",
+        "Admission limits still apply before unsafe buffering."
+      ],
+      "evidence": [
+        "instrumentation counters",
+        "route tests",
+        "allocation traces"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-003",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Introduce worker-local generation-checked request slab",
+      "objective": "Remove the process-wide RequestStore mutex and make the QuickJS worker the sole owner of live request state.",
+      "depends_on": [
+        "M24-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Request slot allocation/access/settlement is lock-free inside the worker.",
+        "Generation and owner checks reject stale or foreign handles.",
+        "All slots are zero after quiescence."
+      ],
+      "evidence": [
+        "bridge tests",
+        "race tests",
+        "slot gauges"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-004",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Capture path parameters as byte ranges",
+      "objective": "Avoid per-request parameter strings until validation or JS access requires them.",
+      "depends_on": [
+        "M24-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Router captures offsets into the original path.",
+        "Native validators consume slices directly.",
+        "JS strings are created only for requested values."
+      ],
+      "evidence": [
+        "param conformance",
+        "allocation benchmark",
+        "Unicode/path tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-005",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement declared-header lazy access",
+      "objective": "Read only headers named by policies or route schemas and materialize full Headers only through explicit fallback.",
+      "depends_on": [
+        "M24-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No full header map clone on routes with no/limited header needs.",
+        "Case-insensitive semantics and duplicate-header behavior are specified and tested.",
+        "Raw enumeration is explicitly labeled as generic fallback."
+      ],
+      "evidence": [
+        "header matrix",
+        "fallback build report",
+        "allocation counters"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-006",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement lazy query and cookie decoding",
+      "objective": "Decode declared keys on demand while retaining raw fallback semantics.",
+      "depends_on": [
+        "M24-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No query parser runs when FieldNeeds excludes query.",
+        "Duplicate keys, percent encoding, empty values, and invalid encoding have frozen semantics.",
+        "Cookie parsing is bounded and opt-in."
+      ],
+      "evidence": [
+        "query/cookie conformance",
+        "fuzz targets",
+        "materialization counters"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-007",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement bounded read-once body admission",
+      "objective": "Support bytes/text/JSON body access with limits, cancellation, backpressure, and deterministic second-read behavior.",
+      "depends_on": [
+        "M24-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Oversize bodies fail without unbounded allocation.",
+        "Request disconnect and route cancellation stop body reads.",
+        "Bytes remain Bytes where possible rather than Vec copies."
+      ],
+      "evidence": [
+        "body tests",
+        "slowloris/oversize fixtures",
+        "memory report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-008",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Replace per-request JS closure construction with native-backed prototypes",
+      "objective": "Use one stable QuickJS object shape and opaque request handle instead of multiple getter closures per invocation.",
+      "depends_on": [
+        "M24-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Context/request prototypes are cached once.",
+        "Native access validates phase, owner, slot, and generation.",
+        "Retained wrappers throw stable RequestExpiredError."
+      ],
+      "evidence": [
+        "shape/cache tests",
+        "bridge microbenchmarks",
+        "expiry tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-009",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Add ingress and bridge observability",
+      "objective": "Expose route lookup, queue wait, field materialization, bytes copied, slot count, and body read timing without hot-path logging.",
+      "depends_on": [
+        "M24-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Metrics are bounded and disableable.",
+        "velqu inspect shows FieldNeeds and expected materialization.",
+        "No string request ID is created in log-off mode."
+      ],
+      "evidence": [
+        "metrics tests",
+        "inspect snapshot",
+        "performance overhead A/B"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M24-GATE",
+      "milestone": "M24",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass zero-copy ingress gate",
+      "objective": "Prove lazy materialization, ownership safety, cancellation, and meaningful fixed-overhead reduction.",
+      "depends_on": [
+        "M24-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M24-001 through M24-009 are PASS.",
+        "No global request-store mutex remains.",
+        "Unread fields have zero materialization counters.",
+        "C0 >= 90% of matched raw Rust; C1/C3 p95 do not regress; bridge safety suites pass."
+      ],
+      "evidence": [
+        "M2.4 report",
+        "warm/bridge raw evidence",
+        "FFI ownership review",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-001",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Define canonical Schema IR v2 and compatibility rules",
+      "objective": "Make one normalized schema graph drive validators, codecs, Treaty, OpenAPI, and contract diff.",
+      "depends_on": [
+        "M24-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Schema IDs and canonical encoding are deterministic.",
+        "Supported/unsupported transforms are explicit.",
+        "IR versioning and migrations are documented."
+      ],
+      "evidence": [
+        "schema spec",
+        "golden fixtures",
+        "compatibility tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-002",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Build reproducible decoder/encoder strategy benchmark",
+      "objective": "Compare QuickJS parse/stringify, generic Rust conversion, and generated schema-specialized codecs across realistic shapes.",
+      "depends_on": [
+        "M25-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Payload matrix includes scalar, nested, arrays 100/1000, 1/16/64/128 KB, invalid and schema-invalid inputs.",
+        "Raw latency, allocation, bytes copied, heap, and correctness are retained."
+      ],
+      "evidence": [
+        "raw benchmark data",
+        "strategy decision ADR",
+        "fairness audit"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-003",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Generate params/query/header decoders",
+      "objective": "Fuse extraction, coercion, validation, and error-path reporting for scalar request fields.",
+      "depends_on": [
+        "M25-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No generic object tree is created when route schemas are supported.",
+        "Validation errors preserve safe paths and stable codes.",
+        "Coercion remains source-specific and explicit."
+      ],
+      "evidence": [
+        "decoder tests",
+        "negative fixtures",
+        "allocation profile"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-004",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Generate JSON body decoders",
+      "objective": "Parse, validate, and materialize supported bodies in one measured route-specific path.",
+      "depends_on": [
+        "M25-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Correct Unicode, number edge cases, required/optional/null, arrays, nesting, and unknown-property policy.",
+        "Body limits and cancellation remain enforced.",
+        "Fallback is visible in build report."
+      ],
+      "evidence": [
+        "JSON conformance",
+        "fuzz/property tests",
+        "fallback snapshots"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-005",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Generate status-specific response encoders",
+      "objective": "Fuse response validation and serialization for declared shapes while preserving typed status semantics.",
+      "depends_on": [
+        "M25-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No duplicate full-object validation plus serialization traversal.",
+        "Every declared status uses the correct schema.",
+        "Undeclared status or incompatible shape fails deterministically."
+      ],
+      "evidence": [
+        "encoder tests",
+        "response violation tests",
+        "performance traces"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-006",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Generate RFC 9457 problem encoders",
+      "objective": "Preserve standard fields and custom typed problem fields without leaking secrets.",
+      "depends_on": [
+        "M25-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Problem schema/type/OpenAPI/Treaty outputs agree.",
+        "Getter/toJSON behavior remains deadline-bounded.",
+        "Redaction tests cover nested causes and source maps."
+      ],
+      "evidence": [
+        "problem golden files",
+        "redaction suite",
+        "Treaty type tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-007",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement explicit generic and Web fallback paths",
+      "objective": "Keep raw Request/Response and unsupported schema semantics available without hiding their cost.",
+      "depends_on": [
+        "M25-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every fallback appears in build report and velqu inspect.",
+        "Fallback routes remain bounded and conformance-tested.",
+        "Core optimized routes do not import fallback modules."
+      ],
+      "evidence": [
+        "fallback fixtures",
+        "bundle-size report",
+        "inspect output"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-008",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Unify OpenAPI, Treaty, lock, and runtime schema projection",
+      "objective": "Prevent drift between runtime codecs and developer-facing contracts.",
+      "depends_on": [
+        "M25-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "One canonical Schema IR projection feeds all artifacts.",
+        "Semantic diff detects nested object/array/union/enum/constraint changes.",
+        "Published client has no runtime implementation dependency."
+      ],
+      "evidence": [
+        "contract parity suite",
+        "OpenAPI validation",
+        "diff fixtures"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-009",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Add codec fuzzing and differential tests",
+      "objective": "Compare generated codecs with a trusted reference and exercise malformed inputs/outputs.",
+      "depends_on": [
+        "M25-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No panic, UB, unbounded allocation, or divergent accepted value in supported IR subset.",
+        "Fuzz corpora and seeds are retained.",
+        "Failures become regression tests."
+      ],
+      "evidence": [
+        "fuzz logs",
+        "corpus archive",
+        "differential report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M25-GATE",
+      "milestone": "M25",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass schema-specialized pipeline gate",
+      "objective": "Select route-level codecs from evidence and close semantic parity.",
+      "depends_on": [
+        "M25-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M25-001 through M25-009 are PASS.",
+        "C2 reaches the approved engineering threshold or limitations are explicitly accepted.",
+        "Codec choice is inspectable per route.",
+        "No contract drift exists across runtime/Treaty/OpenAPI/lock."
+      ],
+      "evidence": [
+        "M2.5 report",
+        "codec raw evidence",
+        "contract parity report",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-001",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Accept QPack v2 binary format ADR",
+      "objective": "Freeze a sectioned, bounds-checkable, versioned production artifact that matches the compiled runtime IR.",
+      "depends_on": [
+        "M25-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Header, section directory, alignment, endianness, size limits, and forward-compatibility rules are specified.",
+        "Development JSON remains inspection-only."
+      ],
+      "evidence": [
+        "ADR",
+        "binary layout diagrams",
+        "format spec"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-002",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Define strict runtime and bytecode fingerprint",
+      "objective": "Reject incompatible engine/build/ABI/target artifacts before evaluating code.",
+      "depends_on": [
+        "M26-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Fingerprint includes QPack format, host ABI, engine/build hash, binding, bytecode format, target, pointer width, endianness, and capability hash.",
+        "Mismatch tests fail before bind."
+      ],
+      "evidence": [
+        "fingerprint tests",
+        "upgrade fixtures",
+        "diagnostics"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-003",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Encode compiled router, RoutePlans, schemas, and functions as binary sections",
+      "objective": "Persist the exact M2.3/M2.5 runtime graph without rebuilding it at startup.",
+      "depends_on": [
+        "M26-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No runtime route collision work or status-string parsing.",
+        "All indexes and section references are bounds-checked.",
+        "Debug names are optional cold data."
+      ],
+      "evidence": [
+        "round-trip tests",
+        "malformed section tests",
+        "startup stage trace"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-004",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Embed raw QuickJS bytecode without base64",
+      "objective": "Remove base64 decode and duplicate production source from the hot startup path.",
+      "depends_on": [
+        "M26-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Raw bytecode is one section and is hashed.",
+        "Source fallback is explicit and off by default for release.",
+        "No untrusted external bytecode is accepted."
+      ],
+      "evidence": [
+        "bytecode parity",
+        "tamper tests",
+        "artifact-size report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-005",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement zero-copy or bounded-copy pack reader",
+      "objective": "Map or read binary sections without reconstructing large owned object graphs.",
+      "depends_on": [
+        "M26-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every offset/length is validated before access.",
+        "Peak startup allocations are measured.",
+        "Malformed packs never panic or read out of bounds."
+      ],
+      "evidence": [
+        "parser fuzzing",
+        "allocation profile",
+        "security review"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-006",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Add execution integrity and optional authenticity hooks",
+      "objective": "Separate corruption detection from publisher authenticity.",
+      "depends_on": [
+        "M26-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Canonical section digests cover all executable metadata.",
+        "Optional Ed25519 or equivalent signature verification is pluggable.",
+        "Docs clearly distinguish digest vs signature."
+      ],
+      "evidence": [
+        "integrity/signature fixtures",
+        "threat-model update"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-007",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Guarantee reproducible release packs",
+      "objective": "Produce identical pack bytes for identical normalized inputs.",
+      "depends_on": [
+        "M26-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Two clean builds produce identical hashes.",
+        "Timestamps and host paths do not contaminate output.",
+        "Build report records all non-reproducible inputs."
+      ],
+      "evidence": [
+        "reproducibility script",
+        "two-build evidence",
+        "diffoscope-style report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-008",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Provide explicit v1 compatibility and migration tool",
+      "objective": "Avoid accidental dual paths inside the current runtime while supporting controlled migration.",
+      "depends_on": [
+        "M26-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "v1 loads only through versioned adapter or conversion command.",
+        "v2 runtime path allocates no v1 maps.",
+        "Unsupported legacy artifacts fail with actionable diagnostics."
+      ],
+      "evidence": [
+        "migration fixtures",
+        "compatibility matrix",
+        "CLI tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-009",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Build shared-runtime and standalone deployment artifacts",
+      "objective": "Support velqu-runtime + app.qpack and one-file embedded application modes from the same ABI.",
+      "depends_on": [
+        "M26-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Both modes pass identical conformance.",
+        "Artifact hashes and sizes are recorded.",
+        "Graceful startup/shutdown semantics match."
+      ],
+      "evidence": [
+        "packaging tests",
+        "binary size report",
+        "container smoke tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M26-GATE",
+      "milestone": "M26",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass QPack v2 gate",
+      "objective": "Prove startup reconstruction is gone and artifact trust/versioning is fail-closed.",
+      "depends_on": [
+        "M26-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M26-001 through M26-009 are PASS.",
+        "25-route p50 <= approved small-app budget and 1,000-route p50/p95 meet approved scaling budget.",
+        "No JSON parse, base64 decode, string registration, or runtime Router::build in v2 release path.",
+        "Pack parser fuzz/security review passes."
+      ],
+      "evidence": [
+        "M2.6 report",
+        "cold raw evidence",
+        "pack spec",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-001",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Define capability ABI and lifecycle state machine",
+      "objective": "Standardize install, dependency, lazy init, operation ownership, cancellation, shutdown, and version behavior.",
+      "depends_on": [
+        "M26-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Capability identity/version/dependencies are explicit.",
+        "No capability can start native work outside an invocation/deferred owner.",
+        "Shutdown and quarantine semantics are defined."
+      ],
+      "evidence": [
+        "ADR",
+        "trait/API spec",
+        "lifecycle tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-002",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement compile-time capability dependency resolver",
+      "objective": "Link only required modules and reject cycles, conflicts, and missing versions before packaging.",
+      "depends_on": [
+        "M27-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Dependency graph is deterministic.",
+        "Unused capabilities are absent from pack/binary.",
+        "Capability hash participates in runtime fingerprint."
+      ],
+      "evidence": [
+        "resolver tests",
+        "build report",
+        "negative fixtures"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-003",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Introduce custom QuickJS context profiles",
+      "objective": "Measure minimal, Web, and compatibility contexts rather than always loading a full context.",
+      "depends_on": [
+        "M27-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Profile choice is compiler-derived and inspectable.",
+        "No intrinsic removal without conformance and measurable benefit.",
+        "Missing APIs produce build diagnostics."
+      ],
+      "evidence": [
+        "context benchmark",
+        "Test262 subset",
+        "profile manifest"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-004",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement console and timer core capabilities",
+      "objective": "Move current natives behind the capability ABI and retain scheduler/cancellation invariants.",
+      "depends_on": [
+        "M27-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Logging is structured/redacted and mode-controlled.",
+        "Timers are bounded, owned, physically cancellable, and shutdown-safe."
+      ],
+      "evidence": [
+        "capability tests",
+        "scheduler regression suite"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-005",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement URL and URLSearchParams",
+      "objective": "Provide standards-aligned URL behavior required by backend code and fetch.",
+      "depends_on": [
+        "M27-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Selected WPT/WinterTC cases pass.",
+        "Parsing limits and error behavior are documented.",
+        "Binary/startup/RSS cost is reported."
+      ],
+      "evidence": [
+        "WPT results",
+        "compatibility matrix",
+        "size report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-006",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement text encoding APIs",
+      "objective": "Provide TextEncoder/TextDecoder with explicit encoding support and bounds.",
+      "depends_on": [
+        "M27-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "UTF-8 correctness, invalid sequences, streaming options if supported, and large input limits are tested.",
+        "No hidden Node Buffer dependency."
+      ],
+      "evidence": [
+        "WPT/conformance tests",
+        "memory tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-007",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement AbortController and AbortSignal",
+      "objective": "Create one cancellation contract shared by timers, fetch, and future native operations.",
+      "depends_on": [
+        "M27-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Abort reasons and event timing are deterministic.",
+        "Route deadlines compose with explicit signals.",
+        "Late completion and listener cleanup are leak-free."
+      ],
+      "evidence": [
+        "abort conformance",
+        "race tests",
+        "retention tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-008",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement crypto random subset",
+      "objective": "Provide getRandomValues and randomUUID from secure native entropy without broad crypto scope.",
+      "depends_on": [
+        "M27-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Entropy source failures fail closed.",
+        "Input type/length rules are conformant.",
+        "No deterministic fallback exists in production."
+      ],
+      "evidence": [
+        "crypto conformance",
+        "failure injection",
+        "security review"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-009",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Publish capability SDK and inspection surface",
+      "objective": "Allow first-party/third-party capability packages without exposing engine internals.",
+      "depends_on": [
+        "M27-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "SDK example compiles and passes lifecycle/cancel tests.",
+        "velqu inspect shows dependencies, costs, and fallbacks.",
+        "ABI stability classification is documented."
+      ],
+      "evidence": [
+        "example capability",
+        "SDK docs",
+        "ABI tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M27-GATE",
+      "milestone": "M27",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass minimal Web runtime gate",
+      "objective": "Prove modularity, lifecycle safety, standards behavior, and cold-start budget.",
+      "depends_on": [
+        "M27-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M27-001 through M27-009 are PASS.",
+        "Core app pays for no unused capability.",
+        "Selected Test262/WPT/WinterTC matrix passes.",
+        "Startup/RSS deltas are within approved budgets."
+      ],
+      "evidence": [
+        "M2.7 report",
+        "capability matrix",
+        "benchmark evidence",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-001",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Accept outbound fetch and SSRF security ADR",
+      "objective": "Freeze public semantics, security defaults, proxy behavior, and non-goals before implementation.",
+      "depends_on": [
+        "M27-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Web fetch is the public API; node:http/https are out of scope.",
+        "Default network policy and trust boundary are explicit.",
+        "Threat model covers DNS rebinding and redirects."
+      ],
+      "evidence": [
+        "ADR",
+        "threat-model update",
+        "API sketch"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-002",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Select native client stack from evidence",
+      "objective": "Compare reqwest versus Hyper-based composition for startup, binary size, pooling, cancellation, and streaming.",
+      "depends_on": [
+        "M28-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Decision uses matched benchmark and conformance data.",
+        "Rejected alternative and tradeoffs are recorded."
+      ],
+      "evidence": [
+        "A/B report",
+        "dependency tree",
+        "ADR addendum"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-003",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement connection pooling, DNS, and TLS",
+      "objective": "Provide bounded keep-alive pools, DNS cache policy, secure roots, hostname validation, and lazy initialization.",
+      "depends_on": [
+        "M28-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No fetch capability cost when unused.",
+        "Pool limits/timeouts are configurable and bounded.",
+        "TLS verification cannot be disabled accidentally in production."
+      ],
+      "evidence": [
+        "integration tests",
+        "TLS fixtures",
+        "startup/RSS delta"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-004",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement Request/Response/Headers subset",
+      "objective": "Expose the required Web-compatible fetch objects without forcing full Web wrappers on inbound routes.",
+      "depends_on": [
+        "M28-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Header/body semantics and cloning rules are documented.",
+        "Unsupported properties fail clearly.",
+        "Large bodies remain streamed/bounded."
+      ],
+      "evidence": [
+        "API conformance",
+        "type tests",
+        "memory tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-005",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Propagate AbortSignal and route deadlines",
+      "objective": "Cancel DNS/connect/TLS/write/read and response-body operations when the invocation terminates.",
+      "depends_on": [
+        "M28-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Cancellation is physical and acknowledged.",
+        "No native task, connection, listener, or Promise remains after quiescence.",
+        "Timeout classification increments once."
+      ],
+      "evidence": [
+        "race tests",
+        "task metrics",
+        "chaos tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-006",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement streaming and strict backpressure",
+      "objective": "Bound request and response buffering across Rust/QuickJS boundaries.",
+      "depends_on": [
+        "M28-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Slow consumers/producers do not create unbounded queues.",
+        "Reader cancellation releases sockets.",
+        "Streaming route metrics expose buffered bytes."
+      ],
+      "evidence": [
+        "stream tests",
+        "slow peer fixtures",
+        "memory profile"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-007",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement redirect and compression policy",
+      "objective": "Handle redirects, method/body rewriting, credential stripping, and content decoding consistently.",
+      "depends_on": [
+        "M28-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every redirect target is revalidated by SSRF policy.",
+        "Maximum redirects and decompressed-size limits are enforced.",
+        "Cross-origin sensitive headers are stripped per documented rules."
+      ],
+      "evidence": [
+        "redirect matrix",
+        "zip-bomb fixture",
+        "security tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-008",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement SSRF and network egress controls",
+      "objective": "Provide allow/deny policies for schemes, hosts, ports, private/link-local/loopback ranges, and DNS results.",
+      "depends_on": [
+        "M28-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "DNS rebinding and redirect bypass fixtures fail.",
+        "Policy can be configured per deployment/capability.",
+        "Diagnostics redact credentials."
+      ],
+      "evidence": [
+        "SSRF suite",
+        "security report",
+        "configuration docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-009",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Complete fetch conformance, observability, and shutdown",
+      "objective": "Close Web behavior, pool metrics, graceful drain, source-mapped errors, and selected WPT cases.",
+      "depends_on": [
+        "M28-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "All connections/tasks close on shutdown.",
+        "Metrics show pool wait/connect/TLS/TTFB/body timings.",
+        "Selected WPT and upstream fixtures pass."
+      ],
+      "evidence": [
+        "WPT report",
+        "shutdown tests",
+        "operational metrics"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M28-GATE",
+      "milestone": "M28",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass native fetch gate",
+      "objective": "Prove useful, secure, cancellable backend I/O without sacrificing the cold-start thesis.",
+      "depends_on": [
+        "M28-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M28-001 through M28-009 are PASS.",
+        "Controlled upstream matrix 1/5/10/25 ms passes at c=1/10/50/200.",
+        "No unresolved SSRF/cancellation/backpressure P0/P1.",
+        "Capability remains absent from apps that do not use fetch."
+      ],
+      "evidence": [
+        "M2.8 report",
+        "raw controlled-I/O data",
+        "security review",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-001",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Freeze independent-worker state semantics",
+      "objective": "Document per-worker JS module state, shared native services, routing affinity, and no-JS-value-crossing rules.",
+      "depends_on": [
+        "M28-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "One QuickJS runtime is owned by one thread.",
+        "Application authors are warned that module state is per worker.",
+        "Shared service handles expose thread-safe Rust APIs only."
+      ],
+      "evidence": [
+        "ADR",
+        "state semantics tests",
+        "docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-002",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement bounded worker dispatcher",
+      "objective": "Route compiled invocations to workers using bounded queues and measured load selection.",
+      "depends_on": [
+        "M3-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Queue capacity and rejection behavior are deterministic.",
+        "Power-of-two or selected policy is benchmarked.",
+        "Queue wait is observable."
+      ],
+      "evidence": [
+        "dispatcher tests",
+        "load-shedding fixtures",
+        "benchmark"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-003",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement runtime profiles",
+      "objective": "Provide serverless, service, and throughput profiles with distinct startup and scaling behavior.",
+      "depends_on": [
+        "M3-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Serverless starts exactly one worker.",
+        "Service starts ready with one and may add workers.",
+        "Throughput initializes configured workers before readiness."
+      ],
+      "evidence": [
+        "profile tests",
+        "cold/RSS report",
+        "configuration docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-004",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement deterministic worker initialization and artifact sharing",
+      "objective": "Load identical QPack/function/schema state per worker without mutable cross-worker JS state.",
+      "depends_on": [
+        "M3-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Worker load failures prevent routing to that worker.",
+        "Read-only pack data is shared safely where possible.",
+        "Per-worker memory delta is measured."
+      ],
+      "evidence": [
+        "load tests",
+        "memory report",
+        "failure injection"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-005",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement quarantine, replacement, and readiness aggregation",
+      "objective": "Remove poisoned workers from service and replace them without continuing semantically broken JS execution.",
+      "depends_on": [
+        "M3-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Poisoned worker receives no new work.",
+        "Pending requests fail closed or drain according to policy.",
+        "Replacement restores capacity; readiness reflects healthy worker count."
+      ],
+      "evidence": [
+        "poison/recycle tests",
+        "readiness tests",
+        "chaos report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-006",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement adaptive scale-up and scale-down",
+      "objective": "Adjust worker count from queue pressure and utilization without oscillation or cold-request surprise.",
+      "depends_on": [
+        "M3-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Thresholds/hysteresis are documented.",
+        "Scale-down waits for quiescence.",
+        "Serverless profile never scales implicitly."
+      ],
+      "evidence": [
+        "adaptive tests",
+        "queue traces",
+        "cold-to-warm benchmark"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-007",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement multi-worker cancellation and graceful shutdown",
+      "objective": "Stop admission, drain or cancel requests, close capabilities, and join workers within a bounded deadline.",
+      "depends_on": [
+        "M3-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "SIGTERM behavior is deterministic.",
+        "No task/slot/connection leak after shutdown.",
+        "Forced termination path is logged and bounded."
+      ],
+      "evidence": [
+        "shutdown matrix",
+        "task gauges",
+        "container test"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-008",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Add fairness and overload controls",
+      "objective": "Prevent slow/CPU-heavy requests from starving unrelated work and define 429/503 load shedding.",
+      "depends_on": [
+        "M3-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Per-worker queue, invocation, and native-op limits are enforced.",
+        "Overload errors are typed/observable.",
+        "Slow-request chaos does not deadlock all workers."
+      ],
+      "evidence": [
+        "fairness tests",
+        "overload benchmark",
+        "error contract tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-009",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Run scaling, memory, and soak evidence",
+      "objective": "Measure 1/2/4/8 workers with route, JSON, auth, controlled I/O, and mixed workloads.",
+      "depends_on": [
+        "M3-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "2 workers >= approved scale factor; 4 workers >= approved scale factor.",
+        "Per-worker RSS is reported.",
+        "24-hour multi-worker soak has no monotonic leak or stuck queue."
+      ],
+      "evidence": [
+        "raw scaling data",
+        "soak logs",
+        "memory graphs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M3-GATE",
+      "milestone": "M3",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass multi-worker service gate",
+      "objective": "Demonstrate bounded scalable service mode while preserving single-worker serverless behavior.",
+      "depends_on": [
+        "M3-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M3-001 through M3-009 are PASS.",
+        "Serverless cold-start budget is unchanged within tolerance.",
+        "Quarantine/replacement, overload, and shutdown gates pass.",
+        "No cross-worker JS ownership violation."
+      ],
+      "evidence": [
+        "M3 report",
+        "scaling/fairness evidence",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-001",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement actual-runtime velqu dev loop",
+      "objective": "Use the real Rust/QuickJS runtime in development to prevent Bun-vs-production semantic drift.",
+      "depends_on": [
+        "M3-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "File changes compile incrementally, load a candidate worker, then atomically switch.",
+        "Failed reload leaves the last healthy app serving.",
+        "Source maps and diagnostics point to TypeScript source."
+      ],
+      "evidence": [
+        "dev-loop tests",
+        "reload chaos",
+        "developer walkthrough"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-002",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Complete CLI command surface",
+      "objective": "Stabilize velqu dev/build/inspect/contract diff/test/package/doctor commands and exit codes.",
+      "depends_on": [
+        "M4-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Commands have deterministic machine-readable output.",
+        "Invalid config fails before side effects.",
+        "CLI completion/help docs are generated."
+      ],
+      "evidence": [
+        "CLI conformance",
+        "golden outputs",
+        "docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-003",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement project scaffolding",
+      "objective": "Create a minimal feature-based application with contracts, services, routes, Treaty tests, and deployment config.",
+      "depends_on": [
+        "M4-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Generated project builds and runs offline after dependency install.",
+        "No demo secrets or unsafe production defaults.",
+        "Template passes current verify."
+      ],
+      "evidence": [
+        "create app fixture",
+        "snapshot tests",
+        "tutorial"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-004",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Complete Treaty unit-local, runtime-local, and remote modes",
+      "objective": "Provide typed direct dispatch, real-runtime integration, and network use with identical contracts.",
+      "depends_on": [
+        "M4-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No public any.",
+        "2xx/non-2xx/transport errors narrow correctly.",
+        "Unit-local is truly network-free and clearly labeled."
+      ],
+      "evidence": [
+        "type-negative tests",
+        "mode parity suite",
+        "published contract fixture"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-005",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Publish compact contract and SDK artifacts",
+      "objective": "Allow separate frontend repositories without importing server implementation.",
+      "depends_on": [
+        "M4-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Generated package is tree-shakable and versioned.",
+        "Contract hash and mismatch diagnostics are available.",
+        "100/500/1,000-route TypeScript budgets pass."
+      ],
+      "evidence": [
+        "declaration size/typecheck report",
+        "consumer fixture"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-006",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Finalize diagnostics, source maps, and inspect output",
+      "objective": "Make unsupported APIs, route plans, capabilities, fallbacks, performance strategies, and runtime failures actionable.",
+      "depends_on": [
+        "M4-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every diagnostic has stable code and source location.",
+        "Secrets remain redacted.",
+        "inspect output matches QPack/runtime graph exactly."
+      ],
+      "evidence": [
+        "diagnostic catalog",
+        "redaction tests",
+        "inspect golden files"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-007",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement bounded defer and lifecycle hooks",
+      "objective": "Support explicit post-response work without pretending it is durable background processing.",
+      "depends_on": [
+        "M4-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "defer has owner, timeout, queue cap, cancellation, and observability.",
+        "Shutdown waits or cancels according to policy.",
+        "Docs direct durable work to external queues."
+      ],
+      "evidence": [
+        "defer tests",
+        "lifecycle matrix",
+        "docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-008",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Build documentation and examples",
+      "objective": "Provide installation, contracts, policies, Treaty, capabilities, deployment, limitations, and migration material.",
+      "depends_on": [
+        "M4-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Docs are versioned and tested.",
+        "Examples cover small API, auth, fetch, streaming, and multi-worker service.",
+        "No unsupported Node compatibility implication."
+      ],
+      "evidence": [
+        "docs link check",
+        "example CI",
+        "tutorial review"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-009",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Build realistic private-alpha proof service",
+      "objective": "Exercise 30\u201350 routes, auth, pagination, typed errors, fetch, lifecycle, observability, and deployment.",
+      "depends_on": [
+        "M4-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Reference app uses actual runtime, not special benchmark bypasses.",
+        "Operational runbook and load profile exist.",
+        "Known limitations are explicit."
+      ],
+      "evidence": [
+        "proof service source",
+        "runtime-local tests",
+        "deployment smoke test"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M4-GATE",
+      "milestone": "M4",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass private-alpha gate",
+      "objective": "Make Velqu usable by a small invited group without claiming public production readiness.",
+      "depends_on": [
+        "M4-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M4-001 through M4-009 are PASS.",
+        "Linux x86_64 and arm64 artifacts pass smoke/conformance or owner-approved scope is recorded.",
+        "No unresolved P0; P1s have explicit alpha disposition.",
+        "Private-alpha docs and support channel exist."
+      ],
+      "evidence": [
+        "M4 alpha report",
+        "artifact matrix",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-001",
+      "milestone": "M5",
+      "lane": "benchmark-parallel",
+      "priority": "P1",
+      "title": "Make the real-world benchmark harness executable",
+      "objective": "Turn SPEC/workloads/schema into reproducible containers, datasets, load generator, result schema, and report generator.",
+      "depends_on": [
+        "M4-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "W1\u2013W4 run from one command.",
+        "Dataset reset is deterministic.",
+        "CPU/RSS/pool wait/queue wait/p50/p95/p99/errors are captured."
+      ],
+      "evidence": [
+        "docker compose",
+        "seed/reset scripts",
+        "raw result schema"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-002",
+      "milestone": "M5",
+      "lane": "benchmark-parallel",
+      "priority": "P1",
+      "title": "Implement matched competitor candidates",
+      "objective": "Provide Raw Rust, Elysia 2, Hono/Bun, and Fastify/Node candidates with equivalent semantics.",
+      "depends_on": [
+        "M5-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Same SQL, schema, JWT, pool size, response bytes, logging, limits, and timeout behavior.",
+        "Fairness audit passes before performance interpretation."
+      ],
+      "evidence": [
+        "candidate source",
+        "correctness fixtures",
+        "fairness report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-003",
+      "milestone": "M5",
+      "lane": "benchmark-parallel",
+      "priority": "P1",
+      "title": "Implement controlled upstream and CPU/JIT crossover suites",
+      "objective": "Measure scheduler/I/O behavior separately from database-driver differences and identify cumulative cold-vs-hot crossover.",
+      "depends_on": [
+        "M5-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Delay matrix 0/1/5/10/25/50 ms and payload 256B/1K/16K/64K.",
+        "CPU levels and first/10/100/1k/10k request phases are captured.",
+        "Break-even analysis uses measured startup and per-request cost."
+      ],
+      "evidence": [
+        "upstream fixture",
+        "CPU workload source",
+        "crossover report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-004",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Authorize and implement optional Postgres capability",
+      "objective": "Provide one official database capability after M2.7 lifecycle rules, without adding database code to core.",
+      "depends_on": [
+        "M5-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Pool is lazy, bounded, cancellable, and gracefully closed.",
+        "Parameterized query API prevents accidental string interpolation.",
+        "Capability absent from unrelated apps."
+      ],
+      "evidence": [
+        "ADR",
+        "capability package",
+        "integration tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-005",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement auth/JWT reference capability or policy package",
+      "objective": "Exercise real cryptographic verification and typed authorization without making auth a core product.",
+      "depends_on": [
+        "M5-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Pinned algorithms and key handling are secure by default.",
+        "401/403 distinction is typed.",
+        "Key rotation and clock-skew behavior are documented."
+      ],
+      "evidence": [
+        "package source",
+        "security tests",
+        "reference app integration"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-006",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement production configuration and secret handling",
+      "objective": "Define files/env/CLI precedence, validation, secret redaction, immutable runtime config, and reload policy.",
+      "depends_on": [
+        "M5-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Invalid config fails before bind.",
+        "Secrets never appear in logs/reports/crash output.",
+        "Config schema is documented and versioned."
+      ],
+      "evidence": [
+        "config tests",
+        "redaction suite",
+        "operator docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-007",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement production observability",
+      "objective": "Provide structured logs, Prometheus/OpenTelemetry-compatible metrics, traces, request IDs, worker/queue/pool health, and sampling controls.",
+      "depends_on": [
+        "M5-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Observability can be disabled or sampled with measured overhead.",
+        "Trace context propagates through fetch and DB capability.",
+        "No full per-request JSON allocation when disabled."
+      ],
+      "evidence": [
+        "OTel integration tests",
+        "overhead benchmark",
+        "dashboard examples"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-008",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Implement trusted-proxy, drain, and deployment semantics",
+      "objective": "Make reverse-proxy headers, client IP, graceful SIGTERM, readiness, liveness, startup, and rolling deployment behavior explicit.",
+      "depends_on": [
+        "M5-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Trusted proxy ranges are configured, never assumed.",
+        "Readiness goes false before drain.",
+        "Container exits within configured deadline with no accepted-work loss beyond policy."
+      ],
+      "evidence": [
+        "proxy tests",
+        "Kubernetes/container smoke tests",
+        "runbook"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-009",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Run real-world load, leak, and canary evidence",
+      "objective": "Validate W1\u2013W4, controlled I/O, CPU crossover, 1M+ requests, fault recovery, and one controlled production-like canary.",
+      "depends_on": [
+        "M5-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Raw evidence and environment manifests retained.",
+        "No monotonic slot/task/pool/RSS leak.",
+        "Negative or losing results remain documented."
+      ],
+      "evidence": [
+        "real-world report",
+        "canary report",
+        "memory graphs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M5-GATE",
+      "milestone": "M5",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass technical production candidate gate",
+      "objective": "Declare suitability for controlled production only after operations and real workloads pass.",
+      "depends_on": [
+        "M5-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M5-001 through M5-009 are PASS.",
+        "No unresolved P0; production-affecting P1s have owner-approved disposition.",
+        "Runbook, observability, rollback, and on-call contact exist for canary users.",
+        "No public GA claim is made."
+      ],
+      "evidence": [
+        "technical production candidate report",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-001",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Update complete threat model and trust boundaries",
+      "objective": "Cover compiler, QPack, bytecode, FFI, capabilities, fetch, DB, multi-worker, supply chain, and operator configuration.",
+      "depends_on": [
+        "M5-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Assets/actors/entry points/abuse cases/controls are current.",
+        "Same-process trusted-code limitation is prominent.",
+        "Every high risk maps to a test/control."
+      ],
+      "evidence": [
+        "threat model",
+        "security traceability"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-002",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Run sustained fuzz and property campaigns",
+      "objective": "Fuzz HTTP admission, router, QPack, schema codecs, bridge handles, Treaty encoders, fetch parsers, and capability metadata.",
+      "depends_on": [
+        "M6-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Configured campaign duration and corpus are recorded.",
+        "No crash, panic, UB, or unbounded allocation remains.",
+        "Findings become regression tests."
+      ],
+      "evidence": [
+        "fuzz logs",
+        "corpus bundle",
+        "fix reports"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-003",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Run sanitizers, Miri, concurrency, and unsafe audits",
+      "objective": "Exercise FFI and native lifetime invariants beyond normal tests.",
+      "depends_on": [
+        "M6-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "All unsafe blocks have documented invariants.",
+        "Applicable ASan/LSan/TSan/UBSan/Miri/Loom-style checks pass or have explicit platform waivers.",
+        "No known memory-safety P0/P1."
+      ],
+      "evidence": [
+        "sanitizer logs",
+        "unsafe inventory",
+        "FFI review"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-004",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Establish dependency and license supply-chain policy",
+      "objective": "Pin, audit, allowlist, and monitor Rust/Bun dependencies and transitive licenses.",
+      "depends_on": [
+        "M6-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No unresolved critical/high exploitable advisory.",
+        "License policy matches owner decision.",
+        "Engine and binding upgrade lane is tested separately."
+      ],
+      "evidence": [
+        "audit output",
+        "license report",
+        "dependency policy"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-005",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Generate SBOM and provenance",
+      "objective": "Produce machine-readable components and build provenance for every release artifact.",
+      "depends_on": [
+        "M6-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "SPDX/CycloneDX SBOM and provenance reference exact source/toolchains.",
+        "Artifacts and metadata are hashed and later signed.",
+        "Rebuild process is documented."
+      ],
+      "evidence": [
+        "SBOM",
+        "provenance statement",
+        "verification script"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-006",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Prove reproducible builds on independent builders",
+      "objective": "Build the same source on two clean supported environments and compare normalized outputs.",
+      "depends_on": [
+        "M6-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "QPack and binaries reproduce or all allowed differences are explained.",
+        "Build images/toolchains are pinned.",
+        "Failure blocks RC."
+      ],
+      "evidence": [
+        "independent build hashes",
+        "difference report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-007",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Complete supported-platform matrix",
+      "objective": "Run build/conformance/performance smoke on owner-approved GA platforms.",
+      "depends_on": [
+        "M6-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "At minimum Linux x86_64 and arm64 are decided and tested or narrowed by owner decision.",
+        "Unsupported platforms fail/document clearly.",
+        "Cross-compilation artifacts are exercised on real architecture."
+      ],
+      "evidence": [
+        "CI matrix",
+        "platform report",
+        "artifact smoke tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-008",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Run chaos and fault-injection program",
+      "objective": "Exercise worker poison, upstream/DB failure, DNS/TLS errors, queue saturation, OOM pressure, process signals, and corrupt artifacts.",
+      "depends_on": [
+        "M6-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No deadlock or silent auth bypass.",
+        "Readiness/load shedding/rollback behave as documented.",
+        "Recovery time and lost-work policy are measured."
+      ],
+      "evidence": [
+        "chaos scenarios",
+        "raw logs",
+        "remediation report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-009",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Run long soak and performance-regression qualification",
+      "objective": "Prove stable memory/resources and pin benchmark budgets before RC.",
+      "depends_on": [
+        "M6-008"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "24-hour minimum and selected 72-hour soak pass.",
+        "At least 10M representative requests or approved equivalent.",
+        "No monotonic RSS/task/slot/connection growth beyond defined tolerance.",
+        "Performance regressions block merge automatically."
+      ],
+      "evidence": [
+        "soak report",
+        "resource graphs",
+        "CI regression thresholds"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M6-GATE",
+      "milestone": "M6",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass security and reliability hardening gate",
+      "objective": "Reach independently reviewable technical production readiness.",
+      "depends_on": [
+        "M6-009"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M6-001 through M6-009 are PASS.",
+        "Independent security review has no unresolved critical/high issue.",
+        "Supported platforms, reproducibility, SBOM, chaos, and soak gates pass.",
+        "Incident response draft exists."
+      ],
+      "evidence": [
+        "M6 hardening report",
+        "security review",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-001",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Freeze public TypeScript API and Treaty semantics",
+      "objective": "Define stable package exports, error/result shapes, route declarations, schema behavior, and deprecation rules.",
+      "depends_on": [
+        "M6-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "No public any or accidental internal types.",
+        "API extractor/baseline detects breaking changes.",
+        "SemVer classification fixtures pass."
+      ],
+      "evidence": [
+        "API report",
+        "type tests",
+        "baseline files"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-002",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Freeze runtime, QPack, and capability ABI policies",
+      "objective": "Define compatibility windows, migration tooling, engine fingerprint behavior, and deprecation support.",
+      "depends_on": [
+        "M7-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Old supported artifacts either load or fail with migration guidance.",
+        "No silent bytecode/ABI fallback.",
+        "Capability SDK has version negotiation rules."
+      ],
+      "evidence": [
+        "compatibility matrix",
+        "upgrade tests",
+        "migration docs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-003",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Implement release and package publishing automation",
+      "objective": "Build, test, sign, publish, and verify @velqu packages, Rust binaries, QPack tools, checksums, SBOM, and provenance.",
+      "depends_on": [
+        "M7-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Dry-run and staging registry tests pass.",
+        "Published packages install in clean consumers.",
+        "Rollback/yank procedure is documented."
+      ],
+      "evidence": [
+        "release workflow",
+        "staging artifacts",
+        "install tests"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-004",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Complete versioned documentation and migration guides",
+      "objective": "Publish API reference, operator guide, capability authoring, troubleshooting, security model, performance methodology, and upgrade paths.",
+      "depends_on": [
+        "M7-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Docs match RC binaries/packages.",
+        "All code samples run in CI.",
+        "Known limitations and non-goals are prominent."
+      ],
+      "evidence": [
+        "docs build",
+        "sample tests",
+        "migration walkthrough"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-005",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Resolve owner-controlled public release decisions",
+      "objective": "Close repository/org, license, supported platform promise, governance, security contact, and release authority.",
+      "depends_on": [
+        "M7-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "OD-003 through OD-006 are DECIDED.",
+        "License headers/package metadata are updated.",
+        "Security policy and code of conduct/governance documents exist as chosen."
+      ],
+      "evidence": [
+        "owner decision record",
+        "repository metadata",
+        "license scan"
+      ],
+      "files_hint": [],
+      "owner": "project-owner",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-006",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Run RC compatibility and canary program",
+      "objective": "Exercise clean installs, upgrades, rollback, real reference apps, platform artifacts, and controlled production canaries.",
+      "depends_on": [
+        "M7-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "At least two independent consumer projects pass.",
+        "Upgrade from prior alpha/beta fixture succeeds or migration path is proven.",
+        "No unresolved RC P0/P1."
+      ],
+      "evidence": [
+        "RC canary reports",
+        "consumer feedback",
+        "upgrade logs"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-007",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P1",
+      "title": "Freeze public benchmark and positioning statements",
+      "objective": "Approve only fixture-specific claims supported by current raw evidence.",
+      "depends_on": [
+        "M7-006"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every claim names versions, environment, workload, artifacts, and p50/p95/p99.",
+        "Cold start distinguishes engine/process/container/scale-to-zero.",
+        "Negative and crossover results are disclosed."
+      ],
+      "evidence": [
+        "claims register",
+        "fairness audit",
+        "owner approval"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M7-GATE",
+      "milestone": "M7",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Pass release-candidate gate",
+      "objective": "Produce a signed, installable, documented, supportable RC with stable APIs and no open release blockers.",
+      "depends_on": [
+        "M7-007"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M7-001 through M7-007 are PASS.",
+        "All owner decisions required for publication are closed.",
+        "RC artifacts install and roll back.",
+        "No unresolved P0/P1; P2 backlog is published."
+      ],
+      "evidence": [
+        "RC release packet",
+        "signed artifacts",
+        "checkpoint archive"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-001",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Conduct formal production-readiness review",
+      "objective": "Review architecture, security, reliability, operations, performance, compatibility, support, and rollback against the frozen gates.",
+      "depends_on": [
+        "M7-GATE"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Every gate has source/test/raw-evidence references.",
+        "No unsupported claim or unexecuted required check is hidden.",
+        "Reviewer findings are classified P0/P1/P2 under the frozen scope."
+      ],
+      "evidence": [
+        "PRR document",
+        "review index",
+        "finding disposition"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-002",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Finalize operational SLOs, alerts, and runbooks",
+      "objective": "Define supported service indicators and operator actions for startup, readiness, queues, workers, fetch, DB, errors, and resource use.",
+      "depends_on": [
+        "M8-001"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "SLOs have measurement sources and alert thresholds.",
+        "Runbooks cover common failure modes and rollback.",
+        "Canary dashboards are validated."
+      ],
+      "evidence": [
+        "SLO doc",
+        "runbooks",
+        "dashboard screenshots/config"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-003",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Finalize release signing, rollback, and disaster recovery",
+      "objective": "Make every GA artifact verifiable and every release reversible.",
+      "depends_on": [
+        "M8-002"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Artifacts/checksums/SBOM/provenance are signed.",
+        "Rollback to previous runtime/package is rehearsed.",
+        "Compromised-key and bad-release procedures are documented."
+      ],
+      "evidence": [
+        "signed release set",
+        "rollback drill",
+        "key policy"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-004",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Publish GA artifacts and versioned documentation",
+      "objective": "Release stable packages, binaries, source, QPack tools, docs, examples, benchmark evidence, and support/security contacts.",
+      "depends_on": [
+        "M8-003"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "Clean install and hello/reference app pass from public artifacts.",
+        "All URLs and package metadata are final.",
+        "Release notes list known limitations and compatibility."
+      ],
+      "evidence": [
+        "GA artifacts",
+        "install logs",
+        "release notes"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-005",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Execute post-release monitoring and response plan",
+      "objective": "Closely monitor first production users and define patch/release cadence.",
+      "depends_on": [
+        "M8-004"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "24-hour and 7-day review checkpoints exist.",
+        "Issue triage severity and security response timelines are active.",
+        "Performance/regression telemetry is reviewed."
+      ],
+      "evidence": [
+        "post-release checklist",
+        "triage board",
+        "monitoring report"
+      ],
+      "files_hint": [],
+      "owner": "implementation-agent",
+      "status": "TODO"
+    },
+    {
+      "id": "M8-GATE",
+      "milestone": "M8",
+      "lane": "critical-path",
+      "priority": "P0",
+      "title": "Approve production-ready GA",
+      "objective": "Use \u201cproduction ready\u201d only after technical, owner, release, and operational gates are all satisfied.",
+      "depends_on": [
+        "M8-005"
+      ],
+      "deliverables": [],
+      "acceptance": [
+        "M8-001 through M8-005 are PASS.",
+        "No unresolved P0/P1.",
+        "Production-readiness reviewer and project owner approve the final packet.",
+        "Final source, Git history, artifacts, evidence, and checksums are archived."
+      ],
+      "evidence": [
+        "final PRR approval",
+        "GA release packet",
+        "long-term archive"
+      ],
+      "files_hint": [],
+      "owner": "project-owner-and-reviewer",
+      "status": "TODO"
+    }
+  ]
+}

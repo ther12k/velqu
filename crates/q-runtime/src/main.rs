@@ -139,7 +139,16 @@ fn run(args: Args) -> i32 {
             .bundle_bytecode
             .as_ref()
             .and_then(|bc| q_pack::base64_decode(&bc.data));
-        let load_stats = match engine.load(&pack.bundle, bytecode_decoded.as_deref(), &pack.handler_table) {
+        let load_plan = if !pack.functions.is_empty() {
+            q_engine::EngineLoadPlan::Numeric {
+                count: pack.functions.len(),
+            }
+        } else {
+            q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: pack.handler_table.clone(),
+            }
+        };
+        let load_stats = match engine.load(&pack.bundle, bytecode_decoded.as_deref(), load_plan) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!(
@@ -204,10 +213,12 @@ fn run(args: Args) -> i32 {
         });
         println!("{startup_line}");
 
+        let health = engine.health();
         let state = Arc::new(serve::ServeState {
             pack: Arc::new(pack),
             router,
             engine: std::sync::Mutex::new(engine),
+            health,
             store,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
             log_mode: serve::LogMode::from_str(&args.log),

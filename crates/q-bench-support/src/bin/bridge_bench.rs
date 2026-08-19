@@ -153,7 +153,15 @@ fn main() {
     .iter()
     .map(|k| (k.to_string(), String::new()))
     .collect();
-    engine.load(BUNDLE, None, &table).expect("bundle loads");
+    engine
+        .load(
+            BUNDLE,
+            None,
+            q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table,
+            },
+        )
+        .expect("bundle loads");
 
     let mut cases: Vec<Case> = Vec::new();
     // input strategies on small object
@@ -417,8 +425,16 @@ fn run_case(
         id,
         request_id: format!("bench-{id}"),
         route_id: case.name.into(),
+        route_id_num: None,
         handler_key: case.handler.into(),
         policy_key: None,
+        handler_id: None,
+        policy_id_num: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
         slot,
         generation: gen,
         params: case.params.clone(),
@@ -449,8 +465,16 @@ fn run_case(
         id: id + 10_000_000,
         request_id: format!("bench-check-{id}"),
         route_id: case.name.into(),
+        route_id_num: None,
         handler_key: case.handler.into(),
         policy_key: None,
+        handler_id: None,
+        policy_id_num: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
         slot,
         generation: gen,
         params: case.params.clone(),

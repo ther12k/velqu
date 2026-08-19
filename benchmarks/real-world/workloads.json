@@ -1,0 +1,65 @@
+{
+  "workloads": [
+    {
+      "id": "W1",
+      "name": "Authenticated User Lookup",
+      "path": "/api/users/usr_1",
+      "method": "GET",
+      "headers": { "Authorization": "Bearer velqu-benchmark-jwt" },
+      "expectedStatus": 200,
+      "description": "Bearer token validation + indexed single-row primary key query"
+    },
+    {
+      "id": "W2",
+      "name": "Authenticated Transactional Write",
+      "path": "/api/orders",
+      "method": "POST",
+      "headers": { "Authorization": "Bearer velqu-benchmark-jwt", "Content-Type": "application/json" },
+      "body": { "items": [{ "productId": "prod_1", "qty": 2 }, { "productId": "prod_2", "qty": 1 }] },
+      "expectedStatus": 201,
+      "description": "Multi-row write transaction with stock check and foreign key constraints"
+    },
+    {
+      "id": "W3",
+      "name": "Paginated Aggregated Products",
+      "path": "/api/products?category=electronics&page=1&limit=20",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "20-row query with join, COUNT/AVG aggregation, and 16KB JSON serialization"
+    },
+    {
+      "id": "W4_1ms",
+      "name": "Controlled 1ms I/O",
+      "path": "/api/bench/io?ms=1",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Simulated 1ms database query latency"
+    },
+    {
+      "id": "W4_5ms",
+      "name": "Controlled 5ms I/O",
+      "path": "/api/bench/io?ms=5",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Simulated 5ms database query latency"
+    },
+    {
+      "id": "W4_10ms",
+      "name": "Controlled 10ms I/O",
+      "path": "/api/bench/io?ms=10",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Simulated 10ms database query latency"
+    },
+    {
+      "id": "W4_25ms",
+      "name": "Controlled 25ms I/O",
+      "path": "/api/bench/io?ms=25",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Simulated 25ms database query latency"
+    }
+  ],
+  "concurrencyLevels": [1, 10, 50, 200],
+  "durationSec": 10
+}

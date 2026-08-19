@@ -218,15 +218,25 @@ function makeProxy(
       if (prop === "then") return undefined; // not a thenable
       const id = idSegments.join(".");
       const methodUpper = prop.toUpperCase();
-      if (contract[id] && ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].includes(methodUpper)) {
+      if (contract[id]) {
         const info = contract[id];
-        const routeUrl = `${base}/${info.path.replace(/^\//, "")}`;
-        return (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
-          if (methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE") {
-            return request(doFetch, routeUrl, methodUpper, (bodyOrOpts ?? {}) as RequestOptions);
-          }
-          return request(doFetch, routeUrl, methodUpper, { ...(maybeOpts ?? {}), body: bodyOrOpts });
-        };
+        const expectedMethod = info.method.toUpperCase();
+        if (methodUpper === expectedMethod) {
+          const routeUrl = `${base}/${info.path.replace(/^\//, "")}`;
+          return (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
+            if (methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE") {
+              return request(doFetch, routeUrl, methodUpper, (bodyOrOpts ?? {}) as RequestOptions);
+            }
+            return request(doFetch, routeUrl, methodUpper, { ...(maybeOpts ?? {}), body: bodyOrOpts });
+          };
+        }
+        if (["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].includes(methodUpper)) {
+          return () => {
+            throw new Error(
+              `treaty: method "${methodUpper}" is not allowed on route "${id}" (declared method: "${info.method}")`,
+            );
+          };
+        }
       }
       const next = [...idSegments, prop];
       return makeProxy(base, doFetch, contract, next);
@@ -238,20 +248,53 @@ function makeProxy(
         throw new Error(`treaty: unknown route id "${id}" (not in published contract)`);
       }
       const params = args[0] ?? {};
-      const path = info.path
-        .split("/")
-        .filter(Boolean)
-        .map((seg) => (seg.startsWith(":") ? String(params[seg.slice(1)] ?? "") : seg))
+      const pathSegs = info.path.split("/").filter(Boolean);
+      for (const seg of pathSegs) {
+        if (seg.startsWith(":")) {
+          const paramName = seg.slice(1);
+          const val = params[paramName];
+          if (val === undefined || val === null || val === "") {
+            throw new Error(
+              `treaty: missing required path parameter "${paramName}" for route "${id}"`,
+            );
+          }
+        }
+      }
+      const path = pathSegs
+        .map((seg) => (seg.startsWith(":") ? encodeURIComponent(String(params[seg.slice(1)])) : seg))
         .join("/");
       const routeUrl = `${base}/${path}`;
-      return {
-        get: (opts?: RequestOptions & { query?: Record<string, unknown> }) => request(doFetch, routeUrl, "GET", opts),
-        post: (body?: unknown, opts?: RequestOptions) => request(doFetch, routeUrl, "POST", { ...opts, body }),
-        put: (body?: unknown, opts?: RequestOptions) => request(doFetch, routeUrl, "PUT", { ...opts, body }),
-        patch: (body?: unknown, opts?: RequestOptions) => request(doFetch, routeUrl, "PATCH", { ...opts, body }),
-        delete: (opts?: RequestOptions) => request(doFetch, routeUrl, "DELETE", opts),
-        head: (opts?: RequestOptions) => request(doFetch, routeUrl, "HEAD", opts),
+      const declaredMethod = info.method.toLowerCase();
+      const methodMap: Record<string, Function> = {
+        get: (opts?: RequestOptions & { query?: Record<string, unknown> }) =>
+          request(doFetch, routeUrl, "GET", opts),
+        post: (body?: unknown, opts?: RequestOptions) =>
+          request(doFetch, routeUrl, "POST", { ...opts, body }),
+        put: (body?: unknown, opts?: RequestOptions) =>
+          request(doFetch, routeUrl, "PUT", { ...opts, body }),
+        patch: (body?: unknown, opts?: RequestOptions) =>
+          request(doFetch, routeUrl, "PATCH", { ...opts, body }),
+        delete: (opts?: RequestOptions) =>
+          request(doFetch, routeUrl, "DELETE", opts),
+        head: (opts?: RequestOptions) =>
+          request(doFetch, routeUrl, "HEAD", opts),
       };
+      return new Proxy({} as any, {
+        get(_target, prop: string) {
+          const m = prop.toLowerCase();
+          if (m === declaredMethod && methodMap[m]) {
+            return methodMap[m];
+          }
+          if (["get", "post", "put", "patch", "delete", "head"].includes(m)) {
+            return () => {
+              throw new Error(
+                `treaty: method "${prop.toUpperCase()}" is not allowed on route "${id}" (declared method: "${info.method}")`,
+              );
+            };
+          }
+          return undefined;
+        },
+      });
     },
   });
 }

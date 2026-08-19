@@ -1,79 +1,79 @@
 {
   "format": "velqu-route-count-v1",
-  "samples": 30,
-  "generatedAt": "2026-08-18T07:02:42.689Z",
+  "samples": 40,
+  "generatedAt": "2026-08-19T11:27:10.804Z",
   "results": [
     {
       "candidate": "velqu (source)",
       "routes": 25,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 3.201,
-      "p95Ms": 3.78,
+      "p50Ms": 3.206,
+      "p95Ms": 4.066,
       "rssP50Kb": 6356
     },
     {
       "candidate": "velqu (source)",
       "routes": 1000,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 16.229,
-      "p95Ms": 20.344,
-      "rssP50Kb": 11468
+      "p50Ms": 17.624,
+      "p95Ms": 21.495,
+      "rssP50Kb": 12984
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 25,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 3.096,
-      "p95Ms": 5.864,
-      "rssP50Kb": 6396
+      "p50Ms": 2.981,
+      "p95Ms": 3.928,
+      "rssP50Kb": 6340
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 1000,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 14.486,
-      "p95Ms": 23.126,
-      "rssP50Kb": 11472
+      "p50Ms": 17.366,
+      "p95Ms": 26.798,
+      "rssP50Kb": 12856
     },
     {
       "candidate": "raw-bun",
       "routes": 25,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 16.087,
-      "p95Ms": 22.72,
-      "rssP50Kb": 38676
+      "p50Ms": 14.009,
+      "p95Ms": 22.355,
+      "rssP50Kb": 38756
     },
     {
       "candidate": "raw-bun",
       "routes": 1000,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 13.574,
-      "p95Ms": 17.5,
-      "rssP50Kb": 38680
+      "p50Ms": 12.843,
+      "p95Ms": 17.363,
+      "rssP50Kb": 38764
     },
     {
       "candidate": "elysia2",
       "routes": 25,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 145.265,
-      "p95Ms": 167.34,
-      "rssP50Kb": 95484
+      "p50Ms": 151.507,
+      "p95Ms": 192.816,
+      "rssP50Kb": 95496
     },
     {
       "candidate": "elysia2",
       "routes": 1000,
-      "samples": 30,
+      "samples": 40,
       "failures": 0,
-      "p50Ms": 167.132,
-      "p95Ms": 178.659,
-      "rssP50Kb": 119764
+      "p50Ms": 177.641,
+      "p95Ms": 256.412,
+      "rssP50Kb": 118996
     }
   ]
 }

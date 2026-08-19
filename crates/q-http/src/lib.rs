@@ -209,12 +209,6 @@ where
             let permit = match host.shared.queue.clone().try_acquire_owned() {
                 Ok(p) => p,
                 Err(_) => {
-                    let (res, route, stage) = (
-                        Err(HttpError::QueueFull),
-                        "admission".to_string(),
-                        "admission",
-                    );
-                    host.log_completion(&res, &route, stage, Instant::now(), 0);
                     return Ok(problem_response(
                         503,
                         "queue full",
@@ -222,9 +216,7 @@ where
                     ));
                 }
             };
-            let started = Instant::now();
             let out = handle_one(&host, req, &*handler).await;
-            host.log_completion(&out.0, &out.1, out.2, started, permit.token_id() as usize);
             drop(permit);
             let (result, _route, _stage) = out;
             match result {
@@ -242,44 +234,6 @@ where
                 }
             }
         })
-    }
-}
-
-trait TokenId {
-    fn token_id(&self) -> u64;
-}
-impl TokenId for tokio::sync::OwnedSemaphorePermit {
-    fn token_id(&self) -> u64 {
-        0
-    }
-}
-
-impl HttpHost {
-    fn log_completion(
-        &self,
-        result: &HandlerResult,
-        route: &str,
-        stage: &'static str,
-        started: Instant,
-        _q: usize,
-    ) {
-        let (status, body_bytes) = match result {
-            Ok(r) => (r.status, r.body.len()),
-            Err(HttpError::Limited { status, .. }) => (*status, 0),
-            Err(_) => (400, 0),
-        };
-        let rec = CompletionRecord {
-            event: "request.complete",
-            request_id: String::new(),
-            route_id: route.to_string(),
-            status,
-            duration_ms: started.elapsed().as_secs_f64() * 1000.0,
-            body_bytes,
-            stage,
-        };
-        let _ = rec;
-        // sink is attached by the runtime via the handler closure's own logging;
-        // q-http itself stays silent to keep the transport layer reusable.
     }
 }
 

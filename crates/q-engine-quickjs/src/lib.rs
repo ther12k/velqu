@@ -10,12 +10,33 @@ mod convert;
 mod prelude;
 mod worker;
 
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use q_engine::{Engine, EngineStats, InvocationSpec, LoadStats, Outcome};
 use worker::{WorkerMsg, WorkerShared};
+
+/// Narrow read-only handle for lock-free readiness checks (M2.2.1-r4.2.1).
+/// Exposes only the health queries needed by the HTTP host, keeping mutable
+/// scheduler internals encapsulated.
+#[derive(Clone)]
+pub struct EngineHealth {
+    shared: Arc<WorkerShared>,
+}
+
+impl EngineHealth {
+    #[inline]
+    pub fn is_quarantined(&self) -> bool {
+        self.shared
+            .queue_poisoned
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    #[inline]
+    pub fn is_ready(&self) -> bool {
+        !self.is_quarantined()
+    }
+}
 
 /// Engine configuration (limits are robustness controls, not a sandbox).
 #[derive(Debug, Clone)]
@@ -26,6 +47,10 @@ pub struct QuickJsConfig {
     /// Watchdog for promise-continuation jobs when no invocation is pending
     /// (drain-time interrupt arming). Resource robustness control, not a sandbox.
     pub job_deadline_ms: u64,
+    /// Per-drain microtask job cap (M2.2.1-r4.1). A live invocation whose
+    /// queued microtasks exceed this count without quiescing quarantines the
+    /// runtime through the unified terminal path.
+    pub max_invocation_jobs: usize,
 }
 
 impl Default for QuickJsConfig {
@@ -35,6 +60,7 @@ impl Default for QuickJsConfig {
             stack_limit_bytes: 512 << 10,
             pending_op_cap: 1024,
             job_deadline_ms: 5_000,
+            max_invocation_jobs: 100_000,
         }
     }
 }
@@ -108,6 +134,28 @@ impl QuickJsEngine {
             last_error,
         }
     }
+
+    /// M2.2.1-r4.2.1: narrow lock-free health handle for per-request readiness check
+    pub fn health(&self) -> EngineHealth {
+        EngineHealth {
+            shared: Arc::clone(&self.shared),
+        }
+    }
+
+    /// Test-support helper to query the current number of entries in `__velquSettled`
+    #[doc(hidden)]
+    pub fn settlement_table_len(&self) -> usize {
+        let (tx, rx) = std::sync::mpsc::channel();
+        if self
+            .tx
+            .send(WorkerMsg::QuerySettlementTableSize { reply: tx })
+            .is_ok()
+        {
+            rx.recv().unwrap_or(0)
+        } else {
+            0
+        }
+    }
 }
 
 impl Engine for QuickJsEngine {
@@ -115,14 +163,14 @@ impl Engine for QuickJsEngine {
         &mut self,
         bundle: &str,
         bytecode: Option<&[u8]>,
-        expected_handlers: &BTreeMap<String, String>,
+        plan: q_engine::EngineLoadPlan,
     ) -> Result<LoadStats, String> {
         let (reply_tx, reply_rx) = std::sync::mpsc::channel();
         self.tx
             .send(WorkerMsg::Load {
                 bundle: bundle.to_string(),
                 bytecode: bytecode.map(Vec::from),
-                expected: expected_handlers.clone(),
+                plan,
                 reply: reply_tx,
             })
             .map_err(|_| "engine worker gone".to_string())?;

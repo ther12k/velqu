@@ -12,3 +12,10 @@ Recommended order:
 6. [Risks and Open Questions](risks-and-open-questions.md)
 
 The executable handoff instructions are in the root [Master Agent Prompt](../MASTER_AGENT_PROMPT.md).
+
+## Production Readiness Plan
+
+7. [Production Readiness Roadmap](production-readiness-roadmap.md)
+8. [Production Backlog](production-backlog.md)
+9. [Master Production Agent Prompt](../MASTER_PRODUCTION_AGENT_PROMPT.md)
+

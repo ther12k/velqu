@@ -13,10 +13,10 @@ python3 - "$BUNDLE" <<'PY'
 import hashlib, json, sys, os, re
 bundle = sys.argv[1]
 manifest = json.load(open(os.path.join(bundle, "MANIFEST.json")))
-# log.md (event log) and decisions/index.md (ADR index) legitimately grow as
+# log.md (event log) and indexes legitimately grow as
 # implementation proceeds: the original bundle content must remain a
 # byte-prefix of the current file. Everything else must hash-match.
-APPEND_ONLY = {"log.md", "decisions/index.md"}
+APPEND_ONLY = {"log.md", "decisions/index.md", "delivery/index.md", "engineering/index.md"}
 errors = []
 for entry in manifest["files"]:
     p = os.path.join(bundle, entry["path"])

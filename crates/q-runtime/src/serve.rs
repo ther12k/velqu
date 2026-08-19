@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use q_engine::Engine as _;
-use q_engine::{BodyOut, InvocationSpec, Outcome, ResponseStrategy};
+use q_engine::{BodyOut, InvocationSpec, Outcome};
 use q_engine_quickjs::QuickJsEngine;
 use q_http::{HandlerResult, HttpError, PlainResponse, RequestContext};
 use q_router::MatchResult;
@@ -43,6 +43,7 @@ pub struct ServeState {
     pub pack: Arc<q_pack::QPack>,
     pub router: q_router::Router,
     pub engine: Mutex<QuickJsEngine>,
+    pub health: q_engine_quickjs::EngineHealth,
     pub store: Arc<q_bridge::RequestStore>,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
@@ -62,9 +63,15 @@ pub fn make_handler(
     move |ctx: RequestContext| {
         let state = Arc::clone(&state);
         Box::pin(async move {
-            let started = Instant::now();
+            let started = if state.log_mode != LogMode::Off {
+                Some(Instant::now())
+            } else {
+                None
+            };
             let (result, route_id, stage) = pipeline(&state, &ctx).await;
-            log_completion(&state, &ctx, &result, &route_id, stage, started);
+            if let Some(started) = started {
+                log_completion(&state, &ctx, &result, &route_id, stage, started);
+            }
             (result, route_id, stage)
         })
     }
@@ -85,12 +92,9 @@ fn log_completion(
         Err(_) => (400, 0),
     };
 
-    // Skip serialization entirely when mode is Off, or when Errors mode
-    // and this is a successful response.
-    match state.log_mode {
-        LogMode::Off => return,
-        LogMode::Errors if status < 400 => return,
-        _ => {}
+    // Skip serialization when Errors mode and this is a successful response.
+    if state.log_mode == LogMode::Errors && status < 400 {
+        return;
     }
 
     // OPS-001: structured completion log; header values never logged (SEC-004)
@@ -115,6 +119,32 @@ async fn pipeline(
     state: &ServeState,
     ctx: &RequestContext,
 ) -> (HandlerResult, String, &'static str) {
+    // ---- M2.2.1-r4.1/r4.2.1: built-in readiness probe (liveness stays a pack route)
+    // Liveness = process + listener alive; readiness = engine can execute
+    // application requests. A quarantined engine keeps /health/live at 200
+    // but flips /health/ready to 503. Lock-free atomic check via EngineHealth.
+    if ctx.path == "/health/ready" && (ctx.method == "GET" || ctx.method == "HEAD") {
+        if state.health.is_ready() {
+            let resp = PlainResponse {
+                status: 200,
+                headers: vec![("content-type".into(), "application/json".into())],
+                body: b"{\"ready\":true}".to_vec(),
+                head_only: ctx.method == "HEAD",
+            };
+            return (Ok(resp), "(readiness)".into(), "native");
+        }
+        let body = problems::body(
+            "internal",
+            Some(503),
+            Some("engine quarantined"),
+            &[],
+            &ctx.request_id,
+        );
+        let mut resp = json_response(503, &body);
+        resp.head_only = ctx.method == "HEAD";
+        return (Ok(resp), "(readiness)".into(), "native");
+    }
+
     // ---- native routing BEFORE any JavaScript (RUN-002)
     match state.router.resolve(&ctx.method, &ctx.path) {
         MatchResult::NotFound => {
@@ -149,6 +179,23 @@ async fn pipeline(
                 };
                 resp.headers.push(("x-velqu-stage".into(), "native".into()));
                 return (Ok(resp), route_id, "native");
+            }
+
+            // ---- M2.2.1-r4.2.1: a quarantined engine fails dynamic JS routes
+            // closed at the HTTP boundary (503, retry-after) with a single
+            // lock-free atomic load via EngineHealth (no engine mutex acquisition).
+            if state.health.is_quarantined() {
+                let body = problems::body(
+                    "internal",
+                    Some(503),
+                    Some("engine quarantined"),
+                    &[],
+                    &ctx.request_id,
+                );
+                let mut resp = json_response(503, &body);
+                resp.head_only = head;
+                resp.headers.push(("retry-after".into(), "1".into()));
+                return (Ok(resp), route_id, "quarantined");
             }
 
             // ---- native input validation (params/query)
@@ -266,41 +313,50 @@ async fn pipeline(
                 body: ctx.body.clone(),
             });
 
-            let default_status = route
-                .responses
-                .contains_key("200")
-                .then_some(200)
-                .or_else(|| route.responses.keys().next().and_then(|k| k.parse().ok()))
-                .unwrap_or(200);
-            let allowed_statuses: Vec<u16> = route
-                .responses
-                .keys()
-                .filter_map(|k| k.parse().ok())
-                .collect();
-            let response_strategy = match route.responses.get(&default_status.to_string()) {
-                Some(decl) => match decl.strategy {
-                    q_pack::Strategy::Native => ResponseStrategy::Native,
-                    q_pack::Strategy::Js => ResponseStrategy::Js,
-                },
-                None => ResponseStrategy::Js,
+            // M2.3: Use precomputed CompiledRoute from router (zero string/status parsing on hot path)
+            let compiled = state
+                .router
+                .compiled_route(route_index)
+                .expect("matched route must exist in router");
+
+            let policy_key = if compiled.policy_handler_id.is_none() {
+                route
+                    .policy
+                    .as_ref()
+                    .map(|policy_id| state.pack.policies[policy_id].handler.clone())
+            } else {
+                None
+            };
+            let handler_key = if compiled.handler_id.is_none() {
+                route.handler.clone()
+            } else {
+                String::new()
             };
 
             let spec = InvocationSpec {
                 id: invocation_id,
                 request_id: ctx.request_id.clone(),
                 route_id: route.id.clone(),
-                handler_key: route.handler.clone(),
-                policy_key: route.policy.clone(),
+                route_id_num: Some(compiled.route_id),
+                handler_key,
+                policy_key,
+                handler_id: compiled.handler_id,
+                policy_id_num: compiled.policy_id,
+                policy_handler_id: compiled.policy_handler_id,
+                params_schema_id: compiled.params_schema_id,
+                query_schema_id: compiled.query_schema_id,
+                headers_schema_id: compiled.headers_schema_id,
+                body_schema_id: compiled.body_schema_id,
                 slot,
                 generation,
                 params: params_value,
                 query: query_value,
                 headers: None,
                 body: body_value,
-                allowed_statuses,
-                default_status,
-                response_strategy,
-                deadline: Instant::now() + Duration::from_millis(route.deadline_ms),
+                allowed_statuses: compiled.allowed_statuses.clone(),
+                default_status: compiled.default_status,
+                response_strategy: compiled.response_strategy,
+                deadline: Instant::now() + Duration::from_millis(compiled.deadline_ms),
             };
 
             let (tx, rx) = tokio::sync::oneshot::channel();

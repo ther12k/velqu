@@ -348,6 +348,14 @@ function routeFromCall(call: ts.CallExpression, file: string, moduleId: string, 
   const handleProp = props.get("handle");
   if (!handleProp) throw new CompileError(`route '${id}' is missing 'handle'`, nodeLoc(arg, file));
 
+  if (path === "/health/ready") {
+    throw new CompileError(
+      `route path '/health/ready' is reserved by the runtime for readiness probes`,
+      nodeLoc(arg, file),
+      "choose a different path such as '/ready' or '/app-ready'",
+    );
+  }
+
   // policy reference: identifier bound to a definePolicy result
   let policyId: string | null = null;
   const policyProp = props.get("policy");

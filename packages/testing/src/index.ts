@@ -3,7 +3,7 @@
  * reported separately (TRT-005): unit-local executes handlers in-process
  * under Bun; runtime-local drives the ACTUAL velqu-runtime binary over HTTP.
  */
-import { treaty } from "@velqu/treaty";
+import { treaty, type AnyRouteContract, type TreatyClient } from "@velqu/treaty";
 
 // ---------------------------------------------------------------- unit-local
 
@@ -17,10 +17,13 @@ export interface UnitTreatyOptions {
  * UNIT-LOCAL mode — no native runtime involved. Fast but NOT runtime
  * conformance; results must be labeled unit-local.
  */
-export function unitTreaty<Api extends Record<string, never> = Record<string, never>>(
+export function unitTreaty<Api extends Record<string, AnyRouteContract> = Record<string, AnyRouteContract>>(
   opts: UnitTreatyOptions,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): any {
+): {
+  __mode: "unit-local (NOT runtime conformance)";
+  close: () => void;
+  api: TreatyClient<Api>;
+} {
   const server = Bun.serve({
     port: 0,
     fetch: async (req) => {
@@ -68,12 +71,11 @@ export function unitTreaty<Api extends Record<string, never> = Record<string, ne
     Object.entries(opts.routes).map(([id, r]) => [id, { path: r.path, method: r.method }]),
   );
   const base = `http://localhost:${server.port}`;
-  const client = treaty<never>({ baseUrl: base, contract });
+  const client = treaty<Api>({ baseUrl: base, contract });
   return {
     __mode: "unit-local (NOT runtime conformance)" as const,
     close: () => server.stop(true),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    api: client as any,
+    api: client,
   };
 }
 
@@ -89,11 +91,10 @@ export interface RuntimeTreatyOptions {
  * RUNTIME-LOCAL mode — spawns the actual velqu-runtime binary with the pack and
  * drives real HTTP. THIS is native-runtime conformance evidence.
  */
-export async function runtimeTreaty<Api extends Record<string, never> = Record<string, never>>(
+export async function runtimeTreaty<Api extends Record<string, AnyRouteContract> = Record<string, AnyRouteContract>>(
   opts: RuntimeTreatyOptions,
   contract: Record<string, { path: string; method: string }>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<{ api: any; close: () => Promise<void>; __mode: "runtime-local" }> {
+): Promise<{ api: TreatyClient<Api>; close: () => Promise<void>; __mode: "runtime-local" }> {
   const { resolve } = require("node:path");
   const { existsSync } = require("node:fs");
   const candidates = [
@@ -127,7 +128,7 @@ export async function runtimeTreaty<Api extends Record<string, never> = Record<s
       await Bun.sleep(10);
     }
   }
-  const client = treaty<never>({ baseUrl: `http://127.0.0.1:${port}`, contract });
+  const client = treaty<Api>({ baseUrl: `http://127.0.0.1:${port}`, contract });
   return {
     __mode: "runtime-local",
     api: client,

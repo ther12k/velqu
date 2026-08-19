@@ -11,6 +11,7 @@ fail() { echo "FAIL: $1"; overall=1; }
 
 step "OKF bundle structural validation"
 ./scripts/validate-okf || fail "validate-okf"
+./scripts/validate-production-plan || fail "validate-production-plan"
 
 step "Rust workspace formatting"
 cargo fmt --all --check 2>&1 | tail -3 || fail "cargo fmt"
@@ -52,7 +53,7 @@ rm -f buntest.log
 
 step "Summary"
 if [ "$overall" -eq 0 ]; then
-  echo "verify: ALL PASS (M0–M2 verified)"
+  echo "verify: ALL PASS (M0–M2 + M2.2.1 + M2.3 verified)"
 else
   echo "verify: FAILURES PRESENT"
 fi

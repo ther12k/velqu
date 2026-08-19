@@ -27,8 +27,10 @@ Primary sources: `docs/okf/MASTER_AGENT_PROMPT.md`, `docs/okf/delivery/prd.md`,
     decisions tracked in `docs/open-decisions.md`. Product naming is decided: Velqu/VelquJS, `@velqu/*`, `velqu` CLI (ADR-0016).
 14. Same-process QuickJS runs trusted application code only; never describe it
     as a hostile-code sandbox.
-15. Do not build alpha-scope features (WebSockets, SSE, Node compat, databases,
-   multi-worker, full fetch/crypto) — M0–M2 only.
+15. Post-M2 development follows the authorized sequence in ADR-0018 (M2.2.1 scheduler correctness,
+    M2.3 numeric RoutePlan, M2.4 zero-copy ingress/worker slab, M2.5 schema JSON codecs,
+    M2.6 binary QPack v2, M2.7 capabilities/WinterTC, M2.8 fetch, M3 multi-worker, M4 alpha).
+    Do not build non-authorized out-of-order features (WebSockets, SSE, general Node compat).
 
 ## Verification
 
