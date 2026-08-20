@@ -487,6 +487,74 @@ pub fn validate_params(ir: &SchemaIr, params: &[(String, String)]) -> Validation
     }
 }
 
+/// M24-004-C: byte-level format gate for path parameters. Numeric and UUID
+/// formats are validated directly from the captured path bytes — an INVALID
+/// value is rejected without allocating any parameter string. Values that
+/// pass continue through `validate_params`, whose full semantics (bounds,
+/// length, pattern, defaults, coercion) remain the single source of truth;
+/// the owned strings it builds are the pre-validated params the engine
+/// consumes, so nothing is allocated unless validation succeeded.
+pub fn validate_params_bytes(ir: &SchemaIr, params: &[(&str, &[u8])]) -> ValidationResult {
+    if let SchemaIr::Object { properties, .. } = ir {
+        for (key, member) in properties {
+            if let Some((_, bytes)) = params.iter().find(|(n, _)| *n == key.as_str()) {
+                byte_format_error(member, key, bytes)?;
+            }
+        }
+    }
+    let owned: Vec<(String, String)> = params
+        .iter()
+        .filter_map(|(n, b)| {
+            std::str::from_utf8(b)
+                .ok()
+                .map(|v| (n.to_string(), v.to_string()))
+        })
+        .collect();
+    validate_params(ir, &owned)
+}
+
+/// Fast reject from bytes for the formats the packet names: integers,
+/// numbers, and UUID strings. Returns Ok(()) when the byte level is valid
+/// (or the schema uses a format that needs the full validator), and the
+/// matching FieldError otherwise. Messages mirror the full validator's.
+fn byte_format_error(member: &SchemaIr, key: &str, bytes: &[u8]) -> Result<(), Vec<FieldError>> {
+    let err = |code: &str, msg: &str| Err(vec![FieldError::new(&format!(".{key}"), code, msg)]);
+    match member {
+        SchemaIr::Integer { .. } => {
+            let Ok(text) = std::str::from_utf8(bytes) else {
+                return err("type", "expected an integer");
+            };
+            match text.parse::<i64>() {
+                Ok(_) => Ok(()),
+                Err(_) => err("type", "expected an integer"),
+            }
+        }
+        SchemaIr::Number { .. } => {
+            let Ok(text) = std::str::from_utf8(bytes) else {
+                return err("type", "expected a number");
+            };
+            match text.parse::<f64>() {
+                Ok(n) if n.is_finite() => Ok(()),
+                _ => err("type", "expected a number"),
+            }
+        }
+        SchemaIr::String { format, .. } => match format.as_deref() {
+            Some("uuid") if !is_uuid_bytes(bytes) => err("format", "must be a valid uuid"),
+            _ => Ok(()),
+        },
+        _ => Ok(()),
+    }
+}
+
+/// UUID syntax check on raw bytes (same rule as `is_uuid`, no UTF-8 step).
+fn is_uuid_bytes(b: &[u8]) -> bool {
+    b.len() == 36
+        && b.iter().enumerate().all(|(i, byte)| {
+            matches!(i, 8 | 13 | 18 | 23) && *byte == b'-'
+                || !matches!(i, 8 | 13 | 18 | 23) && byte.is_ascii_hexdigit()
+        })
+}
+
 /// Compile-and-cache the pattern subset the compiler is allowed to emit.
 /// Unsupported constructs fail closed (no match) rather than panicking on
 /// untrusted input. Compilation is lazy per unique pattern (bounded by build
@@ -662,5 +730,97 @@ mod tests {
         let long = "x".repeat(61);
         let err = validate_params(&ir, &[("name".into(), long)]).unwrap_err();
         assert!(err[0].code == "maxLength" && err[0].path == "name");
+    }
+}
+
+#[cfg(test)]
+mod m24_004_c_tests {
+    use super::*;
+
+    fn object(props: Vec<(&str, SchemaIr)>, required: Vec<&str>) -> SchemaIr {
+        SchemaIr::Object {
+            properties: props
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), Box::new(v)))
+                .collect(),
+            required: required.into_iter().map(String::from).collect(),
+        }
+    }
+
+    /// M24-004-C: invalid numeric/UUID bytes reject from the byte gate with
+    /// the same error identity the full validator produces for owned strings.
+    #[test]
+    fn validate_params_bytes_rejects_invalid_formats_from_bytes() {
+        let ir = object(
+            vec![
+                (
+                    "count",
+                    SchemaIr::Integer {
+                        minimum: Some(0),
+                        maximum: Some(100),
+                    },
+                ),
+                (
+                    "id",
+                    SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: Some("uuid".into()),
+                    },
+                ),
+            ],
+            vec!["count", "id"],
+        );
+        // non-numeric integer
+        let err = validate_params_bytes(&ir, &[("count", b"twelve")]).unwrap_err();
+        assert_eq!(err[0].code, "type");
+        assert_eq!(err[0].path, ".count");
+        // float text where an integer is declared
+        assert!(validate_params_bytes(&ir, &[("count", b"1.5")]).is_err());
+        // bad UUID (wrong length + non-hex)
+        let err =
+            validate_params_bytes(&ir, &[("count", b"7"), ("id", b"zz-not-a-uuid")]).unwrap_err();
+        assert_eq!(err[0].code, "format");
+        assert_eq!(err[0].path, ".id");
+        // invalid UTF-8 integer bytes reject without panic
+        assert!(validate_params_bytes(&ir, &[("count", &[0xff, 0xfe])]).is_err());
+    }
+
+    /// M24-004-C: on the valid path, byte validation returns EXACTLY the
+    /// value the owned-string validator returns (parity, single semantics).
+    #[test]
+    fn validate_params_bytes_parity_with_owned_validator() {
+        let ir = object(
+            vec![
+                (
+                    "count",
+                    SchemaIr::Integer {
+                        minimum: Some(1),
+                        maximum: Some(100),
+                    },
+                ),
+                (
+                    "id",
+                    SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: Some("uuid".into()),
+                    },
+                ),
+            ],
+            vec!["count", "id"],
+        );
+        let uuid = b"123e4567-e89b-12d3-a456-426614174000";
+        let bytes: Vec<(&str, &[u8])> = vec![("count", b"42"), ("id", uuid)];
+        let owned = vec![
+            ("count".to_string(), "42".to_string()),
+            ("id".to_string(), String::from_utf8(uuid.to_vec()).unwrap()),
+        ];
+        assert_eq!(
+            validate_params_bytes(&ir, &bytes).unwrap(),
+            validate_params(&ir, &owned).unwrap()
+        );
     }
 }

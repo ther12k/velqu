@@ -12,7 +12,7 @@ use q_engine_quickjs::QuickJsEngine;
 use q_http::{collect_body_bounded, materialize_headers, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
-use q_schema_runtime::{validate_params, validate_query, Source};
+use q_schema_runtime::{validate_query, Source};
 use serde_json::Value;
 
 use crate::problems;
@@ -275,19 +275,19 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // that neither validates params nor declares param needs never
             // allocates a parameter value.
             let mut params_value: Option<Value> = None;
-            let mut params: Vec<(String, String)> = Vec::new();
-            let params_needed = needs.params
-                || compiled.params_schema_id.is_some()
-                || route.policy.is_some()
-                || compiled.policy_id.is_some();
-            if params_needed {
-                params = state
-                    .router
-                    .materialize_params(route_index, path, &param_ranges);
-            }
+            // M24-004-C: numeric/UUID formats validate directly from the
+            // captured path bytes (borrowed names + range slices) — an
+            // invalid value rejects with 422 before any parameter string is
+            // allocated.
             if let Some(sid) = compiled.params_schema_id {
                 let ir = &state.schema_vector[sid.0 as usize];
-                match validate_params(ir, &params) {
+                let names = state.router.param_names(route_index);
+                let param_bytes: Vec<(&str, &[u8])> = names
+                    .iter()
+                    .zip(&param_ranges)
+                    .map(|(n, (start, end))| (*n, &path.as_bytes()[*start as usize..*end as usize]))
+                    .collect();
+                match q_schema_runtime::validate_params_bytes(ir, &param_bytes) {
                     Ok(v) => params_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(
@@ -301,6 +301,18 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 }
             }
+            // M24-004-A/B: owned parameter strings exist only after
+            // validation passed (or none is declared) AND the engine or a
+            // policy actually reads them.
+            let params_needed =
+                needs.params || route.policy.is_some() || compiled.policy_id.is_some();
+            let params: Vec<(String, String)> = if params_needed {
+                state
+                    .router
+                    .materialize_params(route_index, path, &param_ranges)
+            } else {
+                Vec::new()
+            };
 
             let mut query_value: Option<Value> = None;
             if let Some(sid) = compiled.query_schema_id {
