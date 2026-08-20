@@ -2072,6 +2072,12 @@ fn map_first_frame_with(mapper: &dyn SourceMapper, stack: &str) -> Option<Source
     })
 }
 
+fn meta_path_slice<'a>(m: &'a q_engine::RequestMeta, spec: &q_engine::ParamSpec) -> &'a str {
+    m.path
+        .get(spec.start as usize..spec.end as usize)
+        .unwrap_or_default()
+}
+
 fn install_natives(
     ctx: &rquickjs::Ctx<'_>,
     store: Rc<RequestStore>,
@@ -2098,23 +2104,87 @@ fn install_natives(
             }
             let json = store
                 .access(store.local_handle(slot, gen as u64), 1, 16, |m| {
-                    let pairs: &[(String, String)] = match what.as_str() {
-                        "params" => &m.params,
-                        "query" => &m.query,
-                        "headers" => &m.headers,
-                        _ => &[],
+                    let map = match what.as_str() {
+                        // M24-004-D: values materialize from path byte ranges
+                        // only at this whole-field access
+                        "params" => serde_json::Map::from_iter(m.param_specs.iter().map(|spec| {
+                            let value = meta_path_slice(m, spec);
+                            (spec.name.clone(), Json::String(value.to_string()))
+                        })),
+                        "query" => serde_json::Map::from_iter(
+                            m.query
+                                .iter()
+                                .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                        ),
+                        "headers" => serde_json::Map::from_iter(
+                            m.headers
+                                .iter()
+                                .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                        ),
+                        _ => serde_json::Map::new(),
                     };
-                    let map = serde_json::Map::from_iter(
-                        pairs
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
-                    );
                     serde_json::to_string(&Json::Object(map)).unwrap_or_else(|_| "{}".into())
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
             Ok(json)
         };
         globals.set("__velquReqRaw", Function::new(ctx.clone(), f)?)?;
+    }
+    // M24-004-D: declared parameter names (route identity, not request data)
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<String> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 0, 0, |m| {
+                    let names: Vec<&str> = m.param_specs.iter().map(|s| s.name.as_str()).collect();
+                    serde_json::to_string(&names).unwrap_or_else(|_| "[]".into())
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqParamNames", Function::new(ctx.clone(), f)?)?;
+    }
+    // M24-004-D: single-key parameter access — materializes exactly one value
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx,
+                      slot: f64,
+                      gen: f64,
+                      key: String|
+              -> rquickjs::Result<Option<String>> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
+                    m.param_specs
+                        .iter()
+                        .find(|spec| spec.name == key)
+                        .map(|spec| meta_path_slice(m, spec).to_string())
+                })
+                .map(|value| {
+                    // charge the materialized value's exact byte length
+                    if let Some(v) = value.as_ref() {
+                        store
+                            .counters()
+                            .materialized_bytes
+                            .fetch_add(v.len() as u64, std::sync::atomic::Ordering::Relaxed);
+                    }
+                    value
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqParam", Function::new(ctx.clone(), f)?)?;
     }
     {
         let store = Rc::clone(&store);

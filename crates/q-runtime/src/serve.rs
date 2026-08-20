@@ -304,12 +304,23 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // M24-004-A/B: owned parameter strings exist only after
             // validation passed (or none is declared) AND the engine or a
             // policy actually reads them.
+            // M24-004-D: the request carries name+range specs against the
+            // stored path — parameter VALUE strings do not exist until a JS
+            // key access materializes them from the path.
             let params_needed =
                 needs.params || route.policy.is_some() || compiled.policy_id.is_some();
-            let params: Vec<(String, String)> = if params_needed {
+            let param_specs: Vec<q_engine::ParamSpec> = if params_needed {
                 state
                     .router
-                    .materialize_params(route_index, path, &param_ranges)
+                    .param_names(route_index)
+                    .iter()
+                    .zip(&param_ranges)
+                    .map(|(name, (start, end))| q_engine::ParamSpec {
+                        name: name.to_string(),
+                        start: *start,
+                        end: *end,
+                    })
+                    .collect()
             } else {
                 Vec::new()
             };
@@ -437,7 +448,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 Some(q_engine::RequestMeta {
                     method: ctx.method.clone(),
                     path: ctx.path.clone(),
-                    params,
+                    param_specs,
                     query: ctx.query.clone(),
                     headers: ctx.headers.clone(),
                     content_type,

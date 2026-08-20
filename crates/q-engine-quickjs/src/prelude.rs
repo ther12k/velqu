@@ -18,9 +18,29 @@ globalThis.__velquMakeReq = function (slot, gen) {
   const req = {};
   let headers, params, query;
   Object.defineProperty(req, "headers", { enumerable: true, get() { return (headers ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers"))); } });
-  Object.defineProperty(req, "params", { enumerable: true, get() { return (params ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "params"))); } });
+  Object.defineProperty(req, "params", { enumerable: true, get() { return (params ??= globalThis.__velquMakeLazyParams(slot, gen)); } });
   Object.defineProperty(req, "query", { enumerable: true, get() { return (query ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "query"))); } });
   return req;
+};
+
+// M24-004-D: params builds as an object of per-key lazy getters — touching
+// ctx.params.k materializes exactly one value; untouched keys allocate nothing.
+globalThis.__velquMakeLazyParams = function (slot, gen) {
+  const obj = {};
+  const names = JSON.parse(globalThis.__velquReqParamNames(slot, gen));
+  for (var i = 0; i < names.length; i++) {
+    (function (n) {
+      let v, used = false;
+      Object.defineProperty(obj, n, {
+        enumerable: true,
+        get: function () {
+          if (!used) { const raw = globalThis.__velquReqParam(slot, gen, n); v = (raw === undefined || raw === null) ? undefined : raw; used = true; }
+          return v;
+        }
+      });
+    })(names[i]);
+  }
+  return obj;
 };
 
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
@@ -32,7 +52,7 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
     Object.defineProperty(c, key, { enumerable: true, get() { if (!used) { v = fn(); used = true; } return v; } });
   };
   if (!requestless) {
-    if (pre.params != null) c.params = pre.params; else lazy("params", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "params")));
+    if (pre.params != null) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
     if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
     if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers")));
     if (pre.body !== undefined && pre.body !== null) {
