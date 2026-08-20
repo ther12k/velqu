@@ -4,7 +4,7 @@ parent_task: M24-010
 milestone: M24
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -119,6 +119,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 - No multi-worker dispatch.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+M24-010-A through D and M24-010-V are merged through PR #701 merge `c8b718702cec1bc311e84a06d8f2133db40ff552`.
+
+Packaged evidence:
+
+- Deterministic fuzz/property suites for query decoding, QPack mutation, schema values, stale handles, slot reuse, cancellation, and minimized malformed corpus.
+- Reference decoder differential test and committed regression corpus.
+- Routing-before-materialization, unread-field, bounded body/queue, and disconnect conformance all pass.
+- `bun test`: 36 pass, 0 fail; `bun run typecheck`: PASS.
+- Rust package suites, format, clippy pass.
+- Sanitizer execution not claimed; no sanitizer toolchain run.
+- No QPack format, multi-worker dispatch, schema-specialized codec, or benchmark manifest change.
 
 ## Out of scope
 
