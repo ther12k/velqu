@@ -326,7 +326,7 @@ export function buildPack(
   // remains empty until its dedicated packet adds the binding surface.
   const queryNameSet = new Set<string>();
   const routeQueryNames = app.routes.map((r) => {
-    const names = r.queryIr && r.queryIr.type === "object"
+    const names = r.queryIr && r.queryIr.kind === "object"
       ? Object.keys((r.queryIr as { properties?: Record<string, unknown> }).properties ?? {}).sort()
       : [];
     for (const name of names) queryNameSet.add(name);

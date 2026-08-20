@@ -71,6 +71,16 @@ describe("pack contents (COMP-001/005)", () => {
     const health = pack.routes.find((r: { id: string }) => r.id === "health.live");
     expect(health.nativeLiveness.body).toBe('{"status":"ok"}');
   });
+
+  test("compiles declared query fields into dense route IDs", async () => {
+    const out = `${TMP}/query-ids`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "examples/proof/src/app.ts", outDir: out });
+    const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
+    expect(pack.queryNameTable).toEqual(["ms"]);
+    const timer = pack.routes.find((r: { id: string }) => r.id === "async.timer");
+    expect(timer.plan.queryNameIds).toEqual([0]);
+  });
 });
 
 async function expectBuildFails(project: string, pattern: RegExp) {
