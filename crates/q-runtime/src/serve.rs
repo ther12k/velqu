@@ -100,6 +100,8 @@ pub struct ServeState {
     pub health: q_engine_quickjs::EngineHealth,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
+    pub log_sample: u64,
+    pub log_sequence: AtomicU64,
     pub metrics: Arc<StageMetrics>,
 }
 
@@ -117,7 +119,11 @@ pub fn make_handler(
     move |req: NativeRequest| {
         let state = Arc::clone(&state);
         Box::pin(async move {
-            let started = if state.log_mode != LogMode::Off {
+            let sequence = state.log_sequence.fetch_add(1, Ordering::Relaxed) + 1;
+            let sampled = state.log_sample == 0 || sequence.is_multiple_of(state.log_sample);
+            let started = if state.log_mode != LogMode::Off
+                && (state.log_mode == LogMode::Errors || sampled)
+            {
                 Some(req.started)
             } else {
                 None

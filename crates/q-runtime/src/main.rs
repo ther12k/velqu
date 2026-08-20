@@ -40,6 +40,9 @@ struct Args {
     /// Request logging mode: off | errors | full (default: errors)
     #[arg(long, default_value = "errors")]
     log: String,
+    /// Sample successful completion logs every N requests; 0 disables sampling.
+    #[arg(long, default_value_t = 0)]
+    log_sample: u64,
 }
 
 #[allow(clippy::needless_return)]
@@ -231,6 +234,8 @@ fn run(args: Args) -> i32 {
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
             log_mode: serve::LogMode::from_str(&args.log),
+            log_sample: args.log_sample,
+            log_sequence: std::sync::atomic::AtomicU64::new(0),
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
         });
         let handler = serve::make_handler(Arc::clone(&state));
