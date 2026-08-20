@@ -19,7 +19,9 @@ This package converts the beta roadmap into atomic Markdown work packets for a s
    - the selected task file;
    - the one milestone context card named by that task;
    - the source files listed in that task.
-4. Require one atomic commit and the handoff format in the task file.
+4. Work on a per-packet branch and deliver via pull request — see `WORKFLOW.md`. The PR body must contain `Closes #<issue>`; squash-merge keeps one atomic commit per packet.
 5. Mark the task in `STATUS.md` only after its tests and acceptance criteria pass.
+
+For parallel packets, use git worktrees (`WORKFLOW.md`), one branch per worktree; the main checkout stays clean for release packets.
 
 Do **not** paste the entire task pack into one model context.
