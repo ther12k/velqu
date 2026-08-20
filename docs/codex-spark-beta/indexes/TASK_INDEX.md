@@ -108,7 +108,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M24-006-B](../tasks/01_m24_zero_copy_ingress/M24-006-B-provide-repeated-key-policy.md) | P1 | implement | PASS | M24-006-A | Provide repeated-key policy |
 | [M24-006-C](../tasks/01_m24_zero_copy_ingress/M24-006-C-define-percent-decoding-and-invalid-byte-behavior.md) | P1 | implement | PASS | M24-006-B | Define percent decoding and invalid-byte behavior |
 | [M24-006-D](../tasks/01_m24_zero_copy_ingress/M24-006-D-cache-decoded-fields-per-request-slot.md) | P1 | implement | PASS | M24-006-C | Cache decoded fields per request slot |
-| [M24-006-V](../tasks/01_m24_zero_copy_ingress/M24-006-V-verify-implement-lazy-query-and-cookie-decoding.md) | P1 | verify | TODO | M24-006-A, M24-006-B, M24-006-C, M24-006-D | Verify Implement lazy query and cookie decoding |
+| [M24-006-V](../tasks/01_m24_zero_copy_ingress/M24-006-V-verify-implement-lazy-query-and-cookie-decoding.md) | P1 | verify | PASS | M24-006-A, M24-006-B, M24-006-C, M24-006-D | Verify Implement lazy query and cookie decoding |
 | [M24-006-Z](../tasks/01_m24_zero_copy_ingress/M24-006-Z-package-evidence-for-implement-lazy-query-and-cookie-decoding.md) | P1 | evidence | TODO | M24-006-V | Package evidence for Implement lazy query and cookie decoding |
 | [M24-007-A](../tasks/01_m24_zero_copy_ingress/M24-007-A-drive-body-behavior-from-routeplan-not-http-method.md) | P0 | implement | TODO | M24-001-Z, M24-003-Z | Drive body behavior from RoutePlan, not HTTP method |
 | [M24-007-B](../tasks/01_m24_zero_copy_ingress/M24-007-B-use-bytes-and-avoid-bytes-to-vec-copies.md) | P0 | implement | TODO | M24-007-A | Use Bytes and avoid Bytes-to-Vec copies |
