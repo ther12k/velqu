@@ -22,3 +22,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 18. [ADR-0018 — Post-M2 Architecture Roadmap and Host Pipeline Optimization](0018-post-m2-architecture-and-roadmap.md) (accepted; authorizes M2.2.1–M2.8, M3, M4)
 19. [ADR-0019 — Production-Readiness Program and Release Roadmap](0019-production-readiness-program.md) (accepted; post-beta GA track)
 20. [ADR-0020 — Beta-Readiness Program (0.1.0-beta.1)](0020-beta-readiness-program.md) (accepted; supersedes GA-first framing; authoritative forward roadmap under `docs/beta/`)
+21. [ADR-0021 — M2.4 Zero-Copy Ingress and Worker-Local Request Ownership](0021-m24-zero-copy-ingress-ownership.md) (accepted; freezes the M24 ownership spine, terminal invariants, state-machine tests plan, and threat review)

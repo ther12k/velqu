@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -126,3 +126,16 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: ADR-0021 accepted with the ownership spine (ingress → routing → queue → worker-local slab → settlement), four terminal invariants (INV-1 no borrow beyond owner lifetime, INV-2 explicit queue/body limits, INV-3 single cancellation owner, INV-4 one-and-many-worker support), the D3 slot state machine, the D4 twelve-case state-machine tests plan, and the D5 threat/ownership review.
+- Changed files:
+  - `docs/okf/decisions/0021-m24-zero-copy-ingress-ownership.md` (new)
+  - `docs/okf/decisions/index.md` (append-only registration)
+  - `docs/okf/log.md` (append-only log entry)
+  - `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`, `docs/codex-spark-beta/indexes/NEXT_25.md` (queue advance)
+- Verification: `./scripts/validate-okf` PASS (174 links); `cargo test -p q-pack -p q-router -p q-engine-quickjs -p q-http -p q-bridge -p velqu-runtime` all pass (154 tests); `bun test` 35 pass; `bun run typecheck` clean. Docs-only change; no code modified.
+- Remaining risk: none for this packet. The ADR freezes design only; implementation risk is carried by M24-001-B/C/D and M24-002…M24-010.
+- Next dependency-ready task: M24-001-B (specify body ownership, queue admission, disconnect cancellation, and request-slot lifecycle).

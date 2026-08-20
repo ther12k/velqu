@@ -128,3 +128,8 @@
 
 - **Beta finish line** — The owner-supplied `velqu-beta-readiness-handoff-v1` (37 docs, 98 tasks + 9 gates) is installed at `docs/beta/`; ADR-0020 accepts it as the authoritative forward roadmap targeting **0.1.0-beta.1**. ADR-0018's technical sequence is preserved; ADR-0019's GA gates become the post-beta track.
 - **Baseline status annotated** — `docs/beta/00_CURRENT_BASELINE.md` carries a status addendum mapping each open M23R2 review item to its implementation state after the GATE-CLOSE revision (items 1–6 done; item 7 has five randomized repetitions and route-count evidence, but allocator counters remain unavailable; item 8 remains in progress until the clean release packet is generated).
+
+
+## 2026-08-20 (ADR-0021 M2.4 ingress ownership accepted)
+
+- **M24-001-A** — ADR-0021 freezes the zero-copy ingress ownership spine: ingress owns native parts until routing; transfer into queue/slab is by move (no borrows across tasks); the request slab becomes worker-local (no process-wide store mutex); every terminal path (completion, timeout, disconnect, quarantine, shutdown) funnels to one idempotent, generation-checked settle. Four terminal invariants, a 12-case state-machine tests plan, and a threat/ownership review are recorded in the ADR; M24-001-B/C/D elaborate body admission, copy boundaries, and overload metrics.
