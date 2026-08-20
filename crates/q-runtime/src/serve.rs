@@ -206,7 +206,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         MatchResult::Found {
             route_id: route_id_num,
             route_index: _route_index,
-            params,
+            param_ranges,
             head,
         } => {
             // RouteId is the canonical dense route-vector identity. The matcher
@@ -269,8 +269,22 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             // ---- native input validation (params/query) — SchemaId indexed,
-            // zero string-map lookups on the request path (M23R2-004)
+            // zero string-map lookups on the request path (M23R2-004).
+            // M24-004-A: parameter strings materialize from capture ranges
+            // ONLY when validation or the engine actually needs them; a route
+            // that neither validates params nor declares param needs never
+            // allocates a parameter value.
             let mut params_value: Option<Value> = None;
+            let mut params: Vec<(String, String)> = Vec::new();
+            let params_needed = needs.params
+                || compiled.params_schema_id.is_some()
+                || route.policy.is_some()
+                || compiled.policy_id.is_some();
+            if params_needed {
+                params = state
+                    .router
+                    .materialize_params(route_index, path, &param_ranges);
+            }
             if let Some(sid) = compiled.params_schema_id {
                 let ir = &state.schema_vector[sid.0 as usize];
                 match validate_params(ir, &params) {
