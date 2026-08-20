@@ -113,3 +113,14 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification blocker record
+
+- Task ID: `M24-002-A`
+- Blocking fact: The current `q-http` API invokes a `Fn(RequestContext)` handler after q-http has already cloned headers, parsed query, and collected method-selected bodies. Deferring body polling requires route-aware admission before constructing `RequestContext`; the runtime currently owns routing in `crates/q-runtime/src/serve.rs`, so a local q-http type change either breaks the handler boundary or preserves the forbidden eager path.
+- Exact source locations: `crates/q-http/src/lib.rs:205-337` (permit, cloned headers, eager query/body materialization); `crates/q-runtime/src/serve.rs:121-337` (routing and body/schema decisions after `RequestContext` exists); `crates/q-runtime/src/main.rs:234-235` (handler passed to q-http).
+- Exact command/result: `cargo check -p q-http -p velqu-runtime` PASS after restoring baseline. The attempted native-head-only refactor failed because `velqu-runtime` still requires `Fn(RequestContext)` and route-aware body admission is not available at the q-http boundary.
+- Dependency or owner required: Introduce the route-aware admission boundary first, then move body ownership/read-once behavior into M24-002/M24-007 without retaining an eager compatibility collect. Keep this packet TODO until admission counters, negative body/header budget tests, and perf stage timings exist.
+- Safe work completed before stopping: inspected q-http/runtime integration and confirmed the smallest local API change cannot satisfy C0/C1 guardrails without coordinated route-boundary work; no source behavior changed.
+- Files changed but not committed: this packet record only.
+- Suggested next action: implement the route-aware native admission seam in the next authorized M24 implementation packet; do not mark M24-002-A, M24-001-V, M24-001-Z, or M24-GATE PASS.
