@@ -1726,7 +1726,11 @@ fn call_runner<'js>(
         pre.set("body", crate::convert::json_to_js(ctx, val)?)?;
     }
 
-    let slot = spec.slot as f64;
+    let slot = if spec.slot == q_engine::NO_REQUEST_SLOT {
+        -1.0
+    } else {
+        spec.slot as f64
+    };
     let gen = spec.generation as f64;
     let ctx_obj: Value<'js> = make_ctx.call((slot, gen, pre))?;
 
@@ -2012,8 +2016,15 @@ fn install_natives(
                       gen: f64,
                       what: String|
               -> rquickjs::Result<String> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
             let json = store
-                .access(slot as usize, gen as u64, 1, 16, |m| {
+                .access(slot, gen as u64, 1, 16, |m| {
                     let pairs: &[(String, String)] = match what.as_str() {
                         "params" => &m.params,
                         "query" => &m.query,
@@ -2035,8 +2046,15 @@ fn install_natives(
     {
         let store = Arc::clone(&store);
         let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<String> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
             let s = store
-                .access(slot as usize, gen as u64, 1, 0, |m| {
+                .access(slot, gen as u64, 1, 0, |m| {
                     String::from_utf8_lossy(m.body.as_deref().unwrap_or_default()).into_owned()
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
@@ -2047,8 +2065,15 @@ fn install_natives(
     {
         let store = Arc::clone(&store);
         let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<f64> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
             let len = store
-                .access(slot as usize, gen as u64, 0, 0, |m| {
+                .access(slot, gen as u64, 0, 0, |m| {
                     m.body.as_deref().map_or(0, |b| b.len())
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
@@ -2063,8 +2088,15 @@ fn install_natives(
                       gen: f64,
                       target: TypedArray<'_, u8>|
               -> rquickjs::Result<()> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
             let body: Vec<u8> = store
-                .access(slot as usize, gen as u64, 1, 0, |m| {
+                .access(slot, gen as u64, 1, 0, |m| {
                     m.body.clone().unwrap_or_default()
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;

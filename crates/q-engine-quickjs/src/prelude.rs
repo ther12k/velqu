@@ -26,24 +26,27 @@ globalThis.__velquMakeReq = function (slot, gen) {
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
 globalThis.__velquMakeCtx = function (slot, gen, pre) {
   const c = {};
+  const requestless = slot === -1;
   const lazy = (key, fn) => {
     let v, used = false;
     Object.defineProperty(c, key, { enumerable: true, get() { if (!used) { v = fn(); used = true; } return v; } });
   };
-  if (pre.params != null) c.params = pre.params; else lazy("params", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "params")));
-  if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
-  if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers")));
-  if (pre.body !== undefined && pre.body !== null) {
-    c.body = pre.body; // native body strategy: already parsed + validated
-  } else {
-    c.json = () => JSON.parse(globalThis.__velquReqBodyText(slot, gen));
-    c.text = () => globalThis.__velquReqBodyText(slot, gen);
-    c.bytes = () => {
-      const len = globalThis.__velquReqBodyLen(slot, gen);
-      const u = new Uint8Array(len);
-      if (len > 0) globalThis.__velquFillBytes(slot, gen, u);
-      return u;
-    };
+  if (!requestless) {
+    if (pre.params != null) c.params = pre.params; else lazy("params", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "params")));
+    if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
+    if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers")));
+    if (pre.body !== undefined && pre.body !== null) {
+      c.body = pre.body; // native body strategy: already parsed + validated
+    } else {
+      c.json = () => JSON.parse(globalThis.__velquReqBodyText(slot, gen));
+      c.text = () => globalThis.__velquReqBodyText(slot, gen);
+      c.bytes = () => {
+        const len = globalThis.__velquReqBodyLen(slot, gen);
+        const u = new Uint8Array(len);
+        if (len > 0) globalThis.__velquFillBytes(slot, gen, u);
+        return u;
+      };
+    }
   }
   c.native = { timer: { delay: (ms) => globalThis.__velquTimerP(ms) } };
   return c;

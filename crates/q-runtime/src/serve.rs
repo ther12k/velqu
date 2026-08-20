@@ -399,15 +399,26 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
 
             // ---- invocation through the engine
             let invocation_id = state.invocation_clock.fetch_add(1, Ordering::Relaxed);
-            let (slot, generation) = state.store.insert(q_bridge::RequestMeta {
-                method: ctx.method.clone(),
-                path: ctx.path.clone(),
-                params,
-                query: ctx.query.clone(),
-                headers: ctx.headers.clone(),
-                content_type,
-                body: ctx.body.clone(),
-            });
+            let requestless = !needs.params
+                && !needs.query
+                && !needs.headers
+                && !needs.body
+                && route.policy.is_none()
+                && compiled.policy_id.is_none()
+                && compiled.policy_handler_id.is_none();
+            let (slot, generation) = if requestless {
+                (q_engine::NO_REQUEST_SLOT, 0)
+            } else {
+                state.store.insert(q_bridge::RequestMeta {
+                    method: ctx.method.clone(),
+                    path: ctx.path.clone(),
+                    params,
+                    query: ctx.query.clone(),
+                    headers: ctx.headers.clone(),
+                    content_type,
+                    body: ctx.body.clone(),
+                })
+            };
 
             // PolicyId is the canonical dense policy-vector identity. Resolve the
             // precompiled handler through that manifest; QPack::verify has already

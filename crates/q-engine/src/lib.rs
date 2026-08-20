@@ -59,6 +59,10 @@ pub struct FieldNeeds {
     pub body: bool,
 }
 
+/// No request-store entry is created for policy-free, field-free routes.
+/// Bridge access with this slot fails closed and settlement is a no-op.
+pub const NO_REQUEST_SLOT: usize = usize::MAX;
+
 #[derive(Debug, Clone)]
 pub struct InvocationSpec {
     pub id: u64,
@@ -77,6 +81,9 @@ pub struct InvocationSpec {
     pub query_schema_id: Option<SchemaId>,
     pub headers_schema_id: Option<SchemaId>,
     pub body_schema_id: Option<SchemaId>,
+    /// M24-002-D: policy-free routes whose FieldNeeds are all false run with
+    /// no request-store entry. The sentinel slot never exists in any store,
+    /// so every settle/access path fails closed as a no-op (constraint 8).
     pub slot: usize,
     pub generation: u64,
     /// Pre-validated inputs (native strategy). `None` = the handler pulls them
