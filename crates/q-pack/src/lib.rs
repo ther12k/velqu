@@ -130,6 +130,12 @@ pub struct FieldNeeds {
     pub body: bool,
 }
 
+/// M24-005-D: sentinel header-name id marking the EXPLICIT full-Headers
+/// escape hatch — allowed only for a route whose headers binding declares
+/// no schema (opt-in to copying every header, bounded by the transport
+/// header admission limits; that bounded copy is the documented cost).
+pub const FULL_HEADERS_ID: u32 = u32::MAX;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RoutePlanDecl {
@@ -672,27 +678,40 @@ impl QPack {
                     .iter()
                     .map(|sec| sec.header.clone())
                     .collect();
+                let mut escape_hatch = false;
                 if let Some(binding) = &route.headers {
-                    if let Some(key) = &binding.schema {
-                        if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
-                            self.schemas.get(key)
-                        {
-                            names.extend(properties.keys().cloned());
+                    match &binding.schema {
+                        // M24-005-D: a schema-less headers binding is the
+                        // EXPLICIT full-Headers escape hatch
+                        None => escape_hatch = true,
+                        Some(key) => {
+                            if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
+                                self.schemas.get(key)
+                            {
+                                names.extend(properties.keys().cloned());
+                            }
                         }
                     }
                 }
+                if escape_hatch {
+                    names.clear();
+                }
                 names.sort();
                 names.dedup();
-                let ids: Vec<u32> = names
-                    .iter()
-                    .map(|n| match expected_table.binary_search(n) {
-                        Ok(pos) => pos as u32,
-                        Err(pos) => {
-                            expected_table.insert(pos, n.clone());
-                            pos as u32
-                        }
-                    })
-                    .collect();
+                let ids: Vec<u32> = if escape_hatch {
+                    vec![FULL_HEADERS_ID]
+                } else {
+                    names
+                        .iter()
+                        .map(|n| match expected_table.binary_search(n) {
+                            Ok(pos) => pos as u32,
+                            Err(pos) => {
+                                expected_table.insert(pos, n.clone());
+                                pos as u32
+                            }
+                        })
+                        .collect()
+                };
                 if let Some(plan) = &route.plan {
                     if plan.header_name_ids != ids {
                         return reject(format!(
@@ -2266,6 +2285,38 @@ mod tests {
             let err = bad.verify().unwrap_err();
             assert!(err.to_string().contains("fieldNeeds.headers"), "{err}");
         }
+    }
+
+    /// M24-005-D: the full-Headers escape hatch is explicit and verified —
+    /// only a schema-less headers binding yields the sentinel id, and any
+    /// other route carrying it is rejected.
+    #[test]
+    fn full_headers_escape_hatch_is_explicit_and_verified() {
+        let mut pack = numeric_pack();
+        // convert the planned route into an escape-hatch route: schema-less
+        // headers binding authorizes the sentinel id
+        pack.routes[0].headers = Some(SourceBinding {
+            schema: None,
+            coerce: None,
+            content_type: None,
+            limit_bytes: 0,
+        });
+        pack.header_name_table = Vec::new();
+        let plan = pack.routes[0].plan.as_mut().unwrap();
+        plan.header_name_ids = vec![FULL_HEADERS_ID];
+        let mut needs = plan.field_needs;
+        needs.headers = true;
+        plan.field_needs = needs;
+        refresh_integrity(&mut pack);
+        pack.verify()
+            .expect("schema-less headers binding authorizes the sentinel id");
+
+        // the same sentinel WITHOUT the escape-hatch binding is rejected
+        let mut bad = pack.clone();
+        bad.routes[0].headers = None;
+        refresh_integrity(&mut bad);
+        let err = bad.verify().unwrap_err();
+        assert!(err.to_string().contains("headerNameIds"), "{err}");
     }
 
     #[test]

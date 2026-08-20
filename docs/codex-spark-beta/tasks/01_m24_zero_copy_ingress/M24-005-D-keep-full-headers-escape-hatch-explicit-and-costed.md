@@ -4,7 +4,7 @@ parent_task: M24-005
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,26 @@ cargo test -p velqu-runtime
 - Security redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `crates/q-pack/src/lib.rs`: `FULL_HEADERS_ID` (`u32::MAX`) is accepted only for an explicit schema-less `headers` binding; ordinary routes remain declared-header ID based.
+- `crates/q-runtime/src/serve.rs`: sentinel routes use bounded `materialize_headers`; bounded transport header count/byte limits remain the copy cost.
+- `full_headers_escape_hatch_is_explicit_and_verified` proves authorized sentinel verification and rejection without the binding.
+- `headers_are_declared_only_and_per_key_lazy` proves declared-header access remains per-key and lazy.
+- `declared_header_value_joins_duplicates_and_is_lossy` proves duplicate joining and U+FFFD conversion contract.
+- `cargo test -p q-pack`: PASS (36 tests).
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p q-router`: PASS.
+- `cargo test -p velqu-runtime`: PASS (13 tests).
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `bun run typecheck`: PASS.
+- `bun test packages examples/proof conformance`: PASS (35 pass, 0 fail).
+- Benchmark manifest validation remains subject to existing temporary-worktree hash limitation; canonical manifests unchanged.
 
 ## Out of scope
 

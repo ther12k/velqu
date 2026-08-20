@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use q_engine::Engine as _;
 use q_engine::{BodyOut, InvocationSpec, Outcome};
 use q_engine_quickjs::QuickJsEngine;
-use q_http::{collect_body_bounded, declared_header_value, parse_query};
+use q_http::{collect_body_bounded, declared_header_value, materialize_headers, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
 use q_schema_runtime::{validate_query, Source};
@@ -427,6 +427,14 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         .plan
                         .as_ref()
                         .map(|plan| {
+                            if plan.header_name_ids.contains(&q_pack::FULL_HEADERS_ID) {
+                                // M24-005-D: the EXPLICIT escape hatch — copy
+                                // every header. Cost: bounded by the transport
+                                // header admission limits (max_headers count /
+                                // max_header_bytes), charged per access like
+                                // any other materialized field.
+                                return materialize_headers(&headers);
+                            }
                             plan.header_name_ids
                                 .iter()
                                 .filter_map(|id| {
