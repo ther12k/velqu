@@ -87,7 +87,7 @@ pub struct RequestMeta {
     pub headers: Vec<(String, String)>,
     pub content_type: Option<String>,
     /// Present only when the verified route admitted a bounded body.
-    pub body: Option<Vec<u8>>,
+    pub body: Option<bytes::Bytes>,
 }
 
 #[derive(Debug, Clone)]

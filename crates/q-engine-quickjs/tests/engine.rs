@@ -1215,7 +1215,7 @@ async fn lazy_ctx_touches_nothing() {
                 end: 11,
             }],
             query: vec![("ms".into(), "50".into())],
-            body: Some(b"{\"name\":\"Ada\"}".to_vec()),
+            body: Some(bytes::Bytes::from_static(b"{\"name\":\"Ada\"}")),
             ..Default::default()
         },
     );
@@ -1260,7 +1260,7 @@ async fn lazy_query_and_body_materialize_on_access() {
     let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
-            body: Some(b"{\"name\":\"Ada\"}".to_vec()),
+            body: Some(bytes::Bytes::from_static(b"{\"name\":\"Ada\"}")),
             ..Default::default()
         },
     );

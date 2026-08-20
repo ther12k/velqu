@@ -100,9 +100,9 @@ pub fn declared_header_value(map: &hyper::HeaderMap, name: &str) -> Option<Strin
 pub async fn collect_body_bounded(
     mut body: Incoming,
     max_bytes: usize,
-) -> Result<Vec<u8>, HttpError> {
+) -> Result<hyper::body::Bytes, HttpError> {
     use http_body_util::BodyExt;
-    let mut buf = Vec::new();
+    let mut buf = bytes::BytesMut::new();
     while let Some(frame) = body.frame().await {
         let frame = frame.map_err(|e| HttpError::BadBody(e.to_string()))?;
         if let Ok(data) = frame.into_data() {
@@ -115,7 +115,7 @@ pub async fn collect_body_bounded(
             buf.extend_from_slice(&data);
         }
     }
-    Ok(buf)
+    Ok(buf.freeze())
 }
 
 #[derive(Debug, thiserror::Error)]
