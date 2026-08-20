@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -126,3 +126,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: no-copy and bounded-copy boundary definitions in `docs/specs/m24-ingress-ownership-and-admission.md` §8.
+- Boundary evidence: §8.1 zero-copy table (router borrow, capture ranges, header-ID lookup, query scan, body-stream move, in-place native JSON parse, response move); §8.2 bounded-copy table with a named bound per copy and rules C1–C5 (named bounds, enforced while copying, declared+accessed laziness, cache bounded by accessed fields, computable worst case); §8.3 forbidden list naming each current M2.3 behavior it removes and its replacing packet; §8.4 boundary test plan C-T1–C-T7.
+- Changed files:
+  - `docs/specs/m24-ingress-ownership-and-admission.md`
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-001-C-define-no-copy-and-bounded-copy-boundaries.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Verification: `./scripts/validate-okf` PASS; targeted Rust crates all pass; `bun test` 35 pass; `bun run typecheck` clean (see PR for transcripts).
+- Remaining risk: enforcement assertions are carried by C-T1–C-T7 in M24-002…M24-007 and M24-010; this packet changes specification only.
+- Next dependency-ready task: M24-001-D (define overload responses and metrics).

@@ -1,9 +1,9 @@
 # M2.4 Ingress Ownership, Queue Admission, and Request-Slot Lifecycle
 
-- **Status:** Accepted specification for M24-001-B (2026-08-20)
+- **Status:** Accepted specification for M24-001-B/C (2026-08-20)
 - **Parent ADR:** [ADR-0021 — M2.4 Zero-Copy Ingress and Worker-Local Request Ownership](../okf/decisions/0021-m24-zero-copy-ingress-ownership.md)
-- **Scope:** body ownership, queue admission, disconnect cancellation, and request-slot lifecycle
-- **Implementation packets:** M24-001-C/D, M24-002, M24-003, M24-007, M24-010
+- **Scope:** body ownership, queue admission, disconnect cancellation, request-slot lifecycle, and no-copy/bounded-copy boundaries
+- **Implementation packets:** M24-001-D, M24-002, M24-003, M24-004, M24-005, M24-006, M24-007, M24-010
 
 This document makes ADR-0021's ownership spine executable as a sequence of
 states and transfer rules. It is normative for M2.4; it specifies behavior but
@@ -261,7 +261,86 @@ M24 packets must add the ownership assertions above before the M24 gate.
 | Permit leak | cancellation/panic skips release | RAII permit guard plus settlement drop path |
 | Cross-worker ownership | worker B accesses worker A's slot | capability includes worker identity or worker-local namespace |
 
-## 8. Out of scope
+## 8. No-copy and bounded-copy boundaries (M24-001-C)
+
+Every movement of request data is classified exactly one way. "Zero-copy"
+means a borrow or byte-range view inside one owner with no allocation;
+"bounded copy" means a new allocation whose size is capped by a named limit
+**before or during** the copy; anything else is forbidden.
+
+### 8.1 Zero-copy (views and borrows)
+
+| Transfer | View over | Lifetime rule |
+|---|---|---|
+| method/path bytes → router resolve | hyper request head | borrowed for the synchronous match only |
+| path capture ranges (`start..end`) | URI path bytes | stored as ranges in the slot; bytes stay in the single owned buffer |
+| declared header lookup by compiled header-name ID | `HeaderMap` | borrowed during validation/parse-from-bytes |
+| query raw byte scan for declared keys | URI query bytes | borrowed during scan; no pair materialization |
+| body stream ownership move (ingress → job → slot) | hyper `Incoming` | moved, never cloned; unread until §3 read |
+| native JSON body → `serde_json::Value` (native strategy) | buffered body bytes | parsed once in place by the owning worker |
+| response bytes engine → pipeline future | engine output | moved once; socket write consumes it |
+
+### 8.2 Bounded copies (named bound per copy)
+
+| Copy | Bound source | When it happens |
+|---|---|---|
+| path param bytes → JS string | `max_uri_bytes` | handler accesses `ctx.params` and `FieldNeeds.params` |
+| query value percent-decode → JS string | `max_uri_bytes` | handler accesses a declared query key |
+| header value bytes → JS string | `max_header_bytes` | handler accesses a declared header |
+| cookie value decode | `max_header_bytes` | handler accesses a declared cookie |
+| body stream → `Vec<u8>` buffer | route `limit_bytes` (checked at `limit+1`) | the single §3 read |
+| body buffer → JS `text()`/`json()` string | route `limit_bytes` | handler calls `json()`/`text()` |
+| body buffer → JS `bytes()` `Uint8Array` | route `limit_bytes` | handler calls `bytes()` |
+| pre-validated params/query/body → JS object (native strategy) | schema-bounded by `limit_bytes` | invocation setup, only for declared fields |
+| per-slot decoded-field cache entries | the copied field's own bound | first lazy access; dropped at settlement |
+| log/problem request-ID string | fixed small constant | only when a log line or problem is produced |
+
+Rules for bounded copies:
+
+- **C1** — every copy names its bound; a copy without a named bound is a
+  specification violation and must fail review.
+- **C2** — bounds are enforced while copying (stream reads stop at
+  `limit+1`; string materialization cannot exceed its source view's length,
+  which is itself limited at admission).
+- **C3** — a bounded copy happens only when a verified RoutePlan declared the
+  field **and** the handler actually accessed it (laziness); unread fields
+  copy zero bytes (counter-provable).
+- **C4** — each slot's decoded cache is bounded by the sum of the *accessed*
+  fields' bounds, never by the sum of all declared fields; it is dropped at
+  settlement.
+- **C5** — worst-case per-request allocation is therefore computable:
+  `max_uri_bytes + max_header_bytes + limit_bytes + fixed overhead`, and the
+  slab capacity (`max_queue`) bounds how many such requests exist at once.
+
+### 8.3 Forbidden (must not exist on the M2.4 path)
+
+- Full header map → `Vec<(String, String)>` clone for every request (current
+  M2.3 ingress behavior; removed by M24-002/M24-005).
+- Query pre-parse into pair vectors before `FieldNeeds` is known (current
+  behavior; removed by M24-002/M24-006).
+- `collect()` of the body before routing or without a route body binding
+  (current behavior; removed by M24-002/M24-007).
+- Cloning `RequestMeta` (query/headers/body) into the request store (current
+  `serve.rs`; replaced by move in M24-003).
+- Double body buffering (transport buffer plus application copy of the same
+  bytes without an intervening drop).
+- Any copy whose size is not bounded by a named admission limit.
+- Copying request bytes across a worker boundary; M3 passes capabilities, not
+  buffers.
+
+### 8.4 Boundary test plan (extends §6)
+
+| ID | Required proof | Owning packet |
+|---|---|---|
+| C-T1 | Unread param/query/header/body fields materialize zero bytes (`materialized_bytes` counters) | M24-002, M24-005, M24-007 |
+| C-T2 | Path/query/header JS strings never exceed their source bounds | M24-004, M24-006 |
+| C-T3 | Body buffer stops at `limit+1`; 413 before full read | M24-007 |
+| C-T4 | Decoded cache exists only for accessed fields and is dropped at settle | M24-003-C, M24-006 |
+| C-T5 | No full header-map clone on the request path (allocation counter) | M24-002, M24-005 |
+| C-T6 | `RequestMeta` clone into store is gone; parts move once | M24-003 |
+| C-T7 | Worst-case per-request allocation is documented and asserted in a stress profile | M24-010 |
+
+## 9. Out of scope
 
 This specification does not implement the worker-local slab, zero-copy field
 views, generated decoders, or overload metrics. Those are M24-001-C/D and
