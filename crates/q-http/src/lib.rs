@@ -429,42 +429,51 @@ pub fn parse_query_with_policy(raw: &str, policy: RepeatedKeyPolicy) -> Vec<(Str
     out.into()
 }
 
+/// Invalid-byte behavior for percent-decoded query/cookie values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidBytePolicy {
+    ReplaceWithUfffd,
+}
+
+/// Malformed `%` escapes remain literal; decoded bytes that are not UTF-8
+/// become U+FFFD. This policy is shared by query and future cookie decoding.
+pub const QUERY_INVALID_BYTE_POLICY: InvalidBytePolicy = InvalidBytePolicy::ReplaceWithUfffd;
+
 pub fn percent_decode(s: &str) -> String {
+    percent_decode_with_policy(s, QUERY_INVALID_BYTE_POLICY)
+}
+
+pub fn percent_decode_with_policy(s: &str, policy: InvalidBytePolicy) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        match bytes[i] {
-            b'%' if i + 2 < bytes.len() + 1 && i + 2 <= bytes.len() - 1 + 1 => {
-                let hex = |b: u8| -> Option<u8> {
-                    match b {
-                        b'0'..=b'9' => Some(b - b'0'),
-                        b'a'..=b'f' => Some(b - b'a' + 10),
-                        b'A'..=b'F' => Some(b - b'A' + 10),
-                        _ => None,
-                    }
-                };
-                if i + 2 < bytes.len() {
-                    if let (Some(hi), Some(lo)) = (hex(bytes[i + 1]), hex(bytes[i + 2])) {
-                        out.push(hi << 4 | lo);
-                        i += 3;
-                        continue;
-                    }
+        if bytes[i] == b'%' {
+            let hex = |b: u8| -> Option<u8> {
+                match b {
+                    b'0'..=b'9' => Some(b - b'0'),
+                    b'a'..=b'f' => Some(b - b'a' + 10),
+                    b'A'..=b'F' => Some(b - b'A' + 10),
+                    _ => None,
                 }
-                out.push(b'%');
-                i += 1;
+            };
+            if i + 2 < bytes.len() {
+                if let (Some(hi), Some(lo)) = (hex(bytes[i + 1]), hex(bytes[i + 2])) {
+                    out.push(hi << 4 | lo);
+                    i += 3;
+                    continue;
+                }
             }
-            b'+' => {
-                out.push(b' ');
-                i += 1;
-            }
-            b => {
-                out.push(b);
-                i += 1;
-            }
+            out.push(b'%');
+            i += 1;
+            continue;
         }
+        out.push(if bytes[i] == b'+' { b' ' } else { bytes[i] });
+        i += 1;
     }
-    String::from_utf8_lossy(&out).into_owned()
+    match policy {
+        InvalidBytePolicy::ReplaceWithUfffd => String::from_utf8_lossy(&out).into_owned(),
+    }
 }
 
 fn now_unix_ms() -> u64 {

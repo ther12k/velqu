@@ -43,6 +43,16 @@ fn percent_decode_never_panics_and_always_returns_utf8() {
 }
 
 #[test]
+fn invalid_percent_and_utf8_corpus_is_deterministic() {
+    assert_eq!(q_http::percent_decode("%"), "%");
+    assert_eq!(q_http::percent_decode("%G0"), "%G0");
+    assert_eq!(q_http::percent_decode("%0"), "%0");
+    assert_eq!(q_http::percent_decode("%FF"), "\u{fffd}");
+    assert_eq!(q_http::percent_decode("%C3%28"), "\u{fffd}(");
+    assert_eq!(q_http::percent_decode("a+b"), "a b");
+}
+
+#[test]
 fn query_parser_semantics_hold_on_valid_pairs() {
     // invariant: round-trip of simple keys survives parsing
     let pairs = q_http::parse_query("a=1&b=2&c=3");
