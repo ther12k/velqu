@@ -1,7 +1,9 @@
 {
-  "format": "velqu-cold-start-v1",
-  "samplesPer": 30,
-  "generatedAt": "2026-08-19T16:51:47.564Z",
+  "format": "velqu-cold-start-v2",
+  "runId": "g0-cold-1787214119",
+  "samplesPer": 5,
+  "expectedRowsPerCell": 5,
+  "generatedAt": "2026-08-20T08:22:00.367Z",
   "environment": {
     "bun": "1.3.4",
     "kernel": "Linux version 7.0.0-28-generic (buildd@lcy02-amd64-004) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #28~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Jul  1 15:50:57 UTC 2",
@@ -13,1092 +15,273 @@
       "class": "C0",
       "routeId": "health.live",
       "total": {
-        "n": 30,
-        "mean": 3.523,
-        "stdev": 0.984,
-        "p50": 3.245,
-        "p95": 5.801,
-        "p99": 6.45
+        "n": 5,
+        "mean": 4.396,
+        "stdev": 0.334,
+        "p50": 4.424,
+        "p95": 4.775,
+        "p99": 4.775
       },
       "toReady": {
-        "n": 30,
-        "mean": 3.16,
-        "stdev": 0.857,
-        "p50": 2.968,
-        "p95": 5.299,
-        "p99": 5.652
+        "n": 5,
+        "mean": 4.099,
+        "stdev": 0.334,
+        "p50": 4.061,
+        "p95": 4.507,
+        "p99": 4.507
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 0.363,
-        "stdev": 0.192,
-        "p50": 0.305,
-        "p95": 0.798,
-        "p99": 1.114
+        "n": 5,
+        "mean": 0.297,
+        "stdev": 0.06,
+        "p50": 0.285,
+        "p95": 0.405,
+        "p99": 0.405
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6269.2,
-        "stdev": 50.217,
-        "p50": 6272,
-        "p95": 6364,
-        "p99": 6392
+        "n": 5,
+        "mean": 6536,
+        "stdev": 30.777,
+        "p50": 6536,
+        "p95": 6584,
+        "p99": 6584
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C1",
       "routeId": "js.text",
       "total": {
-        "n": 30,
-        "mean": 3.267,
-        "stdev": 0.56,
-        "p50": 3.131,
-        "p95": 4.249,
-        "p99": 5.368
+        "n": 5,
+        "mean": 4.503,
+        "stdev": 0.12,
+        "p50": 4.49,
+        "p95": 4.683,
+        "p99": 4.683
       },
       "toReady": {
-        "n": 30,
-        "mean": 2.906,
-        "stdev": 0.48,
-        "p50": 2.836,
-        "p95": 3.774,
-        "p99": 4.674
+        "n": 5,
+        "mean": 4.164,
+        "stdev": 0.138,
+        "p50": 4.134,
+        "p95": 4.382,
+        "p99": 4.382
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 0.361,
-        "stdev": 0.117,
-        "p50": 0.336,
-        "p95": 0.678,
-        "p99": 0.694
+        "n": 5,
+        "mean": 0.34,
+        "stdev": 0.021,
+        "p50": 0.345,
+        "p95": 0.361,
+        "p99": 0.361
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6285.2,
-        "stdev": 42.91,
-        "p50": 6296,
-        "p95": 6336,
-        "p99": 6396
+        "n": 5,
+        "mean": 6560.8,
+        "stdev": 40.271,
+        "p50": 6564,
+        "p95": 6608,
+        "p99": 6608
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C2",
       "routeId": "js.json",
       "total": {
-        "n": 30,
-        "mean": 3.694,
-        "stdev": 1.109,
-        "p50": 3.305,
-        "p95": 5.545,
-        "p99": 8.076
+        "n": 5,
+        "mean": 4.244,
+        "stdev": 0.347,
+        "p50": 4.173,
+        "p95": 4.87,
+        "p99": 4.87
       },
       "toReady": {
-        "n": 30,
-        "mean": 3.233,
-        "stdev": 1.034,
-        "p50": 2.968,
-        "p95": 4.952,
-        "p99": 7.619
+        "n": 5,
+        "mean": 3.957,
+        "stdev": 0.356,
+        "p50": 3.873,
+        "p95": 4.584,
+        "p99": 4.584
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 0.461,
-        "stdev": 0.269,
-        "p50": 0.368,
-        "p95": 0.885,
-        "p99": 1.599
+        "n": 5,
+        "mean": 0.287,
+        "stdev": 0.026,
+        "p50": 0.286,
+        "p95": 0.327,
+        "p99": 0.327
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6272.8,
-        "stdev": 42.299,
-        "p50": 6264,
-        "p95": 6360,
-        "p99": 6364
+        "n": 5,
+        "mean": 6541.6,
+        "stdev": 46.826,
+        "p50": 6516,
+        "p95": 6604,
+        "p99": 6604
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C3",
       "routeId": "hello.get",
       "total": {
-        "n": 30,
-        "mean": 3.52,
-        "stdev": 0.662,
-        "p50": 3.429,
-        "p95": 5.023,
-        "p99": 5.708
+        "n": 5,
+        "mean": 4.603,
+        "stdev": 0.646,
+        "p50": 4.994,
+        "p95": 5.182,
+        "p99": 5.182
       },
       "toReady": {
-        "n": 30,
-        "mean": 3.15,
-        "stdev": 0.597,
-        "p50": 3.024,
-        "p95": 4.283,
-        "p99": 5.229
+        "n": 5,
+        "mean": 4.272,
+        "stdev": 0.596,
+        "p50": 4.623,
+        "p95": 4.821,
+        "p99": 4.821
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 0.37,
-        "stdev": 0.098,
-        "p50": 0.343,
-        "p95": 0.5,
-        "p99": 0.74
+        "n": 5,
+        "mean": 0.332,
+        "stdev": 0.052,
+        "p50": 0.356,
+        "p95": 0.389,
+        "p99": 0.389
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6314.133,
-        "stdev": 59.3,
-        "p50": 6300,
-        "p95": 6424,
-        "p99": 6436
+        "n": 5,
+        "mean": 6532,
+        "stdev": 6.693,
+        "p50": 6536,
+        "p95": 6540,
+        "p99": 6540
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C3b",
       "routeId": "users.create",
       "total": {
-        "n": 30,
-        "mean": 27.714,
-        "stdev": 127.675,
-        "p50": 3.295,
-        "p95": 15.647,
-        "p99": 715.136
+        "n": 5,
+        "mean": 4.743,
+        "stdev": 0.557,
+        "p50": 4.912,
+        "p95": 5.374,
+        "p99": 5.374
       },
       "toReady": {
-        "n": 30,
-        "mean": 3.234,
-        "stdev": 1.377,
-        "p50": 2.783,
-        "p95": 6.486,
-        "p99": 8.777
+        "n": 5,
+        "mean": 4.255,
+        "stdev": 0.489,
+        "p50": 4.352,
+        "p95": 4.878,
+        "p99": 4.878
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 24.48,
-        "stdev": 127.749,
-        "p50": 0.408,
-        "p95": 6.87,
-        "p99": 712.401
+        "n": 5,
+        "mean": 0.488,
+        "stdev": 0.085,
+        "p50": 0.495,
+        "p95": 0.597,
+        "p99": 0.597
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6313.067,
-        "stdev": 51.886,
-        "p50": 6324,
-        "p95": 6424,
-        "p99": 6444
+        "n": 5,
+        "mean": 6556,
+        "stdev": 50.406,
+        "p50": 6556,
+        "p95": 6628,
+        "p99": 6628
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C4",
       "routeId": "users.get",
       "total": {
-        "n": 30,
+        "n": 5,
+        "mean": 4.872,
+        "stdev": 0.529,
+        "p50": 5.027,
+        "p95": 5.653,
+        "p99": 5.653
+      },
+      "toReady": {
+        "n": 5,
         "mean": 3.826,
-        "stdev": 0.98,
-        "p50": 3.574,
-        "p95": 5.577,
-        "p99": 7.354
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 3.093,
-        "stdev": 0.877,
-        "p50": 2.789,
-        "p95": 4.677,
-        "p99": 6.536
+        "stdev": 0.44,
+        "p50": 3.729,
+        "p95": 4.444,
+        "p99": 4.444
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 0.733,
-        "stdev": 0.399,
-        "p50": 0.636,
-        "p95": 1.16,
-        "p99": 2.661
+        "n": 5,
+        "mean": 1.046,
+        "stdev": 0.696,
+        "p50": 0.671,
+        "p95": 2.43,
+        "p99": 2.43
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6900.533,
-        "stdev": 53.494,
-        "p50": 6908,
-        "p95": 6984,
-        "p99": 7004
+        "n": 5,
+        "mean": 7101.6,
+        "stdev": 53.223,
+        "p50": 7092,
+        "p95": 7196,
+        "p99": 7196
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     {
       "candidate": "velqu",
       "class": "C5",
       "routeId": "async.timer",
       "total": {
-        "n": 30,
-        "mean": 14.941,
-        "stdev": 1.535,
-        "p50": 14.572,
-        "p95": 18.259,
-        "p99": 21.092
+        "n": 5,
+        "mean": 15.615,
+        "stdev": 0.163,
+        "p50": 15.542,
+        "p95": 15.886,
+        "p99": 15.886
       },
       "toReady": {
-        "n": 30,
-        "mean": 3.191,
-        "stdev": 1.239,
-        "p50": 2.955,
-        "p95": 5.953,
-        "p99": 8.313
+        "n": 5,
+        "mean": 4.012,
+        "stdev": 0.186,
+        "p50": 3.931,
+        "p95": 4.322,
+        "p99": 4.322
       },
       "readyToFirst": {
-        "n": 30,
-        "mean": 11.751,
-        "stdev": 0.573,
-        "p50": 11.624,
-        "p95": 12.779,
-        "p99": 14.403
+        "n": 5,
+        "mean": 11.603,
+        "stdev": 0.045,
+        "p50": 11.604,
+        "p95": 11.666,
+        "p99": 11.666
       },
       "rssKbAfterReady": {
-        "n": 30,
-        "mean": 6310.133,
-        "stdev": 45.732,
-        "p50": 6308,
-        "p95": 6384,
-        "p99": 6432
+        "n": 5,
+        "mean": 6582.4,
+        "stdev": 43.715,
+        "p50": 6576,
+        "p95": 6664,
+        "p99": 6664
       },
       "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C0",
-      "routeId": "health.live",
-      "total": {
-        "n": 30,
-        "mean": 2.286,
-        "stdev": 0.565,
-        "p50": 2.217,
-        "p95": 3.079,
-        "p99": 4.722
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 2.024,
-        "stdev": 0.527,
-        "p50": 1.966,
-        "p95": 2.634,
-        "p99": 4.349
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.262,
-        "stdev": 0.092,
-        "p50": 0.24,
-        "p95": 0.373,
-        "p99": 0.662
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3453.467,
-        "stdev": 43.957,
-        "p50": 3464,
-        "p95": 3528,
-        "p99": 3528
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C1",
-      "routeId": "js.text",
-      "total": {
-        "n": 30,
-        "mean": 2.661,
-        "stdev": 0.843,
-        "p50": 2.446,
-        "p95": 4.278,
-        "p99": 5.532
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 2.337,
-        "stdev": 0.723,
-        "p50": 2.137,
-        "p95": 3.619,
-        "p99": 4.811
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.324,
-        "stdev": 0.155,
-        "p50": 0.278,
-        "p95": 0.721,
-        "p99": 0.778
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3438.267,
-        "stdev": 42.265,
-        "p50": 3428,
-        "p95": 3520,
-        "p99": 3524
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C2",
-      "routeId": "js.json",
-      "total": {
-        "n": 30,
-        "mean": 2.509,
-        "stdev": 1.21,
-        "p50": 2.223,
-        "p95": 5.088,
-        "p99": 7.951
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 2.171,
-        "stdev": 1.061,
-        "p50": 1.979,
-        "p95": 4.317,
-        "p99": 7.034
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.337,
-        "stdev": 0.23,
-        "p50": 0.262,
-        "p95": 0.917,
-        "p99": 1.221
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3451.333,
-        "stdev": 41.313,
-        "p50": 3460,
-        "p95": 3528,
-        "p99": 3528
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C3",
-      "routeId": "hello.get",
-      "total": {
-        "n": 30,
-        "mean": 2.279,
-        "stdev": 0.555,
-        "p50": 2.177,
-        "p95": 3.308,
-        "p99": 4.703
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 1.969,
-        "stdev": 0.323,
-        "p50": 1.972,
-        "p95": 2.589,
-        "p99": 3.032
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.309,
-        "stdev": 0.376,
-        "p50": 0.245,
-        "p95": 0.374,
-        "p99": 2.318
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3439.867,
-        "stdev": 38.024,
-        "p50": 3448,
-        "p95": 3520,
-        "p99": 3528
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C3b",
-      "routeId": "users.create",
-      "total": {
-        "n": 30,
-        "mean": 2.423,
-        "stdev": 0.718,
-        "p50": 2.252,
-        "p95": 4.046,
-        "p99": 4.787
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 2.045,
-        "stdev": 0.624,
-        "p50": 1.958,
-        "p95": 3.532,
-        "p99": 4.222
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.378,
-        "stdev": 0.229,
-        "p50": 0.287,
-        "p95": 0.851,
-        "p99": 1.224
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3448.4,
-        "stdev": 46.891,
-        "p50": 3452,
-        "p95": 3520,
-        "p99": 3532
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C4",
-      "routeId": "users.get",
-      "total": {
-        "n": 30,
-        "mean": 2.144,
-        "stdev": 0.373,
-        "p50": 2.185,
-        "p95": 2.826,
-        "p99": 3.336
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 1.883,
-        "stdev": 0.392,
-        "p50": 1.968,
-        "p95": 2.568,
-        "p99": 3.119
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 0.261,
-        "stdev": 0.063,
-        "p50": 0.255,
-        "p95": 0.335,
-        "p99": 0.531
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3435.333,
-        "stdev": 43.428,
-        "p50": 3436,
-        "p95": 3520,
-        "p99": 3532
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C5",
-      "routeId": "async.timer",
-      "total": {
-        "n": 30,
-        "mean": 13.597,
-        "stdev": 0.738,
-        "p50": 13.486,
-        "p95": 15.342,
-        "p99": 16.185
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 2.06,
-        "stdev": 0.575,
-        "p50": 1.996,
-        "p95": 3.181,
-        "p99": 4.035
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 11.538,
-        "stdev": 0.196,
-        "p50": 11.472,
-        "p95": 12.15,
-        "p99": 12.161
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 3453.733,
-        "stdev": 31.626,
-        "p50": 3452,
-        "p95": 3500,
-        "p99": 3520
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C0",
-      "routeId": "health.live",
-      "total": {
-        "n": 30,
-        "mean": 17.191,
-        "stdev": 3.157,
-        "p50": 16.812,
-        "p95": 23.763,
-        "p99": 24.018
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 14.057,
-        "stdev": 2.631,
-        "p50": 13.677,
-        "p95": 18.719,
-        "p99": 20.837
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 3.133,
-        "stdev": 1.049,
-        "p50": 2.989,
-        "p95": 5.361,
-        "p99": 5.909
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 38186,
-        "stdev": 74.316,
-        "p50": 38180,
-        "p95": 38252,
-        "p99": 38548
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C1",
-      "routeId": "js.text",
-      "total": {
-        "n": 30,
-        "mean": 15.618,
-        "stdev": 2.895,
-        "p50": 14.825,
-        "p95": 21.633,
-        "p99": 21.647
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 12.849,
-        "stdev": 2.374,
-        "p50": 12.292,
-        "p95": 17.596,
-        "p99": 18.466
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 2.769,
-        "stdev": 0.841,
-        "p50": 2.575,
-        "p95": 4.038,
-        "p99": 5.666
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 38180.4,
-        "stdev": 38.455,
-        "p50": 38192,
-        "p95": 38248,
-        "p99": 38256
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C2",
-      "routeId": "js.json",
-      "total": {
-        "n": 30,
-        "mean": 17.162,
-        "stdev": 6.66,
-        "p50": 15.744,
-        "p95": 36.542,
-        "p99": 42.535
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 14.552,
-        "stdev": 6.387,
-        "p50": 13.09,
-        "p95": 33.883,
-        "p99": 38.735
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 2.61,
-        "stdev": 0.682,
-        "p50": 2.267,
-        "p95": 4.012,
-        "p99": 4.068
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 38173.733,
-        "stdev": 28.522,
-        "p50": 38176,
-        "p95": 38228,
-        "p99": 38240
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C3",
-      "routeId": "hello.get",
-      "total": {
-        "n": 30,
-        "mean": 15.598,
-        "stdev": 5.163,
-        "p50": 14.329,
-        "p95": 23.193,
-        "p99": 39.395
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 12.809,
-        "stdev": 4.354,
-        "p50": 11.974,
-        "p95": 19.317,
-        "p99": 33.319
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 2.789,
-        "stdev": 1.084,
-        "p50": 2.415,
-        "p95": 6.076,
-        "p99": 6.951
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 38694.8,
-        "stdev": 28.699,
-        "p50": 38700,
-        "p95": 38752,
-        "p99": 38764
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C3b",
-      "routeId": "users.create",
-      "total": {
-        "n": 30,
-        "mean": 18.283,
-        "stdev": 6.424,
-        "p50": 16.071,
-        "p95": 33.912,
-        "p99": 43.459
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 14.632,
-        "stdev": 5.246,
-        "p50": 12.73,
-        "p95": 29.451,
-        "p99": 33.89
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 3.651,
-        "stdev": 1.571,
-        "p50": 3.261,
-        "p95": 6.515,
-        "p99": 9.569
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 39014.533,
-        "stdev": 35.213,
-        "p50": 39024,
-        "p95": 39068,
-        "p99": 39080
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C4",
-      "routeId": "users.get",
-      "total": {
-        "n": 30,
-        "mean": 17.647,
-        "stdev": 5.334,
-        "p50": 16.697,
-        "p95": 29.103,
-        "p99": 34.616
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 14.221,
-        "stdev": 4.077,
-        "p50": 14.071,
-        "p95": 22.416,
-        "p99": 28.734
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 3.426,
-        "stdev": 2.365,
-        "p50": 2.636,
-        "p95": 6.157,
-        "p99": 14.55
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 38762,
-        "stdev": 26.102,
-        "p50": 38772,
-        "p95": 38792,
-        "p99": 38796
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C5",
-      "routeId": "async.timer",
-      "total": {
-        "n": 30,
-        "mean": 28.847,
-        "stdev": 7.658,
-        "p50": 26.275,
-        "p95": 49.349,
-        "p99": 58.084
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 14.95,
-        "stdev": 5.583,
-        "p50": 13.344,
-        "p95": 28.887,
-        "p99": 35.654
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 13.896,
-        "stdev": 2.279,
-        "p50": 13.061,
-        "p95": 20.462,
-        "p99": 22.43
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 39082.8,
-        "stdev": 79.459,
-        "p50": 39072,
-        "p95": 39148,
-        "p99": 39460
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C0",
-      "routeId": "health.live",
-      "total": {
-        "n": 30,
-        "mean": 108.745,
-        "stdev": 13.671,
-        "p50": 106.045,
-        "p95": 141.796,
-        "p99": 156.913
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 96.383,
-        "stdev": 13.434,
-        "p50": 93.162,
-        "p95": 127.415,
-        "p99": 143.935
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 12.362,
-        "stdev": 1.76,
-        "p50": 11.744,
-        "p95": 16.546,
-        "p99": 17.963
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 85367.2,
-        "stdev": 1323.877,
-        "p50": 85412,
-        "p95": 87104,
-        "p99": 87148
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C1",
-      "routeId": "js.text",
-      "total": {
-        "n": 30,
-        "mean": 118.96,
-        "stdev": 18.482,
-        "p50": 115.719,
-        "p95": 155.675,
-        "p99": 156.77
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 105.984,
-        "stdev": 17.81,
-        "p50": 101.268,
-        "p95": 141.758,
-        "p99": 144.678
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 12.976,
-        "stdev": 2.004,
-        "p50": 12.298,
-        "p95": 16.708,
-        "p99": 19.028
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 84979.067,
-        "stdev": 1596.24,
-        "p50": 85204,
-        "p95": 87444,
-        "p99": 87992
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C2",
-      "routeId": "js.json",
-      "total": {
-        "n": 30,
-        "mean": 109.39,
-        "stdev": 13.367,
-        "p50": 107.099,
-        "p95": 136.556,
-        "p99": 147.654
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 97.012,
-        "stdev": 13.532,
-        "p50": 93.804,
-        "p95": 125.652,
-        "p99": 136.321
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 12.378,
-        "stdev": 1.551,
-        "p50": 11.685,
-        "p95": 15.883,
-        "p99": 16.434
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 85297.067,
-        "stdev": 1164.57,
-        "p50": 85448,
-        "p95": 87408,
-        "p99": 87560
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C3",
-      "routeId": "hello.get",
-      "total": {
-        "n": 30,
-        "mean": 153.706,
-        "stdev": 19.274,
-        "p50": 150.228,
-        "p95": 180.162,
-        "p99": 231.25
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 100.265,
-        "stdev": 15.48,
-        "p50": 94.619,
-        "p95": 127.69,
-        "p99": 160.465
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 53.442,
-        "stdev": 8.171,
-        "p50": 50.472,
-        "p95": 70.785,
-        "p99": 85.543
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 91199.333,
-        "stdev": 1048.834,
-        "p50": 91316,
-        "p95": 93536,
-        "p99": 93656
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C3b",
-      "routeId": "users.create",
-      "total": {
-        "n": 30,
-        "mean": 154.238,
-        "stdev": 18.496,
-        "p50": 149.288,
-        "p95": 199.338,
-        "p99": 205.915
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 99.517,
-        "stdev": 16.641,
-        "p50": 94.644,
-        "p95": 145.152,
-        "p99": 150.196
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 54.721,
-        "stdev": 6.047,
-        "p50": 53.056,
-        "p95": 69.266,
-        "p99": 71.99
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 92054,
-        "stdev": 1276.229,
-        "p50": 92256,
-        "p95": 94052,
-        "p99": 94796
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C4",
-      "routeId": "users.get",
-      "total": {
-        "n": 30,
-        "mean": 149.557,
-        "stdev": 12.505,
-        "p50": 144.828,
-        "p95": 173.275,
-        "p99": 186.727
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 95.158,
-        "stdev": 10.53,
-        "p50": 91.769,
-        "p95": 116.213,
-        "p99": 131.307
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 54.399,
-        "stdev": 7.349,
-        "p50": 51.748,
-        "p95": 72.46,
-        "p99": 81.196
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 91732.267,
-        "stdev": 1309.21,
-        "p50": 91896,
-        "p95": 94036,
-        "p99": 94300
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C5",
-      "routeId": "async.timer",
-      "total": {
-        "n": 30,
-        "mean": 170.226,
-        "stdev": 17.379,
-        "p50": 167.403,
-        "p95": 192.921,
-        "p99": 226.833
-      },
-      "toReady": {
-        "n": 30,
-        "mean": 100.108,
-        "stdev": 12.537,
-        "p50": 97.24,
-        "p95": 121.284,
-        "p99": 123.276
-      },
-      "readyToFirst": {
-        "n": 30,
-        "mean": 70.119,
-        "stdev": 8.67,
-        "p50": 67.755,
-        "p95": 80.71,
-        "p99": 108.388
-      },
-      "rssKbAfterReady": {
-        "n": 30,
-        "mean": 91804.667,
-        "stdev": 1087.035,
-        "p50": 91924,
-        "p95": 93784,
-        "p99": 93852
-      },
-      "failures": 0,
-      "raw": "/home/ther12k/Workspace/Learning/velqu/benchmarks/harness/../../benchmarks/raw/cold-start/cold-1787158307563.jsonl"
+      "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     }
   ]
 }

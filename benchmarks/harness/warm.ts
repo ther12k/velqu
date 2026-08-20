@@ -152,46 +152,75 @@ async function runWarmLoad(
   }
 }
 
+function shuffle<T>(items: T[], seed: number): { items: T[]; seed: number } {
+  const out = [...items];
+  let next = seed >>> 0;
+  for (let i = out.length - 1; i > 0; i--) {
+    next = (next * 1664525 + 1013904223) >>> 0;
+    const j = next % (i + 1);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return { items: out, seed: next };
+}
+
 async function main() {
   const outDir = `${ROOT}/benchmarks/raw/warm`;
   mkdirSync(outDir, { recursive: true });
 
   const durationSec = parseInt(process.env.WARM_DURATION ?? "10", 10);
+  const repetitions = parseInt(process.env.WARM_REPETITIONS ?? "5", 10);
   const concurrencyLevels = (process.env.WARM_CONCURRENCY ?? "1,10,50")
     .split(",")
     .map((c) => parseInt(c.trim(), 10));
+  const runId = process.env.WARM_RUN_ID ?? `warm-${Date.now()}`;
+  let seed = Number(process.env.WARM_SEED ?? Date.now()) >>> 0;
 
-  console.log(`Warm-load benchmark (duration=${durationSec}s, concurrency=[${concurrencyLevels.join(", ")}])`);
+  console.log(`Warm-load benchmark (repetitions=${repetitions}, duration=${durationSec}s, concurrency=[${concurrencyLevels.join(", ")}], seed=${seed})`);
   const results: Array<Record<string, unknown>> = [];
+  let executionOrder = 0;
 
-  for (const cand of CANDIDATES) {
-    for (const route of ROUTES) {
-      for (const concurrency of concurrencyLevels) {
-        console.log(`  measuring ${cand.id} on ${route.id} c=${concurrency}...`);
-        const res = await runWarmLoad(cand, route, concurrency, durationSec);
-        results.push({
-          candidate: cand.id,
-          routeId: route.id,
-          path: route.path,
-          concurrency,
-          durationSec,
-          ...res,
-        });
-        console.log(`    ${cand.id.padEnd(9)} ${route.id} c=${String(concurrency).padEnd(3)}: ${res.rps} req/s, p50=${res.p50Us}us, p95=${res.p95Us}us, p99=${res.p99Us}us, errors=${res.errors}`);
-      }
+  for (let repetition = 1; repetition <= repetitions; repetition++) {
+    const jobs = CANDIDATES.flatMap((cand) => ROUTES.flatMap((route) =>
+      concurrencyLevels.map((concurrency) => ({ cand, route, concurrency }))));
+    const shuffled = shuffle(jobs, seed);
+    seed = shuffled.seed;
+    console.log(`  repetition ${repetition}/${repetitions}: randomized ${shuffled.items.length} cells`);
+    for (const { cand, route, concurrency } of shuffled.items) {
+      console.log(`  measuring ${cand.id} on ${route.id} c=${concurrency}...`);
+      const res = await runWarmLoad(cand, route, concurrency, durationSec);
+      results.push({
+        runId,
+        repetition,
+        executionOrder: executionOrder++,
+        candidate: cand.id,
+        routeId: route.id,
+        path: route.path,
+        concurrency,
+        durationSec,
+        ...res,
+      });
+      console.log(`    ${cand.id.padEnd(9)} ${route.id} c=${String(concurrency).padEnd(3)}: ${res.rps} req/s, p50=${res.p50Us}us, p95=${res.p95Us}us, p99=${res.p99Us}us, errors=${res.errors}`);
     }
   }
 
+  const rawPath = `${outDir}/${runId}.jsonl`;
+  const rawRelative = `benchmarks/raw/warm/${runId}.jsonl`;
+  writeFileSync(rawPath, results.map((row) => JSON.stringify(row)).join("\n") + "\n");
   const summary = {
-    format: "velqu-warm-load-v2-fixed-duration",
+    format: "velqu-warm-load-v3-randomized-repetitions",
     generatedAt: new Date().toISOString(),
+    runId,
+    seed,
+    repetitions,
+    randomizedCandidateOrder: true,
     durationSec,
     concurrencyLevels,
+    raw: rawRelative,
     results,
   };
 
   writeFileSync(`${outDir}/summary.json`, JSON.stringify(summary, null, 2));
-  console.log(`wrote ${outDir}/summary.json`);
+  console.log(`wrote ${rawPath}\nwrote ${outDir}/summary.json`);
 }
 
 await main();

@@ -349,8 +349,6 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
   }
 
   const packRoutes = routes.map((r, i) => routeEntry(r, r.id.split(".")[0], i, schemaKeyToId));
-  // Numeric current packs carry no legacy handler table (M23R2 gate rule)
-  const handlerTable: Record<string, string> = {};
 
   const functions = [
     ...routes.map((r, i) => ({
@@ -362,6 +360,9 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
       ? [{ id: routes.length, key: "auth.session", kind: "policy-handler" }]
       : []),
   ];
+  const policyManifest = routes.some((r) => r.policy === "auth.session")
+    ? [{ id: 0, key: "auth.session", handlerId: routes.length }]
+    : [];
 
   const router = buildSerializedRouter(packRoutes);
 
@@ -377,32 +378,50 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
     functions,
     schemaManifest,
+    policyManifest,
     router,
   });
 
-  const publicRoutes = packRoutes.map((r) => ({
-    id: r.id,
-    method: r.method,
-    path: r.path,
-    params: r.params?.schema ?? null,
-    query: r.query?.schema ?? null,
-    body: r.body?.schema ?? null,
-    responses: r.responses,
-    security: r.security,
-  }));
-  const publicContractCanonical = JSON.stringify([
-    publicRoutes,
-    sortIR(schemas),
-    routes.some((r) => r.policy === "auth.session")
-      ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
-      : {},
-  ]);
+  const projectBinding = (b: { schema: string | null; coerce: string | null; contentType: string | null; limitBytes: number } | null) =>
+    b ? { schema: b.schema, coerce: b.coerce, contentType: b.contentType, limitBytes: b.limitBytes } : null;
+  const usedSchemas = new Set<string>();
+  const publicRoutes = packRoutes.map((r) => {
+    const responsesSorted: Record<string, unknown> = {};
+    for (const k of Object.keys(r.responses).sort()) {
+      const d = r.responses[k];
+      if (d.schema) usedSchemas.add(d.schema);
+      responsesSorted[k] = { schema: d.schema, problem: d.problem };
+    }
+    for (const b of [r.params, r.query, r.headers, r.body]) {
+      if (b?.schema) usedSchemas.add(b.schema);
+    }
+    return {
+      id: r.id,
+      method: r.method,
+      path: r.path,
+      params: projectBinding(r.params),
+      query: projectBinding(r.query),
+      headers: projectBinding(r.headers),
+      body: projectBinding(r.body),
+      responses: responsesSorted,
+      security: r.security,
+    };
+  });
+  const schemasPublic: Record<string, unknown> = {};
+  for (const k of Object.keys(schemas).sort()) {
+    if (usedSchemas.has(k)) schemasPublic[k] = sortIR(schemas[k]);
+  }
+  const policiesPublic = routes.some((r) => r.policy === "auth.session")
+    ? { "auth.session": { declaredStatuses: [401], provides: "session" } }
+    : {};
+  const publicContractCanonical = JSON.stringify([publicRoutes, schemasPublic, policiesPublic]);
   const contractHash = sha(publicContractCanonical).slice(0, 32);
 
   const pack = {
     formatVersion: 1,
     kind: "velqu.qpack",
     runtimeAbi: 1,
+    executionMode: "numeric",
     engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
     schemaIrVersion: 1,
     contractVersion: 1,
@@ -421,8 +440,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
     functions,
     schemaManifest,
+    policyManifest,
     router,
-    handlerTable,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle), routesSha256: sha(canonical) },
   };
   return JSON.stringify(pack);

@@ -97,38 +97,37 @@ async function sample(cand: Cand, n: number): Promise<{ totalMs: number; rssKb: 
 }
 
 const SAMPLES = parseInt(process.argv.find((a) => a.startsWith("--samples="))?.slice(10) ?? "40", 10);
-console.log(`route-count: ${CANDS.length} candidates × ${N_VALUES.length} sizes × ${SAMPLES} samples`);
+const runId = process.env.ROUTE_COUNT_RUN_ID ?? `route-count-${Date.now()}`;
+let seed = Number(process.env.ROUTE_COUNT_SEED ?? Date.now()) >>> 0;
+console.log(`route-count: ${CANDS.length} candidates × ${N_VALUES.length} sizes × ${SAMPLES} samples (run=${runId}, seed=${seed})`);
 
 // warm harness
 for (let i = 0; i < 3; i++) await sample(CANDS[1], 25);
 
+const jobs = CANDS.flatMap((cand) => N_VALUES.map((n) => ({ cand, n })));
+for (let i = jobs.length - 1; i > 0; i--) {
+  seed = (seed * 1664525 + 1013904223) >>> 0;
+  const j = seed % (i + 1);
+  [jobs[i], jobs[j]] = [jobs[j], jobs[i]];
+}
 const results: Array<Record<string, unknown>> = [];
 const raw: string[] = [];
-for (const cand of CANDS) {
-  for (const n of N_VALUES) {
-    const rows: Array<{ totalMs: number; rssKb: number | null }> = [];
-    let failures = 0;
-    for (let i = 0; i < SAMPLES; i++) {
-      const r = await sample(cand, n);
-      raw.push(JSON.stringify({ candidate: cand.id, n, i, totalMs: Math.round(r.totalMs * 1000) / 1000, rssKb: r.rssKb, ok: r.ok, err: r.err }));
-      if (r.ok) rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
-      else failures++;
-    }
-    const sorted = rows.map((r) => r.totalMs).sort((a, b) => a - b);
-    const p = (q: number) => Math.round(sorted[Math.min(sorted.length - 1, Math.round(q * (sorted.length - 1)))] * 1000) / 1000;
-    const rssSorted = rows.map((r) => r.rssKb ?? 0).filter((x) => x > 0).sort((a, b) => a - b);
-    const pRss = (q: number) => rssSorted[Math.min(rssSorted.length - 1, Math.round(q * (rssSorted.length - 1)))] ?? 0;
-    results.push({
-      candidate: cand.id,
-      routes: n,
-      samples: rows.length,
-      failures,
-      p50Ms: p(0.5),
-      p95Ms: p(0.95),
-      rssP50Kb: pRss(0.5),
-    });
-    console.log(`${cand.id} n=${n}: p50=${p(0.5)}ms p95=${p(0.95)}ms rss=${pRss(0.5)}kB failures=${failures}`);
+let executionOrder = 0;
+for (const { cand, n } of jobs) {
+  const rows: Array<{ totalMs: number; rssKb: number | null }> = [];
+  let failures = 0;
+  for (let i = 0; i < SAMPLES; i++) {
+    const r = await sample(cand, n);
+    raw.push(JSON.stringify({ runId, executionOrder: executionOrder++, candidate: cand.id, n, i, totalMs: Math.round(r.totalMs * 1000) / 1000, rssKb: r.rssKb, ok: r.ok, err: r.err }));
+    if (r.ok) rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
+    else failures++;
   }
+  const sorted = rows.map((r) => r.totalMs).sort((a, b) => a - b);
+  const p = (q: number) => Math.round((sorted[Math.min(sorted.length - 1, Math.round(q * (sorted.length - 1)))] ?? 0) * 1000) / 1000;
+  const rssSorted = rows.map((r) => r.rssKb ?? 0).filter((x) => x > 0).sort((a, b) => a - b);
+  const pRss = (q: number) => rssSorted[Math.min(rssSorted.length - 1, Math.round(q * (rssSorted.length - 1)))] ?? 0;
+  results.push({ runId, candidate: cand.id, routes: n, samples: rows.length, requestedSamples: SAMPLES, failures, p50Ms: p(0.5), p95Ms: p(0.95), rssP50Kb: pRss(0.5) });
+  console.log(`${cand.id} n=${n}: p50=${p(0.5)}ms p95=${p(0.95)}ms rss=${pRss(0.5)}kB failures=${failures}`);
 }
 // scaling deltas
 for (const cand of CANDS) {
@@ -140,9 +139,11 @@ for (const cand of CANDS) {
 import { mkdirSync, writeFileSync } from "node:fs";
 mkdirSync(`${ROOT}/benchmarks/raw/route-count`, { recursive: true });
 const stamp = Date.now();
-writeFileSync(`${ROOT}/benchmarks/raw/route-count/route-count-${stamp}.jsonl`, raw.join("\n") + "\n");
+const rawPath = `${ROOT}/benchmarks/raw/route-count/route-count-${stamp}.jsonl`;
+const rawRelative = `benchmarks/raw/route-count/route-count-${stamp}.jsonl`;
+writeFileSync(rawPath, raw.join("\n") + "\n");
 writeFileSync(
   `${ROOT}/benchmarks/raw/route-count/summary.json`,
-  JSON.stringify({ format: "velqu-route-count-v1", samples: SAMPLES, generatedAt: new Date().toISOString(), results }, null, 2),
+  JSON.stringify({ format: "velqu-route-count-v2-randomized", runId, seed, samples: SAMPLES, randomizedCandidateOrder: true, generatedAt: new Date().toISOString(), raw: rawRelative, results }, null, 2),
 );
 console.log("wrote benchmarks/raw/route-count/");

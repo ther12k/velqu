@@ -127,4 +127,4 @@
 ## 2026-08-20 (ADR-0020 beta-readiness program adopted)
 
 - **Beta finish line** — The owner-supplied `velqu-beta-readiness-handoff-v1` (37 docs, 98 tasks + 9 gates) is installed at `docs/beta/`; ADR-0020 accepts it as the authoritative forward roadmap targeting **0.1.0-beta.1**. ADR-0018's technical sequence is preserved; ADR-0019's GA gates become the post-beta track.
-- **Baseline status annotated** — `docs/beta/00_CURRENT_BASELINE.md` carries a status addendum mapping each open M23R2 review item to its implementation state after the GATE-CLOSE revision (items 1–6 and 8 done; item 7 partially — single clean benchmark pass committed, ≥5 randomized repetitions and allocation profiles open).
+- **Baseline status annotated** — `docs/beta/00_CURRENT_BASELINE.md` carries a status addendum mapping each open M23R2 review item to its implementation state after the GATE-CLOSE revision (items 1–6 done; item 7 has five randomized repetitions and route-count evidence, but allocator counters remain unavailable; item 8 remains in progress until the clean release packet is generated).

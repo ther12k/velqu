@@ -1,115 +1,143 @@
 {
-  "format": "velqu-route-count-v1",
-  "samples": 20,
-  "generatedAt": "2026-08-19T16:52:10.761Z",
+  "format": "velqu-route-count-v2-randomized",
+  "runId": "g0-route-count-1787214108",
+  "seed": 3748590230,
+  "samples": 5,
+  "randomizedCandidateOrder": true,
+  "generatedAt": "2026-08-20T08:21:55.845Z",
+  "raw": "benchmarks/raw/route-count/route-count-1787214115845.jsonl",
   "results": [
     {
-      "candidate": "velqu (source)",
-      "routes": 25,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 3.683,
-      "p95Ms": 4.576,
-      "rssP50Kb": 6456
-    },
-    {
+      "runId": "g0-route-count-1787214108",
       "candidate": "velqu (source)",
       "routes": 1000,
-      "samples": 20,
+      "samples": 5,
+      "requestedSamples": 5,
       "failures": 0,
-      "p50Ms": 26.482,
-      "p95Ms": 34.952,
-      "rssP50Kb": 14372
+      "p50Ms": 22.901,
+      "p95Ms": 31.723,
+      "rssP50Kb": 14420
     },
     {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "velqu (bytecode)",
+      "routes": 25,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 3.662,
+      "p95Ms": 3.916,
+      "rssP50Kb": 6528
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "raw-bun",
+      "routes": 10000,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 14.896,
+      "p95Ms": 17.307,
+      "rssP50Kb": 38588
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "raw-bun",
+      "routes": 25,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 13.657,
+      "p95Ms": 16.615,
+      "rssP50Kb": 38584
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "velqu (bytecode)",
+      "routes": 10000,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 267.937,
+      "p95Ms": 325.066,
+      "rssP50Kb": 86756
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "elysia2",
+      "routes": 25,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 140.875,
+      "p95Ms": 151.274,
+      "rssP50Kb": 94984
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "raw-bun",
+      "routes": 1000,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 15.173,
+      "p95Ms": 18.642,
+      "rssP50Kb": 38604
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "velqu (source)",
+      "routes": 25,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 3.606,
+      "p95Ms": 7.091,
+      "rssP50Kb": 6536
+    },
+    {
+      "runId": "g0-route-count-1787214108",
+      "candidate": "elysia2",
+      "routes": 10000,
+      "samples": 5,
+      "requestedSamples": 5,
+      "failures": 0,
+      "p50Ms": 291.674,
+      "p95Ms": 308.457,
+      "rssP50Kb": 164040
+    },
+    {
+      "runId": "g0-route-count-1787214108",
       "candidate": "velqu (source)",
       "routes": 10000,
-      "samples": 20,
+      "samples": 5,
+      "requestedSamples": 5,
       "failures": 0,
-      "p50Ms": 170.198,
-      "p95Ms": 211.93,
-      "rssP50Kb": 87164
+      "p50Ms": 303.835,
+      "p95Ms": 365.968,
+      "rssP50Kb": 87200
     },
     {
-      "candidate": "velqu (bytecode)",
-      "routes": 25,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 3.273,
-      "p95Ms": 3.732,
-      "rssP50Kb": 6480
-    },
-    {
-      "candidate": "velqu (bytecode)",
-      "routes": 1000,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 20.836,
-      "p95Ms": 40.43,
-      "rssP50Kb": 14304
-    },
-    {
-      "candidate": "velqu (bytecode)",
-      "routes": 10000,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 150.607,
-      "p95Ms": 211.1,
-      "rssP50Kb": 86684
-    },
-    {
-      "candidate": "raw-bun",
-      "routes": 25,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 16.13,
-      "p95Ms": 20.408,
-      "rssP50Kb": 38716
-    },
-    {
-      "candidate": "raw-bun",
-      "routes": 1000,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 17.49,
-      "p95Ms": 22.512,
-      "rssP50Kb": 38712
-    },
-    {
-      "candidate": "raw-bun",
-      "routes": 10000,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 16.545,
-      "p95Ms": 19.646,
-      "rssP50Kb": 38704
-    },
-    {
-      "candidate": "elysia2",
-      "routes": 25,
-      "samples": 20,
-      "failures": 0,
-      "p50Ms": 150.149,
-      "p95Ms": 166.097,
-      "rssP50Kb": 94692
-    },
-    {
+      "runId": "g0-route-count-1787214108",
       "candidate": "elysia2",
       "routes": 1000,
-      "samples": 20,
+      "samples": 5,
+      "requestedSamples": 5,
       "failures": 0,
-      "p50Ms": 172.821,
-      "p95Ms": 204.546,
-      "rssP50Kb": 119224
+      "p50Ms": 166.695,
+      "p95Ms": 177.653,
+      "rssP50Kb": 119052
     },
     {
-      "candidate": "elysia2",
-      "routes": 10000,
-      "samples": 20,
+      "runId": "g0-route-count-1787214108",
+      "candidate": "velqu (bytecode)",
+      "routes": 1000,
+      "samples": 5,
+      "requestedSamples": 5,
       "failures": 0,
-      "p50Ms": 311.656,
-      "p95Ms": 365.437,
-      "rssP50Kb": 163136
+      "p50Ms": 21.043,
+      "p95Ms": 23.935,
+      "rssP50Kb": 14324
     }
   ]
 }

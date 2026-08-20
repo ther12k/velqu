@@ -163,6 +163,7 @@ function rustCanonical(
   capabilities: string[],
   functions: unknown[],
   schemaManifest: unknown[],
+  policyManifest: unknown[],
   router: unknown,
 ): string {
   const schemasSorted: Record<string, unknown> = {};
@@ -180,6 +181,7 @@ function rustCanonical(
     capabilities,
     functions,
     schemaManifest: manifestSorted,
+    policyManifest,
     router,
   });
 }
@@ -370,9 +372,6 @@ export function buildPack(
       plan,
     };
   });
-  // Numeric current packs carry no legacy handler table (M23R2 gate rule)
-  const handlerTable: Record<string, string> = {};
-
   const functions = [
     ...app.routes.map((r, i) => ({
       id: i,
@@ -394,6 +393,7 @@ export function buildPack(
     capabilities,
     functions,
     schemaManifest,
+    policyManifest,
     router,
   );
 

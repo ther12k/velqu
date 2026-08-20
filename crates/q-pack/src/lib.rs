@@ -317,7 +317,7 @@ impl SerializedRouter {
                 let ok = match seg.kind {
                     SegKind::Static => seg.value == *decl,
                     SegKind::Param => {
-                        decl.len() > 1 && decl.starts_with(':') && &decl[1..] == seg.value
+                        decl.len() > 1 && decl.starts_with(':') && decl[1..] == seg.value
                     }
                     SegKind::Wildcard => *decl == "*",
                 };
@@ -730,7 +730,8 @@ impl QPack {
                         ));
                     }
                 }
-                let policy_keys: std::collections::BTreeSet<&String> = self.policies.keys().collect();
+                let policy_keys: std::collections::BTreeSet<&String> =
+                    self.policies.keys().collect();
                 let manifest_keys: std::collections::BTreeSet<&String> =
                     self.policy_manifest.iter().map(|p| &p.key).collect();
                 if policy_keys != manifest_keys {
@@ -756,8 +757,7 @@ impl QPack {
             // G0-r1 (C): numeric mode requires a declared, verified public contract hash
             if self.contract_hash.is_empty() {
                 return reject(
-                    "numeric pack must declare contractHash (public contract verification)"
-                        .into(),
+                    "numeric pack must declare contractHash (public contract verification)".into(),
                 );
             }
         } else if self.execution_mode.as_deref() == Some("numeric") {
@@ -1022,9 +1022,10 @@ impl QPack {
                         // manifest to this exact policy, and agree with the
                         // pre-resolved policy handler ID.
                         if !self.policy_manifest.is_empty() {
-                            let Some(pd) = plan.policy_id.and_then(|pid| {
-                                self.policy_manifest.get(pid as usize)
-                            }) else {
+                            let Some(pd) = plan
+                                .policy_id
+                                .and_then(|pid| self.policy_manifest.get(pid as usize))
+                            else {
                                 return reject(format!(
                                     "route {} declares policy {} but plan.policyId {:?} does not resolve in the policy manifest",
                                     route.id, p, plan.policy_id
@@ -1125,6 +1126,7 @@ impl QPack {
             capabilities: &'a [String],
             functions: &'a [FunctionDecl],
             schema_manifest: &'a [SchemaDecl],
+            policy_manifest: &'a [PolicyDecl],
             router: &'a Option<SerializedRouter>,
         }
         let c = Canonical {
@@ -1134,6 +1136,7 @@ impl QPack {
             capabilities: &self.capabilities,
             functions: &self.functions,
             schema_manifest: &self.schema_manifest,
+            policy_manifest: &self.policy_manifest,
             router: &self.router,
         };
         serde_json::to_string(&c).expect("canonical serialization cannot fail")
@@ -1152,6 +1155,7 @@ impl QPack {
             capabilities: &'a [String],
             functions: &'a [FunctionDecl],
             schema_manifest: &'a [SchemaDecl],
+            policy_manifest: &'a [PolicyDecl],
             router: &'a Option<SerializedRouter>,
         }
         let c = Canonical {
@@ -1161,6 +1165,7 @@ impl QPack {
             capabilities: &self.capabilities,
             functions: &self.functions,
             schema_manifest: &self.schema_manifest,
+            policy_manifest: &self.policy_manifest,
             router: &self.router,
         };
         let mut hasher = Sha256::new();
@@ -2009,7 +2014,7 @@ mod tests {
 
     #[test]
     fn header_contract_change_changes_public_contract_hash() {
-        let mut p1 = minimal_pack();
+        let p1 = minimal_pack();
         let mut p2 = minimal_pack();
         p2.routes[0].headers = Some(SourceBinding {
             schema: Some("sch:h".into()),
@@ -2045,9 +2050,7 @@ mod tests {
         p.contract_hash = String::new();
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
-        assert!(
-            matches!(err, PackError::Rejected(m) if m.contains("must declare contractHash"))
-        );
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("must declare contractHash")));
     }
 
     #[test]
@@ -2106,9 +2109,7 @@ mod tests {
         }
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
-        assert!(
-            matches!(err, PackError::Rejected(m) if m.contains("serialized router rejected"))
-        );
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("serialized router rejected")));
     }
 
     #[test]
@@ -2120,9 +2121,7 @@ mod tests {
         }
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
-        assert!(
-            matches!(err, PackError::Rejected(m) if m.contains("not represented in router"))
-        );
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("not represented in router")));
     }
 
     #[test]
@@ -2134,9 +2133,7 @@ mod tests {
         }
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
-        assert!(
-            matches!(err, PackError::Rejected(m) if m.contains("methodMask"))
-        );
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("methodMask")));
     }
 
     #[test]

@@ -166,10 +166,14 @@ async fn pipeline(
         }
         MatchResult::Found {
             route_id: route_id_num,
-            route_index,
+            route_index: _route_index,
             params,
             head,
         } => {
+            // RouteId is the canonical dense route-vector identity. The matcher
+            // retains route_index only for diagnostics; numeric execution uses
+            // the RouteId selected by the terminal slot.
+            let route_index = route_id_num.0 as usize;
             let route = &state.pack.routes[route_index];
             let route_id = route.id.clone();
 
@@ -321,7 +325,17 @@ async fn pipeline(
                 body: ctx.body.clone(),
             });
 
-            let policy_key = if compiled.policy_handler_id.is_none() {
+            // PolicyId is the canonical dense policy-vector identity. Resolve the
+            // precompiled handler through that manifest; QPack::verify has already
+            // proven the manifest entry agrees with the route plan.
+            let policy_handler_id = compiled.policy_id.and_then(|policy_id| {
+                state
+                    .pack
+                    .policy_manifest
+                    .get(policy_id.0 as usize)
+                    .map(|decl| q_engine::HandlerId(decl.handler_id))
+            });
+            let policy_key = if policy_handler_id.is_none() {
                 route
                     .policy
                     .as_ref()
@@ -344,7 +358,7 @@ async fn pipeline(
                 policy_key,
                 handler_id: compiled.handler_id,
                 policy_id_num: compiled.policy_id,
-                policy_handler_id: compiled.policy_handler_id,
+                policy_handler_id: policy_handler_id.or(compiled.policy_handler_id),
                 params_schema_id: compiled.params_schema_id,
                 query_schema_id: compiled.query_schema_id,
                 headers_schema_id: compiled.headers_schema_id,

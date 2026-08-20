@@ -57,10 +57,14 @@ async function main() {
   // 5. Warm load
   await run("Warm-Load Suite", ["bun", "benchmarks/harness/warm.ts"]);
 
-  // 6. TypeScript scale
+  // 6. Startup/allocation profile for the largest JSON pack. The profiler
+  // records tool availability and raw output; it never fabricates counters.
+  await run("10,000-route Startup Profile", ["python3", "scripts/capture-startup-profile.py", "benchmarks/raw/packs/app-10000.qpack", "benchmarks/raw/profiles/startup-10000.json"]);
+
+  // 7. TypeScript scale
   await run("TypeScript Scale Suite", ["bun", "benchmarks/type-scale/measure.ts"]);
 
-  // 7. Emit master manifest
+  // 8. Emit master manifest
   const manifest = {
     format: "velqu-benchmark-manifest-v1",
     generatedAt: new Date().toISOString(),
@@ -89,6 +93,7 @@ async function main() {
       warmSummary: "benchmarks/raw/warm/summary.json",
       bridgeSummary: "benchmarks/raw/bridge/bridge-summary.json",
       typeScaleResults: "benchmarks/type-scale/results.json",
+      startupProfile: "benchmarks/raw/profiles/startup-10000.json",
     },
   };
 

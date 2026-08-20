@@ -5,6 +5,8 @@ Update a checkbox only after the task commit and required tests pass.
 
 ## G0 — Trusted Numeric Graph and Evidence Truth
 
+**Gate status: IN_PROGRESS.** Code verification is green, but the frozen gate remains open until five randomized benchmark repetitions, allocation/startup profiles, raw-to-report parity, and a clean commit-bound release packet are complete.
+
 - [ ] [G0-001-A — Verify source-4e69049.zip and velqu-4e69049.bundle against SOURCE-COMMIT.txt and the supplied SHA256SUMS manifest](tasks/00_g0_gate_close/G0-001-A-verify-source-4e69049-zip-and-velqu-4e69049-bundle-against-source-commit-txt-and.md)
 - [ ] [G0-001-B — Reconcile REVIEW_INDEX.json and EVIDENCE_INDEX.json so their commit, milestone, test counts, benchmark protocol, and open items describe the actual release commit rather than e2b379d](tasks/00_g0_gate_close/G0-001-B-reconcile-review-index-json-and-evidence-index-json-so-their-commit-milestone-te.md)
 - [ ] [G0-001-C — Update docs/beta/00_CURRENT_BASELINE.md, docs/beta/04_TASK_LEDGER.md, and related status documents to show G0 as IN_PROGRESS until its frozen exit gate passes](tasks/00_g0_gate_close/G0-001-C-update-docs-beta-00-current-baseline-md-docs-beta-04-task-ledger-md-and-related.md)

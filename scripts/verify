@@ -12,6 +12,8 @@ fail() { echo "FAIL: $1"; overall=1; }
 step "OKF bundle structural validation"
 ./scripts/validate-okf || fail "validate-okf"
 ./scripts/validate-production-plan || fail "validate-production-plan"
+./scripts/validate-benchmark-evidence.py || fail "validate-benchmark-evidence"
+python3 scripts/generate-benchmark-reports.py --check || fail "benchmark-reports"
 
 step "Rust workspace formatting"
 cargo fmt --all --check 2>&1 | tail -3 || fail "cargo fmt"

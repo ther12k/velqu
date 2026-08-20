@@ -5,6 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "release packet requires a clean working tree" >&2
+  exit 1
+fi
 COMMIT=$(git rev-parse HEAD)
 SHORT=$(git rev-parse --short "$COMMIT")
 OUT=release
@@ -14,8 +18,32 @@ echo "$COMMIT" > "$OUT/SOURCE-COMMIT.txt"
 git bundle create "$OUT/velqu-${SHORT}.bundle" HEAD master
 git archive --format=zip --prefix="velqu-${SHORT}/" -o "$OUT/source-${SHORT}.zip" HEAD
 
-cp REVIEW_INDEX.json "$OUT/REVIEW_INDEX.json"
-cp EVIDENCE_INDEX.json "$OUT/EVIDENCE_INDEX.json"
+# Indexes are generated after HEAD is fixed; never copy a possibly stale
+# working-tree index into the release packet.
+python3 - "$COMMIT" "$OUT" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+commit, out = sys.argv[1:]
+root = Path.cwd()
+generated = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+for name in ('REVIEW_INDEX.json', 'EVIDENCE_INDEX.json'):
+    source = root / name
+    if not source.is_file():
+        raise SystemExit(f'missing index template: {name}')
+    data = json.loads(source.read_text())
+    data['commit'] = commit
+    data['generatedAt'] = generated
+    data['releaseCommit'] = commit
+    (Path(out) / name).write_text(json.dumps(data, indent=2) + '\n')
+PY
+
+# The generated indexes must be bound to this exact source commit.
+for f in "$OUT/REVIEW_INDEX.json" "$OUT/EVIDENCE_INDEX.json"; do
+  grep -q "\\\"commit\\\": \\\"$COMMIT\\\"" "$f"
+done
 
 (
   cd "$OUT"

@@ -4,7 +4,7 @@ parent_task: G0-GATE
 milestone: G0
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: IN_PROGRESS
 context_card: context/milestones/G0.md
 commit_required: true
 ---

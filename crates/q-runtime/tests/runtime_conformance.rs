@@ -545,6 +545,7 @@ fn fixture_pack() -> q_pack::QPack {
         ],
         entry: "app.js".into(),
         bundle_form: None,
+        execution_mode: None,
         bundle,
         source_map: None,
         bundle_bytecode: None,
@@ -565,6 +566,7 @@ fn fixture_pack() -> q_pack::QPack {
         capabilities: vec!["timer".into()],
         functions,
         schema_manifest: vec![],
+        policy_manifest: vec![],
         router: None,
         handler_table,
         integrity: Integrity {
@@ -588,7 +590,39 @@ fn fixture_pack() -> q_pack::QPack {
 /// Mirror of the compiler's numeric current-pack finalization: empty handler
 /// table, dense complete schema manifest, serialized router automaton.
 fn finalize_numeric(pack: &mut QPack) {
+    pack.execution_mode = Some("numeric".into());
     pack.handler_table.clear();
+    // Dense policy manifest: sorted policy keys, resolve handler IDs through
+    // the dense function manifest.
+    pack.policy_manifest = pack
+        .policies
+        .keys()
+        .enumerate()
+        .map(|(i, key)| {
+            let handler = &pack.policies[key].handler;
+            let handler_id = pack
+                .functions
+                .iter()
+                .position(|f| f.key == *handler)
+                .expect("policy handler in function manifest") as u32;
+            q_pack::PolicyDecl {
+                id: i as u32,
+                key: key.clone(),
+                handler_id,
+            }
+        })
+        .collect();
+    for route in pack.routes.iter_mut() {
+        if let (Some(policy), Some(plan)) = (&route.policy, route.plan.as_mut()) {
+            let pd = pack
+                .policy_manifest
+                .iter()
+                .find(|p| p.key == *policy)
+                .expect("route policy in policy manifest");
+            plan.policy_id = Some(pd.id);
+            plan.policy_handler_id = Some(pd.handler_id);
+        }
+    }
     pack.schema_manifest = pack
         .schemas
         .keys()

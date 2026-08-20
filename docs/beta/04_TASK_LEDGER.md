@@ -15,16 +15,16 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 
 | ID | Priority | Status | Dependencies | Milestone | Task |
 |---|---|---|---|---|---|
-| G0-001 | P0 | TODO | — | G0 | Freeze and verify the M2.3-r3 baseline |
-| G0-002 | P0 | TODO | G0-001 | G0 | Make the semantic function manifest mandatory |
-| G0-003 | P0 | TODO | G0-001 | G0 | Bind router and schema manifests into the execution graph hash |
-| G0-004 | P0 | TODO | G0-003 | G0 | Load the serialized router directly |
-| G0-005 | P0 | TODO | G0-002, G0-004 | G0 | Complete operational RouteId, PolicyId, and SchemaId usage |
-| G0-006 | P1 | TODO | G0-003, G0-005 | G0 | Separate and verify public contract identity |
-| G0-007 | P1 | TODO | G0-002, G0-005 | G0 | Remove duplicate legacy state from current packs |
-| G0-008 | P1 | TODO | G0-004, G0-005, G0-007 | G0 | Close canonical performance evidence |
-| G0-009 | P1 | TODO | G0-001, G0-008 | G0 | Create self-verifying milestone and evidence indexes |
-| G0-GATE | P0 | TODO | G0-001, G0-002, G0-003, G0-004, G0-005, G0-006, G0-007, G0-008, G0-009 | G0 | M23R2 Gate Closure — Trusted Numeric Artifact and Router exit gate |
+| G0-001 | P0 | IN_PROGRESS | — | G0 | Freeze and verify the M2.3-r3 baseline |
+| G0-002 | P0 | PASS | G0-001 | G0 | Make the semantic function manifest mandatory |
+| G0-003 | P0 | PASS | G0-001 | G0 | Bind router and schema manifests into the execution graph hash |
+| G0-004 | P0 | PASS | G0-003 | G0 | Load the serialized router directly |
+| G0-005 | P0 | PASS | G0-002, G0-004 | G0 | Complete operational RouteId, PolicyId, and SchemaId usage |
+| G0-006 | P1 | PASS | G0-003, G0-005 | G0 | Separate and verify public contract identity |
+| G0-007 | P1 | PASS | G0-002, G0-005 | G0 | Remove duplicate legacy state from current packs |
+| G0-008 | P1 | IN_PROGRESS | G0-004, G0-005, G0-007 | G0 | Close canonical performance evidence |
+| G0-009 | P1 | IN_PROGRESS | G0-001, G0-008 | G0 | Create self-verifying milestone and evidence indexes |
+| G0-GATE | P0 | IN_PROGRESS | G0-001, G0-002, G0-003, G0-004, G0-005, G0-006, G0-007, G0-008, G0-009 | G0 | M23R2 Gate Closure — Trusted Numeric Artifact and Router exit gate |
 | M24-001 | P0 | TODO | G0-GATE | M24 | Freeze ingress ownership and backpressure design |
 | M24-002 | P0 | TODO | M24-001 | M24 | Route before request materialization |
 | M24-003 | P0 | TODO | M24-001, M24-002 | M24 | Implement worker-local generation-checked request slab |

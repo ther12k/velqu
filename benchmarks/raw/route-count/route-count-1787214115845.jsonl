@@ -1,0 +1,60 @@
+{"runId":"g0-route-count-1787214108","executionOrder":0,"candidate":"velqu (source)","n":1000,"i":0,"totalMs":21.211,"rssKb":14488,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":1,"candidate":"velqu (source)","n":1000,"i":1,"totalMs":22.624,"rssKb":14344,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":2,"candidate":"velqu (source)","n":1000,"i":2,"totalMs":31.723,"rssKb":14380,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":3,"candidate":"velqu (source)","n":1000,"i":3,"totalMs":22.901,"rssKb":14432,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":4,"candidate":"velqu (source)","n":1000,"i":4,"totalMs":26.54,"rssKb":14420,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":5,"candidate":"velqu (bytecode)","n":25,"i":0,"totalMs":3.916,"rssKb":6588,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":6,"candidate":"velqu (bytecode)","n":25,"i":1,"totalMs":3.764,"rssKb":6496,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":7,"candidate":"velqu (bytecode)","n":25,"i":2,"totalMs":3.662,"rssKb":6528,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":8,"candidate":"velqu (bytecode)","n":25,"i":3,"totalMs":3.178,"rssKb":6548,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":9,"candidate":"velqu (bytecode)","n":25,"i":4,"totalMs":3.369,"rssKb":6512,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":10,"candidate":"raw-bun","n":10000,"i":0,"totalMs":14.896,"rssKb":38656,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":11,"candidate":"raw-bun","n":10000,"i":1,"totalMs":15.1,"rssKb":38532,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":12,"candidate":"raw-bun","n":10000,"i":2,"totalMs":12.178,"rssKb":38580,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":13,"candidate":"raw-bun","n":10000,"i":3,"totalMs":12.075,"rssKb":38588,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":14,"candidate":"raw-bun","n":10000,"i":4,"totalMs":17.307,"rssKb":38644,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":15,"candidate":"raw-bun","n":25,"i":0,"totalMs":11.94,"rssKb":38584,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":16,"candidate":"raw-bun","n":25,"i":1,"totalMs":11.535,"rssKb":38584,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":17,"candidate":"raw-bun","n":25,"i":2,"totalMs":16.615,"rssKb":38544,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":18,"candidate":"raw-bun","n":25,"i":3,"totalMs":14.049,"rssKb":38612,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":19,"candidate":"raw-bun","n":25,"i":4,"totalMs":13.657,"rssKb":38936,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":20,"candidate":"velqu (bytecode)","n":10000,"i":0,"totalMs":267.937,"rssKb":86756,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":21,"candidate":"velqu (bytecode)","n":10000,"i":1,"totalMs":325.066,"rssKb":86740,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":22,"candidate":"velqu (bytecode)","n":10000,"i":2,"totalMs":256.8,"rssKb":86804,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":23,"candidate":"velqu (bytecode)","n":10000,"i":3,"totalMs":257.111,"rssKb":86808,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":24,"candidate":"velqu (bytecode)","n":10000,"i":4,"totalMs":314.446,"rssKb":86732,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":25,"candidate":"elysia2","n":25,"i":0,"totalMs":151.274,"rssKb":95984,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":26,"candidate":"elysia2","n":25,"i":1,"totalMs":140.875,"rssKb":95952,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":27,"candidate":"elysia2","n":25,"i":2,"totalMs":136.184,"rssKb":94984,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":28,"candidate":"elysia2","n":25,"i":3,"totalMs":147.579,"rssKb":94816,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":29,"candidate":"elysia2","n":25,"i":4,"totalMs":140.773,"rssKb":94020,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":30,"candidate":"raw-bun","n":1000,"i":0,"totalMs":18.642,"rssKb":38580,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":31,"candidate":"raw-bun","n":1000,"i":1,"totalMs":17.364,"rssKb":38604,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":32,"candidate":"raw-bun","n":1000,"i":2,"totalMs":12.294,"rssKb":38624,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":33,"candidate":"raw-bun","n":1000,"i":3,"totalMs":15.173,"rssKb":38596,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":34,"candidate":"raw-bun","n":1000,"i":4,"totalMs":15.089,"rssKb":38608,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":35,"candidate":"velqu (source)","n":25,"i":0,"totalMs":7.091,"rssKb":6472,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":36,"candidate":"velqu (source)","n":25,"i":1,"totalMs":3.606,"rssKb":6548,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":37,"candidate":"velqu (source)","n":25,"i":2,"totalMs":3.687,"rssKb":6524,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":38,"candidate":"velqu (source)","n":25,"i":3,"totalMs":3.277,"rssKb":6560,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":39,"candidate":"velqu (source)","n":25,"i":4,"totalMs":2.786,"rssKb":6536,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":40,"candidate":"elysia2","n":10000,"i":0,"totalMs":274.547,"rssKb":164432,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":41,"candidate":"elysia2","n":10000,"i":1,"totalMs":284.484,"rssKb":161788,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":42,"candidate":"elysia2","n":10000,"i":2,"totalMs":299.523,"rssKb":164040,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":43,"candidate":"elysia2","n":10000,"i":3,"totalMs":308.457,"rssKb":164456,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":44,"candidate":"elysia2","n":10000,"i":4,"totalMs":291.674,"rssKb":162944,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":45,"candidate":"velqu (source)","n":10000,"i":0,"totalMs":282.587,"rssKb":87228,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":46,"candidate":"velqu (source)","n":10000,"i":1,"totalMs":285.013,"rssKb":87200,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":47,"candidate":"velqu (source)","n":10000,"i":2,"totalMs":303.835,"rssKb":87172,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":48,"candidate":"velqu (source)","n":10000,"i":3,"totalMs":365.968,"rssKb":87256,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":49,"candidate":"velqu (source)","n":10000,"i":4,"totalMs":321.618,"rssKb":87184,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":50,"candidate":"elysia2","n":1000,"i":0,"totalMs":177.653,"rssKb":118408,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":51,"candidate":"elysia2","n":1000,"i":1,"totalMs":155.567,"rssKb":120508,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":52,"candidate":"elysia2","n":1000,"i":2,"totalMs":172.918,"rssKb":119052,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":53,"candidate":"elysia2","n":1000,"i":3,"totalMs":159.508,"rssKb":120288,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":54,"candidate":"elysia2","n":1000,"i":4,"totalMs":166.695,"rssKb":117904,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":55,"candidate":"velqu (bytecode)","n":1000,"i":0,"totalMs":18.564,"rssKb":14392,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":56,"candidate":"velqu (bytecode)","n":1000,"i":1,"totalMs":22.016,"rssKb":14308,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":57,"candidate":"velqu (bytecode)","n":1000,"i":2,"totalMs":20.143,"rssKb":14324,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":58,"candidate":"velqu (bytecode)","n":1000,"i":3,"totalMs":21.043,"rssKb":14284,"ok":true}
+{"runId":"g0-route-count-1787214108","executionOrder":59,"candidate":"velqu (bytecode)","n":1000,"i":4,"totalMs":23.935,"rssKb":14384,"ok":true}

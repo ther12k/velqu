@@ -1,24 +1,26 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-08-20T02:21:20.333795Z",
-  "commit": "e2b379d775a79e619753aaf39eb9ea5f8a763f15",
+  "generatedAt": "2026-08-20T08:45:00Z",
+  "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
+  "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "milestone": "M23R2-GATE-CLOSE",
+  "status": "IN_PROGRESS",
+  "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
+  "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "Missing semantic manifest \u2192 startup rejected",
-      "source": [
-        "crates/q-engine-quickjs/src/worker.rs"
-      ],
+      "gate": "Missing semantic manifest -> startup rejected",
+      "status": "PASS_CODE",
+      "source": ["crates/q-engine-quickjs/src/worker.rs"],
       "tests": [
         "numeric_pack_without_semantic_manifest_is_rejected",
         "missing_manifest_with_swapped_functions_is_rejected"
       ]
     },
     {
-      "gate": "Swapped callable functions \u2192 startup rejected",
-      "source": [
-        "crates/q-engine-quickjs/src/worker.rs"
-      ],
+      "gate": "Swapped callable functions -> startup rejected",
+      "status": "PASS_CODE",
+      "source": ["crates/q-engine-quickjs/src/worker.rs"],
       "tests": [
         "swapped_function_vector_entries_are_rejected",
         "route_function_in_policy_slot_is_rejected",
@@ -26,10 +28,9 @@
       ]
     },
     {
-      "gate": "Router terminal mutation \u2192 execution hash changes or verification rejects",
-      "source": [
-        "crates/q-pack/src/lib.rs"
-      ],
+      "gate": "Router terminal mutation -> execution hash changes or verification rejects",
+      "status": "PASS_CODE",
+      "source": ["crates/q-pack/src/lib.rs"],
       "tests": [
         "router_terminal_target_tamper_breaks_execution_hash",
         "schema_manifest_tamper_breaks_execution_hash",
@@ -37,21 +38,16 @@
       ]
     },
     {
-      "gate": "Current numeric startup: no Router::build",
-      "source": [
-        "crates/q-router/src/lib.rs",
-        "crates/q-runtime/src/main.rs"
-      ],
-      "tests": [
-        "compiled_and_reference_routers_are_property_equivalent"
-      ]
+      "gate": "Current numeric startup: no Router::build semantic reconstruction",
+      "status": "PASS_CODE",
+      "source": ["crates/q-router/src/lib.rs", "crates/q-runtime/src/main.rs"],
+      "tests": ["compiled_and_reference_routers_are_property_equivalent"],
+      "evidence": ["benchmarks/raw/profiles/startup-10000.json"]
     },
     {
       "gate": "Current numeric pack: no handlerTable, no legacy map, compiled router required",
-      "source": [
-        "crates/q-pack/src/lib.rs",
-        "packages/compiler/src/emit.ts"
-      ],
+      "status": "PASS_CODE",
+      "source": ["crates/q-pack/src/lib.rs", "packages/compiler/src/emit.ts"],
       "tests": [
         "numeric_pack_with_handler_table_is_rejected",
         "numeric_pack_without_compiled_router_is_rejected",
@@ -60,46 +56,63 @@
     },
     {
       "gate": "Request execution: numeric identities operational, no string identity on request path",
-      "source": [
-        "crates/q-runtime/src/serve.rs",
-        "crates/q-router/src/lib.rs"
-      ],
+      "status": "PASS_CODE",
+      "source": ["crates/q-runtime/src/serve.rs", "crates/q-router/src/lib.rs"],
       "tests": [
         "numeric_handler_dispatch_calls_exact_declared_function",
         "numeric_policy_dispatch_enforces_401_and_200"
       ]
     },
     {
-      "gate": "Public contract: hash verified, stable across internal numeric reordering",
-      "source": [
-        "crates/q-pack/src/lib.rs",
-        "packages/compiler/src/emit.ts"
-      ],
-      "tests": [
-        "public_contract_hash_is_stable_when_function_ids_are_reordered"
-      ]
+      "gate": "Public contract: hash verified and stable across internal numeric reordering",
+      "status": "PASS_CODE",
+      "source": ["crates/q-pack/src/lib.rs", "packages/compiler/src/emit.ts"],
+      "tests": ["public_contract_hash_is_stable_when_function_ids_are_reordered"]
     },
     {
-      "gate": "Benchmark: 10,000-route evidence present (single clean pass; \u22655 randomized reps open)",
+      "gate": "Benchmark evidence: repeated raw artifacts and route-count scaling",
+      "status": "IN_PROGRESS_EVIDENCE",
       "rawEvidence": [
-        "benchmarks/raw/route-count/summary.json",
         "benchmarks/raw/warm/summary.json",
-        "benchmarks/raw/cold-start/summary.json"
+        "benchmarks/raw/warm/g0-warm-1787214167.jsonl",
+        "benchmarks/raw/cold-start/summary.json",
+        "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl",
+        "benchmarks/raw/route-count/summary.json",
+        "benchmarks/raw/route-count/route-count-1787214115845.jsonl",
+        "benchmarks/raw/profiles/startup-10000.json"
       ],
       "report": [
         "docs/reports/cold-start-report.md",
         "docs/reports/warm-performance-report.md"
-      ]
+      ],
+      "protocol": {
+        "warmRepetitions": 5,
+        "warmCells": 240,
+        "warmRandomizedCandidateOrder": true,
+        "coldSamplesPerClass": 5,
+        "coldCandidates": ["velqu"],
+        "routeCountSamplesPerCell": 5,
+        "allocationCounters": "unavailable: perf_event_paranoid=4"
+      }
     },
     {
       "gate": "Release package: internal sha256sum -c passes",
-      "source": [
-        "scripts/release-packet"
+      "status": "PENDING_CLEAN_CANDIDATE",
+      "source": ["scripts/release-packet"],
+      "required": [
+        "SOURCE-COMMIT.txt",
+        "commit-named Git bundle",
+        "commit-named source ZIP",
+        "packet-local REVIEW_INDEX.json",
+        "packet-local EVIDENCE_INDEX.json",
+        "SHA256SUMS.txt"
       ]
     }
   ],
   "openItems": [
-    "Benchmark repetitions: single clean isolated pass committed; \u22655 randomized repetitions and allocation profiles remain open (baseline item 7 partial)",
+    "G0 remains IN_PROGRESS until allocator/startup profiling is complete or explicitly scoped as unavailable with owner-approved disposition",
+    "Markdown reports are generated from current JSON by scripts/generate-benchmark-reports.py and checked by ./scripts/verify",
+    "A fresh full competitor cold-start comparison is not part of the current Velqu-only gate run",
     "Response-schema validation remains on the optional string-keyed slow path"
   ]
 }

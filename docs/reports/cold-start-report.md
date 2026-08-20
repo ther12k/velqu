@@ -1,83 +1,57 @@
 ---
 type: Evidence Report
 title: Cold-Start Report (process → first valid response)
-status: complete
+status: in_progress
 milestone: M0–M2.3
 ---
 
 # Cold-start report
 
-Protocol: parent fresh-process harness (`benchmarks/harness/cold-start.ts`):
-monotonic timer before spawn → TCP-accept poll (0.5ms interval) → route-class
-request → byte-exact validation (`checkFirstResponse` semantics) → terminate.
-Randomized/interleaved sample order. 60 samples per candidate×class
-(4 candidates × 7 classes = 1680 samples; **0 failures, 0 timeouts**).
-Raw: `benchmarks/raw/cold-start/cold-*.jsonl`; summary:
-`benchmarks/raw/cold-start/summary.json`.
+## Current gate evidence
 
-Environment: 13th Gen Intel Core i5-13420H, Linux 7.0.0-28-generic x86_64,
-Bun 1.3.4 (harness), rustc 1.96.0, elysia 2.0.0-beta.4, quickjs-ng 0.15.1 via
-rquickjs 0.12.2. Release builds for all candidates. 2026-08-19.
+Run `g0-cold-1787214119` is a Velqu-only gate run with 5 fresh-process samples per class (7 cells, 35 rows, zero failures/timeouts). Raw JSONL: `benchmarks/raw/cold-start/g0-cold-1787214119.jsonl`.
 
-## Primary result — process-to-first-valid-response (p50 / p95, ms)
+| Class | Route | p50 total (ms) | p95 total (ms) | p99 total (ms) | failures |
+|---|---|---:|---:|---:|---:|
+| C0 | health.live | 4.424 | 4.775 | 4.775 | 0 |
+| C1 | js.text | 4.490 | 4.683 | 4.683 | 0 |
+| C2 | js.json | 4.173 | 4.870 | 4.870 | 0 |
+| C3 | hello.get | 4.994 | 5.182 | 5.182 | 0 |
+| C3b | users.create | 4.912 | 5.374 | 5.374 | 0 |
+| C4 | users.get | 5.027 | 5.653 | 5.653 | 0 |
+| C5 | async.timer | 15.542 | 15.886 | 15.886 | 0 |
 
-| Class | velqu | raw-rust (lower bound) | raw-bun | elysia2 AOT |
-|---|---|---|---|---|
-| C0: native liveness | **3.2 / 5.8** | 2.2 / 3.1 | 16.8 / 23.8 | 106.0 / 141.8 |
-| C1: JS plaintext | **3.1 / 4.2** | 2.4 / 4.3 | 14.8 / 21.6 | 115.7 / 155.7 |
-| C2: JS small JSON | **3.3 / 5.5** | 2.2 / 5.1 | 15.7 / 36.5 | 107.1 / 136.6 |
-| C3: validated path (hello) | **3.4 / 5.0** | 2.2 / 3.3 | 14.3 / 23.2 | 150.2 / 180.2 |
-| C3b: validated body (users) | **3.3 / 15.6** | 2.3 / 4.0 | 16.1 / 33.9 | 149.3 / 199.3 |
-| C4: policy + validation | **3.6 / 5.6** | 2.2 / 2.8 | 16.7 / 29.1 | 144.8 / 173.3 |
-| C5: async (10ms timer) | **14.6 / 18.3** | 13.5 / 15.3 | 26.3 / 49.3 | 167.4 / 192.9 |
+This run is gate evidence for repeatability and correctness, not a fresh competitor cold-start comparison.
 
-(C5 includes the 10ms deliberate timer wait; startup itself is C0–C4-like.)
+## Startup profile
 
-## Comparative gate (performance budgets)
+The 10,000-route startup profile is recorded at `benchmarks/raw/profiles/startup-10000.json`. The generated fixture contains 10,001 routes because it retains the health route plus 10,000 generated routes. The current wall-clock ready line reports 287.4 ms total: pack.load 231.6 ms, serialized router load 4.3 ms, engine.spawn 0.050 ms, bundle.load 50.6 ms, and listen 0.069 ms. Linux `perf` counters were unavailable because the host sets `perf_event_paranoid=4`; no allocation count is claimed.
 
-> Velqu C3 and C4 p95 ≤ 60% of matched Elysia 2 AOT p95
+## Historical competitor comparison
 
-- C3 p95: velqu 5.0ms vs elysia 180.2ms → **2.8%** — PASS (36× lower)
-- C4 p95: velqu 5.6ms vs elysia 173.3ms → **3.2%** — PASS (31× lower)
-- velqu C3 p95 vs raw-bun 23.2ms → 22% — PASS
+The following earlier comparison remains historical context only and is not part of the current repeated gate run. It must not be read as a fresh competitor sample set:
 
-## Absolute budgets (aspirational, this host)
+| Class | Velqu p95 (ms) | Raw Rust p95 (ms) | Raw Bun p95 (ms) | Elysia 2 AOT p95 (ms) |
+|---|---:|---:|---:|---:|
+| C0 native liveness | 5.8 | 3.1 | 23.8 | 141.8 |
+| C1 JS plaintext | 4.2 | 4.3 | 21.6 | 155.7 |
+| C2 JS small JSON | 5.5 | 5.1 | 36.5 | 136.6 |
+| C3 validated path | 5.0 | 3.3 | 23.2 | 180.2 |
+| C4 policy + validation | 5.6 | 2.8 | 29.1 | 173.3 |
 
-| Budget | Target | Observed | Status |
-|---|---:|---:|---|
-| C0 p95 | ≤8ms | 5.8ms | PASS |
-| C1 p95 | ≤12ms | 4.2ms | PASS |
-| C2 p95 | ≤15ms | 5.5ms | PASS |
-| C3 p95 | ≤18ms | 5.0ms | PASS |
-| C4 p95 | ≤22ms | 5.6ms | PASS |
-| failures/timeouts | 0 | **0 of 840** | PASS |
+## Route-count scaling
 
-## Startup decomposition (velqu, from ready-line stages)
-
-Typical: pack.load 1.2ms → router.build 0.05ms → engine.spawn 0.09ms →
-bundle.load 1.1ms → listen 0.04ms; total ≈ 2.5ms. First-request adds ~0.3ms
-(handler cache hit). Zero runtime route/schema/OpenAPI compilation (segments and
-IR are pre-compiled in the pack).
-
-## Route-count scaling (PERF-005) — sync handlers & bytecode scaling
-
-Measured route `GET /res7/item/7` (`benchmarks/raw/route-count/`, 20 samples per cell, 0 failures):
+The route-count suite uses five fresh processes per cell, randomized candidate/size order, and zero failures. Its current raw and summary artifacts are `benchmarks/raw/route-count/route-count-1787214115845.jsonl` and `benchmarks/raw/route-count/summary.json`.
 
 | Candidate | 25 routes p50 | 1,000 routes p50 | 10,000 routes p50 | 10,000 p95 | 10,000 RSS |
 |---|---:|---:|---:|---:|---:|
-| velqu (source) | 3.68ms | 26.48ms | 170.20ms | 211.93ms | 85.1 MB |
-| velqu (bytecode, ADR-0017) | 3.27ms | 20.84ms | 150.61ms | 211.10ms | 84.7 MB |
-| raw-bun | 16.13ms | 17.49ms | 16.55ms | 19.65ms | 37.8 MB |
-| elysia2 | 150.15ms | 172.82ms | 311.66ms | 365.44ms | 159.3 MB |
+| velqu (source) | 3.606ms | 22.901ms | 303.835ms | 365.968ms | 87.2 MB |
+| velqu (bytecode) | 3.662ms | 21.043ms | 267.937ms | 325.066ms | 86.8 MB |
+| raw-bun | 13.657ms | 15.173ms | 14.896ms | 17.307ms | 37.7 MB |
+| elysia2 | 140.875ms | 166.695ms | 291.674ms | 308.457ms | 160.2 MB |
 
-At 10,000 routes, velqu bytecode cold start (150.6 ms) is **2.1× faster** than the matched
-Elysia candidate (311.7 ms) with **76 MB less RSS**. Startup decomposition at 10,000 routes
-shows `pack.load` (JSON parse of the 17.5 MB pack) dominating at ~120 ms; `router.build`
-consumes the serialized automaton in 5.8 ms with zero route parsing. Eliminating JSON pack
-parsing is the M2.6 binary QPack v2 target and is the dominant remaining lever.
+These are observations for this host and fixture, not universal performance claims. Binary QPack v2 remains the planned lever for reducing JSON-pack parsing cost.
 
 ## Scope
 
-These numbers describe ONLY: this host, these pinned versions, the frozen
-fixture workloads (C0–C5), release builds, HTTP/1.1 no-TLS no-compression,
-loopback. They are not claims about other workloads or environments.
+These numbers describe only this host, pinned versions, release builds, loopback HTTP/1.1, and the frozen fixture workloads. G0 remains IN_PROGRESS while allocation profiling, report parity automation, and the commit-bound release packet are completed.

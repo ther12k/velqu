@@ -1,19 +1,34 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-08-20T02:21:20.333795Z",
-  "commit": "e2b379d775a79e619753aaf39eb9ea5f8a763f15",
+  "generatedAt": "2026-08-20T08:45:00Z",
+  "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
+  "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
+  "status": "IN_PROGRESS",
+  "milestone": "M23R2-GATE-CLOSE",
+  "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "verification": {
     "command": "./scripts/verify",
-    "result": "ALL PASS (M0\u2013M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)",
-    "rustTests": 154,
-    "typescriptTests": 35
+    "result": "expected ALL PASS from clean candidate",
+    "rustTests": "workspace count reported by current test run",
+    "typescriptTests": 35,
+    "benchmarkReportCheck": "python3 scripts/generate-benchmark-reports.py --check"
   },
   "benchmarks": {
     "coldStart": "benchmarks/raw/cold-start/summary.json",
+    "coldStartRaw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl",
     "routeCount": "benchmarks/raw/route-count/summary.json",
+    "routeCountRaw": "benchmarks/raw/route-count/route-count-1787214115845.jsonl",
     "warm": "benchmarks/raw/warm/summary.json",
+    "warmRaw": "benchmarks/raw/warm/g0-warm-1787214167.jsonl",
+    "startupProfile": "benchmarks/raw/profiles/startup-10000.json",
     "environment": "13th Gen Intel Core i5-13420H, Linux 7.0.0-28-generic x86_64, Bun 1.3.4, rustc 1.96.0, quickjs-ng 0.15.1 via rquickjs 0.12.2",
-    "protocol": "clean isolated single pass; 0 errors all cells"
+    "protocol": {
+      "warm": "5 independent randomized repetitions, concurrency 1/10/50, 240 raw cells, 1 second per cell, zero errors",
+      "cold": "5 fresh-process samples per Velqu route class, 7 classes, 35 rows, zero failures/timeouts",
+      "routeCount": "5 fresh processes per candidate/route-size cell, randomized candidate/size order, zero failures",
+      "startup": "ready-line-bounded wall-clock profile for the generated 10,001-route fixture; perf counters denied by perf_event_paranoid=4",
+      "allocation": "not measured; no allocator count is claimed"
+    }
   },
   "reports": [
     "docs/reports/cold-start-report.md",
@@ -21,9 +36,22 @@
     "docs/reports/memory-report.md",
     "docs/reports/scheduler-correctness-report.md"
   ],
+  "reportGenerator": "scripts/generate-benchmark-reports.py",
   "taskLedger": {
     "file": "TASKS.production.json",
+    "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "120 tasks, 0 missing dependencies, 0 cycles"
-  }
+    "result": "120 tasks; evidence-blocked tasks remain IN_PROGRESS until final clean commit and packet"
+  },
+  "release": {
+    "script": "scripts/release-packet",
+    "binding": "packet-local indexes are generated only after clean HEAD is fixed",
+    "checksums": "sha256sum -c SHA256SUMS.txt"
+  },
+  "openItems": [
+    "allocator/startup allocation counters unavailable on this host",
+    "final clean candidate commit and release packet not yet generated",
+    "fresh full competitor cold-start comparison remains historical context rather than current gate evidence",
+    "response-schema validation remains on the optional string-keyed slow path"
+  ]
 }

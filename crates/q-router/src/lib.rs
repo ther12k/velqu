@@ -1022,7 +1022,10 @@ mod tests {
         struct Lcg(u64);
         impl Lcg {
             fn next(&mut self) -> u64 {
-                self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                self.0 = self
+                    .0
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 self.0 >> 33
             }
             fn below(&mut self, n: u64) -> u64 {
@@ -1030,7 +1033,9 @@ mod tests {
             }
         }
         const METHODS: [&str; 6] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
-        const WORDS: [&str; 9] = ["a", "b", "users", "items", "x1", "health", "live", "api", "v2"];
+        const WORDS: [&str; 9] = [
+            "a", "b", "users", "items", "x1", "health", "live", "api", "v2",
+        ];
 
         let mut rng = Lcg(0xC0FFEE);
 
@@ -1066,7 +1071,11 @@ mod tests {
                     }
                 }
                 // ensure wildcard is terminal-only (build requirement)
-                if segs.iter().position(|s| s.kind == SegKind::Wildcard).is_some_and(|p| p + 1 != segs.len()) {
+                if segs
+                    .iter()
+                    .position(|s| s.kind == SegKind::Wildcard)
+                    .is_some_and(|p| p + 1 != segs.len())
+                {
                     continue;
                 }
                 if !shapes.insert(shape) {
@@ -1094,8 +1103,7 @@ mod tests {
             serialized
                 .verify_against(&routes)
                 .unwrap_or_else(|e| panic!("table {table}: serialized graph rejected: {e}"));
-            let compiled =
-                Router::from_serialized(&routes, &serialized).expect("from_serialized");
+            let compiled = Router::from_serialized(&routes, &serialized).expect("from_serialized");
 
             // Probe paths: every declared route's own path (with param values
             // substituted), wrong-method probes on the same shape, and misses.
@@ -1134,12 +1142,21 @@ mod tests {
         }
     }
 
-    fn normalize(
-        m: MatchResult,
-        _routes: &[RouteEntry],
-    ) -> (Option<u32>, Vec<(String, String)>, bool, Option<Vec<String>>) {
+    type NormalizedMatch = (
+        Option<u32>,
+        Vec<(String, String)>,
+        bool,
+        Option<Vec<String>>,
+    );
+
+    fn normalize(m: MatchResult, _routes: &[RouteEntry]) -> NormalizedMatch {
         match m {
-            MatchResult::Found { route_id, params, head, .. } => (Some(route_id.0), params, head, None),
+            MatchResult::Found {
+                route_id,
+                params,
+                head,
+                ..
+            } => (Some(route_id.0), params, head, None),
             MatchResult::MethodNotAllowed { allow } => (None, vec![], false, Some(allow)),
             MatchResult::NotFound => (None, vec![], false, None),
         }

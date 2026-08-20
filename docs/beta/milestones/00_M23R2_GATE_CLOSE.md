@@ -35,7 +35,7 @@ M2.4 will trust RouteId, SchemaId, PolicyId, and FieldNeeds to decide what reque
 
 **Implementation:**
 - Clone and verify the Git bundle.
-- Verify the source ZIP tree against commit e2b379d775a79e619753aaf39eb9ea5f8a763f15.
+- Verify the final source ZIP tree against the exact clean candidate HEAD; the reviewed implementation checkpoint is 4e6904951729ea14b48ca39a9564a950cc83e98e.
 - Record compiler, Rust, Bun, QuickJS-NG, rquickjs, OS, CPU, and benchmark-tool versions.
 - Remove or quarantine stale release metadata from the working tree.
 

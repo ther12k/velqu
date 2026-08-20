@@ -229,6 +229,7 @@ function stats(nums: number[]) {
 async function main() {
   const args = process.argv.slice(2);
   const samplesPer = parseInt(args.find((a) => a.startsWith("--samples="))?.slice(10) ?? "60", 10);
+  const runId = process.env.COLD_RUN_ID ?? `cold-${Date.now()}`;
   const only = args.find((a) => a.startsWith("--only="))?.slice(7);
   const outDir = `${ROOT}/benchmarks/raw/cold-start`;
   mkdirSync(outDir, { recursive: true });
@@ -258,13 +259,16 @@ async function main() {
   }
 
   // raw JSONL
-  const rawPath = `${outDir}/cold-${Date.now()}.jsonl`;
-  writeFileSync(rawPath, all.map((s) => JSON.stringify(s)).join("\n") + "\n");
+  const rawPath = `${outDir}/${runId}.jsonl`;
+  const rawRelative = `benchmarks/raw/cold-start/${runId}.jsonl`;
+  writeFileSync(rawPath, all.map((s) => JSON.stringify({ runId, ...s })).join("\n") + "\n");
 
   // summary
   const summary: Record<string, unknown> = {
-    format: "velqu-cold-start-v1",
+    format: "velqu-cold-start-v2",
+    runId,
     samplesPer,
+    expectedRowsPerCell: samplesPer,
     generatedAt: new Date().toISOString(),
     environment: {
       bun: Bun.version,
@@ -287,7 +291,7 @@ async function main() {
         readyToFirst: stats(good.map((x) => x.readyMs)),
         rssKbAfterReady: stats(good.map((x) => x.rssKbAfter ?? 0).filter((x) => x > 0)),
         failures: bad.length,
-        raw: rawPath,
+        raw: rawRelative,
       });
     }
   }
