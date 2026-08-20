@@ -63,6 +63,22 @@ pub struct FieldNeeds {
 /// Bridge access with this slot fails closed and settlement is a no-op.
 pub const NO_REQUEST_SLOT: usize = usize::MAX;
 
+/// Owned request data transferred from native admission to the QuickJS worker.
+/// The worker moves this value into its local request slab; it never crosses
+/// another worker boundary and is never borrowed across an await.
+#[derive(Debug, Clone, Default)]
+pub struct RequestMeta {
+    pub method: String,
+    pub path: String,
+    /// Raw path parameters as extracted by the router.
+    pub params: Vec<(String, String)>,
+    pub query: Vec<(String, String)>,
+    pub headers: Vec<(String, String)>,
+    pub content_type: Option<String>,
+    /// Present only when the verified route admitted a bounded body.
+    pub body: Option<Vec<u8>>,
+}
+
 #[derive(Debug, Clone)]
 pub struct InvocationSpec {
     pub id: u64,
@@ -73,7 +89,7 @@ pub struct InvocationSpec {
     /// handler-table key (the cached function reference for legacy mode)
     pub handler_key: String,
     pub policy_key: Option<String>,
-    /// M2.3: direct vector index into function table ($O(1)$ lookup, zero map/string lookups)
+    /// M2.3: direct vector index into function table ($O(1) lookup, zero map/string lookups)
     pub handler_id: Option<HandlerId>,
     pub policy_id_num: Option<PolicyId>,
     pub policy_handler_id: Option<HandlerId>,
@@ -81,9 +97,12 @@ pub struct InvocationSpec {
     pub query_schema_id: Option<SchemaId>,
     pub headers_schema_id: Option<SchemaId>,
     pub body_schema_id: Option<SchemaId>,
-    /// M24-002-D: policy-free routes whose FieldNeeds are all false run with
-    /// no request-store entry. The sentinel slot never exists in any store,
-    /// so every settle/access path fails closed as a no-op (constraint 8).
+    /// M24-003-A: request data is moved into the worker and inserted into its
+    /// local slab immediately before invocation. The host never allocates a
+    /// worker slot or publishes a generation.
+    pub request: Option<RequestMeta>,
+    /// M24-003-B will replace these raw capability fields with a typed handle.
+    /// They remain as the JS ABI pair during the A packet.
     pub slot: usize,
     pub generation: u64,
     /// Pre-validated inputs (native strategy). `None` = the handler pulls them
@@ -146,6 +165,8 @@ pub enum Outcome {
     Problem(ProblemOut),
     /// handler deadline exceeded → runtime maps to the `timeout` problem (504)
     Timeout,
+    /// worker-local request slab is full → runtime maps to bounded overload (503)
+    RequestCapacity,
     /// undeclared status or shape violation → 500 + contract-failure log
     ContractViolation(String),
     /// JS exception / engine failure → redacted 500, detail logged internally

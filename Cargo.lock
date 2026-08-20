@@ -850,6 +850,7 @@ dependencies = [
 name = "q-bridge"
 version = "0.1.0"
 dependencies = [
+ "q-engine",
  "serde",
  "serde_json",
  "thiserror",

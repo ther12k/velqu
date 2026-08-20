@@ -126,10 +126,8 @@ fn main() {
         .unwrap();
     // NO rt.enter(): an entered context makes Handle::block_on skip driving
     // spawned tasks (timer ops would never fire)
-    let store = Arc::new(q_bridge::RequestStore::new());
     let mut engine = QuickJsEngine::spawn(
         QuickJsConfig::default(),
-        Arc::clone(&store),
         rt.handle().clone(),
         Arc::new(IdentityMapper),
     );
@@ -358,16 +356,16 @@ fn main() {
 
     for case in &cases {
         // correctness once (both counted)
-        let ok = run_case(rt.handle(), &mut engine, &store, case, 1_000_000).1;
+        let ok = run_case(rt.handle(), &mut engine, case, 1_000_000).1;
         if !ok {
             summary.push(json!({"case": case.name, "status": "INVALID", "correct": false}));
             continue;
         }
         // warmup
-        let _ = run_case(rt.handle(), &mut engine, &store, case, 1_000_000);
+        let _ = run_case(rt.handle(), &mut engine, case, 1_000_000);
         let mut durations: Vec<f64> = Vec::with_capacity(iters);
         for i in 0..iters {
-            let (d, ok) = run_case(rt.handle(), &mut engine, &store, case, 1_000_000 + i as u64);
+            let (d, ok) = run_case(rt.handle(), &mut engine, case, 1_000_000 + i as u64);
             debug_assert!(ok);
             durations.push(d);
         }
@@ -412,12 +410,11 @@ fn q_pack_engine() -> &'static str {
 fn run_case(
     rt_handle: &tokio::runtime::Handle,
     engine: &mut QuickJsEngine,
-    store: &Arc<q_bridge::RequestStore>,
     case: &Case,
     id: u64,
 ) -> (f64, bool) {
     let body_bytes = case.body.as_ref().map(|b| serde_json::to_vec(b).unwrap());
-    let (slot, gen) = store.insert(q_bridge::RequestMeta {
+    let request = Some(q_engine::RequestMeta {
         body: body_bytes,
         ..Default::default()
     });
@@ -435,8 +432,9 @@ fn run_case(
         query_schema_id: None,
         headers_schema_id: None,
         body_schema_id: None,
-        slot,
-        generation: gen,
+        request,
+        slot: 0,
+        generation: 0,
         params: case.params.clone(),
         query: case.query.clone(),
         headers: None,
@@ -457,7 +455,7 @@ fn run_case(
         .block_on(async { tokio::time::timeout(std::time::Duration::from_millis(1500), rx).await });
     let d = t0.elapsed().as_secs_f64() * 1e6;
     // correctness via a second invocation whose outcome we keep
-    let (slot, gen) = store.insert(q_bridge::RequestMeta {
+    let request = Some(q_engine::RequestMeta {
         body: case.body.as_ref().map(|b| serde_json::to_vec(b).unwrap()),
         ..Default::default()
     });
@@ -475,8 +473,9 @@ fn run_case(
         query_schema_id: None,
         headers_schema_id: None,
         body_schema_id: None,
-        slot,
-        generation: gen,
+        request,
+        slot: 0,
+        generation: 0,
         params: case.params.clone(),
         query: case.query.clone(),
         headers: None,

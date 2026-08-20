@@ -123,11 +123,13 @@ fn run(args: Args) -> i32 {
     rt.block_on(async move {
         // ---- stage: engine.spawn + bundle.load (one QuickJS worker)
         let t = Instant::now();
-        let store = Arc::new(q_bridge::RequestStore::new());
         let mapper = source_map::mapper_for(&pack);
+        let config = QuickJsConfig {
+            request_slot_capacity: limits.max_queue.max(1),
+            ..Default::default()
+        };
         let mut engine = QuickJsEngine::spawn(
-            QuickJsConfig::default(),
-            Arc::clone(&store),
+            config,
             tokio::runtime::Handle::current(),
             mapper,
         );
@@ -227,7 +229,6 @@ fn run(args: Args) -> i32 {
             schema_vector,
             engine: std::sync::Mutex::new(engine),
             health,
-            store,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
             log_mode: serve::LogMode::from_str(&args.log),
         });

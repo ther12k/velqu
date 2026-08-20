@@ -27,6 +27,7 @@ pub fn registry(problem_id: &str) -> (&'static str, &'static str, u16) {
             "Handler deadline exceeded",
             504,
         ),
+        "overload" => ("https://velqu.dev/problems/overload", "Overloaded", 503),
         _ => (
             "https://velqu.dev/problems/internal",
             "Internal Server Error",
