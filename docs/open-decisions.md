@@ -15,7 +15,7 @@ status: active
 | OD-003 | Public repository/organization | **DECIDED (2026-08-20)** | `ther12k/velqu` — OD-BETA-001 record in `docs/beta/governance/OPEN_DECISIONS.md` |
 | OD-004 | License | **DECIDED (2026-08-20)** | MIT License in `LICENSE`; contribution terms in `CONTRIBUTING.md`; OD-BETA-002 record in `docs/beta/governance/OPEN_DECISIONS.md` |
 | OD-005 | First platform support promise | OPEN | only Linux x86_64 tested here |
-| OD-006 | Public release date/governance | OPEN | M2 is a handoff stop, not an alpha |
+| OD-006 | Public release date/governance | **DECIDED (2026-08-20)** | Owner controls public beta release; `0.1.0-beta.1`; details in `docs/beta/governance/RELEASE_AUTHORITY.md` and OD-BETA-003 |
 
 ## Implementation decisions (narrow safe defaults, ADR where material)
 

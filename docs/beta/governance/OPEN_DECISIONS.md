@@ -17,7 +17,7 @@ The agent may prepare options but may not invent authority.
 |---|---|---|---|
 | OD-BETA-001 | Public repository and organization | Publishing | Accepted (2026-08-20) |
 | OD-BETA-002 | License and contribution model | Public beta | Accepted (2026-08-20) |
-| OD-BETA-003 | Beta release authority and version | Public beta | Open |
+| OD-BETA-003 | Beta release authority and version | Public beta | Accepted (2026-08-20) |
 | OD-BETA-004 | Security contact/disclosure channel | Public beta | Open |
 | OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Open |
 | OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Open |
@@ -120,3 +120,50 @@ Required by gate: Public beta
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-004 marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-B-license-contribution-model.md` (completion record)
+
+## OD-BETA-003 Decision Record
+
+```text
+Decision ID: OD-BETA-003
+Title: Beta release authority and version
+Status: accepted
+Date: 2026-08-20
+Decider: Owner (ther12k)
+Required by gate: Public beta
+```
+
+### Context
+
+- Public beta publication requires one accountable release authority and an explicit version label.
+- The project must distinguish beta authorization from GA, production, and later release lines.
+
+### Options considered
+
+- Owner as sole authority for `0.1.0-beta.1`: accepted; preserves explicit owner control and beta labeling.
+- Maintainers or automation as independent release authority: rejected; implementation agents and automation may prepare artifacts but cannot invent owner authority.
+- Authorize `0.1.0`: rejected; stable-looking version would overstate beta readiness.
+
+### Decision
+
+- Owner is the sole authority to approve, publish, withdraw, or yank Velqu public beta artifacts.
+- First public beta version authorized by this decision is `0.1.0-beta.1`.
+- Release requirements, evidence, rollback authority, and beta limits are documented in `docs/beta/governance/RELEASE_AUTHORITY.md`.
+
+### Consequences
+
+- Maintainers can produce self-verifying release packets but cannot publish or label releases without Owner approval.
+- `0.1.0-beta.1` remains explicitly beta, non-SLA, trusted-code-only, and not production-ready GA.
+- Later versions, GA, production commitments, and changed authority require new owner decisions.
+
+### Security/operations implications
+
+- Owner may withdraw or yank a release when evidence is incomplete, checksums fail, or security issues require withdrawal.
+- Release packets retain source-commit and checksum evidence; withdrawal does not rewrite historical records.
+- Beta authority does not imply hostile-code isolation, support commitments, or platform promises.
+
+### Documentation and task updates
+
+- `docs/beta/governance/RELEASE_AUTHORITY.md`
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (OD-006 marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-C-release-authority.md` (completion record)
