@@ -371,7 +371,31 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     );
                     return (Ok(json_response(415, &body)), route_id, "admission.body");
                 }
-                let raw = match collect_body_bounded(body, binding.limit_bytes as usize).await {
+                let max_body = binding.limit_bytes as usize;
+                if let Some(content_length) = headers.get("content-length") {
+                    match content_length
+                        .to_str()
+                        .ok()
+                        .and_then(|v| v.parse::<usize>().ok())
+                    {
+                        Some(length) if length > max_body => {
+                            let body = problems::body("limit", None, None, &[], &request_id);
+                            return (Ok(json_response(413, &body)), route_id, "admission.body");
+                        }
+                        None => {
+                            let body = problems::body(
+                                "body",
+                                None,
+                                Some("invalid content-length"),
+                                &[],
+                                &request_id,
+                            );
+                            return (Ok(json_response(400, &body)), route_id, "admission.body");
+                        }
+                        _ => {}
+                    }
+                }
+                let raw = match collect_body_bounded(body, max_body).await {
                     Ok(bytes) => bytes,
                     Err(HttpError::Limited { .. }) => {
                         let body = problems::body("limit", None, None, &[], &request_id);

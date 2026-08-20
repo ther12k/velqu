@@ -1560,6 +1560,18 @@ fn routeplan_body_flag_controls_body_collection_independent_of_method() {
 }
 
 #[test]
+fn content_length_over_limit_rejects_before_body_poll() {
+    let dir = temp_dir("content-length-limit");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    let request = "POST /users HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 70000\r\nConnection: close\r\n\r\n".to_string();
+    let response = http(port, &request, None);
+    assert_eq!(response.status, 413);
+    server.stop();
+}
+
+#[test]
 fn body_and_header_limits_reject_oversize() {
     let dir = temp_dir("limits");
     let pack_path = write_pack(&dir);
