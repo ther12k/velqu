@@ -79,6 +79,10 @@ function capability_identity(ctx) {
   const first = globalThis.__velquNativeCapabilities;
   return { shared: ctx.native === first, frozen: Object.isFrozen(ctx.native) && Object.isFrozen(ctx.native.timer) };
 }
+function web_fallback(ctx) {
+  const request = ctx.webRequest();
+  return { url: request.url, header: request.headers.authorization, query: request.query.ms };
+}
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
   return { untouched: true, routePlan: ctx.routePlan };
@@ -266,6 +270,7 @@ __velquRegister("hello.get", hello);
 __velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("headers.lazy", headers_lazy);
 __velquRegister("lazy.ctx", lazy_ctx);
+__velquRegister("web.fallback", web_fallback);
 __velquRegister("capability.identity", capability_identity);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
@@ -375,6 +380,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "params.lazyb",
         "headers.lazy",
         "lazy.ctx",
+        "web.fallback",
         "capability.identity",
         "query.read",
         "body.read",
@@ -443,7 +449,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 55);
+    assert_eq!(stats.handlers_registered, 56);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1282,6 +1288,30 @@ async fn native_capability_graph_is_cached_and_immutable() {
         }
     }
     assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn explicit_web_request_fallback_materializes_on_demand() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            path: "/fallback".into(),
+            query: vec![("ms".into(), "9".into())],
+            headers: vec![("authorization".into(), "Bearer x".into())],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(77, "web.fallback", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    assert!(matches!(out, Outcome::Response { .. }));
+    let snap = eng.bridge_snapshot();
+    assert!(snap.materialized_fields > 0);
+    assert_eq!(snap.live_slots, 0);
     eng.shutdown();
 }
 

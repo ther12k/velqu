@@ -22,6 +22,18 @@ const __velquContextPrototype = Object.create(null);
 globalThis.__velquRequestPrototype = __velquRequestPrototype;
 globalThis.__velquContextPrototype = __velquContextPrototype;
 
+// Explicit compatibility fallback; native lazy fields remain default path.
+__velquContextPrototype.webRequest = function () {
+  const slot = this.__velquSlot, gen = this.__velquGeneration;
+  return {
+    method: "GET",
+    url: "" + slot,
+    headers: JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers")),
+    query: JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")),
+    text: () => globalThis.__velquReqBodyText(slot, gen)
+  };
+};
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) })
@@ -80,6 +92,8 @@ globalThis.__velquMakeLazyHeaders = function (slot, gen) {
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
 globalThis.__velquMakeCtx = function (slot, gen, pre) {
   const c = Object.create(__velquContextPrototype);
+  Object.defineProperty(c, "__velquSlot", { value: slot });
+  Object.defineProperty(c, "__velquGeneration", { value: gen });
   const requestless = slot === -1;
   const lazy = (key, fn) => {
     let v, used = false;

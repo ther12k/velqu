@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,19 @@ cargo test -p velqu-runtime
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `Context.prototype.webRequest` is explicit compatibility fallback; normal contexts continue using native lazy fields and shared capability graph.
+- `explicit_web_request_fallback_materializes_on_demand` exercises fallback construction and confirms native materialization plus slot settlement.
+- Stale handle checks remain native and fail closed through existing bridge conformance tests.
+- `cargo test -p q-engine-quickjs`: PASS (96 tests).
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
+- No heap/allocation or benchmark claim added.
 
 ## Out of scope
 
