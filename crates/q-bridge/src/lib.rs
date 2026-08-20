@@ -23,6 +23,7 @@ struct Slot {
     state: SlotState,
     query_cache: RefCell<Option<String>>,
     cookie_cache: RefCell<Option<String>>,
+    body_mode: RefCell<Option<&'static str>>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -35,6 +36,8 @@ pub enum BridgeError {
     NoSuchSlot,
     #[error("request slab capacity reached")]
     Capacity,
+    #[error("incompatible second body representation read")]
+    IncompatibleBodyRead,
 }
 
 /// Monotonic worker-identity clock: every slab (one per QuickJS worker) gets a
@@ -187,6 +190,7 @@ impl RequestStore {
                 state: SlotState::Active,
                 query_cache: RefCell::new(None),
                 cookie_cache: RefCell::new(None),
+                body_mode: RefCell::new(None),
             };
             idx
         } else {
@@ -199,6 +203,7 @@ impl RequestStore {
                 state: SlotState::Active,
                 query_cache: RefCell::new(None),
                 cookie_cache: RefCell::new(None),
+                body_mode: RefCell::new(None),
             });
             slots.len() - 1
         };
@@ -239,6 +244,7 @@ impl RequestStore {
         s.meta = None;
         *s.query_cache.get_mut() = None;
         *s.cookie_cache.get_mut() = None;
+        *s.body_mode.get_mut() = None;
         s.generation = s.generation.wrapping_add(1).max(1);
         self.counters.live_slots.fetch_sub(1, Ordering::Relaxed);
         self.free.borrow_mut().push(handle.slot);
@@ -351,6 +357,28 @@ impl RequestStore {
         slots
             .get(handle.slot)
             .and_then(|slot| slot.query_cache.borrow().clone())
+    }
+
+    /// Permit one decoded body representation per request slot. Reusing same
+    /// representation is allowed; switching representation fails closed.
+    pub fn body_mode(&self, handle: RequestHandle, mode: &'static str) -> Result<(), BridgeError> {
+        if handle.worker_id != self.worker_id {
+            return Err(BridgeError::ForeignWorker);
+        }
+        let slots = self.slots.borrow();
+        let slot = slots.get(handle.slot).ok_or(BridgeError::NoSuchSlot)?;
+        if slot.generation != handle.generation || slot.state != SlotState::Active {
+            return Err(BridgeError::Expired);
+        }
+        let mut current = slot.body_mode.borrow_mut();
+        if let Some(existing) = *current {
+            if existing != mode {
+                return Err(BridgeError::IncompatibleBodyRead);
+            }
+        } else {
+            *current = Some(mode);
+        }
+        Ok(())
     }
 
     pub fn live_slots(&self) -> usize {

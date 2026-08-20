@@ -4,7 +4,7 @@ parent_task: M24-007
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -90,6 +90,21 @@ cargo test -p velqu-runtime
 - Cancellation metrics.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Worker-local `Slot.body_mode` records one body representation per request generation.
+- `text` and `bytes` native accessors claim representation before access; same-mode reuse succeeds, incompatible second mode throws deterministic failure.
+- Settlement clears body mode before slot generation reuse.
+- Body remains bounded `Bytes`; no second stream read or body re-collection occurs.
+- Existing QuickJS body, limit, partial-body, and disconnect tests remain green.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-capabilities`: PASS.
+- `cargo test -p velqu-runtime --test runtime_conformance`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 
