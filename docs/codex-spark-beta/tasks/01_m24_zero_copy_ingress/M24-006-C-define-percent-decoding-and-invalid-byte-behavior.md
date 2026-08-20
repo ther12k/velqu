@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,20 @@ cargo test -p velqu-runtime
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `InvalidBytePolicy::ReplaceWithUfffd` and `QUERY_INVALID_BYTE_POLICY` freeze decoding behavior for query values and future cookie values.
+- Valid `%HH` escapes decode bytes; `+` decodes to space; malformed escapes remain literal; invalid UTF-8 becomes U+FFFD.
+- `invalid_percent_and_utf8_corpus_is_deterministic` covers truncated, malformed, invalid UTF-8, and plus cases.
+- `query_parser_never_panics_on_arbitrary_input` and `percent_decode_never_panics_and_always_returns_utf8` cover deterministic fuzz corpus.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-http --test fuzz_parsers`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 

@@ -130,6 +130,12 @@ pub struct FieldNeeds {
     pub body: bool,
 }
 
+/// M24-005-D: sentinel header-name id marking the EXPLICIT full-Headers
+/// escape hatch — allowed only for a route whose headers binding declares
+/// no schema (opt-in to copying every header, bounded by the transport
+/// header admission limits; that bounded copy is the documented cost).
+pub const FULL_HEADERS_ID: u32 = u32::MAX;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RoutePlanDecl {
@@ -152,6 +158,12 @@ pub struct RoutePlanDecl {
     /// headers plus headers-binding schema properties.
     #[serde(default)]
     pub header_name_ids: Vec<u32>,
+    /// M24-006-A: dense ids into queryNameTable for declared query fields.
+    #[serde(default)]
+    pub query_name_ids: Vec<u32>,
+    /// M24-006-A: dense ids into cookieNameTable for declared cookie fields.
+    #[serde(default)]
+    pub cookie_name_ids: Vec<u32>,
     #[serde(default)]
     pub default_status: u16,
     #[serde(default)]
@@ -542,6 +554,12 @@ pub struct QPack {
     /// derivable from the (hashed) routes.
     #[serde(default)]
     pub header_name_table: Vec<String>,
+    /// M24-006-A: canonical query field-name table.
+    #[serde(default)]
+    pub query_name_table: Vec<String>,
+    /// M24-006-A: canonical cookie field-name table.
+    #[serde(default)]
+    pub cookie_name_table: Vec<String>,
     /// Dense numeric policy manifest (G0-r1): PolicyId → policy key + HandlerId.
     #[serde(default)]
     pub policy_manifest: Vec<PolicyDecl>,
@@ -672,27 +690,40 @@ impl QPack {
                     .iter()
                     .map(|sec| sec.header.clone())
                     .collect();
+                let mut escape_hatch = false;
                 if let Some(binding) = &route.headers {
-                    if let Some(key) = &binding.schema {
-                        if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
-                            self.schemas.get(key)
-                        {
-                            names.extend(properties.keys().cloned());
+                    match &binding.schema {
+                        // M24-005-D: a schema-less headers binding is the
+                        // EXPLICIT full-Headers escape hatch
+                        None => escape_hatch = true,
+                        Some(key) => {
+                            if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
+                                self.schemas.get(key)
+                            {
+                                names.extend(properties.keys().cloned());
+                            }
                         }
                     }
                 }
+                if escape_hatch {
+                    names.clear();
+                }
                 names.sort();
                 names.dedup();
-                let ids: Vec<u32> = names
-                    .iter()
-                    .map(|n| match expected_table.binary_search(n) {
-                        Ok(pos) => pos as u32,
-                        Err(pos) => {
-                            expected_table.insert(pos, n.clone());
-                            pos as u32
-                        }
-                    })
-                    .collect();
+                let ids: Vec<u32> = if escape_hatch {
+                    vec![FULL_HEADERS_ID]
+                } else {
+                    names
+                        .iter()
+                        .map(|n| match expected_table.binary_search(n) {
+                            Ok(pos) => pos as u32,
+                            Err(pos) => {
+                                expected_table.insert(pos, n.clone());
+                                pos as u32
+                            }
+                        })
+                        .collect()
+                };
                 if let Some(plan) = &route.plan {
                     if plan.header_name_ids != ids {
                         return reject(format!(
@@ -713,6 +744,62 @@ impl QPack {
                     "headerNameTable mismatch: pack declares {:?}, routes derive {:?}",
                     self.header_name_table, expected_table
                 ));
+            }
+        }
+        // M24-006-A: query/cookie field IDs are canonical dense tables. Query
+        // names derive from object-schema properties; cookie bindings are not
+        // yet authorable, so any cookie IDs/table entries fail closed.
+        {
+            let mut expected_query_table = Vec::<String>::new();
+            for route in &self.routes {
+                let names = route
+                    .query
+                    .as_ref()
+                    .and_then(|binding| binding.schema.as_ref())
+                    .and_then(|key| self.schemas.get(key))
+                    .and_then(|ir| match ir {
+                        q_schema_runtime::SchemaIr::Object { properties, .. } => {
+                            Some(properties.keys().cloned().collect::<Vec<_>>())
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or_default();
+                let mut names = names;
+                names.sort();
+                names.dedup();
+                let ids: Vec<u32> = names
+                    .iter()
+                    .map(|name| match expected_query_table.binary_search(name) {
+                        Ok(pos) => pos as u32,
+                        Err(pos) => {
+                            expected_query_table.insert(pos, name.clone());
+                            pos as u32
+                        }
+                    })
+                    .collect();
+                if let Some(plan) = &route.plan {
+                    if plan.query_name_ids != ids {
+                        return reject(format!(
+                            "route {}: queryNameIds {:?} do not match declared query names {:?}",
+                            route.id, plan.query_name_ids, ids
+                        ));
+                    }
+                    if !plan.cookie_name_ids.is_empty() {
+                        return reject(format!(
+                            "route {}: cookieNameIds are unsupported before cookie bindings",
+                            route.id
+                        ));
+                    }
+                }
+            }
+            if self.query_name_table != expected_query_table {
+                return reject(format!(
+                    "queryNameTable mismatch: pack declares {:?}, routes derive {:?}",
+                    self.query_name_table, expected_query_table
+                ));
+            }
+            if !self.cookie_name_table.is_empty() {
+                return reject("cookieNameTable is unsupported before cookie bindings".into());
             }
         }
         if !self.contract_hash.is_empty() {
@@ -1466,6 +1553,8 @@ pub fn minimal_pack_public() -> QPack {
     };
     let mut pack = QPack {
         header_name_table: Vec::new(),
+        query_name_table: Vec::new(),
+        cookie_name_table: Vec::new(),
         format_version: PACK_FORMAT_VERSION,
         kind: "velqu.qpack".into(),
         runtime_abi: RUNTIME_ABI,
@@ -1558,6 +1647,8 @@ mod tests {
         };
         let mut pack = QPack {
         header_name_table: Vec::new(),
+            query_name_table: Vec::new(),
+            cookie_name_table: Vec::new(),
             format_version: PACK_FORMAT_VERSION,
             kind: "velqu.qpack".into(),
             runtime_abi: RUNTIME_ABI,
@@ -1759,6 +1850,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1770,6 +1863,66 @@ mod tests {
         p.contract_hash = p.public_contract_sha256()[..32].to_string();
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         p
+    }
+
+    #[test]
+    fn query_name_ids_are_canonical_and_cookie_table_is_bounded() {
+        let mut pack = numeric_pack();
+        pack.schemas.insert(
+            "sch:health.query".into(),
+            q_schema_runtime::SchemaIr::Object {
+                properties: [
+                    (
+                        "z".into(),
+                        Box::new(q_schema_runtime::SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                    ),
+                    (
+                        "a".into(),
+                        Box::new(q_schema_runtime::SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+                required: vec![],
+            },
+        );
+        pack.schema_manifest.push(SchemaDecl {
+            id: 0,
+            key: "sch:health.query".into(),
+            ir: pack.schemas["sch:health.query"].clone(),
+        });
+        pack.routes[0].query = Some(SourceBinding {
+            schema: Some("sch:health.query".into()),
+            coerce: Some("query".into()),
+            content_type: None,
+            limit_bytes: 0,
+        });
+        let plan = pack.routes[0].plan.as_mut().unwrap();
+        plan.query_name_ids = vec![0, 1];
+        plan.query_schema_id = Some(0);
+        plan.field_needs.query = true;
+        pack.query_name_table = vec!["a".into(), "z".into()];
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.routes_sha256 =
+            hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+        pack.verify()
+            .expect("query names derive to sorted dense ids");
+
+        let mut bad = pack.clone();
+        bad.routes[0].plan.as_mut().unwrap().query_name_ids = vec![1, 0];
+        bad.integrity.routes_sha256 = hex(&Sha256::digest(bad.routes_canonical_json().as_bytes()));
+        let err = bad.verify().unwrap_err();
+        assert!(err.to_string().contains("queryNameIds"), "{err}");
     }
 
     #[test]
@@ -1841,6 +1994,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1901,6 +2056,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 201, // 201 not in allowed_statuses [200]
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1928,6 +2085,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200, 418],
             field_needs: FieldNeeds::default(),
@@ -1955,6 +2114,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds {
@@ -1985,6 +2146,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -2041,6 +2204,8 @@ mod tests {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds {
@@ -2266,6 +2431,38 @@ mod tests {
             let err = bad.verify().unwrap_err();
             assert!(err.to_string().contains("fieldNeeds.headers"), "{err}");
         }
+    }
+
+    /// M24-005-D: the full-Headers escape hatch is explicit and verified —
+    /// only a schema-less headers binding yields the sentinel id, and any
+    /// other route carrying it is rejected.
+    #[test]
+    fn full_headers_escape_hatch_is_explicit_and_verified() {
+        let mut pack = numeric_pack();
+        // convert the planned route into an escape-hatch route: schema-less
+        // headers binding authorizes the sentinel id
+        pack.routes[0].headers = Some(SourceBinding {
+            schema: None,
+            coerce: None,
+            content_type: None,
+            limit_bytes: 0,
+        });
+        pack.header_name_table = Vec::new();
+        let plan = pack.routes[0].plan.as_mut().unwrap();
+        plan.header_name_ids = vec![FULL_HEADERS_ID];
+        let mut needs = plan.field_needs;
+        needs.headers = true;
+        plan.field_needs = needs;
+        refresh_integrity(&mut pack);
+        pack.verify()
+            .expect("schema-less headers binding authorizes the sentinel id");
+
+        // the same sentinel WITHOUT the escape-hatch binding is rejected
+        let mut bad = pack.clone();
+        bad.routes[0].headers = None;
+        refresh_integrity(&mut bad);
+        let err = bad.verify().unwrap_err();
+        assert!(err.to_string().contains("headerNameIds"), "{err}");
     }
 
     #[test]

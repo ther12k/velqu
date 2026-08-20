@@ -4,7 +4,7 @@ parent_task: M24-005
 milestone: M24
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -104,6 +104,15 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Security redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence package
+
+- Implementation commits: `m24-005-a`, `m24-005-b`, `m24-005-c`, `m24-005-d`.
+- Verification commit: M24-005-V PR #667, merged before this package.
+- Header access proof: `params_materialize_one_key_per_access`, `headers_are_declared_only_and_per_key_lazy`, `full_headers_escape_hatch_is_explicit_and_verified`, and `declared_header_value_joins_duplicates_and_is_lossy`.
+- Verification results: Rust targeted suites PASS; `bun test` PASS (35 pass, 0 fail); typecheck, format, clippy, and `./scripts/validate-okf` PASS.
+- Allocation claim remains bounded and source-backed: declared routes copy only accessed declared values; full-Headers copy requires explicit sentinel and remains bounded by transport limits.
+- Canonical benchmark manifests unchanged; temporary-worktree binary hash limitation remains reported rather than rewritten.
 
 ## Out of scope
 

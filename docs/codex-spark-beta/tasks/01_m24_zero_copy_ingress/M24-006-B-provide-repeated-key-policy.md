@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,20 @@ cargo test -p velqu-runtime
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `RepeatedKeyPolicy::LastValueWins` and `QUERY_REPEATED_KEY_POLICY` freeze query repeated-key semantics.
+- `parse_query_with_policy` preserves raw arrival-order pairs; schema projection in `validate_query` applies last-value-wins deterministically.
+- `repeated_query_policy_preserves_pairs_for_last_value_projection` proves duplicate retention and final projection.
+- Existing query parsing fuzz tests remain green and malformed percent sequences remain panic-free.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 
