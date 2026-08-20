@@ -3,15 +3,15 @@
   "generatedAt": "2026-08-20T09:10:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "status": "PASS",
-  "milestone": "M23R2-GATE-CLOSE",
-  "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
+  "status": "BLOCKED",
+  "milestone": "M24-ZERO-COPY-INGRESS",
+  "reviewedImplementationCommit": "d1aa375c27fae840f434f1500727750d85c769d3",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — benchmark, report, ledger, and release-packet validators pass at the current evidence checkpoint",
-    "rustTests": "workspace count reported by current test run",
-    "typescriptTests": 35,
-    "benchmarkReportCheck": "python3 scripts/generate-benchmark-reports.py --check"
+    "result": "BLOCKED \u2014 functional stages pass; validate-benchmark-evidence reports qRuntimeRelease/proofPack hash mismatch",
+    "rustTests": "targeted M24 package suites pass",
+    "typescriptTests": 36,
+    "benchmarkReportCheck": "benchmark reports current; canonical artifact parity blocked"
   },
   "benchmarks": {
     "coldStart": "benchmarks/raw/cold-start/summary.json",
@@ -33,27 +33,22 @@
     }
   },
   "reports": [
-    "docs/reports/cold-start-report.md",
-    "docs/reports/warm-performance-report.md",
-    "docs/reports/memory-report.md",
-    "docs/reports/scheduler-correctness-report.md"
+    "docs/reports/m24-gate-review.md"
   ],
   "reportGenerator": "scripts/generate-benchmark-reports.py",
   "taskLedger": {
     "file": "TASKS.production.json",
     "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "PASS — 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
+    "result": "PASS \u2014 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
   },
   "release": {
     "script": "scripts/release-packet",
-    "binding": "packet-local indexes are generated only after clean HEAD is fixed",
-    "checksums": "sha256sum -c SHA256SUMS.txt"
+    "binding": "release packet binds clean candidate HEAD",
+    "checksums": "sha256sum -c release/SHA256SUMS.txt"
   },
   "openItems": [
-    "perf hardware counters remain unavailable on this host; allocator interposer counts are captured",
-    "release packet is generated from the clean HEAD by scripts/release-packet and must be checksum-verified",
-    "fresh full competitor cold-start comparison remains historical context rather than current gate evidence",
-    "response-schema validation remains on the optional string-keyed slow path"
+    "Full verifier benchmark evidence is blocked by temporary-worktree qRuntimeRelease and proof-pack hash mismatch against canonical manifest.",
+    "M24 gate remains TODO until reproducible artifact parity and clean-tree verification pass."
   ]
 }
