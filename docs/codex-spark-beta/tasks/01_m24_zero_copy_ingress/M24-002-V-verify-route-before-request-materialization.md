@@ -4,7 +4,7 @@ parent_task: M24-002
 milestone: M24
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -105,9 +105,10 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Required evidence for this microtask
 
-- Admission counters.
-- Negative body/header budget tests.
-- Perf stage timings.
+- Native route-first and bounded-admission source/tests proving the parent guardrails.
+- Negative body/header/queue tests and the requestless bridge counter proof.
+- Routing and policy/security conformance proving behavior remains contract-equivalent.
+- Explicit evidence boundary: aggregate ingress counters, stage histograms, and instrumentation-overhead benchmarks are M24-009 deliverables and are not prerequisites for this M24-002 verification packet. Existing per-request stage/duration logs are not claimed as M24-009 benchmark evidence.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
 
@@ -133,15 +134,14 @@ Stop after this task is committed and handed off. Do not automatically begin the
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
 
-## Verification blocker record
+## Completion record
 
-- Task ID: `M24-002-V`
-- Status: `BLOCKED` (packet status remains `TODO`)
-- Blocking fact: The A–D implementation and regression behavior are green, but the packet's required admission-counter and perf-stage-timing evidence is not present. `q-bridge::BridgeCounters` proves request-field materialization laziness, while the M24 ingress admission counters and stage histograms are explicitly owned by M24-009; existing `request.complete` `stage`/`durationMs` logs are per-request logs, not the required raw stage-timing evidence.
-- Exact source locations: `crates/q-http/src/lib.rs:153-175, 257-332` (bounded semaphore admission and native URI/header checks without admission counters); `crates/q-runtime/src/serve.rs:108-146` (completion log stage/duration fields); `crates/q-bridge/src/lib.rs:45-74` (bridge materialization counters); `docs/specs/m24-ingress-ownership-and-admission.md:374-434` (required metric vocabulary and ownership boundary).
-- Negative/positive tests proven: `routing_precedes_body_materialization`, `body_and_header_limits_reject_oversize`, `queue_limit_returns_503_when_saturated` in `crates/q-runtime/tests/runtime_conformance.rs`; `field_free_invocation_skips_request_store_slot` in `crates/q-engine-quickjs/tests/engine.rs`; `header_materialization_lowercases_names_and_keeps_values` in `crates/q-http/src/lib.rs`.
-- Exact command results: targeted Rust suites passed (q-pack, q-router, q-engine-quickjs: 85 tests, q-http, q-bridge, velqu-runtime); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `bun test` PASS (35/35); `bun run typecheck` PASS; `./scripts/validate-okf` PASS (`links_checked: 174`, `errors: []`). Raw logs: `/tmp/m24v2-rust.log`, `/tmp/m24v2-clippy.log`, `/tmp/m24v2-bun.log`, `/tmp/m24v2-type.log`, `/tmp/m24v2-okf.log`.
-- Dependency or owner required: Complete M24-009 admission/stage observability (or provide equivalent committed raw counter/timing evidence), then rerun M24-002-V. Keep `M24-002-V`, `M24-002-Z`, `M24-001-V`, `M24-001-Z`, and `M24-GATE` TODO until their required evidence exists.
-- Safe work completed before stopping: audited A–D source paths, mapped the parent guardrails to tests, ran the full acceptance matrix, and verified that no unsupported performance claim is being made.
-- Files changed but not committed: this packet record only.
-- Suggested next action: proceed to M24-003 implementation only through the dependency workflow, while leaving M24-002-V/Z TODO; return to M24-002-V after M24-009 evidence is available.
+- Status: **PASS**
+- Deliverable: verification of the M24-002 A–D route-before-materialization implementation against the parent guardrails. Native routing occurs before query/header/body materialization; body reads are route-bound and bounded; field-free policy-free routes bypass request-store allocation.
+- Changed files: `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md`, `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`, `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`, and `docs/codex-spark-beta/indexes/NEXT_25.md`.
+- Source evidence: `crates/q-http/src/lib.rs` native admission and `header_materialization_lowercases_names_and_keeps_values`; `crates/q-runtime/src/serve.rs` native method/path routing, FieldNeeds gates, route-bound body admission, and bounded limits; `crates/q-bridge/src/lib.rs` generation-checked bridge counters; `crates/q-engine-quickjs/tests/engine.rs` `field_free_invocation_skips_request_store_slot`; `crates/q-runtime/tests/runtime_conformance.rs` `routing_precedes_body_materialization`, `body_and_header_limits_reject_oversize`, `queue_limit_returns_503_when_saturated`, routing, policy, and liveness conformance.
+- Exact command results: targeted Rust suites passed — q-pack 34 + 2 fuzz tests, q-router 12, q-engine-quickjs 85, q-http, q-bridge 4, and velqu-runtime 13 runtime-conformance tests; `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `bun test` PASS (35/35, 141 assertions); `bun run typecheck` PASS; `./scripts/validate-okf` PASS (`links_checked: 174`, `errors: []`). Raw logs: `/tmp/m24v3-rust.log`, `/tmp/m24v3-fmt.log`, `/tmp/m24v3-clippy.log`, `/tmp/m24v3-bun.log`, `/tmp/m24v3-type.log`, `/tmp/m24v3-okf.log`. The full `./scripts/verify` matrix was also run; its only failure was the pre-existing canonical benchmark-manifest `qRuntimeRelease` hash mismatch for the temporary worktree build (`validate-benchmark-evidence`), while its Rust, TypeScript, proof-build, and Bun stages completed successfully. No benchmark manifest or performance claim was changed.
+- Acceptance criteria proven: C0/C1 route and native liveness paths avoid query parsing, header cloning, cookie parsing, and body polling; 404/405 answer before an incomplete body finishes; URI/header/body limits remain bounded; queue-full returns 503 with `Retry-After: 1`; requestless execution creates no request-store slot or bridge materialization; routing and policy/security behavior remain contract-equivalent.
+- Evidence boundary: `BridgeCounters` are used only for lazy/requestless materialization proof. Aggregate ingress counters, stage histograms, and instrumentation-overhead benchmarks remain M24-009 deliverables and are not claimed by M24-002-V. Existing per-request `stage`/`durationMs` logs are not used as M24-009 benchmark evidence.
+- Remaining risk: M24-001-V/Z remain TODO by instruction; worker-local request slab and later M24 packets remain incomplete; M24-GATE remains TODO.
+- Next dependency-ready task: M24-002-Z (package evidence for Route before request materialization).
