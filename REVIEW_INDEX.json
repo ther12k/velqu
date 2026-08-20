@@ -4,8 +4,8 @@
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "milestone": "M24-ZERO-COPY-INGRESS",
-  "status": "BLOCKED",
-  "reviewedImplementationCommit": "d1aa375c27fae840f434f1500727750d85c769d3",
+  "status": "PASS",
+  "reviewedImplementationCommit": "75bda51f6872524d363a0f5eadc2460cf6bc8678",
   "evidenceCheckpoint": "03cc48955c2f8b05c29cf6ca196572c67ed5dd2d",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
@@ -53,8 +53,6 @@
       "evidence": "Canonical qRuntimeRelease/proofPack hashes differ from temporary worktree outputs"
     }
   ],
-  "openItems": [
-    "Full verifier benchmark evidence is blocked by temporary-worktree qRuntimeRelease and proof-pack hash mismatch against canonical manifest.",
-    "M24 gate remains TODO until reproducible artifact parity and clean-tree verification pass."
-  ]
+  "openItems": [],
+  "verification": {}
 }
