@@ -4,7 +4,7 @@ parent_task: M24-009
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -89,6 +89,15 @@ cargo test -p velqu-runtime
 - Redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added bounded atomic `StageMetrics` counters for route, queue, decode, bridge, JS, encode, and write stages.
+- Counters are exposed only as scalar shutdown snapshot `stageMetrics`; request IDs, paths, headers, and bodies never enter metrics.
+- `LogMode::Off` remains free of per-request formatting/log serialization; counters use relaxed atomic increments only.
+- Runtime conformance and all required package suites pass; clippy passes with warnings denied.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
+- No instrumentation-overhead benchmark claim added; raw benchmark evidence belongs to M24-009-D.
 
 ## Out of scope
 

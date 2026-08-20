@@ -231,6 +231,7 @@ fn run(args: Args) -> i32 {
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
             log_mode: serve::LogMode::from_str(&args.log),
+            metrics: std::sync::Arc::new(serve::StageMetrics::default()),
         });
         let handler = serve::make_handler(Arc::clone(&state));
         let _ = host.serve(listener, handler, shutdown_rx).await;
@@ -243,6 +244,7 @@ fn run(args: Args) -> i32 {
                 "level": "info",
                 "event": "shutdown.complete",
                 "stats": eng.stats(),
+                "stageMetrics": state.metrics.snapshot(),
             });
             println!("{done}");
         }
