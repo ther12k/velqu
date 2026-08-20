@@ -51,7 +51,7 @@ fn engine() -> QuickJsEngine {
     )
 }
 
-fn insert_request(engine: &QuickJsEngine, meta: q_engine::RequestMeta) -> (usize, u64) {
+fn insert_request(engine: &QuickJsEngine, meta: q_engine::RequestMeta) -> q_bridge::RequestHandle {
     engine.insert_request(meta).expect("insert request")
 }
 
@@ -510,6 +510,31 @@ async fn worker_local_slab_capacity_is_bounded() {
 }
 
 #[tokio::test]
+async fn incoming_capability_pair_is_overwritten_by_worker_handle() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    // The spec carries a garbage host-supplied pair; the worker must mint its
+    // own typed handle. timer.route reads ctx.query lazily through the bridge,
+    // so a stale pair would surface as an expired-handle failure.
+    let s = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta {
+            query: vec![("ms".into(), "5".into())],
+            ..Default::default()
+        }),
+        slot: 3,
+        generation: u64::MAX,
+        ..spec(703, "timer.route", &[200], 2000)
+    };
+    let out = run(&mut eng, s).await;
+    assert!(
+        matches!(out, Outcome::Response { status: 200, .. }),
+        "worker-minted handle must serve lazy fields, got {out:?}"
+    );
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
 async fn sync_text_and_json_results() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
@@ -627,7 +652,7 @@ async fn microtask_retains_valid_request_context() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("add".into(), "42".into())],
@@ -635,8 +660,8 @@ async fn microtask_retains_valid_request_context() {
         },
     );
     let mut s = spec(1, "microtask.context", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let out1 = run(&mut eng, s).await;
     assert!(matches!(out1, Outcome::Response { status: 200, .. }));
@@ -672,10 +697,10 @@ async fn sync_runaway_microtask_respects_route_deadline() {
         "test premise: watchdog is far longer than the route deadline"
     );
     load_default(&mut eng).unwrap();
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "sync.runaway", &[200], 100);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let t0 = Instant::now();
     let out = run(&mut eng, s).await;
@@ -726,7 +751,7 @@ async fn sync_checkpoint_does_not_borrow_other_pending_request_deadline() {
     load_default(&mut eng).unwrap();
 
     // A: async timer route, long deadline, stays pending
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -734,16 +759,16 @@ async fn sync_checkpoint_does_not_borrow_other_pending_request_deadline() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 5000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
     // B: sync runaway microtask with a short route deadline
-    let (slot_b, gen_b) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle_b = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut sb = spec(2, "sync.runaway", &[200], 100);
-    sb.slot = slot_b;
-    sb.generation = gen_b;
+    sb.slot = handle_b.slot();
+    sb.generation = handle_b.generation();
 
     let t0 = Instant::now();
     let out_b = run(&mut eng, sb).await;
@@ -776,7 +801,7 @@ async fn sync_checkpoint_does_not_interrupt_from_other_request_deadline() {
     load_default(&mut eng).unwrap();
 
     // A: async timer that will expire at 80ms
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "80".into())],
@@ -784,8 +809,8 @@ async fn sync_checkpoint_does_not_interrupt_from_other_request_deadline() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 80);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, mut rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
@@ -820,15 +845,15 @@ async fn async_continuation_preserves_invocation_owner() {
     load_default(&mut eng).unwrap();
 
     // A: chain_owner — timer(60) then timer(400), deadline 3s
-    let (slot_a, gen_a) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle_a = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut sa = spec(1, "chain.owner", &[200], 3000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
     // B: long async timer, pending; CURRENT_INVOCATION would go stale = B
-    let (slot_b, gen_b) = insert_request(
+    let handle_b = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -836,8 +861,8 @@ async fn async_continuation_preserves_invocation_owner() {
         },
     );
     let mut sb = spec(2, "timer.route", &[200], 3000);
-    sb.slot = slot_b;
-    sb.generation = gen_b;
+    sb.slot = handle_b.slot();
+    sb.generation = handle_b.generation();
     let (txb, rxb) = tokio::sync::oneshot::channel();
     eng.invoke(sb, txb);
 
@@ -872,10 +897,10 @@ async fn nested_native_op_is_owned_by_original_invocation() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot_a, gen_a) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle_a = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut sa = spec(1, "chain.owner", &[200], 3000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
@@ -927,10 +952,10 @@ async fn missing_policy_handler_fails_closed() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "guarded.marker", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     s.policy_key = Some("policy.missing".into());
 
     let out = run(&mut eng, s).await;
@@ -976,10 +1001,10 @@ async fn missing_handler_settles_request_slot() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "nope.missing", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::EngineFailure { .. }));
@@ -1006,7 +1031,7 @@ async fn deadline_and_current_invocation_clear_at_message_boundary() {
     let out = run(&mut eng, spec(2, "sync.microtask", &[200], 1000)).await;
     assert!(matches!(out, Outcome::Response { .. }));
     // awaited timer (pending → timer fired → continuation → settlement)
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "30".into())],
@@ -1014,15 +1039,15 @@ async fn deadline_and_current_invocation_clear_at_message_boundary() {
         },
     );
     let mut s = spec(3, "timer.route", &[200], 2000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Response { .. }));
     // runaway sync microtask → deadline kill
     let out = run(&mut eng, spec(4, "sync.runaway", &[200], 100)).await;
     assert!(matches!(out, Outcome::Timeout));
     // cancellation path
-    let (slot_c, gen_c) = insert_request(
+    let handle_c = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -1030,8 +1055,8 @@ async fn deadline_and_current_invocation_clear_at_message_boundary() {
         },
     );
     let mut sc = spec(5, "timer.route", &[200], 5000);
-    sc.slot = slot_c;
-    sc.generation = gen_c;
+    sc.slot = handle_c.slot();
+    sc.generation = handle_c.generation();
     let (txc, rxc) = tokio::sync::oneshot::channel();
     eng.invoke(sc, txc);
     tokio::time::sleep(Duration::from_millis(30)).await;
@@ -1051,10 +1076,10 @@ async fn deadline_and_current_invocation_clear_at_message_boundary() {
 async fn prevalidated_params_flow_into_ctx() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(3, "hello.get", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     s.params = Some(serde_json::json!({ "name": "Rafi" }));
     let out = run(&mut eng, s).await;
     match out {
@@ -1078,7 +1103,7 @@ async fn prevalidated_params_flow_into_ctx() {
 async fn lazy_ctx_touches_nothing() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             params: vec![("name".into(), "Rafi".into())],
@@ -1088,8 +1113,8 @@ async fn lazy_ctx_touches_nothing() {
         },
     );
     let mut s = spec(4, "lazy.ctx", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Response { .. }));
     let snap = eng.bridge_snapshot();
@@ -1106,7 +1131,7 @@ async fn lazy_query_and_body_materialize_on_access() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
     // query path (lazy)
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "42".into())],
@@ -1114,8 +1139,8 @@ async fn lazy_query_and_body_materialize_on_access() {
         },
     );
     let mut s = spec(5, "query.read", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     match out {
         Outcome::Response {
@@ -1125,7 +1150,7 @@ async fn lazy_query_and_body_materialize_on_access() {
         o => panic!("{o:?}"),
     }
     // body path (lazy json())
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             body: Some(b"{\"name\":\"Ada\"}".to_vec()),
@@ -1133,8 +1158,8 @@ async fn lazy_query_and_body_materialize_on_access() {
         },
     );
     let mut s = spec(6, "body.read", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     match out {
         Outcome::Response {
@@ -1144,10 +1169,10 @@ async fn lazy_query_and_body_materialize_on_access() {
         o => panic!("{o:?}"),
     }
     // native body path (pre-validated)
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(7, "body.native", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     s.body = Some(serde_json::json!({ "id": "usr_1", "n": 21 }));
     let out = run(&mut eng, s).await;
     match out {
@@ -1165,7 +1190,7 @@ async fn lazy_query_and_body_materialize_on_access() {
 async fn timer_promise_resolves_with_waited_ms() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "30".into())],
@@ -1173,8 +1198,8 @@ async fn timer_promise_resolves_with_waited_ms() {
         },
     );
     let mut s = spec(8, "timer.route", &[200], 2000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let t0 = Instant::now();
     let out = run(&mut eng, s).await;
     let elapsed = t0.elapsed();
@@ -1199,7 +1224,7 @@ async fn timer_promise_resolves_with_waited_ms() {
 async fn cancellation_before_completion() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -1207,8 +1232,8 @@ async fn cancellation_before_completion() {
         },
     );
     let mut s = spec(9, "timer.route", &[200], 10_000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let (tx, rx) = tokio::sync::oneshot::channel();
     eng.invoke(s, tx);
     tokio::time::sleep(Duration::from_millis(30)).await;
@@ -1295,17 +1320,17 @@ async fn expired_handle_access_fails_deterministically() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
     // simulate a retained wrapper: settle the slot, then let JS touch it
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "1".into())],
             ..Default::default()
         },
     );
-    eng.settle_request(slot, gen); // expired before invocation
+    eng.settle_request(handle); // expired before invocation
     let mut s = spec(16, "query.read", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     match out {
         Outcome::EngineFailure { detail, .. } => assert!(detail.contains("expired")),
@@ -1495,10 +1520,10 @@ async fn cancel_reaction_cannot_spawn_second_generation_op() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "cancel.catch", &[200], 5000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let (tx, rx) = tokio::sync::oneshot::channel();
     eng.invoke(s, tx);
 
@@ -1542,7 +1567,7 @@ async fn shutdown_aborts_all_native_tasks() {
 
     // five live invocations, each awaiting its own 60s timer
     for i in 1..=5u64 {
-        let (slot, gen) = insert_request(
+        let handle = insert_request(
             &eng,
             q_bridge::RequestMeta {
                 query: vec![("ms".into(), "60000".into())],
@@ -1550,8 +1575,8 @@ async fn shutdown_aborts_all_native_tasks() {
             },
         );
         let mut s = spec(i, "timer.route", &[200], 60_000);
-        s.slot = slot;
-        s.generation = gen;
+        s.slot = handle.slot();
+        s.generation = handle.generation();
         let (tx, _rx) = tokio::sync::oneshot::channel();
         eng.invoke(s, tx);
     }
@@ -1610,7 +1635,7 @@ async fn completion_wins_abort_race_without_double_count() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "10".into())],
@@ -1618,8 +1643,8 @@ async fn completion_wins_abort_race_without_double_count() {
         },
     );
     let mut s = spec(1, "timer.route", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Response { status: 200, .. }));
 
@@ -1726,7 +1751,7 @@ async fn all_pending_invocations_fail_when_worker_is_poisoned() {
     load_default(&mut eng).unwrap();
 
     // Request A: 5-second async timer, pending
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -1734,8 +1759,8 @@ async fn all_pending_invocations_fail_when_worker_is_poisoned() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 5000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, mut rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
@@ -1775,7 +1800,7 @@ async fn cleanup_poison_fails_all_pending_immediately() {
     load_default(&mut eng).unwrap();
 
     // A: 5s async timer, pending
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -1783,8 +1808,8 @@ async fn cleanup_poison_fails_all_pending_immediately() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 5000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, mut rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -1820,7 +1845,7 @@ async fn cleanup_poison_aborts_all_native_ops_and_zeroes_pending_ops() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -1828,8 +1853,8 @@ async fn cleanup_poison_aborts_all_native_ops_and_zeroes_pending_ops() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 5000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -2092,7 +2117,7 @@ async fn ordinary_async_timeout_does_not_quarantine_worker() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -2100,8 +2125,8 @@ async fn ordinary_async_timeout_does_not_quarantine_worker() {
         },
     );
     let mut s = spec(1, "timer.route", &[200], 50);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let t0 = Instant::now();
     let out = run(&mut eng, s).await;
@@ -2132,7 +2157,7 @@ async fn ordinary_async_timeout_does_not_quarantine_worker() {
     assert!(matches!(out_sync, Outcome::Response { status: 200, .. }));
 
     // subsequent async request succeeds
-    let (slot2, gen2) = insert_request(
+    let handle2 = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "20".into())],
@@ -2140,8 +2165,8 @@ async fn ordinary_async_timeout_does_not_quarantine_worker() {
         },
     );
     let mut s2 = spec(3, "timer.route", &[200], 2000);
-    s2.slot = slot2;
-    s2.generation = gen2;
+    s2.slot = handle2.slot();
+    s2.generation = handle2.generation();
     let out_async = run(&mut eng, s2).await;
     assert!(matches!(out_async, Outcome::Response { status: 200, .. }));
     eng.shutdown();
@@ -2154,7 +2179,7 @@ async fn cancelled_async_request_cleanup_does_not_quarantine() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "5000".into())],
@@ -2162,8 +2187,8 @@ async fn cancelled_async_request_cleanup_does_not_quarantine() {
         },
     );
     let mut s = spec(1, "timer.route", &[200], 5000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     let (tx, rx) = tokio::sync::oneshot::channel();
     eng.invoke(s, tx);
 
@@ -2192,10 +2217,10 @@ async fn pathological_timeout_cleanup_still_quarantines() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "timeout.catchchain", &[200], 50);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Timeout), "got {out:?}");
@@ -2219,7 +2244,7 @@ async fn cleanup_interrupt_does_not_timeout_unrelated_invocation() {
     load_default(&mut eng).unwrap();
 
     // 1. Request A: async timer (300ms) under a 2s deadline
-    let (slot_a, gen_a) = insert_request(
+    let handle_a = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "300".into())],
@@ -2227,8 +2252,8 @@ async fn cleanup_interrupt_does_not_timeout_unrelated_invocation() {
         },
     );
     let mut sa = spec(1, "timer.route", &[200], 2000);
-    sa.slot = slot_a;
-    sa.generation = gen_a;
+    sa.slot = handle_a.slot();
+    sa.generation = handle_a.generation();
     let (txa, mut rxa) = tokio::sync::oneshot::channel();
     eng.invoke(sa, txa);
 
@@ -2543,7 +2568,7 @@ async fn async_mapping_microtask_retains_request_context() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("add".into(), "99".into())],
@@ -2551,8 +2576,8 @@ async fn async_mapping_microtask_retains_request_context() {
         },
     );
     let mut s = spec(1, "resp.getter_reads_ctx", &[200], 1000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let out1 = run(&mut eng, s).await;
     assert!(matches!(out1, Outcome::Response { status: 200, .. }));
@@ -2628,7 +2653,7 @@ async fn expired_settled_promise_clears_table_and_floating_ops() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
 
-    let (slot, gen) = insert_request(
+    let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
             query: vec![("ms".into(), "50".into())],
@@ -2636,8 +2661,8 @@ async fn expired_settled_promise_clears_table_and_floating_ops() {
         },
     );
     let mut s = spec(1, "timer.route", &[200], 30);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
 
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Timeout));
@@ -2658,7 +2683,7 @@ async fn repeated_timeouts_do_not_grow_settlement_table() {
 
     const N: u64 = 100;
     for i in 1..=N {
-        let (slot, gen) = insert_request(
+        let handle = insert_request(
             &eng,
             q_bridge::RequestMeta {
                 query: vec![("ms".into(), "5000".into())],
@@ -2666,8 +2691,8 @@ async fn repeated_timeouts_do_not_grow_settlement_table() {
             },
         );
         let mut s = spec(i, "timer.route", &[200], 20);
-        s.slot = slot;
-        s.generation = gen;
+        s.slot = handle.slot();
+        s.generation = handle.generation();
         let out = run(&mut eng, s).await;
         assert!(matches!(out, Outcome::Timeout));
     }
@@ -2711,10 +2736,10 @@ async fn numeric_handler_dispatch_calls_exact_declared_function() {
     eng.load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap();
 
-    let (slot_a, gen_a) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle_a = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s_a = spec(1, "unused", &[200], 5000);
-    s_a.slot = slot_a;
-    s_a.generation = gen_a;
+    s_a.slot = handle_a.slot();
+    s_a.generation = handle_a.generation();
     s_a.handler_id = Some(HandlerId(0));
     let out_a = run(&mut eng, s_a).await;
     match out_a {
@@ -2734,10 +2759,10 @@ async fn numeric_handler_dispatch_calls_exact_declared_function() {
         other => panic!("expected route A, got {other:?}"),
     }
 
-    let (slot_b, gen_b) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle_b = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s_b = spec(2, "unused", &[200], 5000);
-    s_b.slot = slot_b;
-    s_b.generation = gen_b;
+    s_b.slot = handle_b.slot();
+    s_b.generation = handle_b.generation();
     s_b.handler_id = Some(HandlerId(1));
     let out_b = run(&mut eng, s_b).await;
     match out_b {
@@ -2797,7 +2822,7 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
         .unwrap();
 
     // 1. Unauthorized request
-    let (slot_unauth, gen_unauth) = insert_request(
+    let handle_unauth = insert_request(
         &eng,
         q_bridge::RequestMeta {
             headers: vec![("authorization".into(), "Bearer bad".into())],
@@ -2805,8 +2830,8 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
         },
     );
     let mut s_unauth = spec(1, "unused", &[200, 401], 5000);
-    s_unauth.slot = slot_unauth;
-    s_unauth.generation = gen_unauth;
+    s_unauth.slot = handle_unauth.slot();
+    s_unauth.generation = handle_unauth.generation();
     s_unauth.handler_id = Some(HandlerId(0));
     s_unauth.policy_handler_id = Some(HandlerId(1));
     let out_unauth = run(&mut eng, s_unauth).await;
@@ -2819,7 +2844,7 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
     }
 
     // 2. Authorized request
-    let (slot_auth, gen_auth) = insert_request(
+    let handle_auth = insert_request(
         &eng,
         q_bridge::RequestMeta {
             headers: vec![("authorization".into(), "Bearer valid".into())],
@@ -2827,8 +2852,8 @@ async fn numeric_policy_dispatch_enforces_401_and_200() {
         },
     );
     let mut s_auth = spec(2, "unused", &[200, 401], 5000);
-    s_auth.slot = slot_auth;
-    s_auth.generation = gen_auth;
+    s_auth.slot = handle_auth.slot();
+    s_auth.generation = handle_auth.generation();
     s_auth.handler_id = Some(HandlerId(0));
     s_auth.policy_handler_id = Some(HandlerId(1));
     let out_auth = run(&mut eng, s_auth).await;
@@ -3056,10 +3081,10 @@ async fn numeric_out_of_range_handler_id_fails_closed() {
     eng.load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap();
 
-    let (slot, gen) = insert_request(&eng, q_bridge::RequestMeta::default());
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
     let mut s = spec(1, "unused", &[200], 5000);
-    s.slot = slot;
-    s.generation = gen;
+    s.slot = handle.slot();
+    s.generation = handle.generation();
     s.handler_id = Some(HandlerId(99)); // out of range
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::EngineFailure { .. }));
@@ -3126,7 +3151,7 @@ async fn interrupted_watched_chain_retention_is_zero() {
     load_default(&mut eng).unwrap();
 
     for i in 1..=50 {
-        let (slot, gen) = insert_request(
+        let handle = insert_request(
             &eng,
             q_bridge::RequestMeta {
                 query: vec![("ms".into(), "1000".into())],
@@ -3134,8 +3159,8 @@ async fn interrupted_watched_chain_retention_is_zero() {
             },
         );
         let mut s = spec(i, "timer.route", &[200], 10); // short deadline interrupts
-        s.slot = slot;
-        s.generation = gen;
+        s.slot = handle.slot();
+        s.generation = handle.generation();
         let out = run(&mut eng, s).await;
         assert!(matches!(out, Outcome::Timeout));
     }

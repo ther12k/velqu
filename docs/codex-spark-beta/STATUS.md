@@ -83,7 +83,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M24-002-V — Verify Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md)
 - [x] [M24-002-Z — Package evidence for Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-Z-package-evidence-for-route-before-request-materialization.md)
 - [x] [M24-003-A — Move request slots into each QuickJS worker](tasks/01_m24_zero_copy_ingress/M24-003-A-move-request-slots-into-each-quickjs-worker.md)
-- [ ] [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md)
+- [x] [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md)
 - [ ] [M24-003-C — Invalidate at settlement, timeout, cancellation, quarantine, and shutdown](tasks/01_m24_zero_copy_ingress/M24-003-C-invalidate-at-settlement-timeout-cancellation-quarantine-and-shutdown.md)
 - [ ] [M24-003-D — Reject stale or cross-worker handles deterministically](tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md)
 - [ ] [M24-003-V — Verify Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md)

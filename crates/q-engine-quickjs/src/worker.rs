@@ -42,11 +42,10 @@ pub(crate) enum WorkerMsg {
     Invoke(Box<InvokeJob>),
     InsertRequest {
         meta: q_engine::RequestMeta,
-        reply: std::sync::mpsc::Sender<Result<(usize, u64), String>>,
+        reply: std::sync::mpsc::Sender<Result<q_bridge::RequestHandle, String>>,
     },
     SettleRequest {
-        slot: usize,
-        generation: u64,
+        handle: q_bridge::RequestHandle,
     },
     Cancel {
         id: u64,
@@ -561,8 +560,8 @@ impl WorkerInner {
                 WorkerMsg::InsertRequest { meta, reply } => {
                     let _ = reply.send(self.store.try_insert(meta).map_err(|e| e.to_string()));
                 }
-                WorkerMsg::SettleRequest { slot, generation } => {
-                    self.store.settle(slot, generation);
+                WorkerMsg::SettleRequest { handle } => {
+                    self.store.settle(handle);
                 }
                 WorkerMsg::Cancel { id } => {
                     self.cancel_invocation(id);
@@ -784,12 +783,17 @@ impl WorkerInner {
         let InvokeJob { mut spec, reply } = job;
         self.shared.interrupted.store(false, Ordering::SeqCst);
 
+        // M24-003-B: the typed capability is minted here — any pair the spec
+        // carried in is overwritten, so a caller can never present a
+        // host-forged handle. Requestless specs keep the sentinel pair, whose
+        // settle/access is a bounds-checked no-op.
+        let mut handle = self.store.local_handle(spec.slot, spec.generation);
         if spec.slot != q_engine::NO_REQUEST_SLOT {
             if let Some(meta) = spec.request.take() {
                 match self.store.try_insert(meta) {
-                    Ok((slot, generation)) => {
-                        spec.slot = slot;
-                        spec.generation = generation;
+                    Ok(minted) => {
+                        handle = minted;
+                        (spec.slot, spec.generation) = minted.js_pair();
                     }
                     Err(q_bridge::BridgeError::Capacity) => {
                         if let Some(r) = reply {
@@ -815,7 +819,7 @@ impl WorkerInner {
         // Fail closed immediately if runtime is quarantined / poisoned (M2.2.1-r4)
         if self.shared.queue_poisoned.load(Ordering::SeqCst) {
             self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-            self.store.settle(spec.slot, spec.generation);
+            self.store.settle(handle);
             if let Some(r) = reply {
                 let _ = r.send(Outcome::EngineFailure {
                     detail: "runtime quarantined: worker quarantined".into(),
@@ -852,7 +856,7 @@ impl WorkerInner {
         let Some(handler) = handler else {
             // terminal failure: deterministic cleanup so the slot never leaks
             self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-            self.store.settle(spec.slot, spec.generation);
+            self.store.settle(handle);
             if let Some(r) = reply {
                 let _ = r.send(Outcome::EngineFailure {
                     detail: format!(
@@ -871,7 +875,7 @@ impl WorkerInner {
             let p = self.function_vector.get(pid.0 as usize).cloned();
             if p.is_none() {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(spec.slot, spec.generation);
+                self.store.settle(handle);
                 if let Some(r) = reply {
                     let _ = r.send(Outcome::EngineFailure {
                         detail: format!(
@@ -888,7 +892,7 @@ impl WorkerInner {
             let p = self.handler_cache.get(pkey).cloned();
             if p.is_none() {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(spec.slot, spec.generation);
+                self.store.settle(handle);
                 if let Some(r) = reply {
                     let _ = r.send(Outcome::EngineFailure {
                         detail: format!(
@@ -1011,7 +1015,7 @@ impl WorkerInner {
                     o
                 };
                 self.abort_floating_ops(spec.id);
-                self.store.settle(spec.slot, spec.generation);
+                self.store.settle(handle);
                 let _ = reply.send(o);
                 InvocationDisposition::Resolved
             }
@@ -1049,7 +1053,7 @@ impl WorkerInner {
                 // native ops not awaited by the returned Promise are cancelled
                 // at settlement (until an explicit defer() mechanism exists)
                 self.abort_floating_ops(spec.id);
-                self.store.settle(spec.slot, spec.generation);
+                self.store.settle(handle);
                 let _ = reply.send(final_outcome);
                 InvocationDisposition::Resolved
             }
@@ -1059,6 +1063,7 @@ impl WorkerInner {
                     spec.id,
                     PendingInvocation {
                         spec,
+                        handle,
                         reply: Some(reply),
                     },
                 );
@@ -1184,7 +1189,7 @@ impl WorkerInner {
             invocation_id: p.spec.id,
             deadline: Instant::now() + SETTLEMENT_GRACE,
         };
-        self.store.settle(p.spec.slot, p.spec.generation);
+        self.store.settle(p.handle);
         // rejection continuations unwind in the Cleanup phase with a fresh cleanup grace
         {
             let _phase = PhaseScope::enter(ExecutionPhase::Cleanup);
@@ -1246,8 +1251,7 @@ impl WorkerInner {
         self.clear_settled_entry(id);
         self.abort_floating_ops(id);
         self.clear_settled_entry(id);
-        self.store
-            .settle(pending.spec.slot, pending.spec.generation);
+        self.store.settle(pending.handle);
         self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
         if let Some(reply) = pending.reply.take() {
             let _ = reply.send(Outcome::Timeout);
@@ -1320,7 +1324,7 @@ impl WorkerInner {
         for id in pending_ids {
             if let Some(mut p) = self.pending.remove(&id) {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(p.spec.slot, p.spec.generation);
+                self.store.settle(p.handle);
                 self.reject_ops_of(id);
                 if let Some(reply) = p.reply.take() {
                     let _ = reply.send(Outcome::EngineFailure {
@@ -1662,7 +1666,7 @@ impl WorkerInner {
             };
 
             self.abort_floating_ops(id);
-            self.store.settle(p.spec.slot, p.spec.generation);
+            self.store.settle(p.handle);
             if let Some(reply) = p.reply {
                 let _ = reply.send(final_outcome);
             }
@@ -1675,6 +1679,9 @@ impl WorkerInner {
 
 struct PendingInvocation {
     spec: InvocationSpec,
+    /// Typed capability minted by this worker at admission (M24-003-B); the
+    /// only settlement identity for the invocation's request slot.
+    handle: q_bridge::RequestHandle,
     reply: Option<tokio::sync::oneshot::Sender<Outcome>>,
 }
 
@@ -2071,7 +2078,7 @@ fn install_natives(
                 ));
             }
             let json = store
-                .access(slot, gen as u64, 1, 16, |m| {
+                .access(store.local_handle(slot, gen as u64), 1, 16, |m| {
                     let pairs: &[(String, String)] = match what.as_str() {
                         "params" => &m.params,
                         "query" => &m.query,
@@ -2101,7 +2108,7 @@ fn install_natives(
                 ));
             }
             let s = store
-                .access(slot, gen as u64, 1, 0, |m| {
+                .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
                     String::from_utf8_lossy(m.body.as_deref().unwrap_or_default()).into_owned()
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
@@ -2120,7 +2127,7 @@ fn install_natives(
                 ));
             }
             let len = store
-                .access(slot, gen as u64, 0, 0, |m| {
+                .access(store.local_handle(slot, gen as u64), 0, 0, |m| {
                     m.body.as_deref().map_or(0, |b| b.len())
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
@@ -2143,7 +2150,7 @@ fn install_natives(
                 ));
             }
             let body: Vec<u8> = store
-                .access(slot, gen as u64, 1, 0, |m| {
+                .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
                     m.body.clone().unwrap_or_default()
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;

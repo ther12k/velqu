@@ -4,7 +4,7 @@ parent_task: M24-003
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -110,3 +110,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: typed slot-plus-generation capabilities. `q_bridge::RequestHandle` is a private-field capability `{worker_id, slot, generation}` minted only by the owning slab (`try_insert`) or reconstructed for this worker's numeric JS pair (`local_handle`); every slab draws a distinct `worker_id` from a monotonic clock. All store APIs are handle-typed (`insert`/`try_insert -> RequestHandle`, `settle(handle)`, `access(handle, ...)`), and worker identity is validated before any slot lookup — a handle minted by another worker's slab is denied without touching the destination slab. `WorkerInner` mints the handle at admission, overwrites whatever pair the spec carried, stores it in `PendingInvocation`, and uses it for every terminal settle; the JS ABI still exchanges only the numeric pair (call_runner and the native accessors reconstruct local handles). Requestless specs keep the `NO_REQUEST_SLOT` sentinel pair, whose settle/access remains a bounds-checked no-op.
+- Changed files:
+  - `crates/q-bridge/src/lib.rs` (RequestHandle type, worker-id clock, handle-typed store APIs, worker-identity pre-check, foreign-handle and stale-corpus tests)
+  - `crates/q-engine-quickjs/src/worker.rs` (handle minted/overwritten in begin_invocation; PendingInvocation.handle; all terminal settles handle-typed; native accessors reconstruct local handles; InsertRequest/SettleRequest worker messages carry handles)
+  - `crates/q-engine-quickjs/src/lib.rs` (insert_request/settle_request test helpers typed)
+  - `crates/q-engine-quickjs/tests/engine.rs` (fixtures use typed handles; new forged-pair overwrite proof)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md`, `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+- Tests: new `typed_handle_from_foreign_worker_is_denied_before_slot_lookup` (q-bridge: worker A's minted handle denied by worker B's slab before slot lookup; wrong-worker settle touches neither slab; true owner still settles once) and `incoming_capability_pair_is_overwritten_by_worker_handle` (engine: spec carrying `slot=3, generation=u64::MAX` still serves lazy query fields because the worker-minted handle wins, and settles to 0 live slots). Existing proofs remain green: `settlement_expires_handle_and_reuse_is_isolated`, `stale_handle_corpus_never_reads_or_leaks`, `double_settle_is_idempotent`, `unread_request_costs_nothing`, `bounded_slab_rejects_growth`, `worker_local_slab_capacity_is_bounded`, `expired_handle_access_fails_deterministically`, `field_free_invocation_skips_request_store_slot`.
+- Verification: `cargo test -p q-engine-quickjs` PASS (1 unit + 87 engine); `cargo test -p q-http` PASS (2 + 3); `cargo test -p q-bridge` PASS (7); `cargo test -p velqu-runtime` PASS (13 conformance); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS.
+- Acceptance criteria proven: no process-wide request-store mutex on any access path (unchanged from M24-003-A, all access now handle-typed); stale handles always fail (generation checks + corpus); terminal paths leave zero live slots (engine suite live_slots assertions); no JS value or request slot crosses worker ownership (handles are worker-stamped and checked; JS sees only the numeric pair).
+- Remaining risk / deferred by design: a dedicated deterministic error variant and full cross-worker rejection corpus land in M24-003-D (a foreign handle currently maps to the existing deterministic `Expired` denial); single-settlement-owner consolidation is M24-003-C.
+- Next dependency-ready task: M24-003-C (invalidate at settlement, timeout, cancellation, quarantine, and shutdown).
