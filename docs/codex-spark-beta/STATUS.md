@@ -80,7 +80,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M24-002-B — Match RouteId using method/path before creating request metadata](tasks/01_m24_zero_copy_ingress/M24-002-B-match-routeid-using-method-path-before-creating-request-metadata.md)
 - [x] [M24-002-C — Read FieldNeeds from RoutePlan](tasks/01_m24_zero_copy_ingress/M24-002-C-read-fieldneeds-from-routeplan.md)
 - [x] [M24-002-D — Bypass request-object creation for policy-free routes that need no request fields](tasks/01_m24_zero_copy_ingress/M24-002-D-bypass-request-object-creation-for-policy-free-routes-that-need-no-request-field.md)
-- [ ] [M24-002-V — Verify Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md)
+- [x] [M24-002-V — Verify Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md)
 - [ ] [M24-002-Z — Package evidence for Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-Z-package-evidence-for-route-before-request-materialization.md)
 - [ ] [M24-003-A — Move request slots into each QuickJS worker](tasks/01_m24_zero_copy_ingress/M24-003-A-move-request-slots-into-each-quickjs-worker.md)
 - [ ] [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md)
