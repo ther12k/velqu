@@ -99,7 +99,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M24-005-C — Define duplicate header behavior and byte/string conversion](tasks/01_m24_zero_copy_ingress/M24-005-C-define-duplicate-header-behavior-and-byte-string-conversion.md)
 - [x] [M24-005-D — Keep full Headers escape hatch explicit and costed](tasks/01_m24_zero_copy_ingress/M24-005-D-keep-full-headers-escape-hatch-explicit-and-costed.md)
 - [x] [M24-005-V — Verify Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md)
-- [ ] [M24-005-Z — Package evidence for Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-Z-package-evidence-for-implement-declared-header-lazy-access.md)
+- [x] [M24-005-Z — Package evidence for Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-Z-package-evidence-for-implement-declared-header-lazy-access.md)
 - [ ] [M24-006-A — Compile query/cookie field IDs](tasks/01_m24_zero_copy_ingress/M24-006-A-compile-query-cookie-field-ids.md)
 - [ ] [M24-006-B — Provide repeated-key policy](tasks/01_m24_zero_copy_ingress/M24-006-B-provide-repeated-key-policy.md)
 - [ ] [M24-006-C — Define percent decoding and invalid-byte behavior](tasks/01_m24_zero_copy_ingress/M24-006-C-define-percent-decoding-and-invalid-byte-behavior.md)
