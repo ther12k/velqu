@@ -133,7 +133,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M24-010-C](../tasks/01_m24_zero_copy_ingress/M24-010-C-run-property-tests-for-slot-lifecycle.md) | P0 | implement | PASS | M24-010-B | Run property tests for slot lifecycle |
 | [M24-010-D](../tasks/01_m24_zero_copy_ingress/M24-010-D-capture-and-minimize-failures.md) | P0 | implement | PASS | M24-010-C | Capture and minimize failures |
 | [M24-010-V](../tasks/01_m24_zero_copy_ingress/M24-010-V-verify-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | verify | PASS | M24-010-A, M24-010-B, M24-010-C, M24-010-D | Verify Complete ingress bridge fuzzing and conformance |
-| [M24-010-Z](../tasks/01_m24_zero_copy_ingress/M24-010-Z-package-evidence-for-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | evidence | TODO | M24-010-V | Package evidence for Complete ingress bridge fuzzing and conformance |
+| [M24-010-Z](../tasks/01_m24_zero_copy_ingress/M24-010-Z-package-evidence-for-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | evidence | PASS | M24-010-V | Package evidence for Complete ingress bridge fuzzing and conformance |
 | [M24-GATE](../gates/M24-GATE.md) | P0 | gate | TODO | M24-001-Z, M24-002-Z, M24-003-Z, M24-004-Z, M24-005-Z, M24-006-Z, M24-007-Z, M24-008-Z, M24-009-Z, M24-010-Z | M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge exit gate |
 
 ## M25 — Schema-Specialized Validation and JSON Codecs
