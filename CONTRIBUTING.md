@@ -52,7 +52,6 @@ appropriate permission and attribution.
 
 ## Security
 
-Do not report vulnerabilities in public issues. Follow the repository's private
-disclosure process once `OD-BETA-004` is accepted and documented. Until then,
-limit public reports to non-sensitive reproducible information and avoid
-publishing exploit details.
+Do not report vulnerabilities in public issues. Follow the private reporting
+process in [`SECURITY.md`](SECURITY.md). Avoid publishing exploit details,
+credentials, or private user data.
