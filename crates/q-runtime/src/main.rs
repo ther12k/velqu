@@ -230,7 +230,6 @@ fn run(args: Args) -> i32 {
             store,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
             log_mode: serve::LogMode::from_str(&args.log),
-            limits,
         });
         let handler = serve::make_handler(Arc::clone(&state));
         let _ = host.serve(listener, handler, shutdown_rx).await;

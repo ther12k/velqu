@@ -64,7 +64,6 @@ pub struct ServeState {
     pub store: Arc<q_bridge::RequestStore>,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
-    pub limits: q_http::Limits,
 }
 
 #[allow(clippy::type_complexity)]
@@ -86,31 +85,20 @@ pub fn make_handler(
             } else {
                 None
             };
-            // M24-002-A relocation: native parts are materialized here, inside
-            // the runtime, instead of eagerly inside q-http. Behavior is
-            // equivalent to the previous ingress materialization; M24-002-B
-            // gates each field behind route resolution.
-            let method = req.method.as_str().to_uppercase();
-            let path = req.uri.path().to_string();
-            let body = if method == "POST" || method == "PUT" || method == "PATCH" {
-                match collect_body_bounded(req.body, state.limits.max_body_bytes).await {
-                    Ok(bytes) => Some(bytes),
-                    Err(e) => return (Err(e), "admission".into(), "admission"),
-                }
+            // M24-002-B: routing runs on the native head before any field is
+            // materialized; log fields are only built when logging is on.
+            let log_ctx = if state.log_mode != LogMode::Off {
+                Some((
+                    req.request_id.clone(),
+                    req.method.as_str().to_uppercase(),
+                    req.uri.path().to_string(),
+                ))
             } else {
                 None
             };
-            let ctx = RequestContext {
-                request_id: req.request_id,
-                query: parse_query(req.uri.query().unwrap_or("")),
-                headers: materialize_headers(&req.headers),
-                method,
-                path,
-                body,
-            };
-            let (result, route_id, stage) = pipeline(&state, &ctx).await;
+            let (result, route_id, stage) = pipeline(&state, req).await;
             if let Some(started) = started {
-                log_completion(&state, &ctx, &result, &route_id, stage, started);
+                log_completion(&state, log_ctx.as_ref(), &result, &route_id, stage, started);
             }
             (result, route_id, stage)
         })
@@ -119,7 +107,7 @@ pub fn make_handler(
 
 fn log_completion(
     state: &ServeState,
-    ctx: &RequestContext,
+    log_ctx: Option<&(String, String, String)>,
     result: &HandlerResult,
     route_id: &str,
     stage: &'static str,
@@ -137,16 +125,20 @@ fn log_completion(
         return;
     }
 
+    let Some((request_id, method, path)) = log_ctx else {
+        return;
+    };
+
     // OPS-001: structured completion log; header values never logged (SEC-004)
     println!(
         "{}",
         serde_json::json!({
             "level": if status < 400 { "info" } else { "warn" },
             "event": "request.complete",
-            "requestId": ctx.request_id,
+            "requestId": request_id,
             "routeId": route_id,
-            "method": ctx.method,
-            "path": ctx.path,
+            "method": method,
+            "path": path,
             "status": status,
             "bodyBytes": body_bytes,
             "stage": stage,
@@ -155,21 +147,29 @@ fn log_completion(
     );
 }
 
-async fn pipeline(
-    state: &ServeState,
-    ctx: &RequestContext,
-) -> (HandlerResult, String, &'static str) {
+async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, String, &'static str) {
+    let NativeRequest {
+        request_id,
+        method,
+        uri,
+        headers,
+        body,
+        started: _,
+    } = req;
+    let method_str = method.as_str();
+    let path = uri.path();
+    let is_get_or_head = method_str == "GET" || method_str == "HEAD";
     // ---- M2.2.1-r4.1/r4.2.1: built-in readiness probe (liveness stays a pack route)
     // Liveness = process + listener alive; readiness = engine can execute
     // application requests. A quarantined engine keeps /health/live at 200
     // but flips /health/ready to 503. Lock-free atomic check via EngineHealth.
-    if ctx.path == "/health/ready" && (ctx.method == "GET" || ctx.method == "HEAD") {
+    if path == "/health/ready" && is_get_or_head {
         if state.health.is_ready() {
             let resp = PlainResponse {
                 status: 200,
                 headers: vec![("content-type".into(), "application/json".into())],
                 body: b"{\"ready\":true}".to_vec(),
-                head_only: ctx.method == "HEAD",
+                head_only: method_str == "HEAD",
             };
             return (Ok(resp), "(readiness)".into(), "native");
         }
@@ -178,17 +178,20 @@ async fn pipeline(
             Some(503),
             Some("engine quarantined"),
             &[],
-            &ctx.request_id,
+            &request_id,
         );
         let mut resp = json_response(503, &body);
-        resp.head_only = ctx.method == "HEAD";
+        resp.head_only = method_str == "HEAD";
         return (Ok(resp), "(readiness)".into(), "native");
     }
 
-    // ---- native routing BEFORE any JavaScript (RUN-002)
-    match state.router.resolve(&ctx.method, &ctx.path) {
+    // ---- native routing BEFORE any JavaScript (RUN-002) — M24-002-B: the
+    // match runs on borrowed method/path; every early exit below (404, 405,
+    // C0 liveness, quarantine) materializes zero request fields and never
+    // polls the body stream.
+    match state.router.resolve(method_str, path) {
         MatchResult::NotFound => {
-            let body = problems::body("not-found", None, None, &[], &ctx.request_id);
+            let body = problems::body("not-found", None, None, &[], &request_id);
             (
                 Ok(json_response(404, &body)),
                 "(no-route)".into(),
@@ -196,7 +199,7 @@ async fn pipeline(
             )
         }
         MatchResult::MethodNotAllowed { allow } => {
-            let body = problems::body("method", None, None, &[], &ctx.request_id);
+            let body = problems::body("method", None, None, &[], &request_id);
             let mut resp = json_response(405, &body);
             resp.headers.push(("allow".into(), allow.join(", ")));
             (Ok(resp), "(method-not-allowed)".into(), "routing")
@@ -235,13 +238,18 @@ async fn pipeline(
                     Some(503),
                     Some("engine quarantined"),
                     &[],
-                    &ctx.request_id,
+                    &request_id,
                 );
                 let mut resp = json_response(503, &body);
                 resp.head_only = head;
                 resp.headers.push(("retry-after".into(), "1".into()));
                 return (Ok(resp), route_id, "quarantined");
             }
+
+            // ---- M24-002-B: route matched — materialize fields from here on.
+            // Query pairs are still parsed eagerly for JS routes; M24-002-C
+            // gates this on RoutePlan FieldNeeds.
+            let query_pairs = parse_query(uri.query().unwrap_or(""));
 
             // M23R2: resolve the CompiledRoute once — every subsequent step
             // (validation, invocation, response) reads numeric IDs from it
@@ -263,7 +271,7 @@ async fn pipeline(
                             None,
                             Some("path parameter validation failed"),
                             &field_errors(&errors),
-                            &ctx.request_id,
+                            &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.params");
                     }
@@ -273,7 +281,7 @@ async fn pipeline(
             let mut query_value: Option<Value> = None;
             if let Some(sid) = compiled.query_schema_id {
                 let ir = &state.schema_vector[sid.0 as usize];
-                match validate_query(ir, &ctx.query) {
+                match validate_query(ir, &query_pairs) {
                     Ok(v) => query_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(
@@ -281,21 +289,24 @@ async fn pipeline(
                             None,
                             Some("query validation failed"),
                             &field_errors(&errors),
-                            &ctx.request_id,
+                            &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.query");
                     }
                 }
             }
 
-            // ---- body: content-type gate + parse + validate
+            // ---- body: route-bound admission (M24-002-B). The content-type
+            // gate runs on the native HeaderMap BEFORE the stream is polled;
+            // the single read is bounded by the route's limit_bytes and stops
+            // at the budget instead of buffering an oversize body first.
+            // Routes without a body binding never poll the stream at all.
             let mut body_value: Option<Value> = None;
+            let mut raw_body: Option<Vec<u8>> = None;
             if let Some(binding) = &route.body {
-                let ctype = ctx
-                    .headers
-                    .iter()
-                    .find(|(k, _)| k == "content-type")
-                    .map(|(_, v)| v.as_str())
+                let ctype = headers
+                    .get("content-type")
+                    .and_then(|v| v.to_str().ok())
                     .unwrap_or("");
                 let is_json = ctype.is_empty()
                     || ctype.starts_with("application/json")
@@ -306,15 +317,18 @@ async fn pipeline(
                         None,
                         Some("expected application/json body"),
                         &[],
-                        &ctx.request_id,
+                        &request_id,
                     );
                     return (Ok(json_response(415, &body)), route_id, "admission.body");
                 }
-                let raw = ctx.body.clone().unwrap_or_default();
-                if (raw.len() as u64) > binding.limit_bytes {
-                    let body = problems::body("limit", None, None, &[], &ctx.request_id);
-                    return (Ok(json_response(413, &body)), route_id, "admission.body");
-                }
+                let raw = match collect_body_bounded(body, binding.limit_bytes as usize).await {
+                    Ok(bytes) => bytes,
+                    Err(HttpError::Limited { .. }) => {
+                        let body = problems::body("limit", None, None, &[], &request_id);
+                        return (Ok(json_response(413, &body)), route_id, "admission.body");
+                    }
+                    Err(e) => return (Err(e), route_id, "admission.body"),
+                };
                 let parsed: Value = match serde_json::from_slice(&raw) {
                     Ok(v) => v,
                     Err(_) => {
@@ -323,7 +337,7 @@ async fn pipeline(
                             None,
                             Some("malformed JSON body"),
                             &[],
-                            &ctx.request_id,
+                            &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.body");
                     }
@@ -338,13 +352,24 @@ async fn pipeline(
                                 None,
                                 Some("body validation failed"),
                                 &field_errors(&errors),
-                                &ctx.request_id,
+                                &request_id,
                             );
                             return (Ok(json_response(422, &body)), route_id, "validation.body");
                         }
                     }
                 }
+                raw_body = Some(raw);
             }
+
+            // Materialized pipeline inputs for the JS invocation surface.
+            let ctx = RequestContext {
+                request_id,
+                method: method_str.to_uppercase(),
+                path: path.to_string(),
+                query: query_pairs,
+                headers: materialize_headers(&headers),
+                body: raw_body,
+            };
 
             // ---- invocation through the engine
             let invocation_id = state.invocation_clock.fetch_add(1, Ordering::Relaxed);

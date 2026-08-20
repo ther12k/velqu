@@ -1417,6 +1417,53 @@ fn source_mapped_exception_identifies_original_location() {
 }
 
 #[test]
+fn routing_precedes_body_materialization() {
+    let dir = temp_dir("route-first");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // Announce a 2 MiB body but transmit only a fragment. A server that
+    // polls the body before routing could not answer until the body
+    // arrives; the route-first pipeline answers from the head alone while
+    // the body is still unsent (M24-002-B no-poll proof).
+    let cases: [(&str, u16); 2] = [
+        (
+            "POST /definitely-not-a-route HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+            404,
+        ),
+        (
+            "POST /js-text HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+            405,
+        ),
+    ];
+    for (req, want) in cases {
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let head = format!("{req}content-length: 2097152\r\n\r\n");
+        stream.write_all(head.as_bytes()).unwrap();
+        stream.write_all(&[b'x'; 1024]).unwrap(); // fragment of the announced body
+        let mut buf = [0u8; 2048];
+        let n = stream
+            .read(&mut buf)
+            .expect("answer must arrive before the body completes");
+        let resp = parse_http(&buf[..n]);
+        assert_eq!(
+            resp.status,
+            want,
+            "route-first answer, got {}: {}",
+            resp.status,
+            resp.text()
+        );
+        drop(stream);
+    }
+
+    server.stop();
+}
+
+#[test]
 fn body_and_header_limits_reject_oversize() {
     let dir = temp_dir("limits");
     let pack_path = write_pack(&dir);

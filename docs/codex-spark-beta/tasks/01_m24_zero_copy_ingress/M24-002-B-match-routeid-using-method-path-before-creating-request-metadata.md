@@ -4,7 +4,7 @@ parent_task: M24-002
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -124,3 +124,22 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: the pipeline routes on borrowed method/path from the native head before any request metadata exists. Readiness, 404, 405, C0 native liveness, and quarantine paths now materialize zero fields and never poll the body stream. For matched JS routes: query pairs and header pairs materialize at that point (bounded by admission limits), and body admission is route-bound — the content-type gate reads the native HeaderMap before any poll, the single read is bounded by the route's `limit_bytes` (stops at budget, 413 without full buffering), and routes without a body binding never poll the stream regardless of method.
+- Spec-mandated behavior changes (docs/specs/m24-ingress-ownership-and-admission.md §5.3): an oversize or partial body on an unmatched path now gets 404 (was 413 after full buffering), a method mismatch gets 405, and POST bodies on routes without a body binding are no longer collected.
+- Changed files:
+  - `crates/q-runtime/src/serve.rs` (pipeline takes NativeRequest; materialization moved after routing; route-bound body admission)
+  - `crates/q-runtime/src/main.rs` (ServeState no longer carries limits; bounds live in q-http admission and route bindings)
+  - `crates/q-runtime/tests/runtime_conformance.rs` (new `routing_precedes_body_materialization`)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-002-B-match-routeid-using-method-path-before-creating-request-metadata.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Tests: new `routing_precedes_body_materialization` — announces a 2 MiB body, sends a fragment, and asserts 404/405 answers arrive before the body completes (a polling server cannot answer); regression suites unchanged: runtime conformance 13/13 (incl. `body_and_header_limits_reject_oversize`, `queue_limit_returns_503_when_saturated`, `full_runtime_conformance`), engine 84/84, bridge 4/4, `bun test` 35/35.
+- Verification: `cargo test -p q-engine-quickjs -p q-http -p q-bridge -p q-capabilities -p velqu-runtime` all pass; `cargo fmt --check` clean; `cargo clippy --workspace --all-targets -- -D warnings` clean; `bun run typecheck` clean; `bun test` 35 pass; `./scripts/validate-okf` PASS.
+- Remaining risk / deferred by design: query pairs still parse for every matched JS route (FieldNeeds gating is M24-002-C); header pairs still materialize for the JS store insert (declared-header lazy access is M24-005); request-object bypass for field-free routes is M24-002-D; admission counters/stage histograms are M24-009 scope (§9.2).
+- Next dependency-ready task: M24-002-C (read FieldNeeds from RoutePlan).
