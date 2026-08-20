@@ -4,26 +4,26 @@ The next dependency-ready implementation task is M24-001-V; this short queue lis
 
 1. [M24-001-V — Verify Freeze ingress ownership and backpressure design](tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md) — deps: M24-001-A, M24-001-B, M24-001-C, M24-001-D — #64
 2. [M24-001-Z — Package evidence for Freeze ingress ownership and backpressure design](tasks/01_m24_zero_copy_ingress/M24-001-Z-package-evidence-for-freeze-ingress-ownership-and-backpressure-design.md) — deps: M24-001-V — #65
-3. [M24-002-A — Keep Method, Uri, HeaderMap, and body stream in native forms](tasks/01_m24_zero_copy_ingress/M24-002-A-keep-method-uri-headermap-and-body-stream-in-native-forms.md) — deps: M24-001-Z — #66
-4. [M24-002-B — Match RouteId using method/path before creating request metadata](tasks/01_m24_zero_copy_ingress/M24-002-B-match-routeid-using-method-path-before-creating-request-metadata.md) — deps: M24-002-A — #67
-5. [M24-002-C — Read FieldNeeds from RoutePlan](tasks/01_m24_zero_copy_ingress/M24-002-C-read-fieldneeds-from-routeplan.md) — deps: M24-002-B — #68
-6. [M24-002-D — Bypass request-object creation for policy-free routes that need no request fields](tasks/01_m24_zero_copy_ingress/M24-002-D-bypass-request-object-creation-for-policy-free-routes-that-need-no-request-field.md) — deps: M24-002-C — #69
-7. [M24-002-V — Verify Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md) — deps: M24-002-A, M24-002-B, M24-002-C, M24-002-D — #70
-8. [M24-002-Z — Package evidence for Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-Z-package-evidence-for-route-before-request-materialization.md) — deps: M24-002-V — #71
-9. [M24-003-A — Move request slots into each QuickJS worker](tasks/01_m24_zero_copy_ingress/M24-003-A-move-request-slots-into-each-quickjs-worker.md) — deps: M24-001-Z, M24-002-Z — #72
-10. [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md) — deps: M24-003-A — #73
-11. [M24-003-C — Invalidate at settlement, timeout, cancellation, quarantine, and shutdown](tasks/01_m24_zero_copy_ingress/M24-003-C-invalidate-at-settlement-timeout-cancellation-quarantine-and-shutdown.md) — deps: M24-003-B — #74
-12. [M24-003-D — Reject stale or cross-worker handles deterministically](tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md) — deps: M24-003-C — #75
-13. [M24-003-V — Verify Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md) — deps: M24-003-A, M24-003-B, M24-003-C, M24-003-D — #76
-14. [M24-003-Z — Package evidence for Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-Z-package-evidence-for-implement-worker-local-generation-checked-request-slab.md) — deps: M24-003-V — #77
-15. [M24-004-A — Store capture start/end ranges against the URI path](tasks/01_m24_zero_copy_ingress/M24-004-A-store-capture-start-end-ranges-against-the-uri-path.md) — deps: M24-002-Z, M24-003-Z — #78
-16. [M24-004-B — Bind route-specific parameter names after RouteId selection](tasks/01_m24_zero_copy_ingress/M24-004-B-bind-route-specific-parameter-names-after-routeid-selection.md) — deps: M24-004-A — #79
-17. [M24-004-C — Validate numeric/UUID formats directly from bytes where possible](tasks/01_m24_zero_copy_ingress/M24-004-C-validate-numeric-uuid-formats-directly-from-bytes-where-possible.md) — deps: M24-004-B — #80
-18. [M24-004-D — Materialize JS strings lazily](tasks/01_m24_zero_copy_ingress/M24-004-D-materialize-js-strings-lazily.md) — deps: M24-004-C — #81
-19. [M24-004-V — Verify Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md) — deps: M24-004-A, M24-004-B, M24-004-C, M24-004-D — #82
-20. [M24-004-Z — Package evidence for Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-Z-package-evidence-for-capture-path-parameters-as-byte-ranges.md) — deps: M24-004-V — #83
-21. [M24-005-A — Compile header-name IDs into RoutePlan](tasks/01_m24_zero_copy_ingress/M24-005-A-compile-header-name-ids-into-routeplan.md) — deps: M24-003-Z — #84
-22. [M24-005-B — Read header values by ID on demand](tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md) — deps: M24-005-A — #85
-23. [M24-005-C — Define duplicate header behavior and byte/string conversion](tasks/01_m24_zero_copy_ingress/M24-005-C-define-duplicate-header-behavior-and-byte-string-conversion.md) — deps: M24-005-B — #86
-24. [M24-005-D — Keep full Headers escape hatch explicit and costed](tasks/01_m24_zero_copy_ingress/M24-005-D-keep-full-headers-escape-hatch-explicit-and-costed.md) — deps: M24-005-C — #87
-25. [M24-005-V — Verify Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md) — deps: M24-005-A, M24-005-B, M24-005-C, M24-005-D — #88
+3. [M24-002-B — Match RouteId using method/path before creating request metadata](tasks/01_m24_zero_copy_ingress/M24-002-B-match-routeid-using-method-path-before-creating-request-metadata.md) — deps: M24-002-A — #67
+4. [M24-002-C — Read FieldNeeds from RoutePlan](tasks/01_m24_zero_copy_ingress/M24-002-C-read-fieldneeds-from-routeplan.md) — deps: M24-002-B — #68
+5. [M24-002-D — Bypass request-object creation for policy-free routes that need no request fields](tasks/01_m24_zero_copy_ingress/M24-002-D-bypass-request-object-creation-for-policy-free-routes-that-need-no-request-field.md) — deps: M24-002-C — #69
+6. [M24-002-V — Verify Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md) — deps: M24-002-A, M24-002-B, M24-002-C, M24-002-D — #70
+7. [M24-002-Z — Package evidence for Route before request materialization](tasks/01_m24_zero_copy_ingress/M24-002-Z-package-evidence-for-route-before-request-materialization.md) — deps: M24-002-V — #71
+8. [M24-003-A — Move request slots into each QuickJS worker](tasks/01_m24_zero_copy_ingress/M24-003-A-move-request-slots-into-each-quickjs-worker.md) — deps: M24-001-Z, M24-002-Z — #72
+9. [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md) — deps: M24-003-A — #73
+10. [M24-003-C — Invalidate at settlement, timeout, cancellation, quarantine, and shutdown](tasks/01_m24_zero_copy_ingress/M24-003-C-invalidate-at-settlement-timeout-cancellation-quarantine-and-shutdown.md) — deps: M24-003-B — #74
+11. [M24-003-D — Reject stale or cross-worker handles deterministically](tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md) — deps: M24-003-C — #75
+12. [M24-003-V — Verify Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md) — deps: M24-003-A, M24-003-B, M24-003-C, M24-003-D — #76
+13. [M24-003-Z — Package evidence for Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-Z-package-evidence-for-implement-worker-local-generation-checked-request-slab.md) — deps: M24-003-V — #77
+14. [M24-004-A — Store capture start/end ranges against the URI path](tasks/01_m24_zero_copy_ingress/M24-004-A-store-capture-start-end-ranges-against-the-uri-path.md) — deps: M24-002-Z, M24-003-Z — #78
+15. [M24-004-B — Bind route-specific parameter names after RouteId selection](tasks/01_m24_zero_copy_ingress/M24-004-B-bind-route-specific-parameter-names-after-routeid-selection.md) — deps: M24-004-A — #79
+16. [M24-004-C — Validate numeric/UUID formats directly from bytes where possible](tasks/01_m24_zero_copy_ingress/M24-004-C-validate-numeric-uuid-formats-directly-from-bytes-where-possible.md) — deps: M24-004-B — #80
+17. [M24-004-D — Materialize JS strings lazily](tasks/01_m24_zero_copy_ingress/M24-004-D-materialize-js-strings-lazily.md) — deps: M24-004-C — #81
+18. [M24-004-V — Verify Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md) — deps: M24-004-A, M24-004-B, M24-004-C, M24-004-D — #82
+19. [M24-004-Z — Package evidence for Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-Z-package-evidence-for-capture-path-parameters-as-byte-ranges.md) — deps: M24-004-V — #83
+20. [M24-005-A — Compile header-name IDs into RoutePlan](tasks/01_m24_zero_copy_ingress/M24-005-A-compile-header-name-ids-into-routeplan.md) — deps: M24-003-Z — #84
+21. [M24-005-B — Read header values by ID on demand](tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md) — deps: M24-005-A — #85
+22. [M24-005-C — Define duplicate header behavior and byte/string conversion](tasks/01_m24_zero_copy_ingress/M24-005-C-define-duplicate-header-behavior-and-byte-string-conversion.md) — deps: M24-005-B — #86
+23. [M24-005-D — Keep full Headers escape hatch explicit and costed](tasks/01_m24_zero_copy_ingress/M24-005-D-keep-full-headers-escape-hatch-explicit-and-costed.md) — deps: M24-005-C — #87
+24. [M24-005-V — Verify Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md) — deps: M24-005-A, M24-005-B, M24-005-C, M24-005-D — #88
+25. [M24-005-Z — Package evidence for Implement declared-header lazy access](tasks/01_m24_zero_copy_ingress/M24-005-Z-package-evidence-for-implement-declared-header-lazy-access.md) — deps: M24-005-V — #89

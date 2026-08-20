@@ -4,7 +4,7 @@ parent_task: M24-002
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -114,13 +114,20 @@ Stop after this task is committed and handed off. Do not automatically begin the
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
 
-## Verification blocker record
+## Completion record
 
-- Task ID: `M24-002-A`
-- Blocking fact: The current `q-http` API invokes a `Fn(RequestContext)` handler after q-http has already cloned headers, parsed query, and collected method-selected bodies. Deferring body polling requires route-aware admission before constructing `RequestContext`; the runtime currently owns routing in `crates/q-runtime/src/serve.rs`, so a local q-http type change either breaks the handler boundary or preserves the forbidden eager path.
-- Exact source locations: `crates/q-http/src/lib.rs:205-337` (permit, cloned headers, eager query/body materialization); `crates/q-runtime/src/serve.rs:121-337` (routing and body/schema decisions after `RequestContext` exists); `crates/q-runtime/src/main.rs:234-235` (handler passed to q-http).
-- Exact command/result: `cargo check -p q-http -p velqu-runtime` PASS after restoring baseline. The attempted native-head-only refactor failed because `velqu-runtime` still requires `Fn(RequestContext)` and route-aware body admission is not available at the q-http boundary.
-- Dependency or owner required: Introduce the route-aware admission boundary first, then move body ownership/read-once behavior into M24-002/M24-007 without retaining an eager compatibility collect. Keep this packet TODO until admission counters, negative body/header budget tests, and perf stage timings exist.
-- Safe work completed before stopping: inspected q-http/runtime integration and confirmed the smallest local API change cannot satisfy C0/C1 guardrails without coordinated route-boundary work; no source behavior changed.
-- Files changed but not committed: this packet record only.
-- Suggested next action: implement the route-aware native admission seam in the next authorized M24 implementation packet; do not mark M24-002-A, M24-001-V, M24-001-Z, or M24-GATE PASS.
+- Status: **PASS**
+- Deliverable: native ingress seam. `q-http` now enforces URI/header admission limits directly on the native head and hands the handler a `NativeRequest` (hyper `Method`, `Uri`, `HeaderMap`, `Incoming` body, request ID, started). No query parse, header clone, or body poll happens in `q-http` anymore; materialization is relocated into the runtime handler and is behavior-equivalent. Body reads go through `collect_body_bounded`, which stops at the byte budget instead of buffering the whole stream before the 413 check.
+- Changed files:
+  - `crates/q-http/src/lib.rs` (NativeRequest, native-only admit, collect_body_bounded, materialize_headers, RequestContext removed)
+  - `crates/q-runtime/src/serve.rs` (private pipeline-local RequestContext built inside the handler; ServeState.limits)
+  - `crates/q-runtime/src/main.rs` (passes limits into ServeState)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-002-A-keep-method-uri-headermap-and-body-stream-in-native-forms.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Tests: new `header_materialization_lowercases_names_and_keeps_values` (q-http); behavior equivalence proven by unchanged suites — `body_and_header_limits_reject_oversize`, `queue_limit_returns_503_when_saturated`, `full_runtime_conformance` and the rest of runtime conformance (12/12), engine 84/84, bridge 4/4, `bun test` 35/35.
+- Verification: `cargo test -p q-engine-quickjs -p q-http -p q-bridge -p q-capabilities -p velqu-runtime` all pass; `cargo fmt --check` clean; `cargo clippy --workspace --all-targets -- -D warnings` clean; `bun run typecheck` clean; `bun test` 35 pass; `./scripts/validate-okf` PASS.
+- Remaining risk / deferred by design: routing-before-materialization (404/405/C0 zero materialization) lands in M24-002-B; declaration-driven FieldNeeds laziness in M24-002-C; request-object bypass in M24-002-D; admission counters and stage histograms are M24-009 scope per spec §9.2 (existing completion logs already carry per-request stage + durationMs). Parent guardrail "C0/C1 perform no query parse/header clone/body collect" is therefore not yet fully satisfied — it is delivered across B/C/D, not by this packet alone.
+- Next dependency-ready task: M24-002-B (match RouteId using method/path before creating request metadata).

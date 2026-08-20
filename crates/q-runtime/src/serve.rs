@@ -9,12 +9,26 @@ use std::time::{Duration, Instant};
 use q_engine::Engine as _;
 use q_engine::{BodyOut, InvocationSpec, Outcome};
 use q_engine_quickjs::QuickJsEngine;
-use q_http::{HandlerResult, HttpError, PlainResponse, RequestContext};
+use q_http::{collect_body_bounded, materialize_headers, parse_query};
+use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
 use q_schema_runtime::{validate_params, validate_query, Source};
 use serde_json::Value;
 
 use crate::problems;
+
+/// Materialized pipeline inputs (M24-002-A): q-http now hands over native
+/// parts and this runtime-local context is built only inside the handler.
+/// M24-002-B moves its construction after route resolution.
+struct RequestContext {
+    request_id: String,
+    method: String,
+    path: String,
+    /// decoded query pairs in arrival order
+    query: Vec<(String, String)>,
+    headers: Vec<(String, String)>,
+    body: Option<Vec<u8>>,
+}
 
 /// Request logging modes (OPS-001: full mode is opt-in; production default
 /// is Errors to avoid per-request serialization cost).
@@ -50,26 +64,49 @@ pub struct ServeState {
     pub store: Arc<q_bridge::RequestStore>,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
+    pub limits: q_http::Limits,
 }
 
 #[allow(clippy::type_complexity)]
 pub fn make_handler(
     state: Arc<ServeState>,
 ) -> impl Fn(
-    RequestContext,
+    NativeRequest,
 ) -> std::pin::Pin<
     Box<dyn std::future::Future<Output = (HandlerResult, String, &'static str)> + Send>,
 > + Clone
        + Send
        + Sync
        + 'static {
-    move |ctx: RequestContext| {
+    move |req: NativeRequest| {
         let state = Arc::clone(&state);
         Box::pin(async move {
             let started = if state.log_mode != LogMode::Off {
-                Some(Instant::now())
+                Some(req.started)
             } else {
                 None
+            };
+            // M24-002-A relocation: native parts are materialized here, inside
+            // the runtime, instead of eagerly inside q-http. Behavior is
+            // equivalent to the previous ingress materialization; M24-002-B
+            // gates each field behind route resolution.
+            let method = req.method.as_str().to_uppercase();
+            let path = req.uri.path().to_string();
+            let body = if method == "POST" || method == "PUT" || method == "PATCH" {
+                match collect_body_bounded(req.body, state.limits.max_body_bytes).await {
+                    Ok(bytes) => Some(bytes),
+                    Err(e) => return (Err(e), "admission".into(), "admission"),
+                }
+            } else {
+                None
+            };
+            let ctx = RequestContext {
+                request_id: req.request_id,
+                query: parse_query(req.uri.query().unwrap_or("")),
+                headers: materialize_headers(&req.headers),
+                method,
+                path,
+                body,
             };
             let (result, route_id, stage) = pipeline(&state, &ctx).await;
             if let Some(started) = started {

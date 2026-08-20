@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use http_body_util::BodyExt;
 use hyper::body::Incoming;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::service::Service;
@@ -39,16 +38,65 @@ impl Default for Limits {
     }
 }
 
-#[derive(Debug)]
-pub struct RequestContext {
+/// Native request parts retained through admission (M24-002-A). Method, Uri,
+/// HeaderMap, and the body stream stay in their hyper forms; the consumer
+/// materializes fields only when its pipeline needs them.
+pub struct NativeRequest {
     pub request_id: String,
-    pub method: String,
-    pub path: String,
-    /// decoded query pairs in arrival order
-    pub query: Vec<(String, String)>,
-    pub headers: Vec<(String, String)>,
-    pub body: Option<Vec<u8>>,
+    pub method: hyper::Method,
+    pub uri: hyper::Uri,
+    pub headers: hyper::HeaderMap,
+    pub body: Incoming,
     pub started: Instant,
+}
+
+impl std::fmt::Debug for NativeRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeRequest")
+            .field("request_id", &self.request_id)
+            .field("method", &self.method)
+            .field("uri", &self.uri)
+            .field("header_count", &self.headers.len())
+            .field("started", &self.started)
+            .finish()
+    }
+}
+
+/// Materialize header pairs (lowercased keys) for the bridge's lazy JS
+/// surface. Bounded by the admission header limits already enforced.
+pub fn materialize_headers(map: &hyper::HeaderMap) -> Vec<(String, String)> {
+    map.iter()
+        .map(|(name, value)| {
+            (
+                name.as_str().to_ascii_lowercase(),
+                String::from_utf8_lossy(value.as_bytes()).into_owned(),
+            )
+        })
+        .collect()
+}
+
+/// Read the body once, stopping as soon as the byte budget would be exceeded
+/// (413) instead of buffering the whole stream first. Transport failures map
+/// to BadBody (400), matching the previous collect-then-check behavior.
+pub async fn collect_body_bounded(
+    mut body: Incoming,
+    max_bytes: usize,
+) -> Result<Vec<u8>, HttpError> {
+    use http_body_util::BodyExt;
+    let mut buf = Vec::new();
+    while let Some(frame) = body.frame().await {
+        let frame = frame.map_err(|e| HttpError::BadBody(e.to_string()))?;
+        if let Ok(data) = frame.into_data() {
+            if buf.len() + data.len() > max_bytes {
+                return Err(HttpError::Limited {
+                    status: 413,
+                    which: "body",
+                });
+            }
+            buf.extend_from_slice(&data);
+        }
+    }
+    Ok(buf)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -139,7 +187,7 @@ impl HttpHost {
         mut shutdown: tokio::sync::watch::Receiver<bool>,
     ) -> std::io::Result<()>
     where
-        H: Fn(RequestContext) -> F + Send + Sync + 'static,
+        H: Fn(NativeRequest) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = (HandlerResult, String, &'static str)> + Send,
     {
         let handler = Arc::new(handler);
@@ -193,7 +241,7 @@ struct ReqService<H> {
 
 impl<H, F> Service<Request<Incoming>> for ReqService<H>
 where
-    H: Fn(RequestContext) -> F + Send + Sync + 'static,
+    H: Fn(NativeRequest) -> F + Send + Sync + 'static,
     F: std::future::Future<Output = (HandlerResult, String, &'static str)> + Send,
 {
     type Response = Response<http_body_util::Full<hyper::body::Bytes>>;
@@ -216,7 +264,10 @@ where
                     ));
                 }
             };
-            let out = handle_one(&host, req, &*handler).await;
+            let out = match admit(&host, req) {
+                Ok(native) => handler(native).await,
+                Err(e) => (Err(e), "admission".into(), "admission"),
+            };
             drop(permit);
             let (result, _route, _stage) = out;
             match result {
@@ -237,104 +288,48 @@ where
     }
 }
 
-async fn handle_one<H, F>(
-    host: &HttpHost,
-    req: Request<Incoming>,
-    handler: &H,
-) -> (HandlerResult, String, &'static str)
-where
-    H: Fn(RequestContext) -> F + Send + Sync,
-    F: std::future::Future<Output = (HandlerResult, String, &'static str)> + Send,
-{
+/// Admission over the native head only: URI/header limits are enforced here
+/// with zero materialization — no query parse, no header clone, no body poll.
+/// The queue permit is already held by the caller (before this function).
+fn admit(host: &HttpHost, req: Request<Incoming>) -> Result<NativeRequest, HttpError> {
     let limits = host.shared.limits;
-    let method = req.method().as_str().to_uppercase();
-    let uri = req.uri().clone();
-    let path = uri.path().to_string();
-    let query_raw = uri.query().unwrap_or("").to_string();
-
-    // URI limit
-    if path.len() + query_raw_len(&uri) > limits.max_uri_bytes {
-        return (
-            Err(HttpError::Limited {
-                status: 414,
-                which: "uri",
-            }),
-            "admission".into(),
-            "admission",
-        );
+    let (parts, body) = req.into_parts();
+    let uri = parts.uri;
+    if uri.path().len() + query_raw_len(&uri) > limits.max_uri_bytes {
+        return Err(HttpError::Limited {
+            status: 414,
+            which: "uri",
+        });
     }
-    // header limits
-    let mut headers = Vec::with_capacity(req.headers().len());
-    let mut header_bytes = 0usize;
-    if req.headers().len() > limits.max_headers {
-        return (
-            Err(HttpError::Limited {
-                status: 431,
-                which: "headers",
-            }),
-            "admission".into(),
-            "admission",
-        );
+    if parts.headers.len() > limits.max_headers {
+        return Err(HttpError::Limited {
+            status: 431,
+            which: "headers",
+        });
     }
-    for (k, v) in req.headers() {
-        let value = String::from_utf8_lossy(v.as_bytes()).into_owned();
-        header_bytes += k.as_str().len() + value.len();
-        headers.push((k.as_str().to_ascii_lowercase(), value));
-    }
+    let header_bytes = parts
+        .headers
+        .iter()
+        .map(|(name, value)| name.as_str().len() + value.len())
+        .sum::<usize>();
     if header_bytes > limits.max_header_bytes {
-        return (
-            Err(HttpError::Limited {
-                status: 431,
-                which: "headers",
-            }),
-            "admission".into(),
-            "admission",
-        );
+        return Err(HttpError::Limited {
+            status: 431,
+            which: "headers",
+        });
     }
-
-    // body: read up to limit+1 so oversize is detectable
-    let mut body: Option<Vec<u8>> = None;
-    if method == "POST" || method == "PUT" || method == "PATCH" {
-        match req.into_body().collect().await {
-            Ok(collected) => {
-                let bytes = collected.to_bytes();
-                if bytes.len() > limits.max_body_bytes {
-                    return (
-                        Err(HttpError::Limited {
-                            status: 413,
-                            which: "body",
-                        }),
-                        "admission".into(),
-                        "admission",
-                    );
-                }
-                body = Some(bytes.to_vec());
-            }
-            Err(e) => {
-                return (
-                    Err(HttpError::BadBody(e.to_string())),
-                    "admission".into(),
-                    "admission",
-                )
-            }
-        }
-    }
-
-    let request_id = format!(
-        "req-{}-{}",
-        host.shared.start_unix_ms,
-        host.shared.request_clock.fetch_add(1, Ordering::Relaxed)
-    );
-    let ctx = RequestContext {
-        request_id,
-        method,
-        path,
-        query: parse_query(&query_raw),
-        headers,
+    Ok(NativeRequest {
+        request_id: format!(
+            "req-{}-{}",
+            host.shared.start_unix_ms,
+            host.shared.request_clock.fetch_add(1, Ordering::Relaxed)
+        ),
+        method: parts.method,
+        uri,
+        headers: parts.headers,
         body,
         started: Instant::now(),
-    };
-    handler(ctx).await
+    })
 }
 
 fn render(p: PlainResponse) -> Response<http_body_util::Full<hyper::body::Bytes>> {
@@ -454,5 +449,19 @@ mod tests {
         assert_eq!(q[1], ("name".into(), "Rafi Z".into()));
         assert_eq!(q[2], ("x".into(), "A".into()));
         assert!(parse_query("").is_empty());
+    }
+
+    #[test]
+    fn header_materialization_lowercases_names_and_keeps_values() {
+        use hyper::header::HeaderValue;
+        let mut map = hyper::HeaderMap::new();
+        map.insert(
+            "Content-Type",
+            HeaderValue::from_str("application/json").unwrap(),
+        );
+        map.insert("X-Custom", HeaderValue::from_str("v").unwrap());
+        let pairs = materialize_headers(&map);
+        assert!(pairs.contains(&("content-type".to_string(), "application/json".to_string())));
+        assert!(pairs.contains(&("x-custom".to_string(), "v".to_string())));
     }
 }
