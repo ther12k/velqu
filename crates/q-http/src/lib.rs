@@ -395,10 +395,27 @@ fn problem_response(
     render(plain)
 }
 
-/// Minimal percent-decoding query parser (order-preserving, last value wins
-/// only at the consumer; here all pairs are kept).
+/// Repeated-key behavior for query/cookie fields. M24-006-B freezes
+/// schema-facing semantics as last-value-wins while retaining arrival order
+/// in the raw pair list for diagnostics and future policies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepeatedKeyPolicy {
+    LastValueWins,
+}
+
+pub const QUERY_REPEATED_KEY_POLICY: RepeatedKeyPolicy = RepeatedKeyPolicy::LastValueWins;
+
+/// Parse query pairs without collapsing duplicates. Consumers apply the
+/// declared repeated-key policy when projecting into schema objects.
 pub fn parse_query(raw: &str) -> Vec<(String, String)> {
+    parse_query_with_policy(raw, QUERY_REPEATED_KEY_POLICY)
+}
+
+pub fn parse_query_with_policy(raw: &str, policy: RepeatedKeyPolicy) -> Vec<(String, String)> {
     let mut out = VecDeque::new();
+    match policy {
+        RepeatedKeyPolicy::LastValueWins => {}
+    }
     for pair in raw.split('&') {
         if pair.is_empty() {
             continue;
@@ -468,6 +485,25 @@ mod tests {
         assert_eq!(q[1], ("name".into(), "Rafi Z".into()));
         assert_eq!(q[2], ("x".into(), "A".into()));
         assert!(parse_query("").is_empty());
+    }
+
+    #[test]
+    fn repeated_query_policy_preserves_pairs_for_last_value_projection() {
+        assert_eq!(QUERY_REPEATED_KEY_POLICY, RepeatedKeyPolicy::LastValueWins);
+        let pairs = parse_query_with_policy("a=1&a=2&b=3", QUERY_REPEATED_KEY_POLICY);
+        assert_eq!(
+            pairs,
+            vec![
+                ("a".into(), "1".into()),
+                ("a".into(), "2".into()),
+                ("b".into(), "3".into())
+            ]
+        );
+        let mut projected = std::collections::BTreeMap::new();
+        for (key, value) in pairs {
+            projected.insert(key, value);
+        }
+        assert_eq!(projected.get("a"), Some(&"2".to_string()));
     }
 
     #[test]

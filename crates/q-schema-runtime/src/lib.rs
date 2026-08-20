@@ -450,7 +450,7 @@ fn coerce_number(value: &Value, coerce: bool, path: &str) -> Result<f64, Vec<Fie
 pub fn validate_query(ir: &SchemaIr, query: &[(String, String)]) -> ValidationResult {
     let mut raw = Map::new();
     for (k, v) in query {
-        // last value wins for repeated keys (documented)
+        // M24-006-B: repeated query keys use frozen last-value-wins policy.
         raw.insert(k.clone(), Value::String(v.clone()));
     }
     // Only declared properties are validated; extras ignored.
