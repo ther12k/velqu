@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -126,3 +126,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: normative M2.4 ingress ownership and admission specification.
+- Changed files:
+  - `docs/specs/m24-ingress-ownership-and-admission.md`
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-001-B-specify-body-ownership-queue-admission-disconnect-cancellation-and-request-slot.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Specification evidence: `QUEUE_RESERVED`, `SLOT_RESERVED`, `ACTIVE`, `SETTLING`, and `FREE` lifecycle; ordered admission before body polling; read-once bounded body state machine; disconnect/cancellation arbiter and race precedence; settlement checklist; request-ID rules; early-rejection body disposition; nine acceptance proofs; threat/ownership review.
+- Verification: `./scripts/validate-okf` PASS (174 links); targeted Rust crates all pass (154 tests); `bun test` 35 pass; `bun run typecheck` clean.
+- Remaining risk: implementation and state-machine assertions are carried by M24-001-C/D and M24-002…M24-010; this packet intentionally changes specification only.
+- Next dependency-ready task: M24-001-C (define no-copy and bounded-copy boundaries).
