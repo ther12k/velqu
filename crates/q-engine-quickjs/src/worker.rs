@@ -2210,6 +2210,11 @@ fn install_natives(
                     "request handle unavailable for field-free route",
                 ));
             }
+            store
+                .body_mode(store.local_handle(slot, gen as u64), "text")
+                .map_err(|_| {
+                    rquickjs::Exception::throw_message(&ctx, "incompatible body representation")
+                })?;
             let s = store
                 .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
                     String::from_utf8_lossy(m.body.as_deref().unwrap_or_default()).into_owned()
@@ -2229,6 +2234,11 @@ fn install_natives(
                     "request handle unavailable for field-free route",
                 ));
             }
+            store
+                .body_mode(store.local_handle(slot, gen as u64), "bytes")
+                .map_err(|_| {
+                    rquickjs::Exception::throw_message(&ctx, "incompatible body representation")
+                })?;
             let len = store
                 .access(store.local_handle(slot, gen as u64), 0, 0, |m| {
                     m.body.as_deref().map_or(0, |b| b.len())
@@ -2252,6 +2262,11 @@ fn install_natives(
                     "request handle unavailable for field-free route",
                 ));
             }
+            store
+                .body_mode(store.local_handle(slot, gen as u64), "bytes")
+                .map_err(|_| {
+                    rquickjs::Exception::throw_message(&ctx, "incompatible body representation")
+                })?;
             let body: bytes::Bytes = store
                 .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
                     m.body.clone().unwrap_or_default()
