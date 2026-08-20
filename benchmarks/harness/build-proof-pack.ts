@@ -232,6 +232,9 @@ function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyT
     querySchemaId: r.query ? (schemaKeyToId.get(r.query.schema) ?? null) : null,
     headersSchemaId: null,
     bodySchemaId: r.body ? (schemaKeyToId.get(r.body.schema) ?? null) : null,
+    headerNameIds: [],
+    queryNameIds: [],
+    cookieNameIds: [],
     defaultStatus,
     allowedStatuses,
     fieldNeeds: {
