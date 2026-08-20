@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -107,6 +107,18 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence package
+
+- Implementation commits: M24-006-A/B/C/D; verification commit: M24-006-V PR #674.
+- Canonical query IDs: `QPack::verify` derives sorted schema-property names and rejects mismatched tables/IDs.
+- Repeated keys: `QUERY_REPEATED_KEY_POLICY` is `LastValueWins`; raw parser retains arrival-order pairs.
+- Decoding: valid `%HH` and `+` semantics are explicit; malformed escapes remain literal; invalid UTF-8 becomes U+FFFD.
+- Slot cache: query JSON computes once per request slot, charges once, clears on settlement, and rejects stale generations.
+- Evidence tests: `query_name_ids_are_canonical_and_cookie_table_is_bounded`, `repeated_query_policy_preserves_pairs_for_last_value_projection`, `invalid_percent_and_utf8_corpus_is_deterministic`, parser fuzz corpus, `query_cache_materializes_once_and_expires_with_slot`.
+- Targeted Rust suites, fuzz parser tests, format, clippy, and OKF validation pass.
+- Cookie parsing remains explicitly bounded to empty pre-binding metadata; no unsupported cookie behavior claimed.
+- Benchmark manifests remain unchanged; no unsupported performance claim added.
 
 ## Out of scope
 
