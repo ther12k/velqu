@@ -350,7 +350,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // Routes without a body binding never poll the stream at all.
             let mut body_value: Option<Value> = None;
             let mut raw_body: Option<Vec<u8>> = None;
-            if let Some(binding) = &route.body {
+            if needs.body {
+                // QPack::verify proves body binding and RoutePlan agree. The
+                // plan flag, not HTTP method, controls stream polling.
+                let binding = route.body.as_ref().expect("verified body plan binding");
                 let ctype = headers
                     .get("content-type")
                     .and_then(|v| v.to_str().ok())
