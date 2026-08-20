@@ -246,17 +246,28 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 return (Ok(resp), route_id, "quarantined");
             }
 
-            // ---- M24-002-B: route matched — materialize fields from here on.
-            // Query pairs are still parsed eagerly for JS routes; M24-002-C
-            // gates this on RoutePlan FieldNeeds.
-            let query_pairs = parse_query(uri.query().unwrap_or(""));
-
             // M23R2: resolve the CompiledRoute once — every subsequent step
             // (validation, invocation, response) reads numeric IDs from it
             let compiled = state
                 .router
                 .compiled_route(route_index)
                 .expect("matched route must exist in router");
+
+            // ---- M24-002-C: FieldNeeds from the verified RoutePlan gates
+            // every materialization. QPack::verify has already proven the
+            // flags exactly match the route's declared needs (schemas, body
+            // binding, and security/policy headers), so an undeclared field
+            // copies zero bytes even when the handler runs.
+            let needs = compiled
+                .plan
+                .as_ref()
+                .map(|p| p.field_needs)
+                .unwrap_or_default();
+            let query_pairs = if needs.query {
+                parse_query(uri.query().unwrap_or(""))
+            } else {
+                Vec::new()
+            };
 
             // ---- native input validation (params/query) — SchemaId indexed,
             // zero string-map lookups on the request path (M23R2-004)
@@ -362,13 +373,28 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             }
 
             // Materialized pipeline inputs for the JS invocation surface.
+            // Headers copy zero bytes unless the route declared header or
+            // security needs (M24-002-C); content-type only exists for
+            // body-bound routes where admission already read it natively.
             let ctx = RequestContext {
                 request_id,
                 method: method_str.to_uppercase(),
                 path: path.to_string(),
                 query: query_pairs,
-                headers: materialize_headers(&headers),
+                headers: if needs.headers {
+                    materialize_headers(&headers)
+                } else {
+                    Vec::new()
+                },
                 body: raw_body,
+            };
+            let content_type = if needs.body {
+                headers
+                    .get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_string)
+            } else {
+                None
             };
 
             // ---- invocation through the engine
@@ -379,11 +405,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 params,
                 query: ctx.query.clone(),
                 headers: ctx.headers.clone(),
-                content_type: ctx
-                    .headers
-                    .iter()
-                    .find(|(k, _)| k == "content-type")
-                    .map(|(_, v)| v.clone()),
+                content_type,
                 body: ctx.body.clone(),
             });
 
