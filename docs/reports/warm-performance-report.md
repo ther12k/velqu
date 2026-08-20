@@ -78,4 +78,4 @@ The following figures are retained as historical context from the prior single-p
 
 ## Architecture and scope
 
-Velqu executes on exactly one QuickJS worker for this milestone; multi-worker scaling is scheduled for M3. The repeated run reported zero errors across all cells. These measurements describe only this host, pinned versions, release builds, loopback HTTP/1.1, and the frozen fixture workloads. G0 remains IN_PROGRESS because allocation counters are unavailable and the release packet is not yet generated.
+Velqu executes on exactly one QuickJS worker for this milestone; multi-worker scaling is scheduled for M3. The repeated run reported zero errors across all cells. These measurements describe only this host, pinned versions, release builds, loopback HTTP/1.1, and the frozen fixture workloads. G0 remains IN_PROGRESS until the current evidence packet is regenerated from the final clean commit.

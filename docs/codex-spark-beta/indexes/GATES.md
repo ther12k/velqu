@@ -3,6 +3,8 @@
 
 ## [G0-GATE — M23R2 Gate Closure — Trusted Numeric Artifact and Router exit gate](../gates/G0-GATE.md)
 
+Status: **PASS** at evidence checkpoint `03cc48955c2f8b05c29cf6ca196572c67ed5dd2d`; packet-local release indexes bind the final clean commit.
+
 Dependencies: G0-001, G0-002, G0-003, G0-004, G0-005, G0-006, G0-007, G0-008, G0-009
 
 

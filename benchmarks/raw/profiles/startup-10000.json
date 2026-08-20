@@ -1,18 +1,33 @@
 {
   "format": "velqu-startup-profile-v1",
-  "generatedAt": "2026-08-20T08:42:39Z",
+  "generatedAt": "2026-08-20T09:04:13Z",
   "pack": "benchmarks/raw/packs/app-10000.qpack",
   "runtime": "target/release/velqu-runtime",
   "tools": {
     "perf": "/usr/bin/perf",
     "time": "/usr/bin/time",
-    "valgrind": null
+    "valgrind": null,
+    "cc": "/usr/bin/cc"
+  },
+  "allocation": {
+    "status": "captured",
+    "source": "scripts/alloc-tracer.c",
+    "library": "target/alloc-tracer.so",
+    "output": "benchmarks/raw/profiles/startup-10000.alloc.json",
+    "counts": {
+      "mallocCalls": 1197,
+      "callocCalls": 288,
+      "reallocCalls": 193,
+      "freeCalls": 1843,
+      "allocatedBytes": 304959,
+      "reallocatedBytes": 7872
+    }
   },
   "status": "captured",
   "perfUnavailable": "host denied performance counters; retried with wall-clock",
-  "exitCode": 0,
-  "elapsedMs": 327.162,
-  "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":287.414502,\"stages\":[{\"stage\":\"pack.load\",\"ms\":231.624837},{\"stage\":\"router.build\",\"ms\":4.275449},{\"stage\":\"engine.spawn\",\"ms\":0.049599},{\"stage\":\"bundle.load\",\"ms\":50.614086},{\"stage\":\"listen\",\"ms\":0.068648}],\"bundleEvalMs\":46.322328000000006}\n{\"level\":\"info\",\"event\":\"shutdown.complete\",\"stats\":{\"invocations\":0,\"policy_calls\":0,\"handler_calls\":0,\"immediate_results\":0,\"promise_results\":0,\"promise_watches\":0,\"job_queue_drains\":0,\"settlement_scans\":0,\"timer_ops_started\":0,\"timer_ops_completed\":0,\"pending_ops\":0,\"native_tasks_started\":0,\"native_tasks_alive\":0,\"native_tasks_completed\":0,\"native_tasks_aborted\":0,\"scheduler_boundary_violations\":0,\"queue_poisoned\":false,\"poison_events\":0,\"late_completions_dropped\":0,\"cancelled_invocations\":0,\"timeouts\":0,\"engine_failures\":0,\"contract_violations\":0,\"numeric_dispatches\":0,\"legacy_map_dispatches\":0,\"heap_used\":7187236}}\n",
+  "exitCode": -15,
+  "elapsedMs": 444.313,
+  "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":433.669988,\"stages\":[{\"stage\":\"pack.load\",\"ms\":341.59556499999997},{\"stage\":\"router.build\",\"ms\":6.77386},{\"stage\":\"engine.spawn\",\"ms\":0.026803},{\"stage\":\"bundle.load\",\"ms\":85.02726},{\"stage\":\"listen\",\"ms\":0.058094}],\"bundleEvalMs\":84.042441}\n",
   "stderr": "",
   "tool": "wall-clock",
   "ready": {
@@ -25,67 +40,67 @@
     "engine": "quickjs-ng/0.15.1",
     "runtimeAbi": 1,
     "contractHash": "0969a6cdfef60ae2a1beeb0425e8081b",
-    "startupMs": 287.414502,
+    "startupMs": 433.669988,
     "stages": [
       {
         "stage": "pack.load",
-        "ms": 231.624837
+        "ms": 341.59556499999997
       },
       {
         "stage": "router.build",
-        "ms": 4.275449
+        "ms": 6.77386
       },
       {
         "stage": "engine.spawn",
-        "ms": 0.049599
+        "ms": 0.026803
       },
       {
         "stage": "bundle.load",
-        "ms": 50.614086
+        "ms": 85.02726
       },
       {
         "stage": "listen",
-        "ms": 0.068648
+        "ms": 0.058094
       }
     ],
-    "bundleEvalMs": 46.322328000000006
+    "bundleEvalMs": 84.042441
   },
   "startupStages": [
     {
       "stage": "pack.load",
-      "ms": 231.624837
+      "ms": 341.59556499999997
     },
     {
       "stage": "router.build",
-      "ms": 4.275449
+      "ms": 6.77386
     },
     {
       "stage": "engine.spawn",
-      "ms": 0.049599
+      "ms": 0.026803
     },
     {
       "stage": "bundle.load",
-      "ms": 50.614086
+      "ms": 85.02726
     },
     {
       "stage": "listen",
-      "ms": 0.068648
+      "ms": 0.058094
     }
   ],
   "attempts": [
     {
       "tool": "perf",
       "exitCode": 1,
-      "elapsedMs": 8008.385,
+      "elapsedMs": 2002.313,
       "stdout": "",
       "stderr": "Error:\nNo supported events found.\nAccess to performance monitoring and observability operations is limited.\nConsider adjusting /proc/sys/kernel/perf_event_paranoid setting to open\naccess to performance monitoring and observability operations for processes\nwithout CAP_PERFMON, CAP_SYS_PTRACE or CAP_SYS_ADMIN Linux capability.\nMore information can be found at 'Perf events and tool security' document:\nhttps://www.kernel.org/doc/html/latest/admin-guide/perf-security.html\nperf_event_paranoid setting is 4:\n  -1: Allow use of (almost) all events by all users\n      Ignore mlock limit after perf_event_mlock_kb without CAP_IPC_LOCK\n>= 0: Disallow raw and ftrace function tracepoint access\n>= 1: Disallow CPU event access\n>= 2: Disallow kernel profiling\nTo make the adjusted perf_event_paranoid setting permanent preserve it\nin /etc/sysctl.conf (e.g. kernel.perf_event_paranoid = <setting>)\n",
       "ready": null
     },
     {
       "tool": "wall-clock",
-      "exitCode": 0,
-      "elapsedMs": 327.162,
-      "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":287.414502,\"stages\":[{\"stage\":\"pack.load\",\"ms\":231.624837},{\"stage\":\"router.build\",\"ms\":4.275449},{\"stage\":\"engine.spawn\",\"ms\":0.049599},{\"stage\":\"bundle.load\",\"ms\":50.614086},{\"stage\":\"listen\",\"ms\":0.068648}],\"bundleEvalMs\":46.322328000000006}\n{\"level\":\"info\",\"event\":\"shutdown.complete\",\"stats\":{\"invocations\":0,\"policy_calls\":0,\"handler_calls\":0,\"immediate_results\":0,\"promise_results\":0,\"promise_watches\":0,\"job_queue_drains\":0,\"settlement_scans\":0,\"timer_ops_started\":0,\"timer_ops_completed\":0,\"pending_ops\":0,\"native_tasks_started\":0,\"native_tasks_alive\":0,\"native_tasks_completed\":0,\"native_tasks_aborted\":0,\"scheduler_boundary_violations\":0,\"queue_poisoned\":false,\"poison_events\":0,\"late_completions_dropped\":0,\"cancelled_invocations\":0,\"timeouts\":0,\"engine_failures\":0,\"contract_violations\":0,\"numeric_dispatches\":0,\"legacy_map_dispatches\":0,\"heap_used\":7187236}}\n",
+      "exitCode": -15,
+      "elapsedMs": 444.313,
+      "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":433.669988,\"stages\":[{\"stage\":\"pack.load\",\"ms\":341.59556499999997},{\"stage\":\"router.build\",\"ms\":6.77386},{\"stage\":\"engine.spawn\",\"ms\":0.026803},{\"stage\":\"bundle.load\",\"ms\":85.02726},{\"stage\":\"listen\",\"ms\":0.058094}],\"bundleEvalMs\":84.042441}\n",
       "stderr": "",
       "ready": {
         "level": "info",
@@ -97,30 +112,30 @@
         "engine": "quickjs-ng/0.15.1",
         "runtimeAbi": 1,
         "contractHash": "0969a6cdfef60ae2a1beeb0425e8081b",
-        "startupMs": 287.414502,
+        "startupMs": 433.669988,
         "stages": [
           {
             "stage": "pack.load",
-            "ms": 231.624837
+            "ms": 341.59556499999997
           },
           {
             "stage": "router.build",
-            "ms": 4.275449
+            "ms": 6.77386
           },
           {
             "stage": "engine.spawn",
-            "ms": 0.049599
+            "ms": 0.026803
           },
           {
             "stage": "bundle.load",
-            "ms": 50.614086
+            "ms": 85.02726
           },
           {
             "stage": "listen",
-            "ms": 0.068648
+            "ms": 0.058094
           }
         ],
-        "bundleEvalMs": 46.322328000000006
+        "bundleEvalMs": 84.042441
       }
     }
   ]

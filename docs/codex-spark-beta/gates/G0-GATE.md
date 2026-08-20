@@ -4,7 +4,7 @@ parent_task: G0-GATE
 milestone: G0
 priority: P0
 mode: GATE_REVIEW
-status: IN_PROGRESS
+status: PASS
 context_card: context/milestones/G0.md
 commit_required: true
 ---
@@ -60,9 +60,9 @@ Do not scan unrelated directories unless a listed file imports a directly requir
 1. Freeze the candidate commit and confirm a clean working tree.
 2. Review every dependency evidence packet against source and test reality.
 3. Run the full verification commands from the exact candidate commit.
-4. Check raw-to-report parity, index commit hashes, artifact hashes, and unresolved P0/P1 findings.
+4. Check raw-to-report parity, index commit hashes, artifact hashes, allocator/startup profile status, and unresolved P0/P1 findings.
 5. If any criterion fails, keep the gate IN_PROGRESS and list the exact blocking task; do not patch silently inside the gate review.
-6. If all criteria pass, update the gate status and produce the milestone review packet, source archive, Git bundle, and checksum manifest.
+6. If all criteria pass, update the gate status and produce the milestone review packet, source archive, Git bundle, benchmark manifest, and checksum manifest.
 
 ## Parent acceptance guardrails
 
@@ -135,3 +135,15 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Decision
+
+**PASS at evidence checkpoint `03cc48955c2f8b05c29cf6ca196572c67ed5dd2d`.**
+
+- Numeric semantic manifests, serialized-router verification, RouteId/PolicyId/SchemaId operation, public/execution hash separation, and handler-table rejection are proven by the Rust/compiler tests listed in the root review index.
+- Warm evidence contains five randomized repetitions and 240 cells; cold and route-count evidence contain the required fresh-process samples with zero failures.
+- Startup and allocator evidence is captured in `benchmarks/raw/profiles/startup-10000.json` and `startup-10000.alloc.json`; Linux perf counters remain unavailable (`perf_event_paranoid=4`).
+- Reports are generated and checked from raw evidence; `benchmarks/manifest.json` records run IDs, artifact hashes, and environment.
+- The release packet binds the exact commit and passes `sha256sum -c`.
+
+Next dependency-ready work is M24; no M24–BETA implementation packet is marked complete by this gate.

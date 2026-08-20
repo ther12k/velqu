@@ -33,6 +33,12 @@ async function fileHash(path: string): Promise<string> {
   }
 }
 
+async function runGitRevParse(): Promise<string | null> {
+  const proc = Bun.spawn(["git", "rev-parse", "HEAD"], { cwd: ROOT, stdout: "pipe", stderr: "ignore" });
+  if (await proc.exited !== 0) return null;
+  return (await new Response(proc.stdout).text()).trim();
+}
+
 async function main() {
   console.log("=== Velqu Master Benchmark Suite ===");
 
@@ -66,8 +72,10 @@ async function main() {
 
   // 8. Emit master manifest
   const manifest = {
-    format: "velqu-benchmark-manifest-v1",
+    format: "velqu-benchmark-manifest-v2",
     generatedAt: new Date().toISOString(),
+    commit: (await runGitRevParse()) ?? "unknown",
+    reviewedImplementationCommit: "4e6904951729ea14b48ca39a9564a950cc83e98e",
     environment: {
       platform: "linux",
       kernel: (await Bun.file("/proc/version").text()).trim(),
@@ -98,6 +106,7 @@ async function main() {
   };
 
   writeFileSync("benchmarks/manifest.json", JSON.stringify(manifest, null, 2));
+  await run("Refresh Evidence Manifest", ["python3", "scripts/refresh-benchmark-manifest.py"]);
   console.log("\n=== All Benchmarks Complete: wrote benchmarks/manifest.json ===");
 }
 

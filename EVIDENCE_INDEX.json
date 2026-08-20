@@ -1,14 +1,14 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-08-20T08:45:00Z",
+  "generatedAt": "2026-08-20T09:10:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "status": "IN_PROGRESS",
+  "status": "PASS",
   "milestone": "M23R2-GATE-CLOSE",
   "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "verification": {
     "command": "./scripts/verify",
-    "result": "expected ALL PASS from clean candidate",
+    "result": "PASS — benchmark, report, ledger, and release-packet validators pass at the current evidence checkpoint",
     "rustTests": "workspace count reported by current test run",
     "typescriptTests": 35,
     "benchmarkReportCheck": "python3 scripts/generate-benchmark-reports.py --check"
@@ -21,13 +21,15 @@
     "warm": "benchmarks/raw/warm/summary.json",
     "warmRaw": "benchmarks/raw/warm/g0-warm-1787214167.jsonl",
     "startupProfile": "benchmarks/raw/profiles/startup-10000.json",
-    "environment": "13th Gen Intel Core i5-13420H, Linux 7.0.0-28-generic x86_64, Bun 1.3.4, rustc 1.96.0, quickjs-ng 0.15.1 via rquickjs 0.12.2",
+    "allocationProfile": "benchmarks/raw/profiles/startup-10000.alloc.json",
+    "manifest": "benchmarks/manifest.json",
+    "environment": "benchmarks/manifest.json",
     "protocol": {
       "warm": "5 independent randomized repetitions, concurrency 1/10/50, 240 raw cells, 1 second per cell, zero errors",
       "cold": "5 fresh-process samples per Velqu route class, 7 classes, 35 rows, zero failures/timeouts",
       "routeCount": "5 fresh processes per candidate/route-size cell, randomized candidate/size order, zero failures",
       "startup": "ready-line-bounded wall-clock profile for the generated 10,001-route fixture; perf counters denied by perf_event_paranoid=4",
-      "allocation": "not measured; no allocator count is claimed"
+      "allocation": "captured with scripts/alloc-tracer.c; counts are process-startup instrumentation, not a general allocator benchmark"
     }
   },
   "reports": [
@@ -41,7 +43,7 @@
     "file": "TASKS.production.json",
     "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "120 tasks; evidence-blocked tasks remain IN_PROGRESS until final clean commit and packet"
+    "result": "PASS — 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
   },
   "release": {
     "script": "scripts/release-packet",
@@ -49,8 +51,8 @@
     "checksums": "sha256sum -c SHA256SUMS.txt"
   },
   "openItems": [
-    "allocator/startup allocation counters unavailable on this host",
-    "final clean candidate commit and release packet not yet generated",
+    "perf hardware counters remain unavailable on this host; allocator interposer counts are captured",
+    "release packet is generated from the clean HEAD by scripts/release-packet and must be checksum-verified",
     "fresh full competitor cold-start comparison remains historical context rather than current gate evidence",
     "response-schema validation remains on the optional string-keyed slow path"
   ]

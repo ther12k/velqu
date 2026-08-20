@@ -4,7 +4,7 @@ parent_task: G0-008
 milestone: G0
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/G0.md
 commit_required: true
 ---
@@ -130,3 +130,31 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Evidence checkpoint: `03cc48955c2f8b05c29cf6ca196572c67ed5dd2d`; the final release packet binds the exact clean HEAD after documentation updates.
+- Source/evidence files:
+  - `benchmarks/harness/warm.ts`
+  - `benchmarks/harness/cold-start.ts`
+  - `benchmarks/harness/route-count.ts`
+  - `scripts/capture-startup-profile.py`
+  - `scripts/alloc-tracer.c`
+  - `scripts/generate-benchmark-reports.py`
+- Verification:
+  - `python3 scripts/validate-benchmark-evidence.py`
+  - `python3 scripts/generate-benchmark-reports.py --check`
+  - `5 warm repetitions / 240 cells / zero errors`
+  - `5 route-count samples per cell / zero failures`
+  - `allocator profile captured`
+- Evidence artifacts:
+  - `REVIEW_INDEX.json`
+  - `EVIDENCE_INDEX.json`
+  - `benchmarks/manifest.json`
+  - `benchmarks/raw/profiles/startup-10000.json`
+  - `benchmarks/raw/profiles/startup-10000.alloc.json`
+  - `release/SOURCE-COMMIT.txt`
+  - `release/SHA256SUMS.txt`
+- Remaining risk: Linux perf hardware counters are unavailable (`perf_event_paranoid=4`); allocator counts are captured by `scripts/alloc-tracer.c` and are explicitly scoped as startup instrumentation.
+- Next dependency-ready task: the first unchecked M24 packet after G0-GATE closes.

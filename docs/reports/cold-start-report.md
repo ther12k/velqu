@@ -25,7 +25,7 @@ This run is gate evidence for repeatability and correctness, not a fresh competi
 
 ## Startup profile
 
-The 10,000-route startup profile is recorded at `benchmarks/raw/profiles/startup-10000.json`. The generated fixture contains 10,001 routes because it retains the health route plus 10,000 generated routes. The current wall-clock ready line reports 287.4 ms total: pack.load 231.6 ms, serialized router load 4.3 ms, engine.spawn 0.050 ms, bundle.load 50.6 ms, and listen 0.069 ms. Linux `perf` counters were unavailable because the host sets `perf_event_paranoid=4`; no allocation count is claimed.
+The 10,000-route startup profile is recorded at `benchmarks/raw/profiles/startup-10000.json`. The generated fixture contains 10,001 routes because it retains the health route plus 10,000 generated routes. The ready-line-bounded capture reports 433.7 ms total: pack.load 341.6 ms, serialized router load 6.8 ms, engine.spawn 0.027 ms, bundle.load 85.0 ms, and listen 0.058 ms. Allocator instrumentation captured 1197 mallocs, 288 callocs, 193 reallocs, and 1843 frees. Linux `perf` counters were unavailable because the host sets `perf_event_paranoid=4`; allocator counts are startup instrumentation, not a general allocator benchmark.
 
 ## Historical competitor comparison
 

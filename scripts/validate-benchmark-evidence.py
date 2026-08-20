@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Validate raw benchmark/summary parity without interpreting performance claims."""
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -85,6 +87,27 @@ else:
             errors.append("startup profile has unknown status")
     except Exception as exc:
         errors.append(f"invalid startup profile JSON: {exc}")
+
+manifest = load("benchmarks/manifest.json")
+if manifest:
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        captured_commit = manifest.get("commit")
+        if not captured_commit or subprocess.run(["git", "merge-base", "--is-ancestor", captured_commit, head], cwd=ROOT, capture_output=True).returncode != 0:
+            errors.append(f"manifest: capture commit {captured_commit} is not an ancestor of HEAD {head}")
+        for name, artifact in manifest.get("artifacts", {}).items():
+            path = ROOT / artifact.get("path", "")
+            if not path.is_file():
+                errors.append(f"manifest: missing artifact {name}: {artifact.get('path')}")
+            elif artifact.get("sha256") != hashlib.sha256(path.read_bytes()).hexdigest():
+                errors.append(f"manifest: hash mismatch for {name}")
+        startup = manifest.get("runs", {}).get("startup", {})
+        if startup.get("profile") != "benchmarks/raw/profiles/startup-10000.json":
+            errors.append("manifest: startup profile reference mismatch")
+        if startup.get("allocation", {}).get("status") != "captured":
+            errors.append("manifest: allocation profile is not captured")
+    except Exception as exc:
+        errors.append(f"manifest: validation failed: {exc}")
 
 route = load("benchmarks/raw/route-count/summary.json")
 if route:

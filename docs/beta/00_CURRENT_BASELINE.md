@@ -68,7 +68,7 @@ Do not reimplement already proven scheduler work without a reproduced regression
 
 ## Status addendum (2026-08-20, M23R2-GATE-CLOSE revision)
 
-The M23R2-GATE-CLOSE work package (implemented on top of the 4e69049 reviewed checkpoint) closes the code items as follows; evidence-only blockers remain open until the frozen benchmark and release protocol passes:
+The M23R2-GATE-CLOSE work package (implemented on top of the 4e69049 reviewed checkpoint) closes the code and evidence items as follows; perf hardware counters remain unavailable on this host and are explicitly disclosed:
 
 | # | Review requirement | Status |
 |---|---|---|
@@ -78,7 +78,7 @@ The M23R2-GATE-CLOSE work package (implemented on top of the 4e69049 reviewed ch
 | 4 | No duplicate legacy handler table or implicit fallback | **DONE** — numeric packs with `handlerTable` are rejected; compiler/bench generators emit handlerTable-free packs |
 | 5 | RouteId/PolicyId/HandlerId/SchemaId drive runtime behavior | **DONE for the request path** — router returns route indexes into `CompiledRoute`; params/query/body admission validates through the `SchemaId`-indexed `schema_vector` (zero string lookups); response-schema checking remains on the optional slow path |
 | 6 | Public contract and execution graph hashes independently recomputed and verified | **DONE** — `QPack::verify` recomputes and rejects mismatched `contractHash`; `public_contract_sha256` is stable across function reordering |
-| 7 | Repeated randomized benchmark protocol incl. 10,000-route cold evidence and allocation data | **PARTIAL** — five randomized warm repetitions, five-sample route-count evidence, and Velqu-only cold evidence are captured; allocator counters remain unavailable because the host denies perf events, so no allocation count is claimed |
-| 8 | Release/task/evidence indexes and checksums current and self-verifying | **IN_PROGRESS** — current indexes and report parity are reconciled; final clean candidate commit and packet-local checksum generation remain required |
+| 7 | Repeated randomized benchmark protocol incl. 10,000-route cold evidence and allocation data | **DONE** — five randomized warm repetitions, five-sample route-count evidence, Velqu-only cold evidence, ready-line startup stages, and allocator interposer counts are captured; perf hardware counters remain unavailable and are explicitly disclosed |
+| 8 | Release/task/evidence indexes and checksums current and self-verifying | **DONE** — current indexes, manifest, report parity, commit-bound release packet, and packet-local checksums are generated and validated |
 
 Verification at this revision: 154 Rust tests + 35 TypeScript tests, all passing; `./scripts/verify` ALL PASS.

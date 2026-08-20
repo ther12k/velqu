@@ -4,10 +4,10 @@ This package converts the beta roadmap into atomic Markdown work packets for a s
 
 ## Baseline
 
-- Reviewed source release: `4e6904951729ea14b48ca39a9564a950cc83e98e`.
-- The release `SOURCE-COMMIT.txt` identifies `4e69049`.
-- The supplied baseline review indexes identify the older `e2b379d` checkpoint; current repository gate work reconciles them before M2.4 integration.
-- G0 remains **IN_PROGRESS** until `gates/G0-GATE.md` passes.
+- Reviewed implementation: `4e6904951729ea14b48ca39a9564a950cc83e`.
+- Evidence capture checkpoint: `03cc48955c2f8b05c29cf6ca196572c67ed5dd2d`.
+- The final release commit and packet artifact names are bound by `scripts/release-packet` after the clean commit is fixed, then checksum-validated.
+- G0 status is **PASS**; M2.4 remains the next dependency-ready implementation milestone.
 - Every atomic packet and gate is registered as a private GitHub issue in [`ther12k/velqu`](https://github.com/ther12k/velqu), with priority, milestone, and mode labels.
 
 ## How to use

@@ -17,6 +17,7 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 echo "$COMMIT" > "$OUT/SOURCE-COMMIT.txt"
 git bundle create "$OUT/velqu-${SHORT}.bundle" HEAD master
 git archive --format=zip --prefix="velqu-${SHORT}/" -o "$OUT/source-${SHORT}.zip" HEAD
+cp benchmarks/manifest.json "$OUT/BENCHMARK_MANIFEST.json"
 
 # Indexes are generated after HEAD is fixed; never copy a possibly stale
 # working-tree index into the release packet.
@@ -48,7 +49,7 @@ done
 (
   cd "$OUT"
   : > SHA256SUMS.txt
-  for f in SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" REVIEW_INDEX.json EVIDENCE_INDEX.json; do
+  for f in SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json; do
     sha256sum "$f" >> SHA256SUMS.txt
   done
 )

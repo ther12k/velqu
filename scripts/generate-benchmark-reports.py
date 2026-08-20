@@ -26,10 +26,20 @@ def fmt(value):
     return f"{value:.3f}"
 
 
+def profile_summary():
+    data = load("benchmarks/raw/profiles/startup-10000.json")
+    stages = {stage["stage"]: stage["ms"] for stage in data.get("startupStages", [])}
+    allocation = data.get("allocation", {})
+    counts = allocation.get("counts", {})
+    return data, stages, allocation, counts
+
+
 def cold_report():
     data = load("benchmarks/raw/cold-start/summary.json")
+    profile, stages, allocation, counts = profile_summary()
     rows = data["results"]
     raw = rel_raw(rows[0]["raw"])
+    startup_ms = profile.get("ready", {}).get("startupMs", 0)
     lines = [
         "---",
         "type: Evidence Report",
@@ -61,11 +71,15 @@ def cold_report():
         "",
         "## Startup profile",
         "",
-        "The 10,000-route startup profile is recorded at `benchmarks/raw/profiles/startup-10000.json`. "
-        "The generated fixture contains 10,001 routes because it retains the health route plus 10,000 generated routes. "
-        "The current wall-clock ready line reports 287.4 ms total: pack.load 231.6 ms, serialized router load "
-        "4.3 ms, engine.spawn 0.050 ms, bundle.load 50.6 ms, and listen 0.069 ms. Linux `perf` counters were "
-        "unavailable because the host sets `perf_event_paranoid=4`; no allocation count is claimed.",
+        f"The 10,000-route startup profile is recorded at `benchmarks/raw/profiles/startup-10000.json`. "
+        f"The generated fixture contains 10,001 routes because it retains the health route plus 10,000 generated routes. "
+        f"The ready-line-bounded capture reports {startup_ms:.1f} ms total: pack.load {stages.get('pack.load', 0):.1f} ms, "
+        f"serialized router load {stages.get('router.build', 0):.1f} ms, engine.spawn {stages.get('engine.spawn', 0):.3f} ms, "
+        f"bundle.load {stages.get('bundle.load', 0):.1f} ms, and listen {stages.get('listen', 0):.3f} ms. "
+        f"Allocator instrumentation captured {counts.get('mallocCalls', 0)} mallocs, {counts.get('callocCalls', 0)} callocs, "
+        f"{counts.get('reallocCalls', 0)} reallocs, and {counts.get('freeCalls', 0)} frees. Linux `perf` counters were "
+        "unavailable because the host sets `perf_event_paranoid=4`; allocator counts are startup instrumentation, "
+        "not a general allocator benchmark.",
         "",
         "## Historical competitor comparison",
         "",
@@ -161,7 +175,7 @@ def warm_report():
         "",
         "Velqu executes on exactly one QuickJS worker for this milestone; multi-worker scaling is scheduled for M3. "
         "The repeated run reported zero errors across all cells. These measurements describe only this host, pinned versions, release builds, loopback HTTP/1.1, and the frozen fixture workloads. "
-        "G0 remains IN_PROGRESS because allocation counters are unavailable and the release packet is not yet generated.",
+        "G0 remains IN_PROGRESS until the current evidence packet is regenerated from the final clean commit.",
         "",
     ]
     return "\n".join(lines)
