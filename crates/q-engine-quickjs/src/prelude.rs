@@ -43,6 +43,26 @@ globalThis.__velquMakeLazyParams = function (slot, gen) {
   return obj;
 };
 
+// M24-005-B: headers builds as per-key lazy getters over the plan-declared
+// names — ctx.headers.k materializes exactly one value.
+globalThis.__velquMakeLazyHeaders = function (slot, gen) {
+  const obj = {};
+  const names = JSON.parse(globalThis.__velquReqHeaderNames(slot, gen));
+  for (var i = 0; i < names.length; i++) {
+    (function (n) {
+      let v, used = false;
+      Object.defineProperty(obj, n, {
+        enumerable: true,
+        get: function () {
+          if (!used) { const raw = globalThis.__velquReqHeader(slot, gen, n); v = (raw === undefined || raw === null) ? undefined : raw; used = true; }
+          return v;
+        }
+      });
+    })(names[i]);
+  }
+  return obj;
+};
+
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
 globalThis.__velquMakeCtx = function (slot, gen, pre) {
   const c = {};
@@ -54,7 +74,7 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
   if (!requestless) {
     if (pre.params != null) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
     if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
-    if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers")));
+    if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => globalThis.__velquMakeLazyHeaders(slot, gen));
     if (pre.body !== undefined && pre.body !== null) {
       c.body = pre.body; // native body strategy: already parsed + validated
     } else {
