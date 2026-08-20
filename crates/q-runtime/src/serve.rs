@@ -12,7 +12,7 @@ use q_engine_quickjs::QuickJsEngine;
 use q_http::{collect_body_bounded, materialize_headers, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
-use q_schema_runtime::{validate_params, validate_query, Source};
+use q_schema_runtime::{validate_query, Source};
 use serde_json::Value;
 
 use crate::problems;
@@ -206,7 +206,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         MatchResult::Found {
             route_id: route_id_num,
             route_index: _route_index,
-            params,
+            param_ranges,
             head,
         } => {
             // RouteId is the canonical dense route-vector identity. The matcher
@@ -269,11 +269,25 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             // ---- native input validation (params/query) — SchemaId indexed,
-            // zero string-map lookups on the request path (M23R2-004)
+            // zero string-map lookups on the request path (M23R2-004).
+            // M24-004-A: parameter strings materialize from capture ranges
+            // ONLY when validation or the engine actually needs them; a route
+            // that neither validates params nor declares param needs never
+            // allocates a parameter value.
             let mut params_value: Option<Value> = None;
+            // M24-004-C: numeric/UUID formats validate directly from the
+            // captured path bytes (borrowed names + range slices) — an
+            // invalid value rejects with 422 before any parameter string is
+            // allocated.
             if let Some(sid) = compiled.params_schema_id {
                 let ir = &state.schema_vector[sid.0 as usize];
-                match validate_params(ir, &params) {
+                let names = state.router.param_names(route_index);
+                let param_bytes: Vec<(&str, &[u8])> = names
+                    .iter()
+                    .zip(&param_ranges)
+                    .map(|(n, (start, end))| (*n, &path.as_bytes()[*start as usize..*end as usize]))
+                    .collect();
+                match q_schema_runtime::validate_params_bytes(ir, &param_bytes) {
                     Ok(v) => params_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(
@@ -287,6 +301,29 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 }
             }
+            // M24-004-A/B: owned parameter strings exist only after
+            // validation passed (or none is declared) AND the engine or a
+            // policy actually reads them.
+            // M24-004-D: the request carries name+range specs against the
+            // stored path — parameter VALUE strings do not exist until a JS
+            // key access materializes them from the path.
+            let params_needed =
+                needs.params || route.policy.is_some() || compiled.policy_id.is_some();
+            let param_specs: Vec<q_engine::ParamSpec> = if params_needed {
+                state
+                    .router
+                    .param_names(route_index)
+                    .iter()
+                    .zip(&param_ranges)
+                    .map(|(name, (start, end))| q_engine::ParamSpec {
+                        name: name.to_string(),
+                        start: *start,
+                        end: *end,
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
             let mut query_value: Option<Value> = None;
             if let Some(sid) = compiled.query_schema_id {
@@ -411,7 +448,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 Some(q_engine::RequestMeta {
                     method: ctx.method.clone(),
                     path: ctx.path.clone(),
-                    params,
+                    param_specs,
                     query: ctx.query.clone(),
                     headers: ctx.headers.clone(),
                     content_type,
@@ -475,6 +512,17 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             let (tx, rx) = tokio::sync::oneshot::channel();
+            // M24-003-C: disconnect/outer-timeout ownership. If this pipeline
+            // future is dropped before the engine replies (client disconnect
+            // aborts the response future, or the outer deadline fires),
+            // cancellation is delivered to the worker so the request slot and
+            // its native operations settle exactly once through the single
+            // settlement owner. Normal completion disarms the guard.
+            let mut cancel_guard = CancelOnDrop {
+                state,
+                invocation_id,
+                armed: true,
+            };
             {
                 let mut eng = state.engine.lock().unwrap();
                 eng.invoke(spec, tx);
@@ -483,6 +531,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .await
                 .map(|r| r.unwrap_or(Outcome::Timeout))
                 .unwrap_or(Outcome::Timeout);
+            cancel_guard.disarm();
 
             // client gone (connection dropped) → cancel invocation
             // SCHEMA-003: declared response bodies are validated at runtime.
@@ -633,6 +682,34 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 }
             };
             mapped
+        }
+    }
+}
+
+/// M24-003-C: cancellation ownership for the response future. Dropping the
+/// pipeline future (client disconnect, host shutdown of the connection task)
+/// delivers `Engine::cancel` so the worker's single settlement owner
+/// invalidates the slot and aborts native operations exactly once. The guard
+/// is disarmed on normal completion, so a delivered outcome is never
+/// double-settled.
+struct CancelOnDrop<'a> {
+    state: &'a ServeState,
+    invocation_id: u64,
+    armed: bool,
+}
+
+impl CancelOnDrop<'_> {
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for CancelOnDrop<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            if let Ok(mut eng) = self.state.engine.lock() {
+                eng.cancel(self.invocation_id);
+            }
         }
     }
 }

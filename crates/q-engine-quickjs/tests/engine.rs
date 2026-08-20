@@ -67,6 +67,7 @@ function requestless(ctx) {
   };
 }
 function hello(ctx) { return { message: "Hello " + ctx.params.name }; }
+function params_lazy_b(ctx) { return { got: ctx.params.b }; }
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
   return { untouched: true };
@@ -251,6 +252,7 @@ __velquRegister("js.text", js_text);
 __velquRegister("js.json", js_json);
 __velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
+__velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("lazy.ctx", lazy_ctx);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
@@ -357,6 +359,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "js.json",
         "requestless",
         "hello.get",
+        "params.lazyb",
         "lazy.ctx",
         "query.read",
         "body.read",
@@ -425,7 +428,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 52);
+    assert_eq!(stats.handlers_registered, 53);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1099,6 +1102,59 @@ async fn prevalidated_params_flow_into_ctx() {
     );
 }
 
+/// M24-004-D: ctx.params is a per-key lazy object — one key access
+/// materializes exactly one value; untouched keys allocate nothing.
+#[tokio::test]
+async fn params_materialize_one_key_per_access() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            path: "/x/AA/BB/CC".into(),
+            param_specs: vec![
+                q_engine::ParamSpec {
+                    name: "a".into(),
+                    start: 3,
+                    end: 5,
+                },
+                q_engine::ParamSpec {
+                    name: "b".into(),
+                    start: 6,
+                    end: 8,
+                },
+                q_engine::ParamSpec {
+                    name: "c".into(),
+                    start: 9,
+                    end: 11,
+                },
+            ],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(704, "params.lazyb", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(t, r#"{"got":"BB"}"#),
+        o => panic!("{o:?}"),
+    }
+    let snap = eng.bridge_snapshot();
+    // names fetch (0 fields) + exactly ONE single-key materialization
+    assert_eq!(snap.materialized_fields, 1, "one key = one value");
+    assert_eq!(snap.materialized_bytes, 2, "\"BB\" bytes");
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "slot settled after the lazy access"
+    );
+    eng.shutdown();
+}
+
 #[tokio::test]
 async fn lazy_ctx_touches_nothing() {
     let mut eng = engine();
@@ -1106,7 +1162,12 @@ async fn lazy_ctx_touches_nothing() {
     let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
-            params: vec![("name".into(), "Rafi".into())],
+            path: "/hello/Rafi".into(),
+            param_specs: vec![q_engine::ParamSpec {
+                name: "name".into(),
+                start: 7,
+                end: 11,
+            }],
             query: vec![("ms".into(), "50".into())],
             body: Some(b"{\"name\":\"Ada\"}".to_vec()),
             ..Default::default()
@@ -2232,6 +2293,89 @@ async fn pathological_timeout_cleanup_still_quarantines() {
         "pathological cleanup chain MUST quarantine runtime"
     );
     eng.shutdown();
+}
+
+/// M24-003-C / ADR-0021 T7: quarantine is a terminal path — the worker-owned
+/// settle_all sweep must invalidate Active slots that no pending entry tracks
+/// (here: a slot admitted but never attached to an invocation), exactly once.
+#[tokio::test]
+async fn quarantine_settles_slots_without_pending_entries() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // orphan slot: admitted into the slab, tracked by no invocation
+    let orphan = insert_request(&eng, q_bridge::RequestMeta::default());
+    assert_eq!(eng.bridge_snapshot().live_slots, 1);
+
+    // poison the runtime through a pathological timeout cleanup chain
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut s = spec(1, "timeout.catchchain", &[200], 50);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    assert!(matches!(out, Outcome::Timeout), "got {out:?}");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(eng.stats().queue_poisoned, "chain must quarantine runtime");
+
+    // both the poisoned invocation's slot and the orphan settle: zero live
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "quarantine sweep must settle every active slot, tracked or not"
+    );
+    let _ = orphan; // handle retained; sweep invalidated it by generation
+    eng.shutdown();
+}
+
+/// M24-003-C / ADR-0021 T8: shutdown is a terminal path — after the worker
+/// thread joins, no slot of the slab remains live.
+#[tokio::test]
+async fn shutdown_settles_all_remaining_slots() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let _first = insert_request(&eng, q_bridge::RequestMeta::default());
+    let _second = insert_request(&eng, q_bridge::RequestMeta::default());
+    assert_eq!(eng.bridge_snapshot().live_slots, 2);
+    eng.shutdown();
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "shutdown sweep must leave zero live slots"
+    );
+}
+
+/// M24-003-D / ADR-0021 T11: a handle minted by worker A is meaningless to
+/// worker B. B cannot forge one (local reconstruction stamps B's identity),
+/// and A's handle presented to B's settlement path is a deterministic no-op —
+/// the slot settles only at its owning worker.
+#[tokio::test]
+async fn cross_worker_handle_is_inert_on_foreign_worker() {
+    let mut eng_a = engine();
+    let mut eng_b = engine();
+    load_default(&mut eng_a).unwrap();
+    load_default(&mut eng_b).unwrap();
+
+    let handle_a = insert_request(&eng_a, q_bridge::RequestMeta::default());
+    assert_eq!(eng_a.bridge_snapshot().live_slots, 1);
+
+    // B's settle of A's typed handle must not touch A's slab (or B's own).
+    // settlement_table_len round-trips the worker so the settle message is
+    // processed before the counters are read.
+    eng_b.settle_request(handle_a);
+    let _ = eng_b.settlement_table_len();
+    assert_eq!(
+        eng_a.bridge_snapshot().live_slots,
+        1,
+        "foreign-worker settle must be a no-op at the owner's slab"
+    );
+    assert_eq!(eng_b.bridge_snapshot().live_slots, 0);
+
+    // the owning worker settles it exactly once
+    eng_a.settle_request(handle_a);
+    let _ = eng_a.settlement_table_len();
+    assert_eq!(eng_a.bridge_snapshot().live_slots, 0);
+    eng_a.shutdown();
+    eng_b.shutdown();
 }
 
 // ------------------------------------------------------------ M2.2.1-r4.2.1 drain-local report & cleanup budget

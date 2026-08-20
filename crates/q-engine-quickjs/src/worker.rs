@@ -561,7 +561,7 @@ impl WorkerInner {
                     let _ = reply.send(self.store.try_insert(meta).map_err(|e| e.to_string()));
                 }
                 WorkerMsg::SettleRequest { handle } => {
-                    self.store.settle(handle);
+                    self.settle_request(handle);
                 }
                 WorkerMsg::Cancel { id } => {
                     self.cancel_invocation(id);
@@ -629,6 +629,9 @@ impl WorkerInner {
                 abort_op_task(&op.state, &op.abort_handle);
             }
         }
+        // M24-003-C: shutdown is a terminal path — the worker-owned sweep
+        // guarantees zero live slots even for slots no pending entry tracked.
+        self.store.settle_all();
         self.shared.pending_ops.store(0, Ordering::Relaxed);
         self.shared.heap_used.store(
             self.rt.memory_usage().memory_used_size as u64,
@@ -819,7 +822,7 @@ impl WorkerInner {
         // Fail closed immediately if runtime is quarantined / poisoned (M2.2.1-r4)
         if self.shared.queue_poisoned.load(Ordering::SeqCst) {
             self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-            self.store.settle(handle);
+            self.settle_request(handle);
             if let Some(r) = reply {
                 let _ = r.send(Outcome::EngineFailure {
                     detail: "runtime quarantined: worker quarantined".into(),
@@ -856,7 +859,7 @@ impl WorkerInner {
         let Some(handler) = handler else {
             // terminal failure: deterministic cleanup so the slot never leaks
             self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-            self.store.settle(handle);
+            self.settle_request(handle);
             if let Some(r) = reply {
                 let _ = r.send(Outcome::EngineFailure {
                     detail: format!(
@@ -875,7 +878,7 @@ impl WorkerInner {
             let p = self.function_vector.get(pid.0 as usize).cloned();
             if p.is_none() {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(handle);
+                self.settle_request(handle);
                 if let Some(r) = reply {
                     let _ = r.send(Outcome::EngineFailure {
                         detail: format!(
@@ -892,7 +895,7 @@ impl WorkerInner {
             let p = self.handler_cache.get(pkey).cloned();
             if p.is_none() {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(handle);
+                self.settle_request(handle);
                 if let Some(r) = reply {
                     let _ = r.send(Outcome::EngineFailure {
                         detail: format!(
@@ -1015,7 +1018,7 @@ impl WorkerInner {
                     o
                 };
                 self.abort_floating_ops(spec.id);
-                self.store.settle(handle);
+                self.settle_request(handle);
                 let _ = reply.send(o);
                 InvocationDisposition::Resolved
             }
@@ -1053,7 +1056,7 @@ impl WorkerInner {
                 // native ops not awaited by the returned Promise are cancelled
                 // at settlement (until an explicit defer() mechanism exists)
                 self.abort_floating_ops(spec.id);
-                self.store.settle(handle);
+                self.settle_request(handle);
                 let _ = reply.send(final_outcome);
                 InvocationDisposition::Resolved
             }
@@ -1180,6 +1183,16 @@ impl WorkerInner {
         });
     }
 
+    /// M24-003-C: THE single per-handle settlement owner. Every terminal path
+    /// — completion, failure, timeout, cancellation, quarantine of a pending
+    /// entry — invalidates the capability through this one routine; the
+    /// generation check inside makes a second arriver a checked no-op, and
+    /// the worker-owned `settle_all` sweep (quarantine/shutdown) is idempotent
+    /// against it. No other worker code may call the store's settle directly.
+    fn settle_request(&mut self, handle: q_bridge::RequestHandle) {
+        self.store.settle(handle);
+    }
+
     fn cancel_invocation(&mut self, id: u64) {
         let Some(mut p) = self.pending.remove(&id) else {
             return;
@@ -1189,7 +1202,7 @@ impl WorkerInner {
             invocation_id: p.spec.id,
             deadline: Instant::now() + SETTLEMENT_GRACE,
         };
-        self.store.settle(p.handle);
+        self.settle_request(p.handle);
         // rejection continuations unwind in the Cleanup phase with a fresh cleanup grace
         {
             let _phase = PhaseScope::enter(ExecutionPhase::Cleanup);
@@ -1251,7 +1264,7 @@ impl WorkerInner {
         self.clear_settled_entry(id);
         self.abort_floating_ops(id);
         self.clear_settled_entry(id);
-        self.store.settle(pending.handle);
+        self.settle_request(pending.handle);
         self.shared.timeouts.fetch_add(1, Ordering::Relaxed);
         if let Some(reply) = pending.reply.take() {
             let _ = reply.send(Outcome::Timeout);
@@ -1324,7 +1337,7 @@ impl WorkerInner {
         for id in pending_ids {
             if let Some(mut p) = self.pending.remove(&id) {
                 self.shared.engine_failures.fetch_add(1, Ordering::Relaxed);
-                self.store.settle(p.handle);
+                self.settle_request(p.handle);
                 self.reject_ops_of(id);
                 if let Some(reply) = p.reply.take() {
                     let _ = reply.send(Outcome::EngineFailure {
@@ -1353,6 +1366,12 @@ impl WorkerInner {
         // M2.2.1-r4.2.2: unconditionally swap(0) — the terminal gauge is zero
         // regardless of prior drift; unsigned fetch_sub could otherwise wrap.
         reset_pending_ops_after_quarantine(&self.shared, removed);
+
+        // 3. M24-003-C: quarantine is a terminal path. The worker-owned sweep
+        //    catches Active slots that no pending entry tracks (e.g. the
+        //    invocation currently executing when the poison triggered); it is
+        //    idempotent against the per-handle settles above.
+        self.store.settle_all();
     }
 
     /// Drain queued QuickJS jobs under an explicit invocation-scoped budget.
@@ -1666,7 +1685,7 @@ impl WorkerInner {
             };
 
             self.abort_floating_ops(id);
-            self.store.settle(p.handle);
+            self.settle_request(p.handle);
             if let Some(reply) = p.reply {
                 let _ = reply.send(final_outcome);
             }
@@ -2053,6 +2072,12 @@ fn map_first_frame_with(mapper: &dyn SourceMapper, stack: &str) -> Option<Source
     })
 }
 
+fn meta_path_slice<'a>(m: &'a q_engine::RequestMeta, spec: &q_engine::ParamSpec) -> &'a str {
+    m.path
+        .get(spec.start as usize..spec.end as usize)
+        .unwrap_or_default()
+}
+
 fn install_natives(
     ctx: &rquickjs::Ctx<'_>,
     store: Rc<RequestStore>,
@@ -2079,23 +2104,86 @@ fn install_natives(
             }
             let json = store
                 .access(store.local_handle(slot, gen as u64), 1, 16, |m| {
-                    let pairs: &[(String, String)] = match what.as_str() {
-                        "params" => &m.params,
-                        "query" => &m.query,
-                        "headers" => &m.headers,
-                        _ => &[],
+                    let map = match what.as_str() {
+                        // M24-004-D: values materialize from path byte ranges
+                        // only at this whole-field access
+                        "params" => serde_json::Map::from_iter(m.param_specs.iter().map(|spec| {
+                            let value = meta_path_slice(m, spec);
+                            (spec.name.clone(), Json::String(value.to_string()))
+                        })),
+                        "query" => serde_json::Map::from_iter(
+                            m.query
+                                .iter()
+                                .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                        ),
+                        "headers" => serde_json::Map::from_iter(
+                            m.headers
+                                .iter()
+                                .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                        ),
+                        _ => serde_json::Map::new(),
                     };
-                    let map = serde_json::Map::from_iter(
-                        pairs
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
-                    );
                     serde_json::to_string(&Json::Object(map)).unwrap_or_else(|_| "{}".into())
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
             Ok(json)
         };
         globals.set("__velquReqRaw", Function::new(ctx.clone(), f)?)?;
+    }
+    // M24-004-D: declared parameter names (route identity, not request data)
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<String> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 0, 0, |m| {
+                    let names: Vec<&str> = m.param_specs.iter().map(|s| s.name.as_str()).collect();
+                    serde_json::to_string(&names).unwrap_or_else(|_| "[]".into())
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqParamNames", Function::new(ctx.clone(), f)?)?;
+    }
+    // M24-004-D: single-key parameter access — materializes exactly one value
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx,
+                      slot: f64,
+                      gen: f64,
+                      key: String|
+              -> rquickjs::Result<Option<String>> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
+                    m.param_specs
+                        .iter()
+                        .find(|spec| spec.name == key)
+                        .map(|spec| meta_path_slice(m, spec).to_string())
+                })
+                .inspect(|value| {
+                    // charge the materialized value's exact byte length
+                    if let Some(v) = value.as_ref() {
+                        store
+                            .counters()
+                            .materialized_bytes
+                            .fetch_add(v.len() as u64, std::sync::atomic::Ordering::Relaxed);
+                    }
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqParam", Function::new(ctx.clone(), f)?)?;
     }
     {
         let store = Rc::clone(&store);
