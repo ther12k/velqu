@@ -4,7 +4,7 @@ parent_task: M24-010
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -114,6 +114,20 @@ bun run typecheck
 - No multi-worker dispatch.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added `lifecycle_property_reuses_bounded_slots_without_stale_access` with 4,096 deterministic slot reuse rounds.
+- Each round asserts live-slot bound, settlement to zero, stale access rejection, and no stale settle side effects.
+- Existing cross-worker forged triple corpus and stale generation corpus remain green.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- No sanitizer claim made; deterministic property test is bounded and reproducible.
 
 ## Out of scope
 
