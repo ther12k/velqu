@@ -4,7 +4,7 @@ parent_task: M24-004
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -122,3 +122,18 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: capture start/end byte ranges against the URI path. `q_router::MatchResult::Found` now carries `param_ranges: Vec<(u32, u32)>` — Copy byte ranges into the resolved path — instead of `Vec<(String, String)>` owned pairs; `search_route` records `seg_ranges[seg_idx]` instead of allocating `curr_seg.to_string()` per capture, and `resolve` computes segment offsets while splitting (no join, no per-segment allocation). `Router::materialize_params(route_index, path, ranges)` is the single allocation path, zipping the route's declared names with the path bytes between the recorded boundaries. `q-runtime/serve.rs` materializes parameter strings ONLY when the route declares param needs, a params schema, or a policy — an unread path allocates zero parameter strings. Percent-decoding policy is explicit and tested: captured values are the raw path bytes; percent sequences are not decoded at capture or materialization (decoding/byte-level validation is M24-004-C/D scope), so behavior is identical for any input. `match_path` (pre-split segments) is retained as a test-convenience wrapper that rejoins and delegates to `resolve`.
+- Changed files:
+  - `crates/q-router/src/lib.rs` (range-based MatchResult, offset-tracking resolve, range-collecting search_route, materialize_params, laziness/parity/encoding tests, migrated unit + property parity assertions)
+  - `crates/q-runtime/src/serve.rs` (lazy materialization gated on params schema / FieldNeeds.params / policy presence)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-004-A-store-capture-start-end-ranges-against-the-uri-path.md`, `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+- Tests: new `capture_ranges_defer_string_allocation_and_match_reference_values` (ranges point into the original path; materialized values equal the previous allocate-at-match behavior; offsets are path-relative facts) and `capture_ranges_encoding_corpus_is_raw_and_panic_free` (percent sequences `%20`/`%2F`/`%ZZ`/truncated `%2`, multibyte UTF-8, emoji, trailing/leading slashes — raw-bytes policy, zero panics). Reference parity preserved: the generated property suite now compares reference-vs-serialized routers through materialized values over every probe path; all prior param assertions migrated with identical expected values. End-to-end: runtime conformance 13/13 and Bun HTTP conformance 35/35 pass against the range-based router.
+- Verification: `cargo test -p q-router` PASS (14, incl. property parity); `cargo test -p q-engine-quickjs` PASS (1 + 90); `cargo test -p q-http` PASS (2 + 3); `cargo test -p q-bridge` PASS (9); `cargo test -p q-schema-runtime` PASS (2 + fuzz); `cargo test -p velqu-runtime` PASS (13); `bun run typecheck` PASS; `bun test` PASS (35/0 after proof-pack build — the only prior failures were missing-artifact timeouts in this fresh worktree); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS. Raw logs: `/tmp/m24-004-a-type.log`, `/tmp/m24-004-a-bun.log`, `/tmp/m24-004-a-proof.log`.
+- Acceptance criteria proven: parameterized routes preserve exact names and values (parity + materialize tests); no owned parameter string on an unread path (MatchResult carries Copy ranges; serve materializes only under declared needs); percent-decoding policy explicit and tested (raw bytes, corpus); invalid encodings fail consistently (no decode step exists to fail — corpus documents consistent raw behavior; schema-layer handling is M24-004-C/D).
+- Remaining risk / deferred by design: numeric/UUID byte-level validation (M24-004-C), lazy JS string materialization through the bridge (M24-004-D), route-specific name binding after RouteId selection (M24-004-B — names currently bind at materialize time from the matched route's declaration).
+- Next dependency-ready task: M24-004-B (bind route-specific parameter names after RouteId selection).
+

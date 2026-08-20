@@ -95,10 +95,12 @@ pub enum MatchResult {
     /// Matched route identity (G0-r1): `route_id` is the canonical numeric
     /// RouteId that directly indexes the dense route/plan vector;
     /// `route_index` is retained as the internal Vec position (equal value).
+    /// M24-004-A: captures are byte ranges into the resolved path — no owned
+    /// parameter string exists until `materialize_params` is called.
     Found {
         route_id: q_engine::RouteId,
         route_index: usize,
-        params: Vec<(String, String)>,
+        param_ranges: Vec<(u32, u32)>,
         head: bool,
     },
     NotFound,
@@ -588,8 +590,9 @@ impl Router {
         node_idx: usize,
         seg_idx: usize,
         segments: &[&str],
+        seg_ranges: &[(u32, u32)],
         eff_method_idx: usize,
-        captures: &mut Vec<String>,
+        captures: &mut Vec<(u32, u32)>,
     ) -> Option<(usize, usize)> {
         let node = &self.nodes[node_idx];
         if seg_idx == segments.len() {
@@ -616,6 +619,7 @@ impl Router {
                 edge.target_node,
                 seg_idx + 1,
                 segments,
+                seg_ranges,
                 eff_method_idx,
                 captures,
             ) {
@@ -623,12 +627,18 @@ impl Router {
             }
         }
 
-        // 2. Try param edge if static edge didn't match for this method
+        // 2. Try param edge if static edge didn't match for this method.
+        //    M24-004-A: record the segment's byte range — no owned string.
         if let Some((_, target)) = node.param_edge {
-            captures.push(curr_seg.to_string());
-            if let Some(found) =
-                self.search_route(target, seg_idx + 1, segments, eff_method_idx, captures)
-            {
+            captures.push(seg_ranges[seg_idx]);
+            if let Some(found) = self.search_route(
+                target,
+                seg_idx + 1,
+                segments,
+                seg_ranges,
+                eff_method_idx,
+                captures,
+            ) {
                 return Some(found);
             }
             captures.pop();
@@ -680,8 +690,22 @@ impl Router {
         }
     }
 
-    /// Match a method + already-split path segments.
+    /// Match a method + already-split path segments. M24-004-A: the segments
+    /// are rejoined into a synthetic path so captures can be expressed as
+    /// byte ranges against it; the request hot path uses `resolve`, which
+    /// computes ranges against the original URI path with no join.
     pub fn match_path(&self, method: &str, segments: &[&str]) -> MatchResult {
+        let mut joined = String::new();
+        for seg in segments {
+            joined.push('/');
+            joined.push_str(seg);
+        }
+        self.resolve(method, &joined)
+    }
+
+    /// Full match including 405 handling: one single traversal into the
+    /// terminal automaton. Captures are returned as byte ranges into `path`.
+    pub fn resolve(&self, method: &str, path: &str) -> MatchResult {
         let method_upper = method.to_ascii_uppercase();
         let head = method_upper == "HEAD";
         let eff_method_idx = if head {
@@ -693,23 +717,42 @@ impl Router {
             }
         };
 
-        let mut captures = Vec::new();
+        // Split while tracking each segment's byte range in the original path
+        // (segments stay on '/' boundaries, hence char boundaries).
+        let mut segments: Vec<&str> = Vec::new();
+        let mut seg_ranges: Vec<(u32, u32)> = Vec::new();
+        let bytes = path.as_bytes();
+        let mut start = 0usize;
+        for (i, b) in bytes.iter().enumerate() {
+            if *b == b'/' {
+                if i > start {
+                    segments.push(&path[start..i]);
+                    seg_ranges.push((start as u32, i as u32));
+                }
+                start = i + 1;
+            }
+        }
+        if start < bytes.len() {
+            segments.push(&path[start..]);
+            seg_ranges.push((start as u32, bytes.len() as u32));
+        }
+
+        let mut captures: Vec<(u32, u32)> = Vec::new();
         if let Some((_, route_index)) =
-            self.search_route(0, 0, segments, eff_method_idx, &mut captures)
+            self.search_route(0, 0, &segments, &seg_ranges, eff_method_idx, &mut captures)
         {
             let route = &self.routes[route_index];
-            let params = route.param_names.iter().cloned().zip(captures).collect();
             return MatchResult::Found {
                 route_id: route.route_id,
                 route_index,
-                params,
+                param_ranges: captures,
                 head,
             };
         }
 
         // No route matched for this method: check if any method matches this path shape for 405
         let mut method_mask = 0u16;
-        self.collect_available_methods(0, 0, segments, &mut method_mask);
+        self.collect_available_methods(0, 0, &segments, &mut method_mask);
         if method_mask != 0 {
             let mut allow = Vec::new();
             for m_idx in 0..METHOD_COUNT {
@@ -727,10 +770,32 @@ impl Router {
         }
     }
 
-    /// Full match including 405 handling: one single traversal into the terminal automaton.
-    pub fn resolve(&self, method: &str, path: &str) -> MatchResult {
-        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-        self.match_path(method, &segments)
+    /// Materialize named parameter strings from capture ranges. This is the
+    /// ONLY allocation path for parameter values; call it when validation or
+    /// JavaScript access actually needs them. Policy (explicit, tested):
+    /// values are the raw path bytes between the recorded range boundaries —
+    /// percent sequences are NOT decoded here; decoding/byte-level validation
+    /// belongs to the schema layer (M24-004-C/D).
+    pub fn materialize_params(
+        &self,
+        route_index: usize,
+        path: &str,
+        ranges: &[(u32, u32)],
+    ) -> Vec<(String, String)> {
+        let Some(route) = self.routes.get(route_index) else {
+            return Vec::new();
+        };
+        route
+            .param_names
+            .iter()
+            .zip(ranges)
+            .map(|(name, (start, end))| {
+                let start = *start as usize;
+                let end = *end as usize;
+                let value = path.get(start..end).unwrap_or_default();
+                (name.clone(), value.to_string())
+            })
+            .collect()
     }
 }
 
@@ -821,8 +886,18 @@ mod tests {
             MatchResult::Found { .. }
         ));
         match r.resolve("GET", "/hello/Rafi") {
-            MatchResult::Found { params, .. } => {
-                assert_eq!(params, vec![("name".to_string(), "Rafi".to_string())])
+            MatchResult::Found {
+                route_index,
+                param_ranges,
+                ..
+            } => {
+                // M24-004-A: capture is a byte range into the path; the owned
+                // string exists only after materialize_params
+                assert_eq!(param_ranges, vec![(7, 11)]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/hello/Rafi", &param_ranges),
+                    vec![("name".to_string(), "Rafi".to_string())]
+                );
             }
             other => panic!("{other:?}"),
         }
@@ -842,6 +917,90 @@ mod tests {
                 assert_eq!(allow, vec!["GET".to_string(), "HEAD".to_string()])
             }
             other => panic!("{other:?}"),
+        }
+    }
+
+    /// M24-004-A: captures are Copy byte ranges; the owned parameter string
+    /// exists only through materialize_params, and its values match the
+    /// previous allocate-at-match behavior exactly (reference parity).
+    #[test]
+    fn capture_ranges_defer_string_allocation_and_match_reference_values() {
+        let routes = vec![route(
+            "two",
+            "GET",
+            vec![st("u"), pm("a"), pm("b")],
+            "/u/:a/:b",
+        )];
+        let r = Router::build(&routes).unwrap();
+        let path = "/u/first/second";
+        match r.resolve("GET", path) {
+            MatchResult::Found {
+                route_index,
+                param_ranges,
+                ..
+            } => {
+                // ranges point into the ORIGINAL path bytes — no strings here
+                assert_eq!(param_ranges, vec![(3, 8), (9, 15)]);
+                assert_eq!(
+                    r.materialize_params(route_index, path, &param_ranges),
+                    vec![
+                        ("a".to_string(), "first".to_string()),
+                        ("b".to_string(), "second".to_string())
+                    ]
+                );
+                // materializing against a different path yields that path's
+                // bytes at the same offsets (ranges are path-relative facts)
+                assert_eq!(
+                    r.materialize_params(route_index, "/u/XXXXX/YYYYYY", &param_ranges),
+                    vec![
+                        ("a".to_string(), "XXXXX".to_string()),
+                        ("b".to_string(), "YYYYYY".to_string())
+                    ]
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// M24-004-A encoding corpus: multibyte UTF-8, percent sequences, empty
+    /// and trailing segments. Policy is explicit: captured values are the RAW
+    /// path bytes — percent sequences are not decoded at capture or
+    /// materialization (decoding/byte validation is schema-layer scope), so
+    /// behavior is consistent for any input and never panics.
+    #[test]
+    fn capture_ranges_encoding_corpus_is_raw_and_panic_free() {
+        let routes = vec![route("p", "GET", vec![pm("v")], "/:v")];
+        let r = Router::build(&routes).unwrap();
+        let corpus = [
+            "/hello%20world",
+            "/100%2Fdone",
+            "/%ZZinvalid",
+            "/日本語パス",
+            "/emoji-🚀-here",
+            "/trailing/",
+            "//leading-empty",
+            "/a%2",
+        ];
+        for path in corpus {
+            match r.resolve("GET", path) {
+                MatchResult::Found {
+                    route_index,
+                    param_ranges,
+                    ..
+                } => {
+                    let (start, end) = param_ranges[0];
+                    let slice = &path[start as usize..end as usize];
+                    let materialized = r.materialize_params(route_index, path, &param_ranges);
+                    assert_eq!(materialized.len(), 1);
+                    assert_eq!(&materialized[0].0, "v");
+                    assert_eq!(&materialized[0].1, slice, "raw-bytes policy for {path}");
+                    // percent sequences survive untouched (no decode policy)
+                    if path.contains("%20") {
+                        assert!(materialized[0].1.contains("%20"));
+                    }
+                }
+                other => panic!("corpus path {path} must match the param route, got {other:?}"),
+            }
         }
     }
 
@@ -915,11 +1074,14 @@ mod tests {
         match r.resolve("GET", "/users/me") {
             MatchResult::Found {
                 route_index,
-                params,
+                param_ranges,
                 ..
             } => {
                 assert_eq!(route_index, 0);
-                assert_eq!(params, vec![("id".to_string(), "me".to_string())]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/users/me", &param_ranges),
+                    vec![("id".to_string(), "me".to_string())]
+                );
             }
             other => panic!("expected match for GET /users/me, got {other:?}"),
         }
@@ -989,11 +1151,14 @@ mod tests {
         match r.resolve("GET", "/users/123") {
             MatchResult::Found {
                 route_index,
-                params,
+                param_ranges,
                 ..
             } => {
                 assert_eq!(route_index, 0);
-                assert_eq!(params, vec![("id".to_string(), "123".to_string())]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/users/123", &param_ranges),
+                    vec![("id".to_string(), "123".to_string())]
+                );
             }
             other => panic!("expected match for GET, got {other:?}"),
         }
@@ -1001,11 +1166,14 @@ mod tests {
         match r.resolve("POST", "/users/123") {
             MatchResult::Found {
                 route_index,
-                params,
+                param_ranges,
                 ..
             } => {
                 assert_eq!(route_index, 1);
-                assert_eq!(params, vec![("userId".to_string(), "123".to_string())]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/users/123", &param_ranges),
+                    vec![("userId".to_string(), "123".to_string())]
+                );
             }
             other => panic!("expected match for POST, got {other:?}"),
         }
@@ -1134,8 +1302,8 @@ mod tests {
                 let expect = reference.resolve(&method, &path);
                 let got = compiled.resolve(&method, &path);
                 assert_eq!(
-                    normalize(expect, &routes),
-                    normalize(got, &routes),
+                    normalize(expect, &routes, &path, &reference),
+                    normalize(got, &routes, &path, &compiled),
                     "table {table}: method {method} path {path} diverged"
                 );
             }
@@ -1149,14 +1317,25 @@ mod tests {
         Option<Vec<String>>,
     );
 
-    fn normalize(m: MatchResult, _routes: &[RouteEntry]) -> NormalizedMatch {
+    fn normalize(
+        m: MatchResult,
+        _routes: &[RouteEntry],
+        path: &str,
+        router: &Router,
+    ) -> NormalizedMatch {
         match m {
             MatchResult::Found {
                 route_id,
-                params,
+                route_index,
+                param_ranges,
                 head,
                 ..
-            } => (Some(route_id.0), params, head, None),
+            } => (
+                Some(route_id.0),
+                router.materialize_params(route_index, path, &param_ranges),
+                head,
+                None,
+            ),
             MatchResult::MethodNotAllowed { allow } => (None, vec![], false, Some(allow)),
             MatchResult::NotFound => (None, vec![], false, None),
         }
