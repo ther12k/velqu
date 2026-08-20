@@ -4,7 +4,7 @@ parent_task: M24-005
 milestone: M24
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -107,6 +107,23 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Security redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `params_materialize_one_key_per_access` and `headers_are_declared_only_and_per_key_lazy` prove lazy per-key request access and zero unread-field materialization.
+- `full_headers_escape_hatch_is_explicit_and_verified` proves full-Headers access requires explicit schema-less binding and sentinel authorization.
+- `declared_header_value_joins_duplicates_and_is_lossy` proves duplicate joining and lossy UTF-8 conversion.
+- Header values remain outside diagnostics/logging paths; secret redaction guardrail preserved.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS (13 tests).
+- `bun test`: PASS (35 pass, 0 fail).
+- `bun run typecheck`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- Initial Bun run required `bun install --frozen-lockfile` and release proof/runtime artifacts; rerun passed. No source changes from setup.
+- `./scripts/verify` benchmark stage retains known temporary-worktree binary hash limitation; canonical manifests unchanged.
 
 ## Out of scope
 
