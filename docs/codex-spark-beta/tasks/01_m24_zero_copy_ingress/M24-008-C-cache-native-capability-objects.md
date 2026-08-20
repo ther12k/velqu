@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -94,6 +94,21 @@ cargo test -p velqu-runtime
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `__velquNativeCapabilities` creates one frozen worker-level capability graph; each request context assigns same graph to `ctx.native`.
+- `native_capability_graph_is_cached_and_immutable` invokes two requests and proves shared identity plus frozen capability objects.
+- Native timer authorization and operation ownership remain enforced by existing native bridge checks and settlement tests.
+- `cargo test -p q-engine-quickjs`: PASS (95 tests).
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-capabilities`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
+- No unsupported heap/allocation or benchmark claim added.
 
 ## Out of scope
 
