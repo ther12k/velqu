@@ -31,4 +31,7 @@ Canonical public-beta support scope lives in [`../governance/PLATFORM_SUPPORT.md
 
 ## Container profile
 
-Reverse-proxy-first, unprivileged user, read-only application pack where practical, explicit writable temp directory, signal-aware shutdown, and documented memory/CPU limits.
+See [`../governance/REVERSE_PROXY_POLICY.md`](../governance/REVERSE_PROXY_POLICY.md)
+for the accepted TLS and listener boundary. Use an unprivileged user, read-only
+application pack where practical, explicit writable temp directory,
+signal-aware shutdown, and documented memory/CPU limits.

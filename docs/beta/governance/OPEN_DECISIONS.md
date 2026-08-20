@@ -20,7 +20,7 @@ The agent may prepare options but may not invent authority.
 | OD-BETA-003 | Beta release authority and version | Public beta | Accepted (2026-08-20) |
 | OD-BETA-004 | Security contact/disclosure channel | Public beta | Accepted (2026-08-20) |
 | OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Accepted (2026-08-21) |
-| OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Open |
+| OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Accepted (2026-08-21) |
 | OD-BETA-007 | Official first-party Postgres package versus reference capability | Package list | Open |
 | OD-BETA-008 | Public benchmark wording and comparison table | Beta announcement | Open |
 | OD-BETA-009 | Support channel and response expectations | Beta docs | Open |
@@ -264,3 +264,51 @@ Required by gate: Packaging/docs
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-005 marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md` (completion record)
+
+## OD-BETA-006 Decision Record
+
+```text
+Decision ID: OD-BETA-006
+Title: Reverse-proxy-first versus direct TLS promise
+Status: accepted
+Date: 2026-08-21
+Decider: Owner (ther12k)
+Required by gate: Deployment docs
+```
+
+### Context
+
+- The beta runtime currently serves plain HTTP/1.1 and binds to loopback by default; it does not load certificates or private keys.
+- Public deployment needs an explicit boundary for TLS termination and trusted proxy metadata.
+
+### Options considered
+
+- Reverse proxy terminates public TLS and forwards HTTP to loopback runtime: accepted; matches current runtime behavior and limits certificate handling to the edge.
+- Add native runtime TLS/HTTPS support for beta: rejected; not implemented or tested by this task.
+- Recommend a proxy while leaving direct TLS ambiguous: rejected; ambiguity would allow unsupported public deployment claims.
+
+### Decision
+
+- Public beta uses a reverse-proxy-first posture. Trusted reverse proxy terminates public TLS and forwards HTTP to the Velqu runtime on a private listener.
+- Direct runtime TLS/HTTPS, HTTP/2 termination, certificate loading/rotation inside runtime, and public exposure of plain HTTP are not supported beta promises.
+- Canonical deployment boundary is documented in `docs/beta/governance/REVERSE_PROXY_POLICY.md`.
+
+### Consequences
+
+- Operators must manage public certificates, edge limits, forwarding policy, health checks, and graceful drain at the proxy boundary.
+- Runtime remains plain HTTP/1.1 on loopback by default; this decision adds no runtime TLS or forwarded-header implementation.
+- Native TLS or direct-TLS support requires a new owner decision and separate implementation/evidence.
+
+### Security/operations implications
+
+- Forwarded host, scheme, and client metadata must be trusted only from the configured proxy; direct client spoofing must not reach a trusted runtime boundary.
+- Public direct access to plain HTTP is insecure and unsupported.
+- Beta remains non-SLA, trusted-code-only, and not production-ready GA.
+
+### Documentation and task updates
+
+- `docs/beta/governance/REVERSE_PROXY_POLICY.md`
+- `docs/beta/workstreams/PLATFORM_SUPPORT.md`
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (OD-008 marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md` (completion record)

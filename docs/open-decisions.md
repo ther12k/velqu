@@ -17,6 +17,7 @@ status: active
 | OD-005 | First platform support promise | **DECIDED (2026-08-21)** | Linux x86_64 glibc only; canonical scope in `docs/beta/governance/PLATFORM_SUPPORT.md`; OD-BETA-005 record in `docs/beta/governance/OPEN_DECISIONS.md` |
 | OD-006 | Public release date/governance | **DECIDED (2026-08-20)** | Owner controls public beta release; `0.1.0-beta.1`; details in `docs/beta/governance/RELEASE_AUTHORITY.md` and OD-BETA-003 |
 | OD-007 | Security contact/disclosure channel | **DECIDED (2026-08-20)** | GitHub Security Advisories at `https://github.com/ther12k/velqu/security/advisories/new`; OD-BETA-004 record in `docs/beta/governance/OPEN_DECISIONS.md` |
+| OD-008 | Reverse-proxy-first versus direct TLS promise | **DECIDED (2026-08-21)** | Proxy terminates public TLS; runtime serves plain HTTP on private listener; policy in `docs/beta/governance/REVERSE_PROXY_POLICY.md`; OD-BETA-006 record in `docs/beta/governance/OPEN_DECISIONS.md` |
 
 ## Implementation decisions (narrow safe defaults, ADR where material)
 
