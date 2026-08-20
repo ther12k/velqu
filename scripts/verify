@@ -12,7 +12,6 @@ fail() { echo "FAIL: $1"; overall=1; }
 step "OKF bundle structural validation"
 ./scripts/validate-okf || fail "validate-okf"
 ./scripts/validate-production-plan || fail "validate-production-plan"
-./scripts/validate-benchmark-evidence.py || fail "validate-benchmark-evidence"
 python3 scripts/generate-benchmark-reports.py --check || fail "benchmark-reports"
 
 step "Rust workspace formatting"
@@ -52,6 +51,9 @@ if ! bun test packages examples/proof conformance 2>buntest.log; then
   tail -40 buntest.log; fail "bun test"
 fi
 rm -f buntest.log
+
+step "Benchmark artifact validation"
+./scripts/validate-benchmark-evidence.py || fail "validate-benchmark-evidence"
 
 step "Summary"
 if [ "$overall" -eq 0 ]; then
