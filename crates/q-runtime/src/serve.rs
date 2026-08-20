@@ -63,6 +63,9 @@ pub struct StageMetrics {
     pub js: AtomicU64,
     pub encode: AtomicU64,
     pub write: AtomicU64,
+    pub slab_live: AtomicU64,
+    pub queue_pending: AtomicU64,
+    pub body_bytes: AtomicU64,
 }
 
 impl StageMetrics {
@@ -75,6 +78,9 @@ impl StageMetrics {
             js: self.js.load(Ordering::Relaxed),
             encode: self.encode.load(Ordering::Relaxed),
             write: self.write.load(Ordering::Relaxed),
+            slab_live: self.slab_live.load(Ordering::Relaxed),
+            queue_pending: self.queue_pending.load(Ordering::Relaxed),
+            body_bytes: self.body_bytes.load(Ordering::Relaxed),
         }
     }
 }
@@ -88,6 +94,9 @@ pub struct StageMetricsSnapshot {
     pub js: u64,
     pub encode: u64,
     pub write: u64,
+    pub slab_live: u64,
+    pub queue_pending: u64,
+    pub body_bytes: u64,
 }
 
 pub struct ServeState {
@@ -443,7 +452,13 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 }
                 let raw = match collect_body_bounded(body, max_body).await {
-                    Ok(bytes) => bytes,
+                    Ok(bytes) => {
+                        state
+                            .metrics
+                            .body_bytes
+                            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+                        bytes
+                    }
                     Err(HttpError::Limited { .. }) => {
                         let body = problems::body("limit", None, None, &[], &request_id);
                         return (Ok(json_response(413, &body)), route_id, "admission.body");
@@ -537,6 +552,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             // ---- invocation through the engine
+            state.metrics.queue_pending.fetch_add(1, Ordering::Relaxed);
             state.metrics.queue.fetch_add(1, Ordering::Relaxed);
             state.metrics.bridge.fetch_add(1, Ordering::Relaxed);
             state.metrics.js.fetch_add(1, Ordering::Relaxed);
@@ -638,6 +654,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .map(|r| r.unwrap_or(Outcome::Timeout))
                 .unwrap_or(Outcome::Timeout);
             cancel_guard.disarm();
+            state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
 
             // client gone (connection dropped) → cancel invocation
             // SCHEMA-003: declared response bodies are validated at runtime.

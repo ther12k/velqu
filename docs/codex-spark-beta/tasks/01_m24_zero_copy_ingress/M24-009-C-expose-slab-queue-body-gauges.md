@@ -4,7 +4,7 @@ parent_task: M24-009
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -88,6 +88,19 @@ cargo test -p velqu-runtime
 - Redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added bounded scalar gauges `slab_live`, `queue_pending`, and `body_bytes` to stage metrics snapshot.
+- Queue gauge increments before engine admission and decrements after outcome; body gauge counts only bounded admitted bytes.
+- Metrics snapshot exposes no request identifiers, headers, paths, or body contents.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
+- No instrumentation-overhead benchmark claim added; raw evidence deferred to M24-009-D.
 
 ## Out of scope
 
