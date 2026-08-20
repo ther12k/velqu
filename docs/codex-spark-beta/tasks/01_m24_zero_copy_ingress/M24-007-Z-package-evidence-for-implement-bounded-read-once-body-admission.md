@@ -4,7 +4,7 @@ parent_task: M24-007
 milestone: M24
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -95,6 +95,18 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Cancellation metrics.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence package
+
+- Implementation commits: M24-007-A/B/C/D; verification commit: M24-007-V PR #682.
+- RoutePlan `FieldNeeds.body` controls polling; DELETE/body and field-free route behavior verified.
+- Bounded body transport uses `BytesMut`/`Bytes`; `Content-Length` over route limit rejects before polling, streaming overflow returns 413.
+- One body representation mode per request generation; incompatible reads fail, settlement clears mode.
+- Evidence tests: `routeplan_body_flag_controls_body_collection_independent_of_method`, `content_length_over_limit_rejects_before_body_poll`, `body_and_header_limits_reject_oversize`, `routing_precedes_body_materialization`, plus QuickJS body mode and disconnect coverage.
+- Compiler fix included in verification: query schema IR uses `kind`, ensuring generated proof pack query IDs match QPack verification. Rebuilt proof pack and Bun runtime suite pass.
+- `bun test`: PASS (35 pass, 0 fail).
+- Rust targeted suites, typecheck, format, clippy, and OKF validation pass.
+- Canonical benchmark manifests unchanged; no unsupported performance claims.
 
 ## Out of scope
 
