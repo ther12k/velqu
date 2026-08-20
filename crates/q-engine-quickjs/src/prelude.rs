@@ -22,6 +22,12 @@ const __velquContextPrototype = Object.create(null);
 globalThis.__velquRequestPrototype = __velquRequestPrototype;
 globalThis.__velquContextPrototype = __velquContextPrototype;
 
+// Stable capability graph; operation authorization remains native per call.
+const __velquNativeCapabilities = Object.freeze({
+  timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) })
+});
+globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
+
 globalThis.__velquMakeReq = function (slot, gen) {
   const req = Object.create(__velquRequestPrototype);
   let headers, params, query;
@@ -97,7 +103,7 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
       };
     }
   }
-  c.native = { timer: { delay: (ms) => globalThis.__velquTimerP(ms) } };
+  c.native = __velquNativeCapabilities;
   return c;
 };
 

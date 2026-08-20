@@ -75,6 +75,10 @@ function headers_lazy(ctx) {
     hasContentType: "content-type" in ctx.headers,
   };
 }
+function capability_identity(ctx) {
+  const first = globalThis.__velquNativeCapabilities;
+  return { shared: ctx.native === first, frozen: Object.isFrozen(ctx.native) && Object.isFrozen(ctx.native.timer) };
+}
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
   return { untouched: true, routePlan: ctx.routePlan };
@@ -262,6 +266,7 @@ __velquRegister("hello.get", hello);
 __velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("headers.lazy", headers_lazy);
 __velquRegister("lazy.ctx", lazy_ctx);
+__velquRegister("capability.identity", capability_identity);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
 __velquRegister("timer.route", timer_route);
@@ -370,6 +375,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "params.lazyb",
         "headers.lazy",
         "lazy.ctx",
+        "capability.identity",
         "query.read",
         "body.read",
         "timer.route",
@@ -437,7 +443,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 54);
+    assert_eq!(stats.handlers_registered, 55);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1249,6 +1255,31 @@ async fn route_plan_references_do_not_copy_request_bytes() {
             assert!(!text.contains("secret-request-body"));
         }
         other => panic!("{other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn native_capability_graph_is_cached_and_immutable() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    for id in 1..=2 {
+        let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+        let mut s = spec(id, "capability.identity", &[200], 1000);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let out = run(&mut eng, s).await;
+        match out {
+            Outcome::Response {
+                body: BodyOut::JsonText(text),
+                ..
+            } => {
+                assert!(text.contains("\"shared\":true"));
+                assert!(text.contains("\"frozen\":true"));
+            }
+            other => panic!("{other:?}"),
+        }
     }
     assert_eq!(eng.bridge_snapshot().live_slots, 0);
     eng.shutdown();
