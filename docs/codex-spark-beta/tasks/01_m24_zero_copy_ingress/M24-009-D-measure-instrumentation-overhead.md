@@ -4,7 +4,7 @@ parent_task: M24-009
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -88,6 +88,19 @@ cargo test -p velqu-runtime
 - Redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added `metrics-overhead` benchmark binary under `crates/q-bench-support/src/bin/metrics_overhead.rs`.
+- Raw matched 100,000-iteration output: `benchmarks/raw/observability/metrics-overhead.json`.
+- Raw format records warmup, sample count, mean, p50, p95, p99 for disabled and atomic-counter paths; counter count proves enabled path executed.
+- Canonical `benchmarks/manifest.json` unchanged; no cross-system performance claim made.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
 
 ## Out of scope
 
