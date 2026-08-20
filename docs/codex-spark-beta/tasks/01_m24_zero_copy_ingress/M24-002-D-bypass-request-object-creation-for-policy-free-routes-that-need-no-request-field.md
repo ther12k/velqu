@@ -4,7 +4,7 @@ parent_task: M24-002
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -107,3 +107,23 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: policy-free routes whose verified RoutePlan `FieldNeeds` are all false now bypass `RequestStore::insert` and the JavaScript request-field surface entirely. The runtime publishes `q_engine::NO_REQUEST_SLOT`; the QuickJS prelude maps it to `slot === -1` and defines no `params`, `query`, `headers`, `json`, `text`, or `bytes` request accessors. All native bridge accessors reject the sentinel fail-closed. Policy-bearing routes always retain a store slot even when their own field needs are empty.
+- Changed files:
+  - `crates/q-engine/src/lib.rs` (`NO_REQUEST_SLOT`)
+  - `crates/q-runtime/src/serve.rs` (requestless predicate and conditional store insertion)
+  - `crates/q-engine-quickjs/src/prelude.rs` (requestless context shape)
+  - `crates/q-engine-quickjs/src/worker.rs` (sentinel conversion and native fail-closed guards)
+  - `crates/q-engine-quickjs/tests/engine.rs` (requestless handler and counter proof)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-002-D-bypass-request-object-creation-for-policy-free-routes-that-need-no-request-field.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Tests: `field_free_invocation_skips_request_store_slot` asserts the requestless handler sees no request properties and `BridgeCounters` report `live_slots=0`, `host_calls=0`, `materialized_fields=0`, `materialized_bytes=0`; runtime conformance 13/13 covers negative 404/405/413/431 and queue-limit paths; engine 85/85, bridge 4/4, q-http 2+3, Bun 35/35.
+- Verification: `cargo test -p q-engine-quickjs -p q-http -p q-bridge -p velqu-runtime` PASS; `cargo fmt --check` clean; `cargo clippy --workspace --all-targets -- -D warnings` clean; `bun run typecheck` clean; `./scripts/validate-okf` PASS (174 links).
+- Evidence boundary: bridge counters and negative body/header/route tests are source-backed in this packet. Full ingress admission counters and dedicated ingress stage histograms remain M24-009 deliverables; existing startup `stages`/`durationMs` logs are not claimed as an ingress performance benchmark.
+- Next dependency-ready task: M24-002-V (verify route before request materialization).

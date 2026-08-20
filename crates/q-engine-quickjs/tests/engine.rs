@@ -56,6 +56,14 @@ fn engine() -> (QuickJsEngine, Arc<q_bridge::RequestStore>) {
 const BUNDLE: &str = r#"
 function js_text(ctx) { return "plain"; }
 function js_json(ctx) { return { ok: true }; }
+function requestless(ctx) {
+  return {
+    hasParams: Object.prototype.hasOwnProperty.call(ctx, "params"),
+    hasQuery: Object.prototype.hasOwnProperty.call(ctx, "query"),
+    hasHeaders: Object.prototype.hasOwnProperty.call(ctx, "headers"),
+    hasJson: Object.prototype.hasOwnProperty.call(ctx, "json"),
+  };
+}
 function hello(ctx) { return { message: "Hello " + ctx.params.name }; }
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
@@ -239,6 +247,7 @@ async function promise_with_floating_busy(ctx) {
 }
 __velquRegister("js.text", js_text);
 __velquRegister("js.json", js_json);
+__velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
 __velquRegister("lazy.ctx", lazy_ctx);
 __velquRegister("query.read", read_query);
@@ -344,6 +353,7 @@ fn expected_table() -> BTreeMap<String, String> {
     [
         "js.text",
         "js.json",
+        "requestless",
         "hello.get",
         "lazy.ctx",
         "query.read",
@@ -413,7 +423,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let (mut eng, _store) = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 51);
+    assert_eq!(stats.handlers_registered, 52);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -426,6 +436,39 @@ async fn load_verifies_handler_table_and_caches() {
             }
         )
         .is_err());
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn field_free_invocation_skips_request_store_slot() {
+    let (mut eng, store) = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = spec(700, "requestless", &[200], 1000);
+    s.slot = q_engine::NO_REQUEST_SLOT;
+    s.generation = 0;
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(
+            text,
+            r#"{"hasParams":false,"hasQuery":false,"hasHeaders":false,"hasJson":false}"#
+        ),
+        other => panic!("unexpected requestless outcome: {other:?}"),
+    }
+    let counters = store.snapshot();
+    assert_eq!(
+        counters.live_slots, 0,
+        "field-free route must not allocate a slot"
+    );
+    assert_eq!(
+        counters.host_calls, 0,
+        "requestless route must not call the bridge"
+    );
+    assert_eq!(counters.materialized_fields, 0);
+    assert_eq!(counters.materialized_bytes, 0);
     eng.shutdown();
 }
 
