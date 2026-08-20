@@ -13,7 +13,7 @@ status: active
 | OD-001 | Final public product name | **DECIDED (2026-08-18)** | Velqu (brand) / VelquJS (descriptive) — ADR-0016 |
 | OD-002 | Public package scope/import path | **DECIDED (2026-08-18)** | `@velqu/*`, CLI `velqu`, runtime binary `velqu-runtime` — ADR-0016 |
 | OD-003 | Public repository/organization | **DECIDED (2026-08-20)** | `ther12k/velqu` — OD-BETA-001 record in `docs/beta/governance/OPEN_DECISIONS.md` |
-| OD-004 | License | OPEN | crates carry `UNLICENSED-BEFORE-OWNER-DECISION` |
+| OD-004 | License | **DECIDED (2026-08-20)** | MIT License in `LICENSE`; contribution terms in `CONTRIBUTING.md`; OD-BETA-002 record in `docs/beta/governance/OPEN_DECISIONS.md` |
 | OD-005 | First platform support promise | OPEN | only Linux x86_64 tested here |
 | OD-006 | Public release date/governance | OPEN | M2 is a handoff stop, not an alpha |
 
