@@ -311,7 +311,7 @@ mod tests {
         RequestMeta {
             method: "GET".into(),
             path: "/x".into(),
-            params: vec![],
+            param_specs: vec![],
             query: vec![("a".into(), "1".into())],
             headers: vec![("authorization".into(), "Bearer x".into())],
             content_type: Some("application/json".into()),

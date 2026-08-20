@@ -92,7 +92,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M24-004-B — Bind route-specific parameter names after RouteId selection](tasks/01_m24_zero_copy_ingress/M24-004-B-bind-route-specific-parameter-names-after-routeid-selection.md)
 - [x] [M24-004-C — Validate numeric/UUID formats directly from bytes where possible](tasks/01_m24_zero_copy_ingress/M24-004-C-validate-numeric-uuid-formats-directly-from-bytes-where-possible.md)
 - [x] [M24-004-D — Materialize JS strings lazily](tasks/01_m24_zero_copy_ingress/M24-004-D-materialize-js-strings-lazily.md)
-- [ ] [M24-004-V — Verify Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md)
+- [x] [M24-004-V — Verify Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md)
 - [ ] [M24-004-Z — Package evidence for Capture path parameters as byte ranges](tasks/01_m24_zero_copy_ingress/M24-004-Z-package-evidence-for-capture-path-parameters-as-byte-ranges.md)
 - [ ] [M24-005-A — Compile header-name IDs into RoutePlan](tasks/01_m24_zero_copy_ingress/M24-005-A-compile-header-name-ids-into-routeplan.md)
 - [ ] [M24-005-B — Read header values by ID on demand](tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md)
