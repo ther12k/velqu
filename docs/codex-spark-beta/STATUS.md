@@ -72,7 +72,7 @@ Update a checkbox only after the task commit and required tests pass.
 
 - [x] [M24-001-A — Accept an ADR with ownership diagrams and terminal invariants](tasks/01_m24_zero_copy_ingress/M24-001-A-accept-an-adr-with-ownership-diagrams-and-terminal-invariants.md)
 - [x] [M24-001-B — Specify body ownership, queue admission, disconnect cancellation, and request-slot lifecycle](tasks/01_m24_zero_copy_ingress/M24-001-B-specify-body-ownership-queue-admission-disconnect-cancellation-and-request-slot.md)
-- [ ] [M24-001-C — Define no-copy and bounded-copy boundaries](tasks/01_m24_zero_copy_ingress/M24-001-C-define-no-copy-and-bounded-copy-boundaries.md)
+- [x] [M24-001-C — Define no-copy and bounded-copy boundaries](tasks/01_m24_zero_copy_ingress/M24-001-C-define-no-copy-and-bounded-copy-boundaries.md)
 - [ ] [M24-001-D — Define overload responses and metrics](tasks/01_m24_zero_copy_ingress/M24-001-D-define-overload-responses-and-metrics.md)
 - [ ] [M24-001-V — Verify Freeze ingress ownership and backpressure design](tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md)
 - [ ] [M24-001-Z — Package evidence for Freeze ingress ownership and backpressure design](tasks/01_m24_zero_copy_ingress/M24-001-Z-package-evidence-for-freeze-ingress-ownership-and-backpressure-design.md)
