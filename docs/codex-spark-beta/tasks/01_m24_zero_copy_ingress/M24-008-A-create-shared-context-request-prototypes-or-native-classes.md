@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -87,6 +87,20 @@ cargo test -p velqu-runtime
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Prelude creates shared `__velquRequestPrototype` and `__velquContextPrototype` objects once per worker.
+- `__velquMakeReq` and `__velquMakeCtx` use `Object.create` against shared prototypes; route-specific lazy accessors remain explicit fallback where names/fields vary.
+- Native bridge still validates slot/generation on every access; stale-handle behavior unchanged.
+- `shared_context_request_prototypes_are_reused` exercises multiple request contexts through one worker and confirms settlement.
+- `cargo test -p q-engine-quickjs --test engine`: PASS (93 tests).
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime --test runtime_conformance`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- No benchmark/allocation claim added without profile evidence; prototype reuse is source-backed and conformance-tested.
 
 ## Out of scope
 
