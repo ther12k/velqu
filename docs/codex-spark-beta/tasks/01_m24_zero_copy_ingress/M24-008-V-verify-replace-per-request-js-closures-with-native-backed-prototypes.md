@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -106,6 +106,25 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+Acceptance matrix:
+
+- Stable object shape: `shared_context_request_prototypes_are_reused`, `native_capability_graph_is_cached_and_immutable` PASS.
+- No request bytes in JS route-plan state: `route_plan_references_do_not_copy_request_bytes` PASS.
+- Explicit fallback: `explicit_web_request_fallback_materializes_on_demand` PASS.
+- Stale handles and settlement: existing q-engine-quickjs/q-bridge expiry, cross-worker, cancellation, timeout, quarantine, and shutdown tests PASS.
+- `cargo test -p q-engine-quickjs`: PASS (96 tests).
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `bun run typecheck`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `./scripts/verify`: PASS locally.
+- `bun test`: 28 pass, 8 fail in fresh worktree; failures are runtime timeouts and missing generated `examples/proof/dist/app.qpack`, recorded as scoped verification limitations. No claims weakened and no benchmark manifests changed.
+- No heap/allocation profile or benchmark claim added because raw allocation evidence is not present.
 
 ## Out of scope
 
