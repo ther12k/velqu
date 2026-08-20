@@ -147,6 +147,11 @@ pub struct RoutePlanDecl {
     pub headers_schema_id: Option<u32>,
     #[serde(default)]
     pub body_schema_id: Option<u32>,
+    /// M24-005-A: dense ids into the pack's headerNameTable for exactly the
+    /// header names this route (or its policy) declares — security scheme
+    /// headers plus headers-binding schema properties.
+    #[serde(default)]
+    pub header_name_ids: Vec<u32>,
     #[serde(default)]
     pub default_status: u16,
     #[serde(default)]
@@ -532,6 +537,11 @@ pub struct QPack {
     pub functions: Vec<FunctionDecl>,
     #[serde(default)]
     pub schema_manifest: Vec<SchemaDecl>,
+    /// M24-005-A: canonical (sorted, deduped) header-name table referenced by
+    /// RoutePlanDecl.header_name_ids; verify() proves it is exactly the set
+    /// derivable from the (hashed) routes.
+    #[serde(default)]
+    pub header_name_table: Vec<String>,
     /// Dense numeric policy manifest (G0-r1): PolicyId → policy key + HandlerId.
     #[serde(default)]
     pub policy_manifest: Vec<PolicyDecl>,
@@ -648,6 +658,62 @@ impl QPack {
         let routes_hash = self.routes_canonical_sha256();
         if routes_hash != self.integrity.routes_sha256 {
             return reject("integrity failure: execution graph sha256 mismatch".into());
+        }
+
+        // M24-005-A: header-name ids compiled into RoutePlans must be exactly
+        // the names each route declares (security scheme headers + headers
+        // binding schema properties); the pack table must be the canonical
+        // sorted/deduped union, so a tampered table or ids cannot pass.
+        {
+            let mut expected_table: Vec<String> = Vec::new();
+            for route in &self.routes {
+                let mut names: Vec<String> = route
+                    .security
+                    .iter()
+                    .map(|sec| sec.header.clone())
+                    .collect();
+                if let Some(binding) = &route.headers {
+                    if let Some(key) = &binding.schema {
+                        if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
+                            self.schemas.get(key)
+                        {
+                            names.extend(properties.keys().cloned());
+                        }
+                    }
+                }
+                names.sort();
+                names.dedup();
+                let ids: Vec<u32> = names
+                    .iter()
+                    .map(|n| match expected_table.binary_search(n) {
+                        Ok(pos) => pos as u32,
+                        Err(pos) => {
+                            expected_table.insert(pos, n.clone());
+                            pos as u32
+                        }
+                    })
+                    .collect();
+                if let Some(plan) = &route.plan {
+                    if plan.header_name_ids != ids {
+                        return reject(format!(
+                            "route {}: headerNameIds {:?} do not match declared header names {:?}",
+                            route.id, plan.header_name_ids, ids
+                        ));
+                    }
+                    if plan.field_needs.headers && ids.is_empty() {
+                        return reject(format!(
+                            "route {}: fieldNeeds.headers is true but no header names are declared",
+                            route.id
+                        ));
+                    }
+                }
+            }
+            if self.header_name_table != expected_table {
+                return reject(format!(
+                    "headerNameTable mismatch: pack declares {:?}, routes derive {:?}",
+                    self.header_name_table, expected_table
+                ));
+            }
         }
         if !self.contract_hash.is_empty() {
             let expected_contract_hash = &self.public_contract_sha256()[..32];
@@ -1399,6 +1465,7 @@ pub fn minimal_pack_public() -> QPack {
         plan: None,
     };
     let mut pack = QPack {
+        header_name_table: Vec::new(),
         format_version: PACK_FORMAT_VERSION,
         kind: "velqu.qpack".into(),
         runtime_abi: RUNTIME_ABI,
@@ -1490,6 +1557,7 @@ mod tests {
             plan: None,
         };
         let mut pack = QPack {
+        header_name_table: Vec::new(),
             format_version: PACK_FORMAT_VERSION,
             kind: "velqu.qpack".into(),
             runtime_abi: RUNTIME_ABI,
@@ -1690,6 +1758,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1771,6 +1840,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1830,6 +1900,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 201, // 201 not in allowed_statuses [200]
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1856,6 +1927,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200, 418],
             field_needs: FieldNeeds::default(),
@@ -1882,6 +1954,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds {
@@ -1911,6 +1984,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
@@ -1966,6 +2040,7 @@ mod tests {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: 200,
             allowed_statuses: vec![200],
             field_needs: FieldNeeds {
@@ -2134,6 +2209,63 @@ mod tests {
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(matches!(err, PackError::Rejected(m) if m.contains("methodMask")));
+    }
+
+    fn refresh_integrity(pack: &mut QPack) {
+        pack.integrity.routes_sha256 = pack.routes_canonical_sha256();
+        if !pack.contract_hash.is_empty() {
+            pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        }
+    }
+
+    /// M24-005-A: header-name ids are compiled into RoutePlans and verified —
+    /// a tampered table or tampered ids cannot load.
+    #[test]
+    fn header_name_table_and_ids_are_verified() {
+        // numeric fixture with a security requirement on the planned route
+        let mut pack = numeric_pack();
+        pack.routes[0].security = vec![SecurityReq {
+            scheme: "bearer".into(),
+            header: "authorization".into(),
+            problem_status: 401,
+        }];
+        pack.header_name_table = vec!["authorization".into()];
+        let plan = pack.routes[0].plan.as_mut().unwrap();
+        plan.header_name_ids = vec![0];
+        plan.field_needs.headers = true;
+        refresh_integrity(&mut pack);
+        pack.verify().expect("consistent table verifies");
+
+        // tampered table entry → rejected (does not match derived set)
+        {
+            let mut bad = pack.clone();
+            bad.header_name_table.push("x-tampered".into());
+            refresh_integrity(&mut bad);
+            let err = bad.verify().unwrap_err();
+            assert!(err.to_string().contains("headerNameTable"), "{err}");
+        }
+        // tampered ids on the security route → rejected
+        {
+            let mut bad = pack.clone();
+            bad.routes[0].plan.as_mut().unwrap().header_name_ids = vec![9];
+            refresh_integrity(&mut bad);
+            let err = bad.verify().unwrap_err();
+            assert!(err.to_string().contains("headerNameIds"), "{err}");
+        }
+        // fieldNeeds.headers true with no declared names → rejected
+        {
+            let mut bad = pack.clone();
+            bad.routes[0].security.clear();
+            bad.header_name_table.clear();
+            let plan = bad.routes[0].plan.as_mut().unwrap();
+            let mut needs = plan.field_needs;
+            needs.headers = true;
+            plan.field_needs = needs;
+            plan.header_name_ids.clear();
+            refresh_integrity(&mut bad);
+            let err = bad.verify().unwrap_err();
+            assert!(err.to_string().contains("fieldNeeds.headers"), "{err}");
+        }
     }
 
     #[test]
