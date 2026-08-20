@@ -25,9 +25,11 @@ other change). It replaces direct commits to `master`.
    gh pr merge --squash --delete-branch
    git checkout master && git pull
    ```
-5. **Advance the queue** — after merge, regenerate `STATUS.md` ordering,
-   `indexes/EXECUTION_QUEUE.md`, and `indexes/NEXT_25.md` from unchecked
-   packet statuses (the completion commit inside the PR may do this).
+5. **Advance the queue** — after merge, run `./scripts/spark-queue`: it
+   regenerates `indexes/EXECUTION_QUEUE.md` and `indexes/NEXT_25.md` from
+   unchecked packet statuses and embeds each packet's GitHub issue number, so
+   the next PR's `Closes #N` needs no manual lookup. It fails if any unchecked
+   packet has no registered issue.
 
 PR merges are gated by the same rule as commits: targeted tests pass, docs
 validators pass, no weakened assertions. `./scripts/verify` ALL PASS is
