@@ -257,22 +257,37 @@ export function buildPack(
 ): { packJson: string; pack: Record<string, unknown> } {
   const schemas = schemaRegistry(app);
   const policyPacks: Record<string, unknown> = {};
+  // Dense policy manifest: sorted by key (BTreeMap order) → PolicyId = index
+  const sortedPolicyKeys = [...new Set(app.policies.map((p) => p.id))].sort();
   const policyIdMap = new Map<string, number>();
-  for (let i = 0; i < app.policies.length; i++) {
-    const p = app.policies[i];
-    policyIdMap.set(p.id, i);
-    policyPacks[p.id] = {
+  for (let i = 0; i < sortedPolicyKeys.length; i++) {
+    policyIdMap.set(sortedPolicyKeys[i], i);
+  }
+  const policyManifest: Array<{ id: number; key: string; handlerId: number }> = [];
+  for (const key of sortedPolicyKeys) {
+    const p = app.policies.find((x) => x.id === key)!;
+    policyPacks[key] = {
       id: p.id,
       handler: p.id,
       declaredStatuses: p.declaredStatuses,
       provides: "session",
     };
+    policyManifest.push({
+      id: policyIdMap.get(key)!,
+      key,
+      handlerId: policyHandlerIndex(app, key),
+    });
   }
   const capabilities = [...new Set(app.routes.flatMap((r) => r.capabilities))].filter((c) => c === "timer");
 
   const policyHandlerMap = new Map<string, number>();
   for (let i = 0; i < app.policies.length; i++) {
     policyHandlerMap.set(app.policies[i].id, app.routes.length + i);
+  }
+
+  function policyHandlerIndex(app: ExtractedApp, policyId: string): number {
+    const idx = app.policies.findIndex((p) => p.id === policyId);
+    return app.routes.length + idx;
   }
 
   const sortedSchemaKeys = Object.keys(schemas).sort();
@@ -382,27 +397,43 @@ export function buildPack(
     router,
   );
 
-  // M2.3-r3: publicContractHash is stable across internal function manifest reordering.
-  // Mirrors Rust public_contract_canonical_json exactly:
-  // [routes, schemas(BTreeMap sorted, IR-aware sort), policies(BTreeMap sorted)]
-  const policiesPublic: Record<string, unknown> = {};
-  for (const k of Object.keys(policyPacks).sort()) policiesPublic[k] = policyPacks[k];
-  const schemasPublic: Record<string, unknown> = {};
-  for (const k of Object.keys(schemas).sort()) schemasPublic[k] = sortIR(schemas[k]);
+  // G0-r1 (C): PUBLIC-ONLY contract hash. Mirrors Rust
+  // public_contract_canonical_json exactly:
+  // [routes, reachable-schemas(BTreeMap sorted, IR-aware sort), policies-sans-handler]
+  const projectBinding = (b: { schema: string | null; coerce: string | null; contentType: string | null; limitBytes: number } | null) =>
+    b ? { schema: b.schema, coerce: b.coerce, contentType: b.contentType, limitBytes: b.limitBytes } : null;
+  const usedSchemas = new Set<string>();
   const publicRoutes = packRoutes.map((r) => {
     const responsesSorted: Record<string, unknown> = {};
-    for (const k of Object.keys(r.responses).sort()) responsesSorted[k] = r.responses[k];
+    for (const k of Object.keys(r.responses).sort()) {
+      const d = r.responses[k];
+      if (d.schema) usedSchemas.add(d.schema);
+      responsesSorted[k] = { schema: d.schema, problem: d.problem }; // NO strategy
+    }
+    for (const b of [r.params, r.query, r.headers, r.body]) {
+      if (b?.schema) usedSchemas.add(b.schema);
+    }
     return {
       id: r.id,
       method: r.method,
       path: r.path,
-      params: r.params?.schema ?? null,
-      query: r.query?.schema ?? null,
-      body: r.body?.schema ?? null,
+      params: projectBinding(r.params),
+      query: projectBinding(r.query),
+      headers: projectBinding(r.headers),
+      body: projectBinding(r.body),
       responses: responsesSorted,
       security: r.security,
     };
   });
+  const schemasPublic: Record<string, unknown> = {};
+  for (const k of Object.keys(schemas).sort()) {
+    if (usedSchemas.has(k)) schemasPublic[k] = sortIR(schemas[k]);
+  }
+  const policiesPublic: Record<string, unknown> = {};
+  for (const k of Object.keys(policyPacks).sort()) {
+    const p = policyPacks[k] as { declaredStatuses: unknown; provides: unknown };
+    policiesPublic[k] = { declaredStatuses: p.declaredStatuses, provides: p.provides }; // NO handler
+  }
   const publicContractCanonical = JSON.stringify([publicRoutes, schemasPublic, policiesPublic]);
   const contractHash = sha(publicContractCanonical).slice(0, 32);
 
@@ -410,6 +441,7 @@ export function buildPack(
     formatVersion: 1,
     kind: "velqu.qpack",
     runtimeAbi: 1,
+    executionMode: "numeric",
     engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
     schemaIrVersion: 1,
     contractVersion: 1,
@@ -426,8 +458,8 @@ export function buildPack(
     capabilities,
     functions,
     schemaManifest,
+    policyManifest,
     router,
-    handlerTable,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle.code), routesSha256: sha(canonical) },
   };
   return { packJson: JSON.stringify(pack), pack };

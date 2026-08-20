@@ -218,6 +218,16 @@ fn default_deadline() -> u64 {
 
 pub use q_engine::{FunctionDecl, FunctionKind};
 
+/// Canonical HTTP method → terminal slot index (mirrors q-router's METHOD_* map).
+pub const METHOD_SLOTS: [&str; 7] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
+
+#[inline]
+pub fn method_index(method: &str) -> Option<usize> {
+    METHOD_SLOTS
+        .iter()
+        .position(|m| *m == method.to_ascii_uppercase())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SerializedStaticEdge {
@@ -249,6 +259,188 @@ pub struct SerializedRouterNode {
 #[serde(rename_all = "camelCase")]
 pub struct SerializedRouter {
     pub nodes: Vec<SerializedRouterNode>,
+}
+
+impl SerializedRouter {
+    /// Full semantic verification of the compiled automaton against the
+    /// declared routes (G0-r1): non-empty node array with root at 0, in-range
+    /// and unique edges, methodMask exactly matching populated slots, every
+    /// slot holding a route whose method matches the slot, every route
+    /// reachable at the terminal its own pathSegments walk to (proving path
+    /// shape), no slot double-claimed, and pathSegments agreeing with
+    /// route.path. Fail-before-ready: called from QPack::verify.
+    pub fn verify_against(&self, routes: &[RouteEntry]) -> Result<(), String> {
+        if self.nodes.is_empty() {
+            return Err("serialized router has no nodes (root node 0 required)".into());
+        }
+        let node_count = self.nodes.len();
+        for (n_idx, node) in self.nodes.iter().enumerate() {
+            let mut seen = std::collections::BTreeSet::new();
+            for e in &node.static_edges {
+                if e.target_node >= node_count {
+                    return Err(format!(
+                        "router node {n_idx} static edge target {} out of range ({node_count})",
+                        e.target_node
+                    ));
+                }
+                if !seen.insert(e.segment.as_str()) {
+                    return Err(format!(
+                        "router node {n_idx} has duplicate static edge '{}'",
+                        e.segment
+                    ));
+                }
+            }
+            for (label, target) in [("param", node.param_edge), ("wildcard", node.wildcard_edge)] {
+                if let Some(t) = target {
+                    if t >= node_count {
+                        return Err(format!(
+                            "router node {n_idx} {label} edge target {t} out of range ({node_count})"
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Walk every route's declared path through the graph; the terminal
+        // reached must hold this route in this route's method slot.
+        let mut claimed: Vec<Option<(usize, usize)>> = vec![None; routes.len()];
+        for (r_idx, route) in routes.iter().enumerate() {
+            // pathSegments must agree with route.path
+            let declared: Vec<&str> = route.path.split('/').filter(|s| !s.is_empty()).collect();
+            if declared.len() != route.path_segments.len() {
+                return Err(format!(
+                    "route {} pathSegments do not match route.path",
+                    route.id
+                ));
+            }
+            for (seg, decl) in route.path_segments.iter().zip(&declared) {
+                let ok = match seg.kind {
+                    SegKind::Static => seg.value == *decl,
+                    SegKind::Param => {
+                        decl.len() > 1 && decl.starts_with(':') && &decl[1..] == seg.value
+                    }
+                    SegKind::Wildcard => *decl == "*",
+                };
+                if !ok {
+                    return Err(format!(
+                        "route {} path segment {:?} disagrees with path text {:?}",
+                        route.id, seg.value, decl
+                    ));
+                }
+            }
+            let Some(m_idx) = method_index(&route.method) else {
+                return Err(format!(
+                    "route {} has unsupported method {}",
+                    route.id, route.method
+                ));
+            };
+            let mut curr = 0usize;
+            for seg in &route.path_segments {
+                match seg.kind {
+                    SegKind::Static => {
+                        let Some(edge) = self.nodes[curr]
+                            .static_edges
+                            .iter()
+                            .find(|e| e.segment == seg.value)
+                        else {
+                            return Err(format!(
+                                "route {} path not represented in router (missing static '{}')",
+                                route.id, seg.value
+                            ));
+                        };
+                        curr = edge.target_node;
+                    }
+                    SegKind::Param => {
+                        let Some(t) = self.nodes[curr].param_edge else {
+                            return Err(format!(
+                                "route {} path not represented in router (missing param edge)",
+                                route.id
+                            ));
+                        };
+                        curr = t;
+                    }
+                    SegKind::Wildcard => {
+                        let Some(t) = self.nodes[curr].wildcard_edge else {
+                            return Err(format!(
+                                "route {} path not represented in router (missing wildcard edge)",
+                                route.id
+                            ));
+                        };
+                        curr = t;
+                    }
+                }
+            }
+            let Some(terminal) = &self.nodes[curr].terminal else {
+                return Err(format!(
+                    "route {} path ends at a non-terminal router node",
+                    route.id
+                ));
+            };
+            match terminal.route_by_method[m_idx] {
+                Some(target) if target == r_idx => {}
+                Some(other) => {
+                    return Err(format!(
+                        "route {} terminal slot points at route {} (misrouted or shadowed)",
+                        route.id, other
+                    ))
+                }
+                None => {
+                    return Err(format!(
+                        "route {} not reachable in router (its terminal method slot is empty)",
+                        route.id
+                    ))
+                }
+            }
+            claimed[r_idx] = Some((curr, m_idx));
+        }
+
+        // Terminals: mask == populated slots exactly; slot contents must be
+        // claimed by the route whose walk lands here (kills stray/duplicate
+        // terminals and in-range-but-wrong mappings).
+        let mut slot_claims = std::collections::BTreeSet::new();
+        for c in claimed.iter().flatten() {
+            if !slot_claims.insert(*c) {
+                return Err("two routes claim the same router terminal slot (collision)".into());
+            }
+        }
+        for (n_idx, node) in self.nodes.iter().enumerate() {
+            let Some(t) = &node.terminal else { continue };
+            let mut expected_mask = 0u16;
+            for (m_idx, slot) in t.route_by_method.iter().enumerate() {
+                let Some(r_idx) = *slot else { continue };
+                if r_idx >= routes.len() {
+                    return Err(format!(
+                        "router node {n_idx} terminal slot {m_idx} route index {r_idx} out of range ({})",
+                        routes.len()
+                    ));
+                }
+                let route = &routes[r_idx];
+                let Some(rm) = method_index(&route.method) else {
+                    return Err(format!("route {} has unsupported method", route.id));
+                };
+                if rm != m_idx {
+                    return Err(format!(
+                        "router node {n_idx} slot {m_idx} holds route {} whose method maps to slot {rm}",
+                        route.id
+                    ));
+                }
+                if claimed[r_idx] != Some((n_idx, m_idx)) {
+                    return Err(format!(
+                        "route {} attached at router node {n_idx} slot {m_idx} but its own path routes elsewhere",
+                        route.id
+                    ));
+                }
+                expected_mask |= 1 << m_idx;
+            }
+            if t.method_mask != expected_mask {
+                return Err(format!(
+                    "router node {n_idx} methodMask {:b} != populated slots {:b}",
+                    t.method_mask, expected_mask
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -324,6 +516,10 @@ pub struct QPack {
     /// Optional build-time bytecode (module form only); see BundleBytecode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle_bytecode: Option<BundleBytecode>,
+    /// "numeric" (current) or "legacy". Numeric packs MUST declare it
+    /// explicitly (G0-r1): no more inferring mode from `functions`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_mode: Option<String>,
     pub routes: Vec<RouteEntry>,
     /// schema IR registry: key -> IR node (q-schema-runtime types)
     #[serde(default)]
@@ -336,10 +532,25 @@ pub struct QPack {
     pub functions: Vec<FunctionDecl>,
     #[serde(default)]
     pub schema_manifest: Vec<SchemaDecl>,
+    /// Dense numeric policy manifest (G0-r1): PolicyId → policy key + HandlerId.
+    #[serde(default)]
+    pub policy_manifest: Vec<PolicyDecl>,
     #[serde(default)]
     pub router: Option<SerializedRouter>,
+    /// Legacy v1 only. Numeric packs omit the field entirely; carrying a
+    /// non-empty table in numeric mode is rejected.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub handler_table: BTreeMap<String, String>,
     pub integrity: Integrity,
+}
+
+/// Dense numeric policy identity: PolicyId ↔ policy key ↔ pre-resolved HandlerId.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PolicyDecl {
+    pub id: u32,
+    pub key: String,
+    pub handler_id: u32,
 }
 
 impl QPack {
@@ -467,6 +678,12 @@ impl QPack {
                     return reject(format!("duplicate function key {}", fn_decl.key));
                 }
             }
+            // G0-r1: numeric mode must be EXPLICIT — no inference from field presence
+            if self.execution_mode.as_deref() != Some("numeric") {
+                return reject(
+                    "numeric pack must declare executionMode: \"numeric\" explicitly".into(),
+                );
+            }
             // Numeric current packs: no legacy handler table, no implicit map fallback
             if !self.handler_table.is_empty() {
                 return reject(
@@ -478,6 +695,50 @@ impl QPack {
                 return reject(
                     "numeric pack requires the compiled router automaton (pack.router)".into(),
                 );
+            }
+            // G0-r1: dense policy manifest — every declared policy present exactly
+            // once, handler_id resolving to a PolicyHandler function with the
+            // matching key.
+            {
+                let mut seen = std::collections::BTreeSet::new();
+                for (idx, pd) in self.policy_manifest.iter().enumerate() {
+                    if pd.id != idx as u32 {
+                        return reject(format!(
+                            "policy manifest id {} does not match index {idx} (must be dense 0..N)",
+                            pd.id
+                        ));
+                    }
+                    if !seen.insert(pd.key.clone()) {
+                        return reject(format!("duplicate policy manifest key {}", pd.key));
+                    }
+                    let Some(entry) = self.policies.get(&pd.key) else {
+                        return reject(format!(
+                            "policy manifest key {} not found in policies table",
+                            pd.key
+                        ));
+                    };
+                    let Some(f) = self.functions.get(pd.handler_id as usize) else {
+                        return reject(format!(
+                            "policy manifest entry {} handler_id {} out of range",
+                            pd.key, pd.handler_id
+                        ));
+                    };
+                    if f.kind != FunctionKind::PolicyHandler || f.key != entry.handler {
+                        return reject(format!(
+                            "policy manifest entry {} handler_id {} does not resolve to its PolicyHandler function",
+                            pd.key, pd.handler_id
+                        ));
+                    }
+                }
+                let policy_keys: std::collections::BTreeSet<&String> = self.policies.keys().collect();
+                let manifest_keys: std::collections::BTreeSet<&String> =
+                    self.policy_manifest.iter().map(|p| &p.key).collect();
+                if policy_keys != manifest_keys {
+                    return reject(format!(
+                        "numeric policy manifest must cover every policy ({:?} vs {:?})",
+                        manifest_keys, policy_keys
+                    ));
+                }
             }
             // Whenever schemas exist, the numeric schema manifest must cover them completely
             if !self.schemas.is_empty() {
@@ -492,6 +753,17 @@ impl QPack {
                     ));
                 }
             }
+            // G0-r1 (C): numeric mode requires a declared, verified public contract hash
+            if self.contract_hash.is_empty() {
+                return reject(
+                    "numeric pack must declare contractHash (public contract verification)"
+                        .into(),
+                );
+            }
+        } else if self.execution_mode.as_deref() == Some("numeric") {
+            return reject(
+                "executionMode \"numeric\" declared but function manifest is empty".into(),
+            );
         }
 
         // schema manifest validation (M2.3-r2/r3 numeric mode)
@@ -522,44 +794,11 @@ impl QPack {
             }
         }
 
-        // router validation (if pre-compiled router is present)
+        // Serialized-router semantic verification (G0-r1): full graph↔routes
+        // equivalence — replaces the previous bounds-only check
         if let Some(ref r) = self.router {
-            let node_count = r.nodes.len();
-            for (n_idx, node) in r.nodes.iter().enumerate() {
-                for edge in &node.static_edges {
-                    if edge.target_node >= node_count {
-                        return reject(format!(
-                            "router node {n_idx} static edge target {} out of range ({node_count})",
-                            edge.target_node
-                        ));
-                    }
-                }
-                if let Some(target) = node.param_edge {
-                    if target >= node_count {
-                        return reject(format!(
-                            "router node {n_idx} param edge target {target} out of range ({node_count})"
-                        ));
-                    }
-                }
-                if let Some(target) = node.wildcard_edge {
-                    if target >= node_count {
-                        return reject(format!(
-                            "router node {n_idx} wildcard edge target {target} out of range ({node_count})"
-                        ));
-                    }
-                }
-                if let Some(ref t) = node.terminal {
-                    for &opt_r_idx in t.route_by_method.iter() {
-                        if let Some(r_idx) = opt_r_idx {
-                            if r_idx >= self.routes.len() {
-                                return reject(format!(
-                                    "router node {n_idx} terminal route_index {r_idx} out of range ({})",
-                                    self.routes.len()
-                                ));
-                            }
-                        }
-                    }
-                }
+            if let Err(e) = r.verify_against(&self.routes) {
+                return reject(format!("serialized router rejected: {e}"));
             }
         }
 
@@ -779,6 +1018,31 @@ impl QPack {
                     }
                     if let Some(p) = &route.policy {
                         let policy_entry = self.policies.get(p).unwrap();
+                        // G0-r1: policyId must resolve through the dense policy
+                        // manifest to this exact policy, and agree with the
+                        // pre-resolved policy handler ID.
+                        if !self.policy_manifest.is_empty() {
+                            let Some(pd) = plan.policy_id.and_then(|pid| {
+                                self.policy_manifest.get(pid as usize)
+                            }) else {
+                                return reject(format!(
+                                    "route {} declares policy {} but plan.policyId {:?} does not resolve in the policy manifest",
+                                    route.id, p, plan.policy_id
+                                ));
+                            };
+                            if pd.key != *p {
+                                return reject(format!(
+                                    "route {} plan.policyId {} ({}) does not match route.policy ({})",
+                                    route.id, plan.policy_id.unwrap(), pd.key, p
+                                ));
+                            }
+                            if Some(pd.handler_id) != plan.policy_handler_id {
+                                return reject(format!(
+                                    "route {} plan.policyId {} handler_id {} disagrees with plan.policy_handler_id {:?}",
+                                    route.id, plan.policy_id.unwrap(), pd.handler_id, plan.policy_handler_id
+                                ));
+                            }
+                        }
                         let Some(p_fn_id) = plan.policy_handler_id else {
                             return reject(format!(
                                 "route {} declares policy {} but plan.policy_handler_id is None",
@@ -904,36 +1168,116 @@ impl QPack {
         hex(&hasher.finalize())
     }
 
-    /// Canonical JSON over the public API contract only (method, path, request/response schemas, security, errors).
-    /// M2.3-r3: Stable across internal function/plan reordering (P1 fix).
+    /// Canonical JSON over the PUBLIC API contract only (G0-r1):
+    /// method, path, request schemas + coercion + content types + limits,
+    /// declared response statuses/body schemas/public problems, security.
+    /// Excludes: function keys/IDs, policy implementation handler, response
+    /// serializer strategy, router layout, capability indexes, and schemas not
+    /// reachable from a public binding/response.
+    /// Stable across internal implementation reordering.
     pub fn public_contract_canonical_json(&self) -> String {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct PublicBinding<'a> {
+            schema: Option<&'a str>,
+            coerce: Option<&'a str>,
+            content_type: Option<&'a str>,
+            limit_bytes: u64,
+        }
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct PublicResponse<'a> {
+            schema: Option<&'a str>,
+            problem: Option<&'a str>,
+        }
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
         struct PublicRoute<'a> {
             id: &'a str,
             method: &'a str,
             path: &'a str,
-            params: Option<&'a str>,
-            query: Option<&'a str>,
-            body: Option<&'a str>,
-            responses: &'a BTreeMap<String, ResponseDecl>,
+            params: Option<PublicBinding<'a>>,
+            query: Option<PublicBinding<'a>>,
+            headers: Option<PublicBinding<'a>>,
+            body: Option<PublicBinding<'a>>,
+            responses: BTreeMap<&'a str, PublicResponse<'a>>,
             security: &'a [SecurityReq],
         }
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct PublicPolicy<'a> {
+            declared_statuses: &'a [u16],
+            provides: Option<&'a str>,
+        }
+        fn project(b: &SourceBinding) -> PublicBinding<'_> {
+            PublicBinding {
+                schema: b.schema.as_deref(),
+                coerce: b.coerce.as_deref(),
+                content_type: b.content_type.as_deref(),
+                limit_bytes: b.limit_bytes,
+            }
+        }
+        // Reachability: only schemas referenced by a public binding or response
+        let mut used: std::collections::BTreeSet<&str> = Default::default();
         let routes: Vec<PublicRoute> = self
             .routes
             .iter()
-            .map(|r| PublicRoute {
-                id: &r.id,
-                method: &r.method,
-                path: &r.path,
-                params: r.params.as_ref().and_then(|p| p.schema.as_deref()),
-                query: r.query.as_ref().and_then(|q| q.schema.as_deref()),
-                body: r.body.as_ref().and_then(|b| b.schema.as_deref()),
-                responses: &r.responses,
-                security: &r.security,
+            .map(|r| {
+                for b in [&r.params, &r.query, &r.body, &r.headers]
+                    .into_iter()
+                    .flatten()
+                {
+                    if let Some(k) = b.schema.as_deref() {
+                        used.insert(k);
+                    }
+                }
+                let mut responses = BTreeMap::new();
+                for (status, decl) in &r.responses {
+                    if let Some(k) = decl.schema.as_deref() {
+                        used.insert(k);
+                    }
+                    responses.insert(
+                        status.as_str(),
+                        PublicResponse {
+                            schema: decl.schema.as_deref(),
+                            problem: decl.problem.as_deref(),
+                        },
+                    );
+                }
+                PublicRoute {
+                    id: &r.id,
+                    method: &r.method,
+                    path: &r.path,
+                    params: r.params.as_ref().map(project),
+                    query: r.query.as_ref().map(project),
+                    headers: r.headers.as_ref().map(project),
+                    body: r.body.as_ref().map(project),
+                    responses,
+                    security: &r.security,
+                }
             })
             .collect();
-        serde_json::to_string(&(&routes, &self.schemas, &self.policies))
+        let schemas: BTreeMap<&str, &q_schema_runtime::SchemaIr> = self
+            .schemas
+            .iter()
+            .filter(|(k, _)| used.contains(k.as_str()))
+            .map(|(k, v)| (k.as_str(), v))
+            .collect();
+        // Policies projected WITHOUT the implementation handler key
+        let policies: BTreeMap<&str, PublicPolicy> = self
+            .policies
+            .iter()
+            .map(|(k, p)| {
+                (
+                    k.as_str(),
+                    PublicPolicy {
+                        declared_statuses: &p.declared_statuses,
+                        provides: p.provides.as_deref(),
+                    },
+                )
+            })
+            .collect();
+        serde_json::to_string(&(&routes, &schemas, &policies))
             .expect("canonical serialization cannot fail")
     }
 
@@ -1070,6 +1414,7 @@ pub fn minimal_pack_public() -> QPack {
         modules: vec!["health".into()],
         entry: "app.js".into(),
         bundle_form: None,
+        execution_mode: None,
         bundle: "function h(){} __velquRegister('health.live', h);".into(),
         source_map: None,
         bundle_bytecode: None,
@@ -1079,6 +1424,7 @@ pub fn minimal_pack_public() -> QPack {
         capabilities: vec![],
         functions: vec![],
         schema_manifest: vec![],
+        policy_manifest: vec![],
         router: None,
         handler_table: BTreeMap::from([("health.live".into(), "health.live".into())]),
         integrity: Integrity {
@@ -1159,6 +1505,7 @@ mod tests {
             modules: vec!["health".into()],
             entry: "app.js".into(),
             bundle_form: None,
+            execution_mode: None,
             bundle: "function health_live(){return {status:'ok'}} __velquRegister('health.live', health_live);".into(),
             source_map: None,
             bundle_bytecode: None,
@@ -1168,6 +1515,7 @@ mod tests {
             capabilities: vec![],
             functions: vec![],
             schema_manifest: vec![],
+            policy_manifest: vec![],
             router: None,
             handler_table: BTreeMap::from([("health.live".into(), "health_live".into())]),
             integrity: Integrity { algorithm: "sha256".into(), bundle_sha256: String::new(), routes_sha256: String::new(), bytecode_sha256: None },
@@ -1343,6 +1691,9 @@ mod tests {
             response_strategy: Strategy::Js,
             deadline_ms: 5000,
         });
+        p.execution_mode = Some("numeric".into());
+        p.policy_manifest = vec![]; // no policies declared
+        p.contract_hash = p.public_contract_sha256()[..32].to_string();
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         p
     }
@@ -1590,6 +1941,16 @@ mod tests {
             content_type: None,
             limit_bytes: 0,
         });
+        // manifest covers the schema so the completeness check passes and the
+        // plan-level querySchemaId gap is what fires
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:health.query".into(),
+            ir: q_schema_runtime::SchemaIr::Object {
+                properties: BTreeMap::new(),
+                required: vec![],
+            },
+        }];
         // Plan has querySchemaId = None while route declares query schema
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
@@ -1611,9 +1972,82 @@ mod tests {
             response_strategy: Strategy::Js,
             deadline_ms: 5000,
         });
+        p.contract_hash = p.public_contract_sha256()[..32].to_string();
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(matches!(err, PackError::Rejected(m) if m.contains("querySchemaId is None")));
+    }
+
+    #[test]
+    fn policy_handler_rename_keeps_public_contract_hash() {
+        let mut p1 = minimal_pack();
+        let mut p2 = minimal_pack();
+        // both declare the same policy; p2 renames ONLY the implementation handler key
+        for p in [&mut p1, &mut p2] {
+            p.policies.insert(
+                "auth.session".into(),
+                PolicyEntry {
+                    id: "auth.session".into(),
+                    handler: "impl.old".into(),
+                    declared_statuses: vec![401],
+                    provides: None,
+                },
+            );
+        }
+        p2.policies.get_mut("auth.session").unwrap().handler = "impl.renamed".into();
+        assert_eq!(p1.public_contract_sha256(), p2.public_contract_sha256());
+    }
+
+    #[test]
+    fn serializer_strategy_change_keeps_public_contract_hash() {
+        let mut p1 = minimal_pack();
+        let mut p2 = minimal_pack();
+        p1.routes[0].responses.get_mut("200").unwrap().strategy = Strategy::Js;
+        p2.routes[0].responses.get_mut("200").unwrap().strategy = Strategy::Native;
+        assert_eq!(p1.public_contract_sha256(), p2.public_contract_sha256());
+    }
+
+    #[test]
+    fn header_contract_change_changes_public_contract_hash() {
+        let mut p1 = minimal_pack();
+        let mut p2 = minimal_pack();
+        p2.routes[0].headers = Some(SourceBinding {
+            schema: Some("sch:h".into()),
+            coerce: None,
+            content_type: None,
+            limit_bytes: 0,
+        });
+        assert_ne!(p1.public_contract_sha256(), p2.public_contract_sha256());
+    }
+
+    #[test]
+    fn body_content_type_change_changes_public_contract_hash() {
+        let mut p1 = minimal_pack();
+        let mut p2 = minimal_pack();
+        p1.routes[0].body = Some(SourceBinding {
+            schema: None,
+            coerce: None,
+            content_type: Some("application/json".into()),
+            limit_bytes: 64,
+        });
+        p2.routes[0].body = Some(SourceBinding {
+            schema: None,
+            coerce: None,
+            content_type: Some("text/plain".into()),
+            limit_bytes: 64,
+        });
+        assert_ne!(p1.public_contract_sha256(), p2.public_contract_sha256());
+    }
+
+    #[test]
+    fn empty_contract_hash_in_numeric_mode_is_rejected() {
+        let mut p = numeric_pack();
+        p.contract_hash = String::new();
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("must declare contractHash"))
+        );
     }
 
     #[test]
@@ -1648,6 +2082,61 @@ mod tests {
         assert_eq!(p1.public_contract_sha256(), p2.public_contract_sha256());
         // Execution graph hash DOES change because internal layout changed
         assert_ne!(p1.routes_canonical_sha256(), p2.routes_canonical_sha256());
+    }
+
+    #[test]
+    fn router_empty_nodes_rejected_before_ready() {
+        let mut p = numeric_pack();
+        p.router = Some(SerializedRouter { nodes: vec![] });
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("serialized router rejected") && m.contains("no nodes"))
+        );
+    }
+
+    #[test]
+    fn router_method_slot_tamper_is_rejected() {
+        // in-range but wrong-method slot: POST slot holds the GET route
+        let mut p = numeric_pack();
+        if let Some(ref mut r) = p.router {
+            let term = r.nodes.last_mut().unwrap().terminal.as_mut().unwrap();
+            term.route_by_method = [None, Some(0), None, None, None, None, None];
+            term.method_mask = 1 << 1;
+        }
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("serialized router rejected"))
+        );
+    }
+
+    #[test]
+    fn router_path_shape_tamper_is_rejected() {
+        // route's path no longer walks to its terminal: repoint the static edge
+        let mut p = numeric_pack();
+        if let Some(ref mut r) = p.router {
+            r.nodes[0].static_edges[0].segment = "wrong".into();
+        }
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("not represented in router"))
+        );
+    }
+
+    #[test]
+    fn router_method_mask_mismatch_is_rejected() {
+        let mut p = numeric_pack();
+        if let Some(ref mut r) = p.router {
+            let term = r.nodes.last_mut().unwrap().terminal.as_mut().unwrap();
+            term.method_mask = 0b11; // claims GET+POST but only GET populated
+        }
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("methodMask"))
+        );
     }
 
     #[test]

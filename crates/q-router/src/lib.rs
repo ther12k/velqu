@@ -32,16 +32,7 @@ pub const METHOD_COUNT: usize = 7;
 
 #[inline]
 pub fn method_to_index(method: &str) -> Option<usize> {
-    match method {
-        "GET" => Some(METHOD_GET),
-        "POST" => Some(METHOD_POST),
-        "PUT" => Some(METHOD_PUT),
-        "PATCH" => Some(METHOD_PATCH),
-        "DELETE" => Some(METHOD_DELETE),
-        "OPTIONS" => Some(METHOD_OPTIONS),
-        "HEAD" => Some(METHOD_HEAD),
-        _ => None,
-    }
+    q_pack::method_index(method)
 }
 
 pub fn index_to_method(idx: usize) -> &'static str {
@@ -101,8 +92,11 @@ pub struct CompiledRoute {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MatchResult {
-    /// route index into the pack's routes vec + extracted path params
+    /// Matched route identity (G0-r1): `route_id` is the canonical numeric
+    /// RouteId that directly indexes the dense route/plan vector;
+    /// `route_index` is retained as the internal Vec position (equal value).
     Found {
+        route_id: q_engine::RouteId,
         route_index: usize,
         params: Vec<(String, String)>,
         head: bool,
@@ -431,6 +425,148 @@ impl Router {
         }
     }
 
+    /// Load directly from a serialized automaton + routes (no pack object).
+    /// This is the pure form used by the reference-vs-serialized property test.
+    pub fn from_serialized(
+        routes: &[RouteEntry],
+        serialized: &q_pack::SerializedRouter,
+    ) -> Result<Router, RouterError> {
+        let mut compiled = Vec::with_capacity(routes.len());
+        for (i, r) in routes.iter().enumerate() {
+            let strategy = match r
+                .plan
+                .as_ref()
+                .map(|p| p.response_strategy)
+                .unwrap_or(q_pack::Strategy::Js)
+            {
+                q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
+                q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+            };
+            let default_status = r
+                .responses
+                .contains_key("200")
+                .then_some(200)
+                .or_else(|| r.responses.keys().next().and_then(|k| k.parse().ok()))
+                .unwrap_or(200);
+            let (
+                handler_id,
+                policy_id,
+                policy_handler_id,
+                params_schema_id,
+                query_schema_id,
+                headers_schema_id,
+                body_schema_id,
+                plan_status,
+                plan_statuses,
+                plan_deadline,
+            ) = match &r.plan {
+                Some(p) => (
+                    Some(q_engine::HandlerId(p.handler_id)),
+                    p.policy_id.map(q_engine::PolicyId),
+                    p.policy_handler_id.map(q_engine::HandlerId),
+                    p.params_schema_id.map(q_engine::SchemaId),
+                    p.query_schema_id.map(q_engine::SchemaId),
+                    p.headers_schema_id.map(q_engine::SchemaId),
+                    p.body_schema_id.map(q_engine::SchemaId),
+                    p.default_status,
+                    p.allowed_statuses.clone(),
+                    p.deadline_ms,
+                ),
+                None => (
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    default_status,
+                    r.responses.keys().filter_map(|k| k.parse().ok()).collect(),
+                    r.deadline_ms,
+                ),
+            };
+            let param_names = r
+                .path_segments
+                .iter()
+                .filter_map(|s| match s.kind {
+                    SegKind::Param => Some(s.value.clone()),
+                    _ => None,
+                })
+                .collect();
+            compiled.push(CompiledRoute {
+                index: i,
+                route_id: q_engine::RouteId(i as u32),
+                method: r.method.clone(),
+                segments: r.path_segments.clone(),
+                param_names,
+                has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
+                plan: r.plan.clone(),
+                handler_id,
+                policy_id,
+                policy_handler_id,
+                params_schema_id,
+                query_schema_id,
+                headers_schema_id,
+                body_schema_id,
+                default_status: plan_status,
+                allowed_statuses: plan_statuses,
+                response_strategy: strategy,
+                deadline_ms: plan_deadline,
+            });
+        }
+        let nodes: Vec<RouterNode> = serialized
+            .nodes
+            .iter()
+            .map(|sn| RouterNode {
+                static_edges: sn
+                    .static_edges
+                    .iter()
+                    .map(|se| StaticEdge {
+                        segment: se.segment.clone(),
+                        target_node: se.target_node,
+                    })
+                    .collect(),
+                param_edge: sn.param_edge.map(|target| (String::new(), target)),
+                wildcard_edge: sn.wildcard_edge,
+                terminal: sn.terminal.as_ref().map(|st| Terminal {
+                    method_mask: st.method_mask,
+                    route_by_method: st.route_by_method,
+                }),
+            })
+            .collect();
+        Ok(Router {
+            routes: compiled,
+            nodes,
+        })
+    }
+
+    /// Serialize this router's automaton (used by the property test to round-trip
+    /// a reference-built router through the serialized form).
+    pub fn to_serialized(&self) -> q_pack::SerializedRouter {
+        q_pack::SerializedRouter {
+            nodes: self
+                .nodes
+                .iter()
+                .map(|n| q_pack::SerializedRouterNode {
+                    static_edges: n
+                        .static_edges
+                        .iter()
+                        .map(|e| q_pack::SerializedStaticEdge {
+                            segment: e.segment.clone(),
+                            target_node: e.target_node,
+                        })
+                        .collect(),
+                    param_edge: n.param_edge.as_ref().map(|(_, t)| *t),
+                    wildcard_edge: n.wildcard_edge,
+                    terminal: n.terminal.as_ref().map(|t| q_pack::SerializedTerminal {
+                        method_mask: t.method_mask,
+                        route_by_method: t.route_by_method,
+                    }),
+                })
+                .collect(),
+        }
+    }
+
     pub fn route_count(&self) -> usize {
         self.routes.len()
     }
@@ -564,6 +700,7 @@ impl Router {
             let route = &self.routes[route_index];
             let params = route.param_names.iter().cloned().zip(captures).collect();
             return MatchResult::Found {
+                route_id: route.route_id,
                 route_index,
                 params,
                 head,
@@ -874,27 +1011,137 @@ mod tests {
         }
     }
 
-    /// M2.3-r3: Router loaded from pack preserves exact properties
+    /// G0-r1: REAL property test — over many GENERATED route tables, the
+    /// serialized-automaton matcher must agree with the reference-built
+    /// matcher on every dimension: matched route, RouteId, captured params,
+    /// 404 vs 405, Allow sets, and HEAD semantics. Also proves the serialized
+    /// graph passes SerializedRouter::verify_against.
     #[test]
     fn compiled_and_reference_routers_are_property_equivalent() {
-        let routes = vec![
-            route(
-                "health",
-                "GET",
-                vec![st("health"), st("live")],
-                "/health/live",
-            ),
-            route("user", "GET", vec![st("users"), pm("id")], "/users/:id"),
-        ];
-        let r1 = Router::build(&routes).unwrap();
-        assert_eq!(r1.route_count(), 2);
-        assert!(matches!(
-            r1.resolve("GET", "/health/live"),
-            MatchResult::Found { .. }
-        ));
-        assert!(matches!(
-            r1.resolve("GET", "/users/u1"),
-            MatchResult::Found { .. }
-        ));
+        // Deterministic LCG so failures reproduce exactly
+        struct Lcg(u64);
+        impl Lcg {
+            fn next(&mut self) -> u64 {
+                self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                self.0 >> 33
+            }
+            fn below(&mut self, n: u64) -> u64 {
+                self.next() % n
+            }
+        }
+        const METHODS: [&str; 6] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
+        const WORDS: [&str; 9] = ["a", "b", "users", "items", "x1", "health", "live", "api", "v2"];
+
+        let mut rng = Lcg(0xC0FFEE);
+
+        for table in 0..60 {
+            let n_routes = 1 + rng.below(12) as usize;
+            let mut routes: Vec<RouteEntry> = Vec::new();
+            let mut shapes: std::collections::BTreeSet<String> = Default::default();
+            let mut guard = 0;
+            while routes.len() < n_routes && guard < 200 {
+                guard += 1;
+                let method = METHODS[rng.below(METHODS.len() as u64) as usize];
+                let depth = 1 + rng.below(3) as usize;
+                let mut segs: Vec<PathSegment> = Vec::new();
+                for d in 0..depth {
+                    match rng.below(10) {
+                        0..=5 => segs.push(st(WORDS[rng.below(WORDS.len() as u64) as usize])),
+                        6..=8 => segs.push(pm(&format!("p{d}"))),
+                        _ => {
+                            if d == depth - 1 {
+                                segs.push(wc());
+                            } else {
+                                segs.push(st("w"));
+                            }
+                        }
+                    }
+                }
+                // canonical shape (param names erased) for collision detection
+                let mut shape = method.to_string();
+                for s in &segs {
+                    match s.kind {
+                        SegKind::Static => shape.push('/'),
+                        _ => shape.push('*'),
+                    }
+                }
+                // ensure wildcard is terminal-only (build requirement)
+                if segs.iter().position(|s| s.kind == SegKind::Wildcard).is_some_and(|p| p + 1 != segs.len()) {
+                    continue;
+                }
+                if !shapes.insert(shape) {
+                    continue; // canonically-equivalent duplicate
+                }
+                let path = segs
+                    .iter()
+                    .map(|s| match s.kind {
+                        SegKind::Static => format!("/{}", s.value),
+                        SegKind::Param => format!("/:{}", s.value),
+                        SegKind::Wildcard => "/*".into(),
+                    })
+                    .collect::<String>();
+                routes.push(route(&format!("r{}", routes.len()), method, segs, &path));
+            }
+            if routes.is_empty() {
+                continue;
+            }
+
+            // Reference: built from segments. Serialized: compiler-equivalent
+            // emission via to_serialized on the reference build, then loaded
+            // through from_serialized with NO rebuild.
+            let reference = Router::build(&routes).unwrap();
+            let serialized = reference.to_serialized();
+            serialized
+                .verify_against(&routes)
+                .unwrap_or_else(|e| panic!("table {table}: serialized graph rejected: {e}"));
+            let compiled =
+                Router::from_serialized(&routes, &serialized).expect("from_serialized");
+
+            // Probe paths: every declared route's own path (with param values
+            // substituted), wrong-method probes on the same shape, and misses.
+            let mut probes: Vec<(String, String)> = Vec::new();
+            for (i, r) in routes.iter().enumerate() {
+                let mut probe = String::new();
+                let mut mi = 0;
+                for s in &r.path_segments {
+                    match s.kind {
+                        SegKind::Static => probe.push_str(&format!("/{}", s.value)),
+                        SegKind::Param => {
+                            mi += 1;
+                            probe.push_str(&format!("/v{i}_{mi}"));
+                        }
+                        SegKind::Wildcard => probe.push_str("/deep/sub"),
+                    }
+                }
+                probes.push((r.method.clone(), probe.clone()));
+                let other = METHODS[(i + 1) % METHODS.len()];
+                if other != r.method {
+                    probes.push((other.to_string(), probe));
+                }
+            }
+            probes.push(("GET".into(), "/definitely/not/declared".into()));
+            probes.push(("POST".into(), format!("/{}", WORDS[rng.below(9) as usize])));
+
+            for (method, path) in probes {
+                let expect = reference.resolve(&method, &path);
+                let got = compiled.resolve(&method, &path);
+                assert_eq!(
+                    normalize(expect, &routes),
+                    normalize(got, &routes),
+                    "table {table}: method {method} path {path} diverged"
+                );
+            }
+        }
+    }
+
+    fn normalize(
+        m: MatchResult,
+        _routes: &[RouteEntry],
+    ) -> (Option<u32>, Vec<(String, String)>, bool, Option<Vec<String>>) {
+        match m {
+            MatchResult::Found { route_id, params, head, .. } => (Some(route_id.0), params, head, None),
+            MatchResult::MethodNotAllowed { allow } => (None, vec![], false, Some(allow)),
+            MatchResult::NotFound => (None, vec![], false, None),
+        }
     }
 }

@@ -165,6 +165,7 @@ async fn pipeline(
             (Ok(resp), "(method-not-allowed)".into(), "routing")
         }
         MatchResult::Found {
+            route_id: route_id_num,
             route_index,
             params,
             head,
