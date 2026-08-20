@@ -362,7 +362,7 @@ impl RequestStore {
 mod tests {
     use super::*;
 
-    fn meta(body: Option<Vec<u8>>) -> RequestMeta {
+    fn meta(body: Option<bytes::Bytes>) -> RequestMeta {
         RequestMeta {
             method: "GET".into(),
             path: "/x".into(),
@@ -410,7 +410,7 @@ mod tests {
     #[test]
     fn access_materializes_and_counts() {
         let store = RequestStore::new();
-        let handle = store.insert(meta(Some(br#"{"a":1}"#.to_vec())));
+        let handle = store.insert(meta(Some(bytes::Bytes::from_static(br#"{"a":1}"#))));
         let body = store.access(handle, 1, 7, |m| m.body.clone()).unwrap();
         assert_eq!(body.unwrap(), br#"{"a":1}"#.to_vec());
         let snap = store.snapshot();
@@ -448,11 +448,11 @@ mod tests {
         let store_a = RequestStore::new();
         let store_b = RequestStore::new();
         assert_ne!(store_a.worker_id(), store_b.worker_id());
-        let handle_a = store_a.insert(meta(Some(vec![1, 2, 3])));
+        let handle_a = store_a.insert(meta(Some(bytes::Bytes::from(vec![1, 2, 3]))));
         // worker A's minted handle presented to worker B's slab: the dedicated
         // deterministic ForeignWorker denial fires before any slot of store_b
         // is inspected — even when store_b has a live slot at the same index
-        let decoy = store_b.insert(meta(Some(vec![9; 8])));
+        let decoy = store_b.insert(meta(Some(bytes::Bytes::from(vec![9; 8]))));
         assert_eq!(decoy.slot(), handle_a.slot());
         assert_eq!(
             store_b.access(handle_a, 1, 3, |m| m.body.clone()),
@@ -481,7 +481,7 @@ mod tests {
     fn fuzzed_handle_triples_fail_closed_without_side_effects() {
         let store = RequestStore::with_capacity(2);
         let foreign = RequestStore::with_capacity(2);
-        let live = store.insert(meta(Some(vec![7; 64])));
+        let live = store.insert(meta(Some(bytes::Bytes::from(vec![7; 64]))));
         let baseline = store.snapshot();
         let foreign_baseline = foreign.snapshot();
 
@@ -549,7 +549,7 @@ mod tests {
     #[test]
     fn stale_handle_corpus_never_reads_or_leaks() {
         let store = RequestStore::with_capacity(2);
-        let handle = store.insert(meta(Some(vec![7; 32])));
+        let handle = store.insert(meta(Some(bytes::Bytes::from(vec![7; 32]))));
         store.settle(handle);
         let before = store.snapshot();
         for stale_generation in [
@@ -593,7 +593,7 @@ mod tests {
     #[test]
     fn unread_request_costs_nothing() {
         let store = RequestStore::new();
-        let handle = store.insert(meta(Some(vec![42u8; 1024])));
+        let handle = store.insert(meta(Some(bytes::Bytes::from(vec![42u8; 1024]))));
         store.settle(handle);
         let snap = store.snapshot();
         assert_eq!(snap.host_calls, 0);

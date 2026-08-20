@@ -10,3 +10,7 @@ q-engine = { workspace = true }
 q-bridge = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
+bytes = { workspace = true }
+
+[dev-dependencies]
+bytes = { workspace = true }

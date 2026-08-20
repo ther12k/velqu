@@ -837,6 +837,7 @@ dependencies = [
 name = "q-bench-support"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "q-bridge",
  "q-engine",
  "q-engine-quickjs",
@@ -850,6 +851,7 @@ dependencies = [
 name = "q-bridge"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "q-engine",
  "serde",
  "serde_json",
@@ -874,6 +876,7 @@ version = "0.1.0"
 name = "q-engine"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "serde",
  "serde_json",
  "tokio",
@@ -883,6 +886,7 @@ dependencies = [
 name = "q-engine-quickjs"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "q-bridge",
  "q-engine",
  "rquickjs",
@@ -894,6 +898,7 @@ dependencies = [
 name = "q-http"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -1372,6 +1377,7 @@ dependencies = [
 name = "velqu-runtime"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "clap",
  "libc",
  "q-bridge",

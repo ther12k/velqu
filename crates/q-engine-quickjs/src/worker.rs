@@ -2252,7 +2252,7 @@ fn install_natives(
                     "request handle unavailable for field-free route",
                 ));
             }
-            let body: Vec<u8> = store
+            let body: bytes::Bytes = store
                 .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
                     m.body.clone().unwrap_or_default()
                 })

@@ -27,7 +27,7 @@ struct RequestContext {
     /// decoded query pairs in arrival order
     query: Vec<(String, String)>,
     headers: Vec<(String, String)>,
-    body: Option<Vec<u8>>,
+    body: Option<bytes::Bytes>,
 }
 
 /// Request logging modes (OPS-001: full mode is opt-in; production default
@@ -349,7 +349,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // at the budget instead of buffering an oversize body first.
             // Routes without a body binding never poll the stream at all.
             let mut body_value: Option<Value> = None;
-            let mut raw_body: Option<Vec<u8>> = None;
+            let mut raw_body: Option<bytes::Bytes> = None;
             if needs.body {
                 // QPack::verify proves body binding and RoutePlan agree. The
                 // plan flag, not HTTP method, controls stream polling.

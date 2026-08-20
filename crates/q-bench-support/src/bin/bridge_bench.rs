@@ -413,7 +413,10 @@ fn run_case(
     case: &Case,
     id: u64,
 ) -> (f64, bool) {
-    let body_bytes = case.body.as_ref().map(|b| serde_json::to_vec(b).unwrap());
+    let body_bytes = case
+        .body
+        .as_ref()
+        .map(|b| bytes::Bytes::from(serde_json::to_vec(b).unwrap()));
     let request = Some(q_engine::RequestMeta {
         body: body_bytes,
         ..Default::default()
@@ -456,7 +459,10 @@ fn run_case(
     let d = t0.elapsed().as_secs_f64() * 1e6;
     // correctness via a second invocation whose outcome we keep
     let request = Some(q_engine::RequestMeta {
-        body: case.body.as_ref().map(|b| serde_json::to_vec(b).unwrap()),
+        body: case
+            .body
+            .as_ref()
+            .map(|b| bytes::Bytes::from(serde_json::to_vec(b).unwrap())),
         ..Default::default()
     });
     let spec = InvocationSpec {
