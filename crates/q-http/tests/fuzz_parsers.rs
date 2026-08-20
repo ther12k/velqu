@@ -53,6 +53,24 @@ fn invalid_percent_and_utf8_corpus_is_deterministic() {
 }
 
 #[test]
+fn bounded_header_and_body_corpus_never_grows_without_limit() {
+    let corpus: &[&[u8]] = &[
+        b"",
+        b"%FF",
+        b"\0\xff\n",
+        b"{}",
+        b"{\"x\":\"y\"}",
+        &[0xff; 256],
+    ];
+    for bytes in corpus {
+        let text = String::from_utf8_lossy(bytes);
+        let parsed = q_http::parse_query(&text);
+        assert!(parsed.len() <= text.len().saturating_add(1));
+        assert!(q_http::percent_decode(&text).len() <= text.len() * 4 + 16);
+    }
+}
+
+#[test]
 fn query_parser_semantics_hold_on_valid_pairs() {
     // invariant: round-trip of simple keys survives parsing
     let pairs = q_http::parse_query("a=1&b=2&c=3");
