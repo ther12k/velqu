@@ -13,6 +13,7 @@ mod worker;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
+use q_bridge::{BridgeCounters, CountersSnapshot};
 use q_engine::{Engine, EngineStats, InvocationSpec, LoadStats, Outcome};
 use worker::{WorkerMsg, WorkerShared};
 
@@ -51,6 +52,9 @@ pub struct QuickJsConfig {
     /// queued microtasks exceed this count without quiescing quarantines the
     /// runtime through the unified terminal path.
     pub max_invocation_jobs: usize,
+    /// Maximum number of live request slots owned by this worker. Runtime
+    /// admission supplies the HTTP queue bound so the slab cannot outgrow it.
+    pub request_slot_capacity: usize,
 }
 
 impl Default for QuickJsConfig {
@@ -61,6 +65,7 @@ impl Default for QuickJsConfig {
             pending_op_cap: 1024,
             job_deadline_ms: 5_000,
             max_invocation_jobs: 100_000,
+            request_slot_capacity: 256,
         }
     }
 }
@@ -83,13 +88,13 @@ pub struct QuickJsEngine {
     shared: Arc<WorkerShared>,
     handle: Option<JoinHandle<()>>,
     last_error: Arc<Mutex<Option<String>>>,
+    bridge_counters: Arc<BridgeCounters>,
 }
 
 impl QuickJsEngine {
     /// Spawn the single worker thread. `tokio_handle` drives native ops.
     pub fn spawn(
         config: QuickJsConfig,
-        store: Arc<q_bridge::RequestStore>,
         tokio_handle: tokio::runtime::Handle,
         mapper: Arc<dyn SourceMapper>,
     ) -> QuickJsEngine {
@@ -97,16 +102,18 @@ impl QuickJsEngine {
         let worker_tx = tx.clone();
         let shared = Arc::new(WorkerShared::new());
         let last_error = Arc::new(Mutex::new(None));
+        let bridge_counters = Arc::new(BridgeCounters::default());
         let handle = std::thread::Builder::new()
             .name("velqu-quickjs".into())
             .spawn({
                 let tx = worker_tx;
                 let shared = Arc::clone(&shared);
                 let last_error = Arc::clone(&last_error);
+                let bridge_counters = Arc::clone(&bridge_counters);
                 move || {
                     let inner = worker::WorkerInner::new(
                         config,
-                        store,
+                        bridge_counters,
                         tokio_handle,
                         mapper,
                         shared.clone(),
@@ -132,7 +139,31 @@ impl QuickJsEngine {
             shared,
             handle: Some(handle),
             last_error,
+            bridge_counters,
         }
+    }
+
+    /// Snapshot of worker-local request bridge counters. Only atomics cross
+    /// the engine handle; request metadata and slab state remain worker-owned.
+    pub fn bridge_snapshot(&self) -> CountersSnapshot {
+        self.bridge_counters.snapshot()
+    }
+
+    /// Test/benchmark admission helper. Production request admission moves the
+    /// metadata in `InvocationSpec`; this method exists only for suites that
+    /// need to arrange a handle before constructing a legacy fixture spec.
+    #[doc(hidden)]
+    pub fn insert_request(&self, meta: q_engine::RequestMeta) -> Result<(usize, u64), String> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.tx
+            .send(WorkerMsg::InsertRequest { meta, reply: tx })
+            .map_err(|_| "engine worker gone".to_string())?;
+        rx.recv().map_err(|_| "engine worker died".to_string())?
+    }
+
+    #[doc(hidden)]
+    pub fn settle_request(&self, slot: usize, generation: u64) {
+        let _ = self.tx.send(WorkerMsg::SettleRequest { slot, generation });
     }
 
     /// M2.2.1-r4.2.1: narrow lock-free health handle for per-request readiness check

@@ -5,7 +5,9 @@
 //! so every code path below converts to `'static` data (Outcome, LoadStats)
 //! before leaving the closure.
 
+use q_bridge::{BridgeCounters, RequestStore};
 use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -38,6 +40,14 @@ pub(crate) enum WorkerMsg {
         reply: std::sync::mpsc::Sender<Result<LoadStats, String>>,
     },
     Invoke(Box<InvokeJob>),
+    InsertRequest {
+        meta: q_engine::RequestMeta,
+        reply: std::sync::mpsc::Sender<Result<(usize, u64), String>>,
+    },
+    SettleRequest {
+        slot: usize,
+        generation: u64,
+    },
     Cancel {
         id: u64,
     },
@@ -345,7 +355,7 @@ pub(crate) struct WorkerInner {
     prelude: Option<CachedPrelude>,
     ctx: Context,
     rt: Runtime,
-    store: Arc<q_bridge::RequestStore>,
+    store: Rc<RequestStore>,
     shared: Arc<WorkerShared>,
     last_error: Arc<Mutex<Option<String>>>,
     sync_deadline: Arc<Mutex<Option<Instant>>>,
@@ -369,7 +379,7 @@ thread_local! {
 impl WorkerInner {
     pub(crate) fn new(
         config: QuickJsConfig,
-        store: Arc<q_bridge::RequestStore>,
+        bridge_counters: Arc<BridgeCounters>,
         tokio_handle: tokio::runtime::Handle,
         mapper: Arc<dyn SourceMapper>,
         shared: Arc<WorkerShared>,
@@ -395,11 +405,15 @@ impl WorkerInner {
             config.pending_op_cap,
             Duration::from_millis(config.job_deadline_ms),
         ));
+        let store = Rc::new(RequestStore::with_capacity_and_counters(
+            config.request_slot_capacity,
+            bridge_counters,
+        ));
         MAPPER.with(|m| *m.borrow_mut() = Some(Arc::clone(&mapper)));
         let prelude = ctx.with(|ctx| -> Result<CachedPrelude, String> {
             install_natives(
                 &ctx,
-                Arc::clone(&store),
+                Rc::clone(&store),
                 Arc::clone(&shared),
                 Arc::clone(&ops),
                 tokio_handle,
@@ -543,6 +557,12 @@ impl WorkerInner {
                             }
                         }
                     }
+                }
+                WorkerMsg::InsertRequest { meta, reply } => {
+                    let _ = reply.send(self.store.try_insert(meta).map_err(|e| e.to_string()));
+                }
+                WorkerMsg::SettleRequest { slot, generation } => {
+                    self.store.settle(slot, generation);
                 }
                 WorkerMsg::Cancel { id } => {
                     self.cancel_invocation(id);
@@ -761,8 +781,35 @@ impl WorkerInner {
     }
 
     fn begin_invocation(&mut self, job: InvokeJob) -> InvocationDisposition {
-        let InvokeJob { spec, reply } = job;
+        let InvokeJob { mut spec, reply } = job;
         self.shared.interrupted.store(false, Ordering::SeqCst);
+
+        if spec.slot != q_engine::NO_REQUEST_SLOT {
+            if let Some(meta) = spec.request.take() {
+                match self.store.try_insert(meta) {
+                    Ok((slot, generation)) => {
+                        spec.slot = slot;
+                        spec.generation = generation;
+                    }
+                    Err(q_bridge::BridgeError::Capacity) => {
+                        if let Some(r) = reply {
+                            let _ = r.send(Outcome::RequestCapacity);
+                        }
+                        return InvocationDisposition::Resolved;
+                    }
+                    Err(e) => {
+                        if let Some(r) = reply {
+                            let _ = r.send(Outcome::EngineFailure {
+                                detail: e.to_string(),
+                                source: None,
+                            });
+                        }
+                        return InvocationDisposition::Resolved;
+                    }
+                }
+            }
+        }
+
         self.shared.invocations.fetch_add(1, Ordering::Relaxed);
 
         // Fail closed immediately if runtime is quarantined / poisoned (M2.2.1-r4)
@@ -2001,7 +2048,7 @@ fn map_first_frame_with(mapper: &dyn SourceMapper, stack: &str) -> Option<Source
 
 fn install_natives(
     ctx: &rquickjs::Ctx<'_>,
-    store: Arc<q_bridge::RequestStore>,
+    store: Rc<RequestStore>,
     shared: Arc<WorkerShared>,
     ops: Arc<OpRegistry>,
     tokio_handle: tokio::runtime::Handle,
@@ -2010,7 +2057,7 @@ fn install_natives(
 
     // request field access: JSON-encoded object string (engine-side JSON.parse)
     {
-        let store = Arc::clone(&store);
+        let store = Rc::clone(&store);
         let f = move |ctx: rquickjs::Ctx,
                       slot: f64,
                       gen: f64,
@@ -2044,7 +2091,7 @@ fn install_natives(
         globals.set("__velquReqRaw", Function::new(ctx.clone(), f)?)?;
     }
     {
-        let store = Arc::clone(&store);
+        let store = Rc::clone(&store);
         let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<String> {
             let slot = slot as usize;
             if slot == q_engine::NO_REQUEST_SLOT {
@@ -2063,7 +2110,7 @@ fn install_natives(
         globals.set("__velquReqBodyText", Function::new(ctx.clone(), f)?)?;
     }
     {
-        let store = Arc::clone(&store);
+        let store = Rc::clone(&store);
         let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<f64> {
             let slot = slot as usize;
             if slot == q_engine::NO_REQUEST_SLOT {
@@ -2082,7 +2129,7 @@ fn install_natives(
         globals.set("__velquReqBodyLen", Function::new(ctx.clone(), f)?)?;
     }
     {
-        let store = Arc::clone(&store);
+        let store = Rc::clone(&store);
         let f = move |ctx: rquickjs::Ctx,
                       slot: f64,
                       gen: f64,

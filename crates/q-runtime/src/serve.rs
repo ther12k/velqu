@@ -61,7 +61,6 @@ pub struct ServeState {
     pub schema_vector: Vec<q_schema_runtime::SchemaIr>,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
-    pub store: Arc<q_bridge::RequestStore>,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
 }
@@ -406,10 +405,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 && route.policy.is_none()
                 && compiled.policy_id.is_none()
                 && compiled.policy_handler_id.is_none();
-            let (slot, generation) = if requestless {
-                (q_engine::NO_REQUEST_SLOT, 0)
+            let request = if requestless {
+                None
             } else {
-                state.store.insert(q_bridge::RequestMeta {
+                Some(q_engine::RequestMeta {
                     method: ctx.method.clone(),
                     path: ctx.path.clone(),
                     params,
@@ -458,8 +457,13 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 query_schema_id: compiled.query_schema_id,
                 headers_schema_id: compiled.headers_schema_id,
                 body_schema_id: compiled.body_schema_id,
-                slot,
-                generation,
+                request,
+                slot: if requestless {
+                    q_engine::NO_REQUEST_SLOT
+                } else {
+                    0
+                },
+                generation: 0,
                 params: params_value,
                 query: query_value,
                 headers: None,
@@ -594,6 +598,12 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 Outcome::Timeout => {
                     let body = problems::body("timeout", None, None, &[], &ctx.request_id);
                     (Ok(json_response(504, &body)), route_id, "engine.timeout")
+                }
+                Outcome::RequestCapacity => {
+                    let body = problems::body("overload", Some(503), None, &[], &ctx.request_id);
+                    let mut response = json_response(503, &body);
+                    response.headers.push(("retry-after".into(), "1".into()));
+                    (Ok(response), route_id, "engine.capacity")
                 }
                 Outcome::ContractViolation(detail) => {
                     // undeclared status: controlled contract failure; details go

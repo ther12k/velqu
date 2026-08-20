@@ -11,10 +11,8 @@ fn timer_promise_in_bench_context() {
         .build()
         .unwrap();
     let _enter = rt.enter();
-    let store = Arc::new(q_bridge::RequestStore::new());
     let mut engine = QuickJsEngine::spawn(
         QuickJsConfig::default(),
-        Arc::clone(&store),
         rt.handle().clone(),
         Arc::new(IdentityMapper),
     );
@@ -34,7 +32,6 @@ __velquRegister("promise.int", promise_int);
         )
         .unwrap();
 
-    let (slot, gen) = store.insert(q_bridge::RequestMeta::default());
     let spec = InvocationSpec {
         id: 1,
         request_id: "r".into(),
@@ -49,8 +46,9 @@ __velquRegister("promise.int", promise_int);
         query_schema_id: None,
         headers_schema_id: None,
         body_schema_id: None,
-        slot,
-        generation: gen,
+        request: Some(q_engine::RequestMeta::default()),
+        slot: 0,
+        generation: 0,
         params: None,
         query: None,
         headers: None,

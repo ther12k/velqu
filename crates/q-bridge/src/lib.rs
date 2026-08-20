@@ -1,26 +1,15 @@
-//! q-bridge — native request store backing lazy, generation-checked JS handles.
+//! q-bridge — native request storage backing lazy, generation-checked JS handles.
 //!
-//! RUN-004/SEC-003: request data materializes into JavaScript only on explicit
-//! access through `(slot, generation)` pairs. Settlement (or cancellation)
-//! invalidates the slot by bumping its generation; late access with an expired
-//! generation fails deterministically instead of touching reused memory.
-//! Counters expose laziness evidence (unread fields = 0 materializations).
+//! A RequestStore is deliberately not thread-safe: the production instance is
+//! created inside one QuickJS worker and accessed through that worker's
+//! `Rc<RefCell<_>>`. The public counters remain atomic so a read-only snapshot
+//! can be observed by the host without sharing request bytes or slab state.
 
+use std::cell::RefCell;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::Arc;
 
-#[derive(Debug, Clone, Default)]
-pub struct RequestMeta {
-    pub method: String,
-    pub path: String,
-    /// raw path params as extracted by the router (strings)
-    pub params: Vec<(String, String)>,
-    pub query: Vec<(String, String)>,
-    pub headers: Vec<(String, String)>,
-    pub content_type: Option<String>,
-    /// Present only when the transport already read a (bounded) body.
-    pub body: Option<Vec<u8>>,
-}
+pub use q_engine::RequestMeta;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SlotState {
@@ -34,15 +23,18 @@ struct Slot {
     state: SlotState,
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum BridgeError {
     #[error("request handle expired (slot settled or cancelled): access denied")]
     Expired,
     #[error("request handle does not exist")]
     NoSuchSlot,
+    #[error("request slab capacity reached")]
+    Capacity,
 }
 
-/// Process-wide laziness/bridge evidence (RUN-004, PERF-004).
+/// Worker-to-host laziness and slab accounting. Request bytes remain worker
+/// local; only these bounded scalar counters are observable across the seam.
 #[derive(Debug, Default)]
 pub struct BridgeCounters {
     pub host_calls: AtomicU64,
@@ -73,81 +65,113 @@ pub struct CountersSnapshot {
     pub live_slots: u64,
 }
 
+/// A bounded slab owned by one worker. The RefCell is only an implementation
+/// convenience for synchronous native callbacks; production code wraps this
+/// value in an Rc that never leaves the worker thread.
 pub struct RequestStore {
-    slots: Mutex<Vec<Slot>>,
-    free: Mutex<Vec<usize>>,
-    counters: BridgeCounters,
-    generation_clock: AtomicU64,
+    slots: RefCell<Vec<Slot>>,
+    free: RefCell<Vec<usize>>,
+    counters: Arc<BridgeCounters>,
+    generation_clock: RefCell<u64>,
+    capacity: usize,
 }
 
 impl Default for RequestStore {
     fn default() -> Self {
-        Self::new()
+        Self::with_capacity(usize::MAX)
     }
 }
 
 impl RequestStore {
     pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_counters(capacity, Arc::new(BridgeCounters::default()))
+    }
+
+    pub fn with_capacity_and_counters(capacity: usize, counters: Arc<BridgeCounters>) -> Self {
         RequestStore {
-            slots: Mutex::new(Vec::new()),
-            free: Mutex::new(Vec::new()),
-            counters: BridgeCounters::default(),
-            generation_clock: AtomicU64::new(1),
+            slots: RefCell::new(Vec::with_capacity(capacity.min(1024))),
+            free: RefCell::new(Vec::new()),
+            counters,
+            generation_clock: RefCell::new(1),
+            capacity,
         }
     }
 
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
     pub fn counters(&self) -> &BridgeCounters {
-        &self.counters
+        self.counters.as_ref()
+    }
+
+    pub fn counters_arc(&self) -> Arc<BridgeCounters> {
+        Arc::clone(&self.counters)
     }
 
     pub fn snapshot(&self) -> CountersSnapshot {
         self.counters.snapshot()
     }
 
-    /// Insert a request; returns (slot, generation) — the opaque handle pair.
+    /// Insert a request, returning an opaque slot/generation pair. This helper
+    /// is retained for local tests and compatibility; worker admission uses the
+    /// fallible form so a full slab cannot grow or panic.
     pub fn insert(&self, meta: RequestMeta) -> (usize, u64) {
-        let generation = self.generation_clock.fetch_add(1, Ordering::SeqCst);
-        let mut slots = self.slots.lock().unwrap();
-        let mut free = self.free.lock().unwrap();
+        self.try_insert(meta)
+            .expect("request slab capacity reached")
+    }
+
+    pub fn try_insert(&self, meta: RequestMeta) -> Result<(usize, u64), BridgeError> {
+        let mut generation = self.generation_clock.borrow_mut();
+        let current = *generation;
+        *generation = generation.wrapping_add(1).max(1);
+        let mut slots = self.slots.borrow_mut();
+        let mut free = self.free.borrow_mut();
         let slot = if let Some(idx) = free.pop() {
             slots[idx] = Slot {
-                generation,
+                generation: current,
                 meta: Some(meta),
                 state: SlotState::Active,
             };
             idx
         } else {
+            if slots.len() >= self.capacity {
+                return Err(BridgeError::Capacity);
+            }
             slots.push(Slot {
-                generation,
+                generation: current,
                 meta: Some(meta),
                 state: SlotState::Active,
             });
             slots.len() - 1
         };
-        drop(slots);
-        drop(free);
         self.counters.live_slots.fetch_add(1, Ordering::Relaxed);
-        (slot, generation)
+        Ok((slot, current))
     }
 
-    /// Invalidate a handle at settlement/cancellation. Bumping the generation
-    /// means any late completion or retained wrapper fails `access` checks.
+    /// Invalidate a handle at settlement/cancellation. Generation changes
+    /// before the slot is returned to the free list, so retained handles fail.
     pub fn settle(&self, slot: usize, generation: u64) {
-        let mut slots = self.slots.lock().unwrap();
-        if let Some(s) = slots.get_mut(slot) {
-            if s.generation == generation {
-                s.state = SlotState::Settled;
-                s.meta = None;
-                s.generation += 1; // expire outstanding handles
-                self.counters.live_slots.fetch_sub(1, Ordering::Relaxed);
-                let mut free = self.free.lock().unwrap();
-                free.push(slot);
-            }
+        let mut slots = self.slots.borrow_mut();
+        let Some(s) = slots.get_mut(slot) else {
+            return;
+        };
+        if s.generation != generation || s.state != SlotState::Active {
+            return;
         }
+        s.state = SlotState::Settled;
+        s.meta = None;
+        s.generation = s.generation.wrapping_add(1).max(1);
+        self.counters.live_slots.fetch_sub(1, Ordering::Relaxed);
+        self.free.borrow_mut().push(slot);
     }
 
-    /// Generation-checked access. `cost_bytes`/`cost_fields` record the
-    /// materialization that the caller is about to perform.
+    /// Generation-checked access. The closure returns owned data before the
+    /// local borrow ends, and materialization accounting is scalar only.
     pub fn access<T>(
         &self,
         slot: usize,
@@ -157,7 +181,7 @@ impl RequestStore {
         f: impl FnOnce(&RequestMeta) -> T,
     ) -> Result<T, BridgeError> {
         self.counters.host_calls.fetch_add(1, Ordering::Relaxed);
-        let slots = self.slots.lock().unwrap();
+        let slots = self.slots.borrow();
         let s = slots.get(slot).ok_or(BridgeError::NoSuchSlot)?;
         if s.generation != generation || s.state != SlotState::Active {
             self.counters
@@ -165,7 +189,7 @@ impl RequestStore {
                 .fetch_add(1, Ordering::Relaxed);
             return Err(BridgeError::Expired);
         }
-        let meta = s.meta.as_ref().expect("active slot has meta");
+        let meta = s.meta.as_ref().expect("active slot has metadata");
         let out = f(meta);
         drop(slots);
         self.counters
@@ -177,7 +201,6 @@ impl RequestStore {
         Ok(out)
     }
 
-    /// Live slot count (for leak assertions: 0 live slots after settle).
     pub fn live_slots(&self) -> usize {
         self.counters.live_slots.load(Ordering::Relaxed) as usize
     }
@@ -200,10 +223,21 @@ mod tests {
     }
 
     #[test]
+    fn bounded_slab_rejects_growth() {
+        let store = RequestStore::with_capacity(1);
+        let first = store.try_insert(meta(None)).unwrap();
+        assert_eq!(store.try_insert(meta(None)), Err(BridgeError::Capacity));
+        store.settle(first.0, first.1);
+        assert!(store.try_insert(meta(None)).is_ok());
+    }
+
+    #[test]
     fn access_materializes_and_counts() {
         let store = RequestStore::new();
-        let (slot, gen) = store.insert(meta(Some(br#"{"a":1}"#.to_vec())));
-        let body = store.access(slot, gen, 1, 7, |m| m.body.clone()).unwrap();
+        let (slot, generation) = store.insert(meta(Some(br#"{"a":1}"#.to_vec())));
+        let body = store
+            .access(slot, generation, 1, 7, |m| m.body.clone())
+            .unwrap();
         assert_eq!(body.unwrap(), br#"{"a":1}"#.to_vec());
         let snap = store.snapshot();
         assert_eq!(snap.host_calls, 1);
@@ -217,21 +251,19 @@ mod tests {
         let store = RequestStore::new();
         let (slot, gen1) = store.insert(meta(None));
         store.settle(slot, gen1);
-        // retained wrapper fails deterministically
         assert_eq!(
             store.access(slot, gen1, 0, 0, |_| ()),
             Err(BridgeError::Expired)
         );
         assert_eq!(store.snapshot().expired_accesses, 1);
         assert_eq!(store.live_slots(), 0);
-        // slot reuse gets a new generation; old handle still denied
-        let (_slot2, gen2) = store.insert(meta(None));
+        let (slot2, gen2) = store.insert(meta(None));
+        assert_eq!(slot, slot2);
         assert_ne!(gen1, gen2);
         assert_eq!(
             store.access(slot, gen1, 0, 0, |_| ()),
             Err(BridgeError::Expired)
         );
-        // wrong-owner (stale generation on live slot) denied
         assert_eq!(
             store.access(slot, gen2 + 100, 0, 0, |_| ()),
             Err(BridgeError::Expired)
@@ -239,11 +271,31 @@ mod tests {
     }
 
     #[test]
+    fn stale_handle_corpus_never_reads_or_leaks() {
+        let store = RequestStore::with_capacity(2);
+        let (slot, generation) = store.insert(meta(Some(vec![7; 32])));
+        store.settle(slot, generation);
+        let before = store.snapshot();
+        for stale_generation in [0, 1, generation, generation.wrapping_add(1), u64::MAX] {
+            for stale_slot in [slot, slot + 1, usize::MAX] {
+                let result = store.access(stale_slot, stale_generation, 1, 32, |m| m.body.clone());
+                assert!(matches!(
+                    result,
+                    Err(BridgeError::Expired | BridgeError::NoSuchSlot)
+                ));
+            }
+        }
+        let after = store.snapshot();
+        assert_eq!(after.live_slots, 0);
+        assert_eq!(after.materialized_fields, before.materialized_fields);
+        assert_eq!(after.materialized_bytes, before.materialized_bytes);
+    }
+
+    #[test]
     fn unread_request_costs_nothing() {
         let store = RequestStore::new();
-        let (slot, gen) = store.insert(meta(Some(vec![42u8; 1024])));
-        // handler never accesses anything: settle immediately
-        store.settle(slot, gen);
+        let (slot, generation) = store.insert(meta(Some(vec![42u8; 1024])));
+        store.settle(slot, generation);
         let snap = store.snapshot();
         assert_eq!(snap.host_calls, 0);
         assert_eq!(snap.materialized_fields, 0);
@@ -253,9 +305,9 @@ mod tests {
     #[test]
     fn double_settle_is_idempotent() {
         let store = RequestStore::new();
-        let (slot, gen) = store.insert(meta(None));
-        store.settle(slot, gen);
-        store.settle(slot, gen); // stale settle ignored
+        let (slot, generation) = store.insert(meta(None));
+        store.settle(slot, generation);
+        store.settle(slot, generation);
         assert_eq!(store.live_slots(), 0);
     }
 }
