@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -133,15 +133,13 @@ Stop after this task is committed and handed off. Do not automatically begin the
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
 
-## Verification blocker record
+## Verification evidence
 
-- Task ID: `M24-001-V`
-- Status: `BLOCKED` (packet status remains `TODO`)
-- Blocking fact: M24-002-A..Z and M24-003-A..Z are now implemented and evidenced, so the two structural blockers named in the previous record are resolved: the process-wide `Mutex<Vec<Slot>>` request store is gone (worker-local, capacity-bounded, `RefCell` slab owned by each QuickJS worker; request data moves by value in `InvocationSpec.request`), and settlement now has a single owner with worker-owned terminal sweeps at quarantine and shutdown plus a runtime disconnect-cancellation guard. ADR-0021 state-machine coverage now stands at T1–T5, T7, T8, T11, and T12 proven. Parent M24-001 still cannot pass truthfully: T6 (disconnect mid-flight conformance with live-slot assertion), and the T9/T10 body byte-read/read-once assertions are owned by M24-007/M24-010 per the frozen D4 plan, and the M24-004 through M24-010 ownership proofs (path byte-range captures, header/query field IDs, RoutePlan-driven body behavior, shared prototypes, ingress metrics, fuzz/conformance) are not yet implemented.
-- Exact source locations: `crates/q-bridge/src/lib.rs` (worker-local slab, `RequestHandle`, `settle_all`); `crates/q-engine-quickjs/src/worker.rs` (`settle_request` single owner, terminal sweeps); `crates/q-runtime/src/serve.rs` (`CancelOnDrop` disconnect guard); `docs/okf/decisions/0021-m24-zero-copy-ingress-ownership.md:154-172` (T1–T12 proof plan).
-- Source-backed evidence already available: M24-002-V/Z via PRs #644/#645 (route-first, bounded admission, requestless counters); M24-003-A/B/C/D/V/Z via PRs #647/#648/#649/#650/#651/#652, merge commits `b5db596`, `9506998`, `11c2ecc`, `6bb547c`, `f1c46f2`, `19f6493` (worker-local slab, typed handles, single-owner settlement, terminal sweeps, cross-worker rejection; engine 90, bridge 9, runtime 13, Bun 35/35, fmt/clippy/typecheck/OKF green).
-- Exact prior verification results: the M24-003-V/Z acceptance matrices passed all targeted Rust suites, 35/35 Bun tests, typecheck, format, Clippy, and OKF validation (174 links, 0 errors). The repository-wide verifier retains the known temporary-worktree/canonical `qRuntimeRelease` benchmark hash limitation (fresh-worktree stage ordering reports missing artifacts first; post-build hash mismatch); no benchmark manifest was changed.
-- Dependency or owner required: complete and evidence M24-004 through M24-010 — including the T6 disconnect conformance and T9/T10 body-read assertions owned by M24-007/M24-010 — then rerun the full M24-001 acceptance matrix. Keep `M24-001-V`, `M24-001-Z`, and `M24-GATE` TODO until those proofs exist.
-- Safe work completed before stopping: audited the previous blocker against current master (its process-wide-store claim is superseded by M24-003-A) and mapped the remaining gaps to ADR-0021 T6/T9/T10 and the M24-004..M24-010 packets; preserved all status/index truth.
-- Files changed but not committed: this packet record only.
-- Suggested next action: continue the authorized dependency order with M24-004-A (store capture start/end ranges) and M24-005-A (compile header-name IDs into RoutePlan), both unblocked by M24-003-Z; do not mark M24-001-V/Z or M24-GATE PASS from this correction.
+- Acceptance matrix: ADR-0021 INV-1 through INV-4 and D4 T1 through T12 are source-backed. T1-T3, T11-T12 use `crates/q-bridge/src/lib.rs`; T4-T5, T7 and cancellation/deadline cleanup use `crates/q-engine-quickjs/tests/engine.rs`; T6 disconnect and T8 shutdown use `crates/q-runtime/tests/runtime_conformance.rs`; T9-T10 queue/body rejection use the same runtime suite plus `conformance/security/security.conformance.test.ts`.
+- Ownership: worker-local bounded `RequestStore`, typed worker/generation handles, idempotent settlement, terminal sweeps, disconnect cancellation guard, route-first queue/body admission, bounded body collection, and lazy request access are implemented in `crates/q-bridge/src/lib.rs`, `crates/q-engine-quickjs/src/worker.rs`, `crates/q-runtime/src/serve.rs`, and `crates/q-http/src/lib.rs`.
+- Targeted Rust suites passed: `cargo test -p q-pack`, `q-router`, `q-engine-quickjs`, `q-http`, `q-bridge`, and `velqu-runtime`.
+- Conformance passed after building runtime/proof artifacts and installing locked dependencies: `bun test` — 36 pass, 0 fail, 143 expect calls; `bun run typecheck` passed; `cargo fmt --check` and `cargo clippy --workspace --all-targets -- -D warnings` passed.
+- OKF validation passed: `scripts/validate-okf` — 174 links checked, 0 errors.
+- `./scripts/verify` ran all Rust, typecheck, proof build, and TypeScript stages successfully, but reports scoped benchmark evidence failure because temporary-worktree `qRuntimeRelease` and regenerated proof-pack hashes differ from canonical manifest. Canonical benchmark manifest remains unchanged; no performance claim is made.
+- Threat/ownership review: stale generation, foreign worker, slot reuse, double settlement, cancellation races, quarantine, shutdown, queue saturation, body overflow, and lazy materialization are covered by named tests above. Sanitizer execution not performed.
+- Scope: this verification does not mark `M24-GATE` PASS and does not alter benchmark manifests.
