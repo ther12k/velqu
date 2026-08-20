@@ -525,9 +525,8 @@ All PASS packets are omitted. The first unchecked dependency-ready task is M24-0
 521. [BETA-016-F — Use Treaty client](tasks/08_public_beta/BETA-016-F-use-treaty-client.md) — deps: BETA-016-E — #613
 522. [BETA-016-V — Verify Run external clean-install and tutorial verification](tasks/08_public_beta/BETA-016-V-verify-run-external-clean-install-and-tutorial-verification.md) — deps: BETA-016-A, BETA-016-B, BETA-016-C, BETA-016-D, BETA-016-E, BETA-016-F — #614
 523. [BETA-016-Z — Package evidence for Run external clean-install and tutorial verification](tasks/08_public_beta/BETA-016-Z-package-evidence-for-run-external-clean-install-and-tutorial-verification.md) — deps: BETA-016-V — #615
-524. [BETA-017-E — Supported beta platforms](tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md) — deps: BETA-017-D — #620
-525. [BETA-017-F — Reverse-proxy-first statement](tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md) — deps: BETA-017-E — #621
-526. [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md) — deps: BETA-017-F — #622
-527. [BETA-017-V — Verify Resolve beta owner decisions](tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md) — deps: BETA-017-A, BETA-017-B, BETA-017-C, BETA-017-D, BETA-017-E, BETA-017-F, BETA-017-G — #623
-528. [BETA-017-Z — Package evidence for Resolve beta owner decisions](tasks/08_public_beta/BETA-017-Z-package-evidence-for-resolve-beta-owner-decisions.md) — deps: BETA-017-V — #624
-529. [BETA-GATE — Public Beta Readiness and Release exit gate](gates/BETA-GATE.md) — deps: BETA-001-Z, BETA-002-Z, BETA-003-Z, BETA-004-Z, BETA-005-Z, BETA-006-Z, BETA-007-Z, BETA-008-Z, BETA-009-Z, BETA-010-Z, BETA-011-Z, BETA-012-Z, BETA-013-Z, BETA-014-Z, BETA-015-Z, BETA-016-Z, BETA-017-Z — #625
+524. [BETA-017-F — Reverse-proxy-first statement](tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md) — deps: BETA-017-E — #621
+525. [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md) — deps: BETA-017-F — #622
+526. [BETA-017-V — Verify Resolve beta owner decisions](tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md) — deps: BETA-017-A, BETA-017-B, BETA-017-C, BETA-017-D, BETA-017-E, BETA-017-F, BETA-017-G — #623
+527. [BETA-017-Z — Package evidence for Resolve beta owner decisions](tasks/08_public_beta/BETA-017-Z-package-evidence-for-resolve-beta-owner-decisions.md) — deps: BETA-017-V — #624
+528. [BETA-GATE — Public Beta Readiness and Release exit gate](gates/BETA-GATE.md) — deps: BETA-001-Z, BETA-002-Z, BETA-003-Z, BETA-004-Z, BETA-005-Z, BETA-006-Z, BETA-007-Z, BETA-008-Z, BETA-009-Z, BETA-010-Z, BETA-011-Z, BETA-012-Z, BETA-013-Z, BETA-014-Z, BETA-015-Z, BETA-016-Z, BETA-017-Z — #625

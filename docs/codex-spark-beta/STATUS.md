@@ -656,7 +656,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-017-B — License/contribution model](tasks/08_public_beta/BETA-017-B-license-contribution-model.md)
 - [x] [BETA-017-C — Release authority](tasks/08_public_beta/BETA-017-C-release-authority.md)
 - [x] [BETA-017-D — Security contact](tasks/08_public_beta/BETA-017-D-security-contact.md)
-- [ ] [BETA-017-E — Supported beta platforms](tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md)
+- [x] [BETA-017-E — Supported beta platforms](tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md)
 - [ ] [BETA-017-F — Reverse-proxy-first statement](tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md)
 - [ ] [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md)
 - [ ] [BETA-017-V — Verify Resolve beta owner decisions](tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md)

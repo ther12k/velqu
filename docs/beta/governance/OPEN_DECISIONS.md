@@ -19,7 +19,7 @@ The agent may prepare options but may not invent authority.
 | OD-BETA-002 | License and contribution model | Public beta | Accepted (2026-08-20) |
 | OD-BETA-003 | Beta release authority and version | Public beta | Accepted (2026-08-20) |
 | OD-BETA-004 | Security contact/disclosure channel | Public beta | Accepted (2026-08-20) |
-| OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Open |
+| OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Accepted (2026-08-21) |
 | OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Open |
 | OD-BETA-007 | Official first-party Postgres package versus reference capability | Package list | Open |
 | OD-BETA-008 | Public benchmark wording and comparison table | Beta announcement | Open |
@@ -216,3 +216,51 @@ Required by gate: Public beta
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (security contact marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-D-security-contact.md` (completion record)
+
+## OD-BETA-005 Decision Record
+
+```text
+Decision ID: OD-BETA-005
+Title: Supported beta platforms
+Status: accepted
+Date: 2026-08-21
+Decider: Owner (ther12k)
+Required by gate: Packaging/docs
+```
+
+### Context
+
+- Public beta users need an exact platform promise that separates measured support from CI portability signals and development-only targets.
+- Existing beta guidance requires Linux x86_64 glibc and leaves ARM64 conditional; this decision makes that boundary explicit.
+
+### Options considered
+
+- Linux x86_64 glibc only: accepted; matches current measured support and release evidence basis.
+- Linux x86_64 plus ARM64 glibc: rejected for this beta; CI coverage alone does not establish packaged artifact and install support.
+- Advertise macOS, Windows, or musl/static targets: rejected; those targets lack accepted beta artifact and support evidence.
+
+### Decision
+
+- The only supported public-beta platform is Linux x86_64 with glibc.
+- Linux ARM64 glibc is conditional and unpromised; macOS is development-only best effort; Windows, musl/static-libc, and other platforms are unsupported.
+- Canonical scope and evidence boundaries are documented in `docs/beta/governance/PLATFORM_SUPPORT.md` and linked from `docs/beta/workstreams/PLATFORM_SUPPORT.md`.
+
+### Consequences
+
+- Release and packaging claims can advertise one tested platform without implying universal portability.
+- CI may continue exercising additional runners for portability signals without expanding public support.
+- Platform expansion requires owner acceptance, reproducible artifact/install evidence, and policy/release-packet updates.
+
+### Security/operations implications
+
+- Unsupported platform deployments may lack validated runtime, dependency, TLS, or artifact behavior and receive no beta support promise.
+- The beta remains non-SLA, trusted-code-only, and not production-ready GA.
+- Platform-specific failures must not be represented as universal framework behavior without matched evidence.
+
+### Documentation and task updates
+
+- `docs/beta/governance/PLATFORM_SUPPORT.md`
+- `docs/beta/workstreams/PLATFORM_SUPPORT.md`
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (OD-005 marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md` (completion record)

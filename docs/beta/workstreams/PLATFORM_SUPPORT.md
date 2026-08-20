@@ -11,11 +11,14 @@ tags:
 
 # Beta Platform Support
 
+Canonical public-beta support scope lives in [`../governance/PLATFORM_SUPPORT.md`](../governance/PLATFORM_SUPPORT.md).
+
 ## Working beta promise
 
-- Linux x86_64 glibc is mandatory.
-- Linux ARM64 glibc is included when CI/build infrastructure is available and the owner accepts it.
-- Other platforms are best-effort development only unless explicitly added.
+- Linux x86_64 glibc is the only supported public-beta platform.
+- Linux ARM64 glibc remains conditional and unpromised; CI coverage alone does not expand support.
+- macOS is development-only best effort.
+- Windows, musl/static-libc, and other platforms are unsupported unless separately accepted by the owner.
 
 ## Required platform tests
 
