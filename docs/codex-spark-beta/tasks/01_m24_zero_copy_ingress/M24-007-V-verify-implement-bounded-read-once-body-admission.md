@@ -4,7 +4,7 @@ parent_task: M24-007
 milestone: M24
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -110,6 +110,24 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Cancellation metrics.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `routeplan_body_flag_controls_body_collection_independent_of_method` proves body behavior follows RoutePlan, including DELETE/body and field-free routes.
+- `content_length_over_limit_rejects_before_body_poll` and `body_and_header_limits_reject_oversize` prove early and streaming limit enforcement.
+- `routing_precedes_body_materialization` proves incomplete unmatched bodies do not block routing.
+- Body representation mode guards reject incompatible `text`/`bytes` reads and clear on settlement.
+- Rebuilt proof pack initially exposed compiler query-ID defect (`kind` vs `type`); fixed in `packages/compiler/src/emit.ts`. Rebuilt pack now verifies and runtime Bun suite passes 35/0.
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http --test fuzz_parsers`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-capabilities`: PASS.
+- `cargo test -p q-runtime --test runtime_conformance`: PASS.
+- `bun test`: PASS (35 pass, 0 fail).
+- `bun run typecheck`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 
