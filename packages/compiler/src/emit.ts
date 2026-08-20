@@ -321,6 +321,18 @@ export function buildPack(
   };
   const routeHeaderNames = app.routes.map(headerNamesFor);
   const headerNameTable = [...headerNameSet].sort();
+  // M24-006-A: compile declared query object fields into canonical dense IDs.
+  // Cookie bindings are not yet part of authoring contract, so cookie table
+  // remains empty until its dedicated packet adds the binding surface.
+  const queryNameSet = new Set<string>();
+  const routeQueryNames = app.routes.map((r) => {
+    const names = r.queryIr && r.queryIr.type === "object"
+      ? Object.keys((r.queryIr as { properties?: Record<string, unknown> }).properties ?? {}).sort()
+      : [];
+    for (const name of names) queryNameSet.add(name);
+    return names;
+  });
+  const queryNameTable = [...queryNameSet].sort();
 
   const packRoutes = app.routes.map((r, routeIdx) => {
     const defaultStatus = Object.keys(r.responses).includes("200")
@@ -346,6 +358,8 @@ export function buildPack(
       headersSchemaId: null,
       bodySchemaId: bodySchemaKey ? (schemaKeyToId.get(bodySchemaKey) ?? null) : null,
       headerNameIds: routeHeaderNames[routeIdx].map((n) => headerNameTable.indexOf(n)),
+      queryNameIds: routeQueryNames[routeIdx].map((n) => queryNameTable.indexOf(n)),
+      cookieNameIds: [],
       defaultStatus,
       allowedStatuses,
       fieldNeeds: {
@@ -477,6 +491,8 @@ export function buildPack(
     functions,
     schemaManifest,
     headerNameTable,
+    queryNameTable,
+    cookieNameTable: [],
     policyManifest,
     router,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle.code), routesSha256: sha(canonical) },

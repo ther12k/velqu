@@ -126,6 +126,8 @@ fn fixture_pack() -> q_pack::QPack {
             headers_schema_id: None,
             body_schema_id: None,
             header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
             default_status: def_status,
             allowed_statuses: statuses,
             field_needs: needs,
@@ -522,6 +524,8 @@ fn fixture_pack() -> q_pack::QPack {
 
     let mut pack = QPack {
         header_name_table: Vec::new(),
+        query_name_table: Vec::new(),
+        cookie_name_table: Vec::new(),
         format_version: q_pack::PACK_FORMAT_VERSION,
         kind: "velqu.qpack".into(),
         runtime_abi: q_pack::RUNTIME_ABI,
@@ -659,6 +663,38 @@ fn finalize_numeric(pack: &mut QPack) {
         }
     }
     pack.header_name_table = names;
+    let mut query_names = Vec::new();
+    for route in pack.routes.iter_mut() {
+        let mut route_names = route
+            .query
+            .as_ref()
+            .and_then(|b| b.schema.as_ref())
+            .and_then(|key| pack.schemas.get(key))
+            .and_then(|ir| match ir {
+                q_schema_runtime::SchemaIr::Object { properties, .. } => {
+                    Some(properties.keys().cloned().collect::<Vec<_>>())
+                }
+                _ => None,
+            })
+            .unwrap_or_default();
+        route_names.sort();
+        route_names.dedup();
+        if let Some(plan) = route.plan.as_mut() {
+            plan.query_name_ids = route_names
+                .iter()
+                .map(|n| match query_names.binary_search(n) {
+                    Ok(pos) => pos as u32,
+                    Err(pos) => {
+                        query_names.insert(pos, n.clone());
+                        pos as u32
+                    }
+                })
+                .collect();
+            plan.cookie_name_ids.clear();
+        }
+    }
+    pack.query_name_table = query_names;
+    pack.cookie_name_table.clear();
     pack.schema_manifest = pack
         .schemas
         .keys()
@@ -1400,6 +1436,8 @@ fn source_mapped_exception_identifies_original_location() {
         headers_schema_id: None,
         body_schema_id: None,
         header_name_ids: vec![],
+        query_name_ids: vec![],
+        cookie_name_ids: vec![],
         default_status: 200,
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
@@ -1631,6 +1669,8 @@ globalThis.__velquFunctions = [bad_shape];
         headers_schema_id: None,
         body_schema_id: None,
         header_name_ids: vec![],
+        query_name_ids: vec![],
+        cookie_name_ids: vec![],
         default_status: 200,
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),

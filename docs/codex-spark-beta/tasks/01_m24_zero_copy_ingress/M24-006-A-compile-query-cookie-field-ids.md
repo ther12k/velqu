@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -85,6 +85,22 @@ cargo test -p velqu-runtime
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `RoutePlanDecl.query_name_ids` and `QPack.query_name_table` compile declared query object properties into sorted dense IDs.
+- `RoutePlanDecl.cookie_name_ids` and `QPack.cookie_name_table` are explicit empty bounded surfaces until cookie authoring is introduced; non-empty cookie metadata fails closed.
+- `QPack::verify` derives query IDs from schema properties and rejects table/ID tampering.
+- `query_name_ids_are_canonical_and_cookie_table_is_bounded` proves sorted IDs, canonical table, and tamper rejection.
+- `crates/q-runtime/tests/runtime_conformance.rs::finalize_numeric` derives query IDs for runtime fixtures.
+- `cargo test -p q-pack`: PASS (37 tests).
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime --test runtime_conformance`: PASS (13 tests).
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `bun run typecheck`: PASS.
 
 ## Out of scope
 
