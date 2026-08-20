@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,19 @@ cargo test -p velqu-runtime
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `call_runner` passes only numeric `slot`/`generation` capability values plus numeric `paramsSchemaId`, `querySchemaId`, `headersSchemaId`, and `bodySchemaId` route-plan references into JS.
+- Request bytes remain in worker-local `RequestStore`; `route_plan_references_do_not_copy_request_bytes` confirms route-plan JSON contains schema IDs and no admitted body bytes, with settlement returning `live_slots` to zero.
+- `lazy_ctx_touches_nothing` confirms unread request fields remain unmaterialized; stale generation enforcement remains covered by existing engine and bridge conformance tests.
+- `cargo test -p q-engine-quickjs`: PASS (94 tests).
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `scripts/validate-okf`: PASS (174 links, 0 errors).
+- No heap/allocation or benchmark claim added; evidence is source-backed and conformance-tested.
 
 ## Out of scope
 

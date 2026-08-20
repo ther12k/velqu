@@ -77,7 +77,7 @@ function headers_lazy(ctx) {
 }
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
-  return { untouched: true };
+  return { untouched: true, routePlan: ctx.routePlan };
 }
 function read_query(ctx) { return { ms: ctx.query.ms }; }
 function read_body(ctx) { return { echo: ctx.json().name }; }
@@ -1215,6 +1215,41 @@ async fn shared_context_request_prototypes_are_reused() {
     second.slot = handle2.slot();
     second.generation = handle2.generation();
     let _ = run(&mut eng, second).await;
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn route_plan_references_do_not_copy_request_bytes() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_engine::RequestMeta {
+            path: "/opaque".into(),
+            body: Some(bytes::Bytes::from_static(b"secret-request-body")),
+            ..Default::default()
+        },
+    );
+    let mut s = spec(4, "lazy.ctx", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    s.params_schema_id = Some(q_engine::SchemaId(7));
+    s.query_schema_id = Some(q_engine::SchemaId(11));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            println!("route plan proof: {text}");
+            assert!(text.contains("\"routePlan\""));
+            assert!(text.contains("\"paramsSchemaId\":7"));
+            assert!(text.contains("\"querySchemaId\":11"));
+            assert!(!text.contains("secret-request-body"));
+        }
+        other => panic!("{other:?}"),
+    }
     assert_eq!(eng.bridge_snapshot().live_slots, 0);
     eng.shutdown();
 }
