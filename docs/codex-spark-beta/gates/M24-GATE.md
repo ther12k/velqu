@@ -127,3 +127,13 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Gate review record
+
+- Candidate commit: `d1aa375c27fae840f434f1500727750d85c769d3` (`origin/master`); all ten dependency packages `M24-001-Z` through `M24-010-Z` have `status: PASS`.
+- Queue audit: `scripts/spark-queue` reports `M24-GATE` as first unchecked packet.
+- Functional evidence: dependency packets cite passing targeted Rust suites, Bun conformance, typecheck, format, Clippy, and OKF validation.
+- Blocking verifier result: `./scripts/verify` reports `validate-benchmark-evidence` failure for temporary-worktree `qRuntimeRelease` and proof-pack SHA-256 values against canonical `benchmarks/manifest.json`. Canonical manifest must remain unchanged until matched reproducible evidence exists.
+- Missing required gate deliverables: milestone report, review index, evidence index, commit-named source archive, Git bundle, and SHA-256 manifest. Repository search found no current M24 gate package containing these artifacts.
+- Decision: gate remains `TODO`; do not close issue #627 or advance M25.
+- Required follow-up: produce missing gate artifacts from a fixed candidate commit, reconcile benchmark artifacts through reproducible evidence, rerun full verification from clean tree, then review again.
