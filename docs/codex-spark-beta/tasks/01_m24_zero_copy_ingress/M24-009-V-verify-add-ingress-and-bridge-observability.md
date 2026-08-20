@@ -4,7 +4,7 @@ parent_task: M24-009
 milestone: M24
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -103,6 +103,25 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+Acceptance matrix:
+
+- Stage schema: `StageMetricsSnapshot` exposes route, queue, decode, bridge, JS, encode, write counters plus slab_live, queue_pending, body_bytes gauges.
+- Sampling: `--log-sample N` records successful requests every Nth request; errors remain unsampled; zero preserves default behavior.
+- Redaction: completion logs include request ID, route ID, method, path, status, body size, and stage only; no headers or body contents.
+- Boundedness: all metrics are scalar atomics; queue gauge decrements after outcome; body gauge counts admitted bytes only.
+- Raw overhead: `benchmarks/raw/observability/metrics-overhead.json`, 100,000 matched samples with mean/p50/p95/p99 for disabled and atomic paths.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-capabilities`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- `./scripts/verify`: PASS.
+- No benchmark manifest rewritten and no unsupported performance claim added.
 
 ## Out of scope
 
