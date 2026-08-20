@@ -2283,6 +2283,40 @@ async fn shutdown_settles_all_remaining_slots() {
     );
 }
 
+/// M24-003-D / ADR-0021 T11: a handle minted by worker A is meaningless to
+/// worker B. B cannot forge one (local reconstruction stamps B's identity),
+/// and A's handle presented to B's settlement path is a deterministic no-op —
+/// the slot settles only at its owning worker.
+#[tokio::test]
+async fn cross_worker_handle_is_inert_on_foreign_worker() {
+    let mut eng_a = engine();
+    let mut eng_b = engine();
+    load_default(&mut eng_a).unwrap();
+    load_default(&mut eng_b).unwrap();
+
+    let handle_a = insert_request(&eng_a, q_bridge::RequestMeta::default());
+    assert_eq!(eng_a.bridge_snapshot().live_slots, 1);
+
+    // B's settle of A's typed handle must not touch A's slab (or B's own).
+    // settlement_table_len round-trips the worker so the settle message is
+    // processed before the counters are read.
+    eng_b.settle_request(handle_a);
+    let _ = eng_b.settlement_table_len();
+    assert_eq!(
+        eng_a.bridge_snapshot().live_slots,
+        1,
+        "foreign-worker settle must be a no-op at the owner's slab"
+    );
+    assert_eq!(eng_b.bridge_snapshot().live_slots, 0);
+
+    // the owning worker settles it exactly once
+    eng_a.settle_request(handle_a);
+    let _ = eng_a.settlement_table_len();
+    assert_eq!(eng_a.bridge_snapshot().live_slots, 0);
+    eng_a.shutdown();
+    eng_b.shutdown();
+}
+
 // ------------------------------------------------------------ M2.2.1-r4.2.1 drain-local report & cleanup budget
 
 /// Interruption during request B's cleanup drain must be DRAIN-LOCAL:
