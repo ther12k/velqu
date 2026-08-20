@@ -305,6 +305,23 @@ export function buildPack(
     });
   }
 
+  // M24-005-A: canonical header-name table — security scheme headers plus
+  // headers-binding schema properties, sorted and deduped across all routes.
+  const headerNameSet = new Set<string>();
+  const headerNamesFor = (r: (typeof app.routes)[number]): string[] => {
+    const names = new Set<string>();
+    const declared = (r as { security?: Array<{ header: string }> }).security;
+    if (declared) {
+      for (const sec of declared) names.add(sec.header);
+    } else if (r.policyId) {
+      names.add("authorization");
+    }
+    for (const n of names) headerNameSet.add(n);
+    return [...names].sort();
+  };
+  const routeHeaderNames = app.routes.map(headerNamesFor);
+  const headerNameTable = [...headerNameSet].sort();
+
   const packRoutes = app.routes.map((r, routeIdx) => {
     const defaultStatus = Object.keys(r.responses).includes("200")
       ? 200
@@ -328,6 +345,7 @@ export function buildPack(
       querySchemaId: querySchemaKey ? (schemaKeyToId.get(querySchemaKey) ?? null) : null,
       headersSchemaId: null,
       bodySchemaId: bodySchemaKey ? (schemaKeyToId.get(bodySchemaKey) ?? null) : null,
+      headerNameIds: routeHeaderNames[routeIdx].map((n) => headerNameTable.indexOf(n)),
       defaultStatus,
       allowedStatuses,
       fieldNeeds: {
@@ -458,6 +476,7 @@ export function buildPack(
     capabilities,
     functions,
     schemaManifest,
+    headerNameTable,
     policyManifest,
     router,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle.code), routesSha256: sha(canonical) },

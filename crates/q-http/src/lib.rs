@@ -75,6 +75,25 @@ pub fn materialize_headers(map: &hyper::HeaderMap) -> Vec<(String, String)> {
         .collect()
 }
 
+/// M24-005-C: declared-header value with the frozen duplicate/non-UTF8
+/// contract — repeated values join with ", " (HTTP list semantics, arrival
+/// order); bytes convert lossily to UTF-8 (invalid sequences become U+FFFD,
+/// never a panic, never a rejection); a declared-but-absent name yields None.
+pub fn declared_header_value(map: &hyper::HeaderMap, name: &str) -> Option<String> {
+    let mut joined = String::new();
+    for value in map.get_all(name).iter() {
+        if !joined.is_empty() {
+            joined.push_str(", ");
+        }
+        joined.push_str(&String::from_utf8_lossy(value.as_bytes()));
+    }
+    if joined.is_empty() {
+        None
+    } else {
+        Some(joined)
+    }
+}
+
 /// Read the body once, stopping as soon as the byte budget would be exceeded
 /// (413) instead of buffering the whole stream first. Transport failures map
 /// to BadBody (400), matching the previous collect-then-check behavior.
@@ -449,6 +468,35 @@ mod tests {
         assert_eq!(q[1], ("name".into(), "Rafi Z".into()));
         assert_eq!(q[2], ("x".into(), "A".into()));
         assert!(parse_query("").is_empty());
+    }
+
+    #[test]
+    fn declared_header_value_joins_duplicates_and_is_lossy() {
+        use hyper::header::{HeaderMap, HeaderName, HeaderValue};
+        let mut map = HeaderMap::new();
+        map.append(
+            HeaderName::from_static("authorization"),
+            HeaderValue::from_str("Bearer a").unwrap(),
+        );
+        map.append(
+            HeaderName::from_static("authorization"),
+            HeaderValue::from_str("Bearer b").unwrap(),
+        );
+        // duplicate values join in arrival order (HTTP list semantics)
+        assert_eq!(
+            declared_header_value(&map, "authorization").as_deref(),
+            Some("Bearer a, Bearer b")
+        );
+        // absent name → None (declared but not sent)
+        assert_eq!(declared_header_value(&map, "x-missing"), None);
+        // non-UTF8 bytes convert lossily — no panic, no rejection
+        let mut raw = HeaderMap::new();
+        raw.insert(
+            HeaderName::from_static("x-bin"),
+            HeaderValue::from_bytes(&[0x41, 0xff, 0xfe, 0x42]).unwrap(),
+        );
+        let v = declared_header_value(&raw, "x-bin").unwrap();
+        assert!(v.starts_with('A') && v.ends_with('B') && v.contains('\u{fffd}'));
     }
 
     #[test]

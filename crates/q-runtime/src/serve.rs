@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use q_engine::Engine as _;
 use q_engine::{BodyOut, InvocationSpec, Outcome};
 use q_engine_quickjs::QuickJsEngine;
-use q_http::{collect_body_bounded, materialize_headers, parse_query};
+use q_http::{collect_body_bounded, declared_header_value, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
 use q_schema_runtime::{validate_query, Source};
@@ -417,8 +417,29 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 method: method_str.to_uppercase(),
                 path: path.to_string(),
                 query: query_pairs,
+                // M24-005-B: only the header names this route's plan
+                // declares (security/policy + headers binding) are copied —
+                // never the full HeaderMap. Lookup is by name on the native
+                // map (first value, same semantics as materialize_headers).
                 headers: if needs.headers {
-                    materialize_headers(&headers)
+                    let table = &state.pack.header_name_table;
+                    compiled
+                        .plan
+                        .as_ref()
+                        .map(|plan| {
+                            plan.header_name_ids
+                                .iter()
+                                .filter_map(|id| {
+                                    let name = table.get(*id as usize)?;
+                                    // M24-005-C contract: duplicates join with
+                                    // ", ", non-UTF8 converts lossily, absent
+                                    // declared names are omitted.
+                                    declared_header_value(&headers, name.as_str())
+                                        .map(|value| (name.clone(), value))
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
                 } else {
                     Vec::new()
                 },

@@ -4,7 +4,7 @@ parent_task: M24-005
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -107,3 +107,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: header values read by ID on demand. `serve.rs` admission now copies ONLY the header names this route's plan declares (M24-005-A's `header_name_ids` → `pack.header_name_table`), looking each name up on the native HeaderMap (first value, lossy-UTF-8 — the same semantics `materialize_headers` had) instead of cloning the entire map. JavaScript gets per-key lazy access mirroring M24-004-D: new natives `__velquReqHeaderNames` (declared keys, 0 data cost) and `__velquReqHeader(slot, gen, key)` (materializes exactly one value, charging its exact byte length), with the prelude building `ctx.headers` as per-key getters (`__velquMakeLazyHeaders`). Undeclared headers do not exist as keys.
+- Changed files:
+  - `crates/q-runtime/src/serve.rs` (declared-only header copy by plan ids; `materialize_headers` import removed)
+  - `crates/q-engine-quickjs/src/worker.rs` (`__velquReqHeaderNames`, `__velquReqHeader` with exact byte accounting)
+  - `crates/q-engine-quickjs/src/prelude.rs` (`__velquMakeLazyHeaders` per-key getters)
+  - `crates/q-engine-quickjs/tests/engine.rs` (`headers.lazy` handler + declared-only/per-key proof)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md`, `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+- Tests: new `headers_are_declared_only_and_per_key_lazy` — request carries only `authorization`; handler sees `keys: "authorization"`, `"content-type" in headers === false`, one value access = 1 materialized field / 14 bytes, slot settles to 0. Route-declares-no-headers copies none (existing `field_free_invocation_skips_request_store_slot`, `lazy_ctx_touches_nothing` — 0 host calls). Auth flow end-to-end: runtime policy conformance (401 without header / 200 with) and full HTTP suites pass.
+- Verification: `cargo test -p q-pack` PASS (35 + 2 fuzz); `cargo test -p q-engine-quickjs` PASS (1 + 92); `cargo test -p q-http` PASS (2 + 3); `cargo test -p q-bridge` PASS (9); `cargo test -p q-schema-runtime` PASS; `cargo test -p q-router` PASS (15); `cargo test -p velqu-runtime` PASS (13); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `bun run typecheck` PASS; `bun test` PASS (35/0 after proof-pack + release-binary rebuild). Raw logs: `/tmp/m24-005-b-rust.log`, `/tmp/m24-005-b-bun.log`.
+- Guardrail status: duplicate-header joining and the explicit full-Headers escape hatch are M24-005-C/D; secret-header redaction in diagnostics is unchanged from the existing redaction rules (header values never logged — SEC-004).
+- Next dependency-ready task: M24-005-C (define duplicate header behavior and byte/string conversion).
+

@@ -125,6 +125,7 @@ fn fixture_pack() -> q_pack::QPack {
             query_schema_id: None,
             headers_schema_id: None,
             body_schema_id: None,
+            header_name_ids: vec![],
             default_status: def_status,
             allowed_statuses: statuses,
             field_needs: needs,
@@ -520,6 +521,7 @@ fn fixture_pack() -> q_pack::QPack {
     ];
 
     let mut pack = QPack {
+        header_name_table: Vec::new(),
         format_version: q_pack::PACK_FORMAT_VERSION,
         kind: "velqu.qpack".into(),
         runtime_abi: q_pack::RUNTIME_ABI,
@@ -623,6 +625,40 @@ fn finalize_numeric(pack: &mut QPack) {
             plan.policy_handler_id = Some(pd.handler_id);
         }
     }
+    // M24-005-A: canonical header-name table + per-plan ids, mirroring the
+    // compiler emission (security scheme headers; headers-binding schemas).
+    let mut names: Vec<String> = Vec::new();
+    for route in pack.routes.iter_mut() {
+        let mut route_names: Vec<String> = route
+            .security
+            .iter()
+            .map(|sec| sec.header.clone())
+            .collect();
+        if let Some(binding) = &route.headers {
+            if let Some(key) = &binding.schema {
+                if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
+                    pack.schemas.get(key)
+                {
+                    route_names.extend(properties.keys().cloned());
+                }
+            }
+        }
+        route_names.sort();
+        route_names.dedup();
+        if let Some(plan) = route.plan.as_mut() {
+            plan.header_name_ids = route_names
+                .iter()
+                .map(|n| match names.binary_search(n) {
+                    Ok(pos) => pos as u32,
+                    Err(pos) => {
+                        names.insert(pos, n.clone());
+                        pos as u32
+                    }
+                })
+                .collect();
+        }
+    }
+    pack.header_name_table = names;
     pack.schema_manifest = pack
         .schemas
         .keys()
@@ -1363,6 +1399,7 @@ fn source_mapped_exception_identifies_original_location() {
         query_schema_id: None,
         headers_schema_id: None,
         body_schema_id: None,
+        header_name_ids: vec![],
         default_status: 200,
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
@@ -1593,6 +1630,7 @@ globalThis.__velquFunctions = [bad_shape];
         query_schema_id: None,
         headers_schema_id: None,
         body_schema_id: None,
+        header_name_ids: vec![],
         default_status: 200,
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
