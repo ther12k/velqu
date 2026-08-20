@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -104,6 +104,23 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `QPack::verify` and compiler tests prove canonical query field IDs; unsupported cookie table remains bounded empty until cookie binding work.
+- `repeated_query_policy_preserves_pairs_for_last_value_projection` proves duplicate query semantics.
+- `invalid_percent_and_utf8_corpus_is_deterministic`, `query_parser_never_panics_on_arbitrary_input`, and `percent_decode_never_panics_and_always_returns_utf8` prove decoding and fuzz behavior.
+- `query_cache_materializes_once_and_expires_with_slot` proves per-slot cache lifetime and stale-handle rejection.
+- `lazy_query_and_body_materialize_on_access` proves request fields remain lazy at JS boundary.
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http` and fuzz parser suite: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- Cookie parsing is intentionally bounded to the empty pre-binding surface; no global cookie parser exists.
 
 ## Out of scope
 
