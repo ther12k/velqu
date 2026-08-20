@@ -2172,7 +2172,7 @@ fn install_natives(
                         .find(|spec| spec.name == key)
                         .map(|spec| meta_path_slice(m, spec).to_string())
                 })
-                .map(|value| {
+                .inspect(|value| {
                     // charge the materialized value's exact byte length
                     if let Some(v) = value.as_ref() {
                         store
@@ -2180,7 +2180,6 @@ fn install_natives(
                             .materialized_bytes
                             .fetch_add(v.len() as u64, std::sync::atomic::Ordering::Relaxed);
                     }
-                    value
                 })
                 .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
         };
