@@ -2258,6 +2258,61 @@ fn install_natives(
         };
         globals.set("__velquFillBytes", Function::new(ctx.clone(), f)?)?;
     }
+    // M24-005-B: declared header names + single-key header access — the
+    // request carries only plan-declared headers; a key access materializes
+    // exactly one value.
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx, slot: f64, gen: f64| -> rquickjs::Result<String> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 0, 0, |m| {
+                    let names: Vec<&str> = m.headers.iter().map(|(k, _)| k.as_str()).collect();
+                    serde_json::to_string(&names).unwrap_or_else(|_| "[]".into())
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqHeaderNames", Function::new(ctx.clone(), f)?)?;
+    }
+    {
+        let store = Rc::clone(&store);
+        let f = move |ctx: rquickjs::Ctx,
+                      slot: f64,
+                      gen: f64,
+                      key: String|
+              -> rquickjs::Result<Option<String>> {
+            let slot = slot as usize;
+            if slot == q_engine::NO_REQUEST_SLOT {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "request handle unavailable for field-free route",
+                ));
+            }
+            store
+                .access(store.local_handle(slot, gen as u64), 1, 0, |m| {
+                    m.headers
+                        .iter()
+                        .find(|(k, _)| *k == key)
+                        .map(|(_, v)| v.clone())
+                })
+                .inspect(|value| {
+                    if let Some(v) = value.as_ref() {
+                        store
+                            .counters()
+                            .materialized_bytes
+                            .fetch_add(v.len() as u64, std::sync::atomic::Ordering::Relaxed);
+                    }
+                })
+                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))
+        };
+        globals.set("__velquReqHeader", Function::new(ctx.clone(), f)?)?;
+    }
     // timer capability: (ms) -> op id; completion returns on the worker loop
     {
         let shared_timer = Arc::clone(&shared);

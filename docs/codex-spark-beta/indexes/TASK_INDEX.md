@@ -99,7 +99,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M24-004-V](../tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md) | P1 | verify | PASS | M24-004-A, M24-004-B, M24-004-C, M24-004-D | Verify Capture path parameters as byte ranges |
 | [M24-004-Z](../tasks/01_m24_zero_copy_ingress/M24-004-Z-package-evidence-for-capture-path-parameters-as-byte-ranges.md) | P1 | evidence | PASS | M24-004-V | Package evidence for Capture path parameters as byte ranges |
 | [M24-005-A](../tasks/01_m24_zero_copy_ingress/M24-005-A-compile-header-name-ids-into-routeplan.md) | P0 | implement | PASS | M24-003-Z | Compile header-name IDs into RoutePlan |
-| [M24-005-B](../tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md) | P0 | implement | TODO | M24-005-A | Read header values by ID on demand |
+| [M24-005-B](../tasks/01_m24_zero_copy_ingress/M24-005-B-read-header-values-by-id-on-demand.md) | P0 | implement | PASS | M24-005-A | Read header values by ID on demand |
 | [M24-005-C](../tasks/01_m24_zero_copy_ingress/M24-005-C-define-duplicate-header-behavior-and-byte-string-conversion.md) | P0 | implement | TODO | M24-005-B | Define duplicate header behavior and byte/string conversion |
 | [M24-005-D](../tasks/01_m24_zero_copy_ingress/M24-005-D-keep-full-headers-escape-hatch-explicit-and-costed.md) | P0 | implement | TODO | M24-005-C | Keep full Headers escape hatch explicit and costed |
 | [M24-005-V](../tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md) | P0 | verify | TODO | M24-005-A, M24-005-B, M24-005-C, M24-005-D | Verify Implement declared-header lazy access |

@@ -68,6 +68,13 @@ function requestless(ctx) {
 }
 function hello(ctx) { return { message: "Hello " + ctx.params.name }; }
 function params_lazy_b(ctx) { return { got: ctx.params.b }; }
+function headers_lazy(ctx) {
+  return {
+    auth: ctx.headers.authorization,
+    keys: Object.keys(ctx.headers).sort().join(","),
+    hasContentType: "content-type" in ctx.headers,
+  };
+}
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
   return { untouched: true };
@@ -253,6 +260,7 @@ __velquRegister("js.json", js_json);
 __velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
 __velquRegister("params.lazyb", params_lazy_b);
+__velquRegister("headers.lazy", headers_lazy);
 __velquRegister("lazy.ctx", lazy_ctx);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
@@ -360,6 +368,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "requestless",
         "hello.get",
         "params.lazyb",
+        "headers.lazy",
         "lazy.ctx",
         "query.read",
         "body.read",
@@ -428,7 +437,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 53);
+    assert_eq!(stats.handlers_registered, 54);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1152,6 +1161,43 @@ async fn params_materialize_one_key_per_access() {
         0,
         "slot settled after the lazy access"
     );
+    eng.shutdown();
+}
+
+/// M24-005-B: the request carries only plan-declared headers and
+/// ctx.headers is per-key lazy — one access materializes one value, and
+/// undeclared headers (content-type) do not exist as keys.
+#[tokio::test]
+async fn headers_are_declared_only_and_per_key_lazy() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            // admission copied ONLY the declared authorization header
+            headers: vec![("authorization".into(), "Bearer tok-123".into())],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(705, "headers.lazy", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(
+            t,
+            r#"{"auth":"Bearer tok-123","keys":"authorization","hasContentType":false}"#
+        ),
+        o => panic!("{o:?}"),
+    }
+    // names fetch is 0-field; exactly ONE value access charged
+    let snap = eng.bridge_snapshot();
+    assert_eq!(snap.materialized_fields, 1, "one key = one value");
+    assert_eq!(snap.materialized_bytes, 14, "\"Bearer tok-123\" bytes");
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
     eng.shutdown();
 }
 
