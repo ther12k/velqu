@@ -132,3 +132,16 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification blocker record
+
+- Task ID: `M24-002-V`
+- Status: `BLOCKED` (packet status remains `TODO`)
+- Blocking fact: The A–D implementation and regression behavior are green, but the packet's required admission-counter and perf-stage-timing evidence is not present. `q-bridge::BridgeCounters` proves request-field materialization laziness, while the M24 ingress admission counters and stage histograms are explicitly owned by M24-009; existing `request.complete` `stage`/`durationMs` logs are per-request logs, not the required raw stage-timing evidence.
+- Exact source locations: `crates/q-http/src/lib.rs:153-175, 257-332` (bounded semaphore admission and native URI/header checks without admission counters); `crates/q-runtime/src/serve.rs:108-146` (completion log stage/duration fields); `crates/q-bridge/src/lib.rs:45-74` (bridge materialization counters); `docs/specs/m24-ingress-ownership-and-admission.md:374-434` (required metric vocabulary and ownership boundary).
+- Negative/positive tests proven: `routing_precedes_body_materialization`, `body_and_header_limits_reject_oversize`, `queue_limit_returns_503_when_saturated` in `crates/q-runtime/tests/runtime_conformance.rs`; `field_free_invocation_skips_request_store_slot` in `crates/q-engine-quickjs/tests/engine.rs`; `header_materialization_lowercases_names_and_keeps_values` in `crates/q-http/src/lib.rs`.
+- Exact command results: targeted Rust suites passed (q-pack, q-router, q-engine-quickjs: 85 tests, q-http, q-bridge, velqu-runtime); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `bun test` PASS (35/35); `bun run typecheck` PASS; `./scripts/validate-okf` PASS (`links_checked: 174`, `errors: []`). Raw logs: `/tmp/m24v2-rust.log`, `/tmp/m24v2-clippy.log`, `/tmp/m24v2-bun.log`, `/tmp/m24v2-type.log`, `/tmp/m24v2-okf.log`.
+- Dependency or owner required: Complete M24-009 admission/stage observability (or provide equivalent committed raw counter/timing evidence), then rerun M24-002-V. Keep `M24-002-V`, `M24-002-Z`, `M24-001-V`, `M24-001-Z`, and `M24-GATE` TODO until their required evidence exists.
+- Safe work completed before stopping: audited A–D source paths, mapped the parent guardrails to tests, ran the full acceptance matrix, and verified that no unsupported performance claim is being made.
+- Files changed but not committed: this packet record only.
+- Suggested next action: proceed to M24-003 implementation only through the dependency workflow, while leaving M24-002-V/Z TODO; return to M24-002-V after M24-009 evidence is available.
