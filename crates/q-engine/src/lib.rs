@@ -66,12 +66,23 @@ pub const NO_REQUEST_SLOT: usize = usize::MAX;
 /// Owned request data transferred from native admission to the QuickJS worker.
 /// The worker moves this value into its local request slab; it never crosses
 /// another worker boundary and is never borrowed across an await.
+/// One path parameter: declared name plus the value's byte range into
+/// `RequestMeta::path` (M24-004-D). The value string does not exist until a
+/// JS key access (or whole-field access) materializes it from the path.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ParamSpec {
+    pub name: String,
+    pub start: u32,
+    pub end: u32,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct RequestMeta {
     pub method: String,
     pub path: String,
-    /// Raw path parameters as extracted by the router.
-    pub params: Vec<(String, String)>,
+    /// Path parameters as name + byte-range specs against `path`; values
+    /// materialize lazily on access.
+    pub param_specs: Vec<ParamSpec>,
     pub query: Vec<(String, String)>,
     pub headers: Vec<(String, String)>,
     pub content_type: Option<String>,

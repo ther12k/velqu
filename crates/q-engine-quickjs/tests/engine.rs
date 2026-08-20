@@ -67,6 +67,7 @@ function requestless(ctx) {
   };
 }
 function hello(ctx) { return { message: "Hello " + ctx.params.name }; }
+function params_lazy_b(ctx) { return { got: ctx.params.b }; }
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
   return { untouched: true };
@@ -251,6 +252,7 @@ __velquRegister("js.text", js_text);
 __velquRegister("js.json", js_json);
 __velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
+__velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("lazy.ctx", lazy_ctx);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
@@ -357,6 +359,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "js.json",
         "requestless",
         "hello.get",
+        "params.lazyb",
         "lazy.ctx",
         "query.read",
         "body.read",
@@ -425,7 +428,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 52);
+    assert_eq!(stats.handlers_registered, 53);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1099,6 +1102,59 @@ async fn prevalidated_params_flow_into_ctx() {
     );
 }
 
+/// M24-004-D: ctx.params is a per-key lazy object — one key access
+/// materializes exactly one value; untouched keys allocate nothing.
+#[tokio::test]
+async fn params_materialize_one_key_per_access() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            path: "/x/AA/BB/CC".into(),
+            param_specs: vec![
+                q_engine::ParamSpec {
+                    name: "a".into(),
+                    start: 3,
+                    end: 5,
+                },
+                q_engine::ParamSpec {
+                    name: "b".into(),
+                    start: 6,
+                    end: 8,
+                },
+                q_engine::ParamSpec {
+                    name: "c".into(),
+                    start: 9,
+                    end: 11,
+                },
+            ],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(704, "params.lazyb", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            body: BodyOut::JsonText(t),
+            ..
+        } => assert_eq!(t, r#"{"got":"BB"}"#),
+        o => panic!("{o:?}"),
+    }
+    let snap = eng.bridge_snapshot();
+    // names fetch (0 fields) + exactly ONE single-key materialization
+    assert_eq!(snap.materialized_fields, 1, "one key = one value");
+    assert_eq!(snap.materialized_bytes, 2, "\"BB\" bytes");
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "slot settled after the lazy access"
+    );
+    eng.shutdown();
+}
+
 #[tokio::test]
 async fn lazy_ctx_touches_nothing() {
     let mut eng = engine();
@@ -1106,7 +1162,12 @@ async fn lazy_ctx_touches_nothing() {
     let handle = insert_request(
         &eng,
         q_bridge::RequestMeta {
-            params: vec![("name".into(), "Rafi".into())],
+            path: "/hello/Rafi".into(),
+            param_specs: vec![q_engine::ParamSpec {
+                name: "name".into(),
+                start: 7,
+                end: 11,
+            }],
             query: vec![("ms".into(), "50".into())],
             body: Some(b"{\"name\":\"Ada\"}".to_vec()),
             ..Default::default()
