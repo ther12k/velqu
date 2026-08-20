@@ -21,6 +21,8 @@ struct Slot {
     generation: u64,
     meta: Option<RequestMeta>,
     state: SlotState,
+    query_cache: RefCell<Option<String>>,
+    cookie_cache: RefCell<Option<String>>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -183,6 +185,8 @@ impl RequestStore {
                 generation: current,
                 meta: Some(meta),
                 state: SlotState::Active,
+                query_cache: RefCell::new(None),
+                cookie_cache: RefCell::new(None),
             };
             idx
         } else {
@@ -193,6 +197,8 @@ impl RequestStore {
                 generation: current,
                 meta: Some(meta),
                 state: SlotState::Active,
+                query_cache: RefCell::new(None),
+                cookie_cache: RefCell::new(None),
             });
             slots.len() - 1
         };
@@ -231,6 +237,8 @@ impl RequestStore {
         }
         s.state = SlotState::Settled;
         s.meta = None;
+        *s.query_cache.get_mut() = None;
+        *s.cookie_cache.get_mut() = None;
         s.generation = s.generation.wrapping_add(1).max(1);
         self.counters.live_slots.fetch_sub(1, Ordering::Relaxed);
         self.free.borrow_mut().push(handle.slot);
@@ -296,6 +304,53 @@ impl RequestStore {
             .materialized_bytes
             .fetch_add(cost_bytes, Ordering::Relaxed);
         Ok(out)
+    }
+
+    /// Return cached query JSON, computing it once while slot remains active.
+    /// Cache is slot-local and cleared before generation reuse.
+    pub fn cached_query(
+        &self,
+        handle: RequestHandle,
+        build: impl FnOnce(&RequestMeta) -> String,
+    ) -> Result<String, BridgeError> {
+        self.counters.host_calls.fetch_add(1, Ordering::Relaxed);
+        if handle.worker_id != self.worker_id {
+            self.counters
+                .expired_accesses
+                .fetch_add(1, Ordering::Relaxed);
+            return Err(BridgeError::ForeignWorker);
+        }
+        let slots = self.slots.borrow();
+        let slot = match slots.get(handle.slot) {
+            Some(slot) => slot,
+            None => return Err(BridgeError::NoSuchSlot),
+        };
+        if slot.generation != handle.generation || slot.state != SlotState::Active {
+            self.counters
+                .expired_accesses
+                .fetch_add(1, Ordering::Relaxed);
+            return Err(BridgeError::Expired);
+        }
+        if let Some(value) = slot.query_cache.borrow().as_ref() {
+            return Ok(value.clone());
+        }
+        let value = build(slot.meta.as_ref().expect("active slot has metadata"));
+        *slot.query_cache.borrow_mut() = Some(value.clone());
+        self.counters
+            .materialized_fields
+            .fetch_add(1, Ordering::Relaxed);
+        self.counters
+            .materialized_bytes
+            .fetch_add(value.len() as u64, Ordering::Relaxed);
+        Ok(value)
+    }
+
+    #[cfg(test)]
+    pub fn query_cache_value(&self, handle: RequestHandle) -> Option<String> {
+        let slots = self.slots.borrow();
+        slots
+            .get(handle.slot)
+            .and_then(|slot| slot.query_cache.borrow().clone())
     }
 
     pub fn live_slots(&self) -> usize {
@@ -517,6 +572,22 @@ mod tests {
         assert_eq!(after.live_slots, 0);
         assert_eq!(after.materialized_fields, before.materialized_fields);
         assert_eq!(after.materialized_bytes, before.materialized_bytes);
+    }
+
+    #[test]
+    fn query_cache_materializes_once_and_expires_with_slot() {
+        let store = RequestStore::with_capacity(1);
+        let handle = store.insert(meta(None));
+        let first = store.cached_query(handle, |m| m.path.to_string()).unwrap();
+        let second = store.cached_query(handle, |_| "wrong".into()).unwrap();
+        assert_eq!(first, second);
+        assert_eq!(store.snapshot().materialized_fields, 1);
+        store.settle(handle);
+        assert!(store.query_cache_value(handle).is_none());
+        assert!(matches!(
+            store.cached_query(handle, |_| "stale".into()),
+            Err(BridgeError::Expired)
+        ));
     }
 
     #[test]

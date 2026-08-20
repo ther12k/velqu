@@ -2102,30 +2102,45 @@ fn install_natives(
                     "request handle unavailable for field-free route",
                 ));
             }
-            let json = store
-                .access(store.local_handle(slot, gen as u64), 1, 16, |m| {
-                    let map = match what.as_str() {
-                        // M24-004-D: values materialize from path byte ranges
-                        // only at this whole-field access
-                        "params" => serde_json::Map::from_iter(m.param_specs.iter().map(|spec| {
-                            let value = meta_path_slice(m, spec);
-                            (spec.name.clone(), Json::String(value.to_string()))
-                        })),
-                        "query" => serde_json::Map::from_iter(
+            let json = if what == "query" {
+                store
+                    .cached_query(store.local_handle(slot, gen as u64), |m| {
+                        serde_json::to_string(&Json::Object(serde_json::Map::from_iter(
                             m.query
                                 .iter()
                                 .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
-                        ),
-                        "headers" => serde_json::Map::from_iter(
-                            m.headers
-                                .iter()
-                                .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
-                        ),
-                        _ => serde_json::Map::new(),
-                    };
-                    serde_json::to_string(&Json::Object(map)).unwrap_or_else(|_| "{}".into())
-                })
-                .map_err(|_| rquickjs::Exception::throw_message(&ctx, "request handle expired"))?;
+                        )))
+                        .unwrap_or_else(|_| "{}".into())
+                    })
+                    .map_err(|_| {
+                        rquickjs::Exception::throw_message(&ctx, "request handle expired")
+                    })?
+            } else {
+                store
+                    .access(store.local_handle(slot, gen as u64), 1, 16, |m| {
+                        let map = match what.as_str() {
+                            // M24-004-D: values materialize from path byte ranges
+                            // only at this whole-field access
+                            "params" => {
+                                serde_json::Map::from_iter(m.param_specs.iter().map(|spec| {
+                                    let value = meta_path_slice(m, spec);
+                                    (spec.name.clone(), Json::String(value.to_string()))
+                                }))
+                            }
+                            "query" => serde_json::Map::new(),
+                            "headers" => serde_json::Map::from_iter(
+                                m.headers
+                                    .iter()
+                                    .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                            ),
+                            _ => serde_json::Map::new(),
+                        };
+                        serde_json::to_string(&Json::Object(map)).unwrap_or_else(|_| "{}".into())
+                    })
+                    .map_err(|_| {
+                        rquickjs::Exception::throw_message(&ctx, "request handle expired")
+                    })?
+            };
             Ok(json)
         };
         globals.set("__velquReqRaw", Function::new(ctx.clone(), f)?)?;
