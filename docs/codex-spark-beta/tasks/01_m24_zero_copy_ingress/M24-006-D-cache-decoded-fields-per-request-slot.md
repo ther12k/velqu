@@ -4,7 +4,7 @@ parent_task: M24-006
 milestone: M24
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -84,6 +84,19 @@ cargo test -p velqu-runtime
 - Microtask lifetime tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `RequestStore::Slot` owns query/cache state for request lifetime; cache is cleared on settlement before generation reuse.
+- `RequestStore::cached_query` computes query JSON once, charges one materialization, and returns cached value on repeated access.
+- `query_cache_materializes_once_and_expires_with_slot` proves owner-scoped cache reuse and stale-handle rejection.
+- QuickJS `__velquReqRaw(..., "query")` uses slot-local cache; params and headers retain their existing lazy paths.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-engine-quickjs --test engine`: PASS (92 tests).
+- `cargo test -p q-http`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 
