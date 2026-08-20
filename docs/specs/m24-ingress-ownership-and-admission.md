@@ -340,9 +340,102 @@ Rules for bounded copies:
 | C-T6 | `RequestMeta` clone into store is gone; parts move once | M24-003 |
 | C-T7 | Worst-case per-request allocation is documented and asserted in a stress profile | M24-010 |
 
-## 9. Out of scope
+## 9. Overload responses and metrics (M24-001-D)
+
+Overload is an expected admission outcome, not an untyped engine failure. Every
+rejection returns the declared RFC 9457-compatible problem shape and releases
+any resource already acquired. The response must not disclose queue depth,
+worker identity, filesystem paths, or internal exception details.
+
+### 9.1 Response contract
+
+| Condition | Status | Required headers | Problem identity | Body poll? | Permit/slot effect |
+|---|---:|---|---|---:|---|
+| URI exceeds `max_uri_bytes` | 414 | `content-type` | `limit` (`uri`) | no | no permit/slot acquired |
+| Header count/bytes exceeds limit | 431 | `content-type` | `limit` (`headers`) | no | no permit/slot acquired |
+| No matching route | 404 | `content-type` | `not-found` | no | no permit/slot acquired |
+| Method unsupported | 405 | `content-type`, `allow` | `method` | no | no permit/slot acquired |
+| Worker queue has no permit | 503 | `content-type`, `retry-after: 1` | `overload` | no | no permit/slot acquired |
+| Engine quarantined/not ready | 503 | `content-type`, `retry-after: 1` where retryable | `internal` | no application read | no new slot; existing slots settle |
+| Declared body exceeds route limit | 413 | `content-type` | `limit` (`body`) | yes, bounded to `limit+1` | active slot settles once |
+| Body transport/read error | 400 | `content-type` | `body` | yes, once | active slot settles once |
+
+The queue-full response is generated immediately after the non-blocking permit
+attempt and **before the body stream is polled**. `Retry-After: 1` is a fixed,
+conservative retry hint for the current single-worker service; future profiles
+may select a different fixed policy, but it must remain declared and bounded.
+No response may ask a client to retry an invalid request (414/431/404/405/413).
+
+A response generated before slot ownership does not create a slot merely to
+record metrics. A response after slot ownership must use the single settlement
+routine from §5.1. The response body is bounded by the problem serializer's
+fixed fields plus bounded field errors; internal details stay in logs only.
+
+### 9.2 Metric vocabulary
+
+The runtime exposes counters/gauges/histograms with a fixed name and label
+vocabulary. Label values are enums or bounded numeric buckets; request IDs,
+paths, header values, exception text, and arbitrary route names are forbidden
+as metric labels.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `velqu_ingress_admissions_total` | counter | `outcome={accepted,rejected}`, `stage={transport,routing,queue,body,worker}` | one increment for each admission decision |
+| `velqu_ingress_rejections_total` | counter | `reason={uri_limit,header_limit,not_found,method_not_allowed,queue_full,not_ready,body_limit,body_read}`, `stage` | one increment per returned rejection; exactly one reason per request |
+| `velqu_ingress_queue_permits_in_use` | gauge | `worker_bucket={single,worker_0..worker_15}` | permits currently held; must return to zero after drain |
+| `velqu_ingress_queue_saturation_total` | counter | `worker_bucket` | failed non-blocking permit acquisitions |
+| `velqu_ingress_body_bytes_total` | counter | `outcome={accepted,rejected,discarded}` | bounded bytes actually read/discarded, not declared limits |
+| `velqu_ingress_body_reads_total` | counter | `outcome={started,completed,aborted,over_limit,error}` | proves read-once ownership and terminal result |
+| `velqu_ingress_slots_in_use` | gauge | `worker_bucket` | active/reserved slab entries |
+| `velqu_ingress_settlements_total` | counter | `reason={complete,disconnect,timeout,quarantine,shutdown,admission_error}` | exactly one terminal increment per slot |
+| `velqu_ingress_materializations_total` | counter | `field={params,query,headers,body}`, `size_bucket={0,1..64,65..1024,1025..65536,65537+}` | lazy field materialization counts; bounded size bucket only |
+| `velqu_ingress_admission_duration_seconds` | histogram | `stage={transport,routing,queue,body,worker}` | time spent in bounded admission stages |
+
+The `worker_bucket` vocabulary is fixed to `single` for M1/M2 and at most
+`worker_0` through `worker_15` for a future bounded M3 profile. A deployment
+with more workers must aggregate into a configured bounded bucket set; it must
+not create an unbounded label per worker.
+
+Metrics are host-owned and may be sampled/exported asynchronously after the
+request terminal. Export failure never changes the HTTP result and never keeps
+a request slot, body, or permit alive. A metrics snapshot is best-effort; the
+lifecycle counters used for correctness (`slots_in_use`, permits, settlements)
+must be updated before the slot reaches `FREE`.
+
+### 9.3 Backpressure and fairness rules
+
+- Admission uses `try_acquire`, never an unbounded wait in the connection task.
+- Queue capacity, body limits, slab capacity, and exporter buffers are finite
+  configuration values validated before ready.
+- One oversized or slow body cannot hold more than its one permit or extend the
+  header/body deadline; disconnect aborts its read and settles its slot.
+- Metrics and logs are not allowed to allocate a queue-sized batch per request.
+- A queue-full response must be cheap enough to remain available during
+  saturation; it cannot invoke JavaScript or acquire the engine mutex.
+- The response status is stable under overload; metrics may distinguish the
+  bounded reason/stage but must never become part of application behavior.
+
+### 9.4 Overload and metrics test plan
+
+| ID | Required proof | Owning packet |
+|---|---|---|
+| D-T1 | Queue saturation returns 503 + `Retry-After: 1` without polling a body | M24-007, M24-010 |
+| D-T2 | URI/header/body limits return 414/431/413 with the declared problem and no leaked permit | M24-007 |
+| D-T3 | Every rejection increments exactly one bounded reason/stage counter | M24-010 |
+| D-T4 | `permits_in_use` and `slots_in_use` return to zero after completion, disconnect, timeout, and rejection | M24-003-C, M24-010 |
+| D-T5 | Body byte/read counters distinguish accepted, discarded, over-limit, and transport-error paths | M24-007, M24-010 |
+| D-T6 | Metric labels remain within the fixed vocabulary under random paths, headers, and request IDs | M24-010 |
+| D-T7 | Exporter failure does not alter response or retain request resources | M24-010 |
+| D-T8 | Saturated queue still serves native liveness/readiness according to the declared profile | M24-001-V, M24-010 |
+
+This packet is a specification, not evidence that the future metric and
+backpressure tests already pass. Existing `queue_limit_returns_503_when_saturated`,
+`body_and_header_limits_reject_oversize`, and quarantine conformance tests are
+regression coverage; D-T1–D-T8 add the M2.4 ownership/metrics assertions.
+
+## 10. Out of scope
 
 This specification does not implement the worker-local slab, zero-copy field
-views, generated decoders, or overload metrics. Those are M24-001-C/D and
-M24-002 through M24-010. It does not authorize WebSockets, SSE, general Node
-compatibility, M2.5 response-codec work, or M2.6 binary QPack work.
+views, generated decoders, or overload metrics. Those are M24-002 through
+M24-010. It does not authorize WebSockets, SSE, general Node compatibility,
+M2.5 response-codec work, or M2.6 binary QPack work.

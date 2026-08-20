@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -126,3 +126,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: normative overload-response and metrics specification in `docs/specs/m24-ingress-ownership-and-admission.md` §9.
+- Evidence: fixed 414/431/404/405/503/413/400 response matrix; queue-full 503 with `Retry-After: 1` before body poll; bounded metric vocabulary with no request/path/exception labels; permit/slot/settlement accounting; finite backpressure and fairness rules; D-T1–D-T8 overload/metrics test plan.
+- Changed files:
+  - `docs/specs/m24-ingress-ownership-and-admission.md`
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-001-D-define-overload-responses-and-metrics.md`
+  - `docs/codex-spark-beta/STATUS.md`
+  - `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  - `docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md`
+  - `docs/codex-spark-beta/indexes/NEXT_25.md`
+- Verification: `./scripts/validate-okf` PASS; targeted Rust crates all pass; `bun test` 35 pass; `bun run typecheck` clean.
+- Remaining risk: metric counters/exporter and backpressure assertions are implementation work for M24-007/M24-010; this packet changes specification only.
+- Next dependency-ready task: M24-001-V (verify freeze ingress ownership and backpressure design).
