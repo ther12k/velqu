@@ -1798,6 +1798,14 @@ fn call_runner<'js>(
     if let Some(ref val) = spec.body {
         pre.set("body", crate::convert::json_to_js(ctx, val)?)?;
     }
+    // Keep route-plan identity as numeric references; request bytes remain in
+    // the worker-local slab and never enter this per-invocation object.
+    let plan = Object::new(ctx.clone())?;
+    plan.set("paramsSchemaId", spec.params_schema_id.map(|v| v.0))?;
+    plan.set("querySchemaId", spec.query_schema_id.map(|v| v.0))?;
+    plan.set("headersSchemaId", spec.headers_schema_id.map(|v| v.0))?;
+    plan.set("bodySchemaId", spec.body_schema_id.map(|v| v.0))?;
+    pre.set("routePlan", plan)?;
 
     let slot = if spec.slot == q_engine::NO_REQUEST_SLOT {
         -1.0

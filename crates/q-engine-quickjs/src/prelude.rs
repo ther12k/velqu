@@ -79,6 +79,7 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
     let v, used = false;
     Object.defineProperty(c, key, { enumerable: true, get() { if (!used) { v = fn(); used = true; } return v; } });
   };
+  if (pre.routePlan != null) c.routePlan = pre.routePlan;
   if (!requestless) {
     if (pre.params != null) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
     if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
