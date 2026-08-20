@@ -5,6 +5,11 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Keep release artifacts byte-identical across checkout paths. rquickjs-sys
+# compiles QuickJS C sources and otherwise embeds absolute OUT_DIR paths.
+export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$(pwd)=/velqu-src"
+export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src"
+
 overall=0
 step() { printf "\n== %s ==\n" "$1"; }
 fail() { echo "FAIL: $1"; overall=1; }
