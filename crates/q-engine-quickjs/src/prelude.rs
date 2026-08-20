@@ -14,8 +14,16 @@ globalThis.__velquRegister = function (id, fn) {
 // Lazy request handle: fields materialize on first access through the native
 // bridge (slot, generation are validated by the host; expired handles throw).
 // Native accessors return JSON strings; objects are built engine-side.
+// M24-008-A: shared prototypes stabilize hidden classes across requests. The
+// request-specific lazy accessors remain an explicit fallback for fields whose
+// route plan needs dynamic names; stale slot/generation checks stay native.
+const __velquRequestPrototype = Object.create(null);
+const __velquContextPrototype = Object.create(null);
+globalThis.__velquRequestPrototype = __velquRequestPrototype;
+globalThis.__velquContextPrototype = __velquContextPrototype;
+
 globalThis.__velquMakeReq = function (slot, gen) {
-  const req = {};
+  const req = Object.create(__velquRequestPrototype);
   let headers, params, query;
   Object.defineProperty(req, "headers", { enumerable: true, get() { return (headers ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers"))); } });
   Object.defineProperty(req, "params", { enumerable: true, get() { return (params ??= globalThis.__velquMakeLazyParams(slot, gen)); } });
@@ -65,7 +73,7 @@ globalThis.__velquMakeLazyHeaders = function (slot, gen) {
 
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
 globalThis.__velquMakeCtx = function (slot, gen, pre) {
-  const c = {};
+  const c = Object.create(__velquContextPrototype);
   const requestless = slot === -1;
   const lazy = (key, fn) => {
     let v, used = false;

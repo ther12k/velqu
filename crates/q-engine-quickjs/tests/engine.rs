@@ -1202,6 +1202,24 @@ async fn headers_are_declared_only_and_per_key_lazy() {
 }
 
 #[tokio::test]
+async fn shared_context_request_prototypes_are_reused() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut first = spec(4, "lazy.ctx", &[200], 1000);
+    first.slot = handle.slot();
+    first.generation = handle.generation();
+    let _ = run(&mut eng, first).await;
+    let handle2 = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut second = spec(5, "lazy.ctx", &[200], 1000);
+    second.slot = handle2.slot();
+    second.generation = handle2.generation();
+    let _ = run(&mut eng, second).await;
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
 async fn lazy_ctx_touches_nothing() {
     let mut eng = engine();
     load_default(&mut eng).unwrap();
