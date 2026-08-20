@@ -4,7 +4,7 @@ parent_task: M24-010
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -114,6 +114,21 @@ bun run typecheck
 - No multi-worker dispatch.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added committed minimized regression corpus replay at `crates/q-http/tests/regression_corpus.rs`.
+- Corpus includes malformed percent escapes, invalid UTF-8 through percent encoding, plus decoding, empty pairs, and NUL input.
+- `cargo test -p q-http --test regression_corpus`: PASS.
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- No sanitizer run claimed; corpus replay is deterministic and bounded.
+- No benchmark or manifest changes.
 
 ## Out of scope
 
