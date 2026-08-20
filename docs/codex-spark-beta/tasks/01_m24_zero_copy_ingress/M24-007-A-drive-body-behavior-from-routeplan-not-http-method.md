@@ -4,7 +4,7 @@ parent_task: M24-007
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -91,6 +91,20 @@ cargo test -p velqu-runtime
 - Cancellation metrics.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- `crates/q-runtime/src/serve.rs` now gates body content-type checks and `collect_body_bounded` on verified `FieldNeeds.body`, not HTTP method.
+- `routeplan_body_flag_controls_body_collection_independent_of_method` proves a DELETE route with body binding remains body-enabled while field-free routes remain body-disabled.
+- Existing `routing_precedes_body_materialization` proves unmatched routes answer without polling incomplete body streams.
+- Existing `body_and_header_limits_reject_oversize` proves bounded body admission and 413 handling.
+- `cargo test -p q-engine-quickjs --test engine`: PASS.
+- `cargo test -p q-http`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-capabilities`: PASS.
+- `cargo test -p velqu-runtime --test runtime_conformance`: PASS.
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
 
 ## Out of scope
 

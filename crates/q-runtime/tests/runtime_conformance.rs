@@ -1539,6 +1539,27 @@ fn routing_precedes_body_materialization() {
 }
 
 #[test]
+fn routeplan_body_flag_controls_body_collection_independent_of_method() {
+    let mut pack = fixture_pack();
+    let route = pack
+        .routes
+        .iter_mut()
+        .find(|r| r.id == "users.create")
+        .expect("fixture route");
+    route.method = "DELETE".into();
+    finalize_numeric(&mut pack);
+    let plan = pack
+        .routes
+        .iter()
+        .find(|r| r.id == "users.create")
+        .and_then(|r| r.plan.as_ref())
+        .unwrap();
+    assert!(plan.field_needs.body);
+    let no_body = pack.routes.iter().find(|r| r.id == "health.live").unwrap();
+    assert!(!no_body.plan.as_ref().unwrap().field_needs.body);
+}
+
+#[test]
 fn body_and_header_limits_reject_oversize() {
     let dir = temp_dir("limits");
     let pack_path = write_pack(&dir);
