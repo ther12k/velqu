@@ -575,6 +575,29 @@ mod tests {
     }
 
     #[test]
+    fn lifecycle_property_reuses_bounded_slots_without_stale_access() {
+        let store = RequestStore::with_capacity(4);
+        let mut stale = Vec::new();
+        for round in 0..4096u64 {
+            let handle = store.insert(meta(Some(bytes::Bytes::from(vec![round as u8; 8]))));
+            for old in stale.drain(..) {
+                assert!(matches!(
+                    store.access(old, 1, 8, |_| ()),
+                    Err(BridgeError::Expired
+                        | BridgeError::NoSuchSlot
+                        | BridgeError::ForeignWorker)
+                ));
+                store.settle(old);
+            }
+            stale.push(handle);
+            assert_eq!(store.live_slots(), 1);
+            store.settle(handle);
+            assert_eq!(store.live_slots(), 0);
+        }
+        assert_eq!(store.snapshot().live_slots, 0);
+    }
+
+    #[test]
     fn stale_handle_corpus_never_reads_or_leaks() {
         let store = RequestStore::with_capacity(2);
         let handle = store.insert(meta(Some(bytes::Bytes::from(vec![7; 32]))));
