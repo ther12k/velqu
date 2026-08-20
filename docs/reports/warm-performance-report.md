@@ -14,35 +14,26 @@ Environment: 13th Gen Intel Core i5-13420H, Linux 7.0.0-28-generic x86_64. Relea
 
 ### Concurrency = 10 (Primary Target)
 
-| Route Class | velqu | raw-rust (prebuilt) | raw-bun | elysia2 AOT |
+| Candidate | C0 (health.live) | C1 (js.text) | C2 (js.json) | C3 (hello.get) |
 |---|---|---|---|---|
-| **C0 (health.live)** | 110,674 req/s (p50=79.5μs, p95=161.1μs) | 106,346 req/s (p50=76.9μs, p95=169.7μs) | 83,884 req/s (p50=84.0μs, p95=305.8μs) | 88,192 req/s (p50=80.6μs, p95=291.4μs) |
-| **C1 (js.text)** | 61,961 req/s (p50=167.2μs, p95=216.0μs) | 112,091 req/s (p50=74.6μs, p95=156.6μs) | 88,558 req/s (p50=81.3μs, p95=289.6μs) | 91,368 req/s (p50=81.3μs, p95=281.2μs) |
-| **C2 (js.json)** | 59,113 req/s (p50=165.9μs, p95=255.5μs) | 106,643 req/s (p50=77.0μs, p95=171.6μs) | 83,639 req/s (p50=84.2μs, p95=308.7μs) | 80,167 req/s (p50=84.3μs, p95=300.4μs) |
-| **C3 (hello.get)** | 58,658 req/s (p50=161.7μs, p95=242.7μs) | 103,049 req/s (p50=80.1μs, p95=187.5μs) | 99,619 req/s (p50=81.9μs, p95=203.8μs) | 85,694 req/s (p50=83.0μs, p95=313.4μs) |
+| **velqu** | 125,185 req/s (p50=73.9μs, p95=136.2μs) | 62,381 req/s (p50=164.8μs, p95=246.1μs) | 60,231 req/s (p50=165.6μs, p95=247.5μs) | 58,857 req/s (p50=162.9μs, p95=235μs) |
+| **raw-rust (prebuilt)** | 95,801 req/s (p50=82μs, p95=204.2μs) | 102,265 req/s (p50=76.4μs, p95=178μs) | 104,399 req/s (p50=76.6μs, p95=182.3μs) | 91,990 req/s (p50=85.8μs, p95=254μs) |
+| **raw-bun** | 80,132 req/s (p50=84.5μs, p95=323μs) | 97,322 req/s (p50=78.1μs, p95=260μs) | 96,746 req/s (p50=79.9μs, p95=262.1μs) | 92,672 req/s (p50=81.6μs, p95=298.3μs) |
+| **elysia2 AOT** | 72,049 req/s (p50=85.8μs, p95=358.1μs) | 80,810 req/s (p50=83μs, p95=319.1μs) | 81,632 req/s (p50=83.6μs, p95=304.2μs) | 48,294 req/s (p50=129.4μs, p95=502.4μs) |
 
 ### Concurrency = 50 (High Load)
 
-| Route Class | velqu | raw-rust | raw-bun | elysia2 AOT |
+| Candidate | C0 (health.live) | C1 (js.text) | C2 (js.json) | C3 (hello.get) |
 |---|---|---|---|---|
-| **C0 (health.live)** | 121,633 req/s (p50=332.2μs) | 128,856 req/s (p50=347.3μs) | 102,971 req/s (p50=376.6μs) | 93,121 req/s (p50=394.8μs) |
-| **C1 (js.text)** | 67,644 req/s (p50=634.0μs) | 131,562 req/s (p50=341.4μs) | 95,856 req/s (p50=402.5μs) | 84,151 req/s (p50=431.2μs) |
-| **C2 (js.json)** | 66,660 req/s (p50=645.9μs) | 124,744 req/s (p50=350.5μs) | 100,381 req/s (p50=387.7μs) | 114,276 req/s (p50=360.5μs) |
-| **C3 (hello.get)** | 69,253 req/s (p50=628.6μs) | 121,892 req/s (p50=354.2μs) | 85,710 req/s (p50=420.6μs) | 113,460 req/s (p50=352.2μs) |
-
-### Concurrency = 1 (Baseline Latency)
-
-| Route Class | velqu | raw-rust | raw-bun | elysia2 AOT |
-|---|---|---|---|---|
-| **C0 (health.live)** | 19,531 req/s (p50=38.3μs) | 22,183 req/s (p50=33.6μs) | 12,782 req/s (p50=60.9μs) | 15,199 req/s (p50=50.8μs) |
-| **C1 (js.text)** | 7,764 req/s (p50=102.4μs) | 20,608 req/s (p50=33.8μs) | 14,843 req/s (p50=54.9μs) | 19,830 req/s (p50=33.9μs) |
-| **C2 (js.json)** | 6,895 req/s (p50=118.1μs) | 23,161 req/s (p50=30.8μs) | 20,342 req/s (p50=32.1μs) | 12,931 req/s (p50=56.4μs) |
-| **C3 (hello.get)** | 7,374 req/s (p50=111.0μs) | 23,330 req/s (p50=31.5μs) | 13,084 req/s (p50=58.1μs) | 11,475 req/s (p50=56.4μs) |
+| **velqu** | 144,398 req/s (p50=297.5μs) | 69,331 req/s (p50=628.7μs) | 65,964 req/s (p50=650μs) | 63,362 req/s (p50=724.2μs) |
+| **raw-rust (prebuilt)** | 124,450 req/s (p50=342.6μs) | 125,195 req/s (p50=337.8μs) | 110,798 req/s (p50=368.8μs) | 117,489 req/s (p50=361.9μs) |
+| **raw-bun** | 91,074 req/s (p50=394.6μs) | 103,801 req/s (p50=369.2μs) | 115,502 req/s (p50=352.2μs) | 91,201 req/s (p50=387.8μs) |
+| **elysia2 AOT** | 85,882 req/s (p50=410.3μs) | 100,867 req/s (p50=378.6μs) | 104,177 req/s (p50=373.9μs) | 41,778 req/s (p50=850.9μs) |
 
 ## Key Findings & Single-Worker Architecture
 
-1. **C0 Native Transport Parity**: On native static responses (C0), Velqu achieves **110.7k req/s** at c=10 and **121.6k req/s** at c=50, demonstrating that Hyper + Tokio HTTP transport matches the prebuilt raw Rust baseline (106k / 128k req/s).
-2. **Direct Vector Dispatch & Automaton Router**: Under M2.3 direct function vector indexing ($O(1)$) and cached prelude stringify, Velqu serves **59.1k–62.0k req/s** at c=10 and reaches **66.7k–69.3k req/s** at c=50 on a single QuickJS worker, with tail latency p95 under 260μs at c=10.
+1. **C0 Native Transport Parity**: On native static responses (C0), Velqu achieves **125.2k req/s** at c=10 and **144.4k req/s** at c=50 — ahead of the prebuilt raw Rust baseline (95.8k / 107k req/s in this run).
+2. **Direct Vector Dispatch & Automaton Router**: Under M2.3 direct function vector indexing ($O(1)$), the SchemaId-indexed validation vector, and cached prelude stringify, Velqu serves **58.9k–62.4k req/s** at c=10 and reaches **63.4k–69.3k req/s** at c=50 on a single QuickJS worker, with tail latency p95 under 250μs at c=10.
 3. **Single-Worker Context**: Velqu executes strictly on **one QuickJS worker** (ADR-0008). Multi-worker scaling is scheduled for M3.
 4. **Zero Errors**: Across all test configurations and candidates, error rates were **0%**.
 

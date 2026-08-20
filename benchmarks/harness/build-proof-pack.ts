@@ -349,10 +349,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
   }
 
   const packRoutes = routes.map((r, i) => routeEntry(r, r.id.split(".")[0], i, schemaKeyToId));
+  // Numeric current packs carry no legacy handler table (M23R2 gate rule)
   const handlerTable: Record<string, string> = {};
-  for (const r of routes) handlerTable[r.handler] = r.handler;
-  // policy handlers register too
-  if (routes.some((r) => r.policy === "auth.session")) handlerTable["auth.session"] = "auth.session";
 
   const functions = [
     ...routes.map((r, i) => ({
@@ -378,6 +376,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
       : {},
     capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
     functions,
+    schemaManifest,
+    router,
   });
 
   const publicRoutes = packRoutes.map((r) => ({

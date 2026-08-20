@@ -21,3 +21,8 @@ packages/*/dist/
 *.tsbuildinfo
 *.zip
 *.zip.sha256
+
+# Release packets are generated post-commit, never tracked
+release/
+history/
+*.bundle

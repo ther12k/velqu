@@ -1,0 +1,29 @@
+{
+  "format": "velqu-evidence-index-v1",
+  "generatedAt": "2026-08-20T02:21:20.333795Z",
+  "commit": "e2b379d775a79e619753aaf39eb9ea5f8a763f15",
+  "verification": {
+    "command": "./scripts/verify",
+    "result": "ALL PASS (M0\u2013M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)",
+    "rustTests": 154,
+    "typescriptTests": 35
+  },
+  "benchmarks": {
+    "coldStart": "benchmarks/raw/cold-start/summary.json",
+    "routeCount": "benchmarks/raw/route-count/summary.json",
+    "warm": "benchmarks/raw/warm/summary.json",
+    "environment": "13th Gen Intel Core i5-13420H, Linux 7.0.0-28-generic x86_64, Bun 1.3.4, rustc 1.96.0, quickjs-ng 0.15.1 via rquickjs 0.12.2",
+    "protocol": "clean isolated single pass; 0 errors all cells"
+  },
+  "reports": [
+    "docs/reports/cold-start-report.md",
+    "docs/reports/warm-performance-report.md",
+    "docs/reports/memory-report.md",
+    "docs/reports/scheduler-correctness-report.md"
+  ],
+  "taskLedger": {
+    "file": "TASKS.production.json",
+    "validator": "scripts/validate-production-plan",
+    "result": "120 tasks, 0 missing dependencies, 0 cycles"
+  }
+}

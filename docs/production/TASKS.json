@@ -155,7 +155,20 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "SOURCE-COMMIT.txt",
+          "history/"
+        ],
+        "tests": [],
+        "rawEvidence": [
+          "history/velqu-m2.3-r3-e2b379d.bundle"
+        ],
+        "report": "docs/production/BASELINE_AND_SCOPE.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "BASE-002",
@@ -180,7 +193,19 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "docs/okf/decisions/0019-production-readiness-program.md"
+        ],
+        "tests": [],
+        "rawEvidence": [
+          "docs/okf/decisions/index.md"
+        ],
+        "report": "docs/production/ROADMAP.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "BASE-003",
@@ -204,7 +229,19 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "docs/okf/MASTER_PRODUCTION_AGENT_PROMPT.md"
+        ],
+        "tests": [],
+        "rawEvidence": [
+          "scripts/validate-production-plan"
+        ],
+        "report": "AGENTS.production-addendum.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "BASE-004",
@@ -229,7 +266,22 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "TASKS.production.json",
+          "docs/production/TASKS.schema.json"
+        ],
+        "tests": [
+          "scripts/validate-production-plan (120 tasks, 0 errors)"
+        ],
+        "rawEvidence": [
+          "scripts/validate-production-plan"
+        ],
+        "report": "docs/production/TASKS.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "BASE-005",
@@ -254,7 +306,21 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "scripts/verify"
+        ],
+        "tests": [
+          "./scripts/verify ALL PASS"
+        ],
+        "rawEvidence": [
+          "scripts/verify"
+        ],
+        "report": "docs/okf/engineering/production-readiness-gates.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "BASE-GATE",
@@ -304,7 +370,25 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-engine/src/lib.rs",
+          "crates/q-engine-quickjs/src/worker.rs",
+          "crates/q-runtime/src/main.rs"
+        ],
+        "tests": [
+          "load_verifies_handler_table_and_caches",
+          "numeric_pack_without_semantic_manifest_is_rejected",
+          "missing_manifest_with_swapped_functions_is_rejected"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/cold-start/summary.json"
+        ],
+        "report": "docs/reports/cold-start-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-002",
@@ -329,7 +413,28 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-engine-quickjs/src/worker.rs",
+          "packages/compiler/src/emit.ts",
+          "benchmarks/harness/build-proof-pack.ts"
+        ],
+        "tests": [
+          "swapped_function_vector_entries_are_rejected",
+          "route_function_in_policy_slot_is_rejected",
+          "policy_function_in_route_slot_is_rejected",
+          "function_vector_hole_rejected_during_load",
+          "function_vector_non_function_rejected_during_load",
+          "function_vector_length_mismatch_rejected"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/cold-start/summary.json"
+        ],
+        "report": "docs/reports/cold-start-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-003",
@@ -354,7 +459,26 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-pack/src/lib.rs"
+        ],
+        "tests": [
+          "rejects_unmapped_response_status",
+          "rejects_undeclared_default_status",
+          "rejects_mismatched_field_needs",
+          "rejects_mismatched_deadline",
+          "rejects_schema_id_mismatch",
+          "schema_manifest_ir_mismatch_rejected"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/packs/app-25.qpack"
+        ],
+        "report": null,
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-004",
@@ -379,7 +503,25 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-engine/src/lib.rs",
+          "crates/q-router/src/lib.rs",
+          "crates/q-runtime/src/serve.rs"
+        ],
+        "tests": [
+          "numeric_handler_dispatch_calls_exact_declared_function",
+          "numeric_policy_dispatch_enforces_401_and_200",
+          "numeric_out_of_range_handler_id_fails_closed"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/warm/summary.json"
+        ],
+        "report": "docs/reports/warm-performance-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-005",
@@ -403,7 +545,22 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-pack/src/lib.rs",
+          "packages/compiler/src/emit.ts"
+        ],
+        "tests": [
+          "rejects_mismatched_field_needs"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/packs/app-25.qpack"
+        ],
+        "report": null,
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-006",
@@ -428,7 +585,26 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-pack/src/lib.rs",
+          "packages/compiler/src/emit.ts",
+          "benchmarks/harness/build-proof-pack.ts"
+        ],
+        "tests": [
+          "router_terminal_target_tamper_breaks_execution_hash",
+          "schema_manifest_tamper_breaks_execution_hash",
+          "public_contract_hash_is_stable_when_function_ids_are_reordered",
+          "rejects_tampered_routes"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/packs/app-25.qpack"
+        ],
+        "report": null,
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-007",
@@ -454,7 +630,27 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-router/src/lib.rs",
+          "packages/compiler/src/emit.ts",
+          "crates/q-runtime/src/main.rs"
+        ],
+        "tests": [
+          "static_route_for_other_method_does_not_shadow_parameter_route",
+          "static_route_for_other_method_does_not_shadow_wildcard_route",
+          "parameter_route_for_other_method_does_not_shadow_wildcard_route",
+          "same_shape_different_methods_preserve_route_specific_parameter_names",
+          "compiled_and_reference_routers_are_property_equivalent"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/route-count/summary.json"
+        ],
+        "report": "docs/reports/cold-start-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-008",
@@ -479,7 +675,23 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-runtime/src/serve.rs",
+          "packages/compiler/src/emit.ts",
+          "crates/q-engine/src/lib.rs"
+        ],
+        "tests": [
+          "numeric_handler_dispatch_calls_exact_declared_function"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/warm/summary.json"
+        ],
+        "report": "docs/reports/warm-performance-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-009",
@@ -504,7 +716,23 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "crates/q-engine-quickjs/src/worker.rs"
+        ],
+        "tests": [
+          "repeated_timeouts_do_not_grow_settlement_table",
+          "interrupted_watched_chain_retention_is_zero",
+          "expired_settled_promise_clears_table_and_floating_ops"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/warm/summary.json"
+        ],
+        "report": "docs/reports/scheduler-correctness-report.md",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M23R2-GATE",
@@ -531,7 +759,24 @@
       ],
       "files_hint": [],
       "owner": "implementation-agent",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": {
+        "commit": "PENDING-IMPLEMENTATION-COMMIT",
+        "source": [
+          "REVIEW_INDEX.json"
+        ],
+        "tests": [
+          "cargo test --workspace (all)",
+          "bun test (35)"
+        ],
+        "rawEvidence": [
+          "benchmarks/raw/route-count/summary.json",
+          "benchmarks/raw/warm/summary.json",
+          "benchmarks/raw/cold-start/summary.json"
+        ],
+        "report": "REVIEW_INDEX.json",
+        "reviewFinding": "M2.3-r3 external review; gate-closure items addressed in M23R2-GATE-CLOSE revision"
+      }
     },
     {
       "id": "M24-001",

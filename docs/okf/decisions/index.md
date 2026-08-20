@@ -20,4 +20,5 @@ These records convert the reviewed design into explicit proposed decisions. They
 16. [ADR-0016 — Product Naming: Velqu / VelquJS](0016-naming-velqu.md) (owner decision)
 17. [ADR-0017 — QuickJS Bytecode Embedding and Evaluation](0017-bytecode-embedding.md) (accepted during implementation; implements ADR-0014; measured evidence)
 18. [ADR-0018 — Post-M2 Architecture Roadmap and Host Pipeline Optimization](0018-post-m2-architecture-and-roadmap.md) (accepted; authorizes M2.2.1–M2.8, M3, M4)
-19. [ADR-0019 — Production-Readiness Program and Release Roadmap](0019-production-readiness-program.md) (accepted; authorizes BASE through M8 GA)
+19. [ADR-0019 — Production-Readiness Program and Release Roadmap](0019-production-readiness-program.md) (accepted; post-beta GA track)
+20. [ADR-0020 — Beta-Readiness Program (0.1.0-beta.1)](0020-beta-readiness-program.md) (accepted; supersedes GA-first framing; authoritative forward roadmap under `docs/beta/`)

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Build a self-verifying release packet from the CURRENT commit.
+# Artifacts land in release/ (untracked). sha256sum -c SHA256SUMS.txt
+# must pass from inside release/ — the manifest lists only shipped files.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+COMMIT=$(git rev-parse HEAD)
+SHORT=$(git rev-parse --short "$COMMIT")
+OUT=release
+rm -rf "$OUT" && mkdir -p "$OUT"
+
+echo "$COMMIT" > "$OUT/SOURCE-COMMIT.txt"
+git bundle create "$OUT/velqu-${SHORT}.bundle" HEAD master
+git archive --format=zip --prefix="velqu-${SHORT}/" -o "$OUT/source-${SHORT}.zip" HEAD
+
+cp REVIEW_INDEX.json "$OUT/REVIEW_INDEX.json"
+cp EVIDENCE_INDEX.json "$OUT/EVIDENCE_INDEX.json"
+
+(
+  cd "$OUT"
+  : > SHA256SUMS.txt
+  for f in SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" REVIEW_INDEX.json EVIDENCE_INDEX.json; do
+    sha256sum "$f" >> SHA256SUMS.txt
+  done
+)
+
+echo "release packet: commit ${SHORT}"
+(cd "$OUT" && sha256sum -c SHA256SUMS.txt)

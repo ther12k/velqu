@@ -214,9 +214,17 @@ fn run(args: Args) -> i32 {
         println!("{startup_line}");
 
         let health = engine.health();
+        // Dense schema vector indexed by SchemaId (verification guarantees the
+        // manifest is dense and complete whenever the pack carries schemas)
+        let schema_vector: Vec<q_schema_runtime::SchemaIr> = pack
+            .schema_manifest
+            .iter()
+            .map(|s| s.ir.clone())
+            .collect();
         let state = Arc::new(serve::ServeState {
             pack: Arc::new(pack),
             router,
+            schema_vector,
             engine: std::sync::Mutex::new(engine),
             health,
             store,

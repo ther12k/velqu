@@ -225,7 +225,7 @@ pub struct SerializedStaticEdge {
     pub target_node: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SerializedTerminal {
     pub method_mask: u16,
@@ -436,7 +436,16 @@ impl QPack {
         }
         let routes_hash = self.routes_canonical_sha256();
         if routes_hash != self.integrity.routes_sha256 {
-            return reject("integrity failure: routes/schemas/policies sha256 mismatch".into());
+            return reject("integrity failure: execution graph sha256 mismatch".into());
+        }
+        if !self.contract_hash.is_empty() {
+            let expected_contract_hash = &self.public_contract_sha256()[..32];
+            if self.contract_hash != expected_contract_hash {
+                return reject(format!(
+                    "contract hash mismatch: pack declares {}, calculated {}",
+                    self.contract_hash, expected_contract_hash
+                ));
+            }
         }
         if self.integrity.algorithm != "sha256" {
             return reject(format!(
@@ -444,7 +453,7 @@ impl QPack {
                 self.integrity.algorithm
             ));
         }
-        // function manifest validation (M2.3 numeric mode)
+        // function manifest validation (M2.3 numeric mode) + current-pack artifact rules
         if !self.functions.is_empty() {
             let mut seen_keys = std::collections::BTreeSet::new();
             for (idx, fn_decl) in self.functions.iter().enumerate() {
@@ -457,11 +466,29 @@ impl QPack {
                 if !seen_keys.insert(&fn_decl.key) {
                     return reject(format!("duplicate function key {}", fn_decl.key));
                 }
-                if !self.handler_table.is_empty() && !self.handler_table.contains_key(&fn_decl.key)
-                {
+            }
+            // Numeric current packs: no legacy handler table, no implicit map fallback
+            if !self.handler_table.is_empty() {
+                return reject(
+                    "numeric pack must not carry handlerTable (legacy dispatch metadata)".into(),
+                );
+            }
+            // Numeric current packs require the compiler-emitted router automaton
+            if self.router.is_none() {
+                return reject(
+                    "numeric pack requires the compiled router automaton (pack.router)".into(),
+                );
+            }
+            // Whenever schemas exist, the numeric schema manifest must cover them completely
+            if !self.schemas.is_empty() {
+                let manifest_keys: std::collections::BTreeSet<&String> =
+                    self.schema_manifest.iter().map(|s| &s.key).collect();
+                let schema_keys: std::collections::BTreeSet<&String> =
+                    self.schemas.keys().collect();
+                if manifest_keys != schema_keys {
                     return reject(format!(
-                        "function manifest key {} not found in handler table",
-                        fn_decl.key
+                        "numeric schema manifest must cover every schema (manifest {:?} vs schemas {:?})",
+                        manifest_keys, schema_keys
                     ));
                 }
             }
@@ -822,8 +849,8 @@ impl QPack {
         Ok(())
     }
 
-    /// Canonical JSON over the route/schema/policy graph (sorted keys via BTreeMap;
-    /// routes keep their deterministic declaration order).
+    /// Canonical JSON over the execution graph (routes with plans, schemas, policies,
+    /// capabilities, function manifest, schema manifest, serialized router).
     pub fn routes_canonical_json(&self) -> String {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -833,6 +860,8 @@ impl QPack {
             policies: &'a BTreeMap<String, PolicyEntry>,
             capabilities: &'a [String],
             functions: &'a [FunctionDecl],
+            schema_manifest: &'a [SchemaDecl],
+            router: &'a Option<SerializedRouter>,
         }
         let c = Canonical {
             routes: &self.routes,
@@ -840,6 +869,8 @@ impl QPack {
             policies: &self.policies,
             capabilities: &self.capabilities,
             functions: &self.functions,
+            schema_manifest: &self.schema_manifest,
+            router: &self.router,
         };
         serde_json::to_string(&c).expect("canonical serialization cannot fail")
     }
@@ -856,6 +887,8 @@ impl QPack {
             policies: &'a BTreeMap<String, PolicyEntry>,
             capabilities: &'a [String],
             functions: &'a [FunctionDecl],
+            schema_manifest: &'a [SchemaDecl],
+            router: &'a Option<SerializedRouter>,
         }
         let c = Canonical {
             routes: &self.routes,
@@ -863,6 +896,8 @@ impl QPack {
             policies: &self.policies,
             capabilities: &self.capabilities,
             functions: &self.functions,
+            schema_manifest: &self.schema_manifest,
+            router: &self.router,
         };
         let mut hasher = Sha256::new();
         serde_json::to_writer(&mut hasher, &c).expect("canonical serialization cannot fail");
@@ -1162,7 +1197,7 @@ mod tests {
         let mut p = minimal_pack();
         p.routes[0].path = "/tampered".into();
         assert!(
-            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("routes/schemas/policies sha256 mismatch"))
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("execution graph sha256 mismatch"))
         );
     }
 
@@ -1250,14 +1285,49 @@ mod tests {
             .expect("policy with resolvable handler must verify");
     }
 
-    #[test]
-    fn accepts_valid_numeric_pack() {
+    /// Convert minimal_pack into a structurally valid NUMERIC pack:
+    /// dense function manifest, empty handler table, compiled router present,
+    /// and a matching single-route plan. Tests then mutate one field at a time.
+    fn numeric_pack() -> QPack {
         let mut p = minimal_pack();
         p.functions = vec![FunctionDecl {
             id: 0,
             key: "health.live".into(),
             kind: FunctionKind::RouteHandler,
         }];
+        p.handler_table.clear();
+        p.router = Some(SerializedRouter {
+            nodes: vec![SerializedRouterNode {
+                static_edges: vec![SerializedStaticEdge {
+                    segment: "health".into(),
+                    target_node: 1,
+                }],
+                param_edge: None,
+                wildcard_edge: None,
+                terminal: None,
+            }],
+        });
+        // node 1: "live" edge; node 2: GET terminal pointing at route 0
+        if let Some(ref mut r) = p.router {
+            r.nodes.push(SerializedRouterNode {
+                static_edges: vec![SerializedStaticEdge {
+                    segment: "live".into(),
+                    target_node: 2,
+                }],
+                param_edge: None,
+                wildcard_edge: None,
+                terminal: None,
+            });
+            r.nodes.push(SerializedRouterNode {
+                static_edges: vec![],
+                param_edge: None,
+                wildcard_edge: None,
+                terminal: Some(SerializedTerminal {
+                    method_mask: 1, // GET
+                    route_by_method: [Some(0), None, None, None, None, None, None],
+                }),
+            });
+        }
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
             handler_id: 0,
@@ -1274,32 +1344,60 @@ mod tests {
             deadline_ms: 5000,
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
-        p.verify().expect("valid numeric pack must verify");
+        p
+    }
+
+    #[test]
+    fn accepts_valid_numeric_pack() {
+        numeric_pack()
+            .verify()
+            .expect("valid numeric pack must verify");
+    }
+
+    #[test]
+    fn numeric_pack_with_handler_table_is_rejected() {
+        let mut p = numeric_pack();
+        p.handler_table
+            .insert("health.live".into(), "health.live".into());
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("must not carry handlerTable")));
+    }
+
+    #[test]
+    fn numeric_pack_without_compiled_router_is_rejected() {
+        let mut p = numeric_pack();
+        p.router = None;
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("requires the compiled router automaton"))
+        );
+    }
+
+    #[test]
+    fn numeric_pack_with_incomplete_schema_manifest_is_rejected() {
+        let mut p = numeric_pack();
+        p.schemas.insert(
+            "sch:health.query".into(),
+            q_schema_runtime::SchemaIr::Object {
+                properties: BTreeMap::new(),
+                required: vec![],
+            },
+        );
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("must cover every schema")));
     }
 
     #[test]
     fn rejects_non_dense_function_manifest() {
-        let mut p = minimal_pack();
+        let mut p = numeric_pack();
         p.functions = vec![FunctionDecl {
             id: 1, // should be 0
             key: "health.live".into(),
             kind: FunctionKind::RouteHandler,
         }];
-        p.routes[0].plan = Some(RoutePlanDecl {
-            route_id: 0,
-            handler_id: 0,
-            policy_id: None,
-            policy_handler_id: None,
-            params_schema_id: None,
-            query_schema_id: None,
-            headers_schema_id: None,
-            body_schema_id: None,
-            default_status: 200,
-            allowed_statuses: vec![200],
-            field_needs: FieldNeeds::default(),
-            response_strategy: Strategy::Js,
-            deadline_ms: 5000,
-        });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(matches!(err, PackError::Rejected(m) if m.contains("must be dense 0..N")));
@@ -1307,12 +1405,7 @@ mod tests {
 
     #[test]
     fn rejects_out_of_range_handler_id() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
             handler_id: 5, // out of range
@@ -1335,7 +1428,7 @@ mod tests {
 
     #[test]
     fn rejects_mismatched_handler_id() {
-        let mut p = minimal_pack();
+        let mut p = numeric_pack();
         p.functions = vec![
             FunctionDecl {
                 id: 0,
@@ -1348,23 +1441,11 @@ mod tests {
                 kind: FunctionKind::RouteHandler,
             },
         ];
-        p.handler_table
-            .insert("other.handler".into(), "other.handler".into());
-        p.routes[0].plan = Some(RoutePlanDecl {
-            route_id: 0,
-            handler_id: 0, // points to other.handler, while route.handler is health.live
-            policy_id: None,
-            policy_handler_id: None,
-            params_schema_id: None,
-            query_schema_id: None,
-            headers_schema_id: None,
-            body_schema_id: None,
-            default_status: 200,
-            allowed_statuses: vec![200],
-            field_needs: FieldNeeds::default(),
-            response_strategy: Strategy::Js,
-            deadline_ms: 5000,
-        });
+        // plan.handler_id 0 still points at functions[0] = other.handler,
+        // while route.handler is health.live
+        if let Some(ref mut plan) = p.routes[0].plan {
+            plan.handler_id = 0;
+        }
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(
@@ -1374,27 +1455,8 @@ mod tests {
 
     #[test]
     fn rejects_wrong_function_kind() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::PolicyHandler, // wrong kind for route handler!
-        }];
-        p.routes[0].plan = Some(RoutePlanDecl {
-            route_id: 0,
-            handler_id: 0,
-            policy_id: None,
-            policy_handler_id: None,
-            params_schema_id: None,
-            query_schema_id: None,
-            headers_schema_id: None,
-            body_schema_id: None,
-            default_status: 200,
-            allowed_statuses: vec![200],
-            field_needs: FieldNeeds::default(),
-            response_strategy: Strategy::Js,
-            deadline_ms: 5000,
-        });
+        let mut p = numeric_pack();
+        p.functions[0].kind = FunctionKind::PolicyHandler; // wrong kind for route handler
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().unwrap_err();
         assert!(matches!(err, PackError::Rejected(m) if m.contains("non-route function kind")));
@@ -1402,12 +1464,7 @@ mod tests {
 
     #[test]
     fn rejects_undeclared_default_status() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
             handler_id: 0,
@@ -1432,12 +1489,7 @@ mod tests {
 
     #[test]
     fn rejects_unmapped_response_status() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         // Route only declares 200, but plan specifies [200, 418]
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
@@ -1463,12 +1515,7 @@ mod tests {
 
     #[test]
     fn rejects_mismatched_field_needs() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         // Route has no query binding, but plan claims query: true
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
@@ -1497,12 +1544,7 @@ mod tests {
 
     #[test]
     fn rejects_mismatched_deadline() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         p.routes[0].deadline_ms = 5000;
         p.routes[0].plan = Some(RoutePlanDecl {
             route_id: 0,
@@ -1526,12 +1568,7 @@ mod tests {
 
     #[test]
     fn rejects_schema_id_mismatch() {
-        let mut p = minimal_pack();
-        p.functions = vec![FunctionDecl {
-            id: 0,
-            key: "health.live".into(),
-            kind: FunctionKind::RouteHandler,
-        }];
+        let mut p = numeric_pack();
         p.schemas.insert(
             "sch:health.query".into(),
             q_schema_runtime::SchemaIr::Object {
@@ -1611,5 +1648,83 @@ mod tests {
         assert_eq!(p1.public_contract_sha256(), p2.public_contract_sha256());
         // Execution graph hash DOES change because internal layout changed
         assert_ne!(p1.routes_canonical_sha256(), p2.routes_canonical_sha256());
+    }
+
+    #[test]
+    fn router_terminal_target_tamper_breaks_execution_hash() {
+        let mut p = minimal_pack();
+        p.router = Some(SerializedRouter {
+            nodes: vec![SerializedRouterNode {
+                static_edges: vec![],
+                param_edge: None,
+                wildcard_edge: None,
+                terminal: Some(SerializedTerminal {
+                    method_mask: 1,
+                    route_by_method: [Some(0), None, None, None, None, None, None],
+                }),
+            }],
+        });
+        let h1 = p.routes_canonical_sha256();
+        p.router.as_mut().unwrap().nodes[0]
+            .terminal
+            .as_mut()
+            .unwrap()
+            .route_by_method[0] = Some(1);
+        let h2 = p.routes_canonical_sha256();
+        assert_ne!(
+            h1, h2,
+            "tampering with router terminal target MUST change execution hash"
+        );
+    }
+
+    #[test]
+    fn schema_manifest_tamper_breaks_execution_hash() {
+        let mut p = minimal_pack();
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:test".into(),
+            ir: q_schema_runtime::SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+        }];
+        let h1 = p.routes_canonical_sha256();
+        p.schema_manifest[0].key = "sch:tampered".into();
+        let h2 = p.routes_canonical_sha256();
+        assert_ne!(
+            h1, h2,
+            "tampering with schema manifest MUST change execution hash"
+        );
+    }
+
+    #[test]
+    fn schema_manifest_ir_mismatch_rejected() {
+        let mut p = minimal_pack();
+        p.schemas.insert(
+            "sch:test".into(),
+            q_schema_runtime::SchemaIr::String {
+                min_length: Some(5),
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+        );
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:test".into(),
+            ir: q_schema_runtime::SchemaIr::String {
+                min_length: Some(10), // mismatch with pack.schemas
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+        }];
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("IR does not match declared schema IR"))
+        );
     }
 }

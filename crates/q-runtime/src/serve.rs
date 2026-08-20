@@ -42,6 +42,9 @@ impl LogMode {
 pub struct ServeState {
     pub pack: Arc<q_pack::QPack>,
     pub router: q_router::Router,
+    /// Dense schema vector indexed by SchemaId (from the pack's schema manifest);
+    /// request admission validates through this vector — zero string lookups.
+    pub schema_vector: Vec<q_schema_runtime::SchemaIr>,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
     pub store: Arc<q_bridge::RequestStore>,
@@ -198,43 +201,47 @@ async fn pipeline(
                 return (Ok(resp), route_id, "quarantined");
             }
 
-            // ---- native input validation (params/query)
+            // M23R2: resolve the CompiledRoute once — every subsequent step
+            // (validation, invocation, response) reads numeric IDs from it
+            let compiled = state
+                .router
+                .compiled_route(route_index)
+                .expect("matched route must exist in router");
+
+            // ---- native input validation (params/query) — SchemaId indexed,
+            // zero string-map lookups on the request path (M23R2-004)
             let mut params_value: Option<Value> = None;
-            if let Some(binding) = &route.params {
-                if let Some(key) = &binding.schema {
-                    let ir = &state.pack.schemas[key];
-                    match validate_params(ir, &params) {
-                        Ok(v) => params_value = Some(v),
-                        Err(errors) => {
-                            let body = problems::body(
-                                "validation",
-                                None,
-                                Some("path parameter validation failed"),
-                                &field_errors(&errors),
-                                &ctx.request_id,
-                            );
-                            return (Ok(json_response(422, &body)), route_id, "validation.params");
-                        }
+            if let Some(sid) = compiled.params_schema_id {
+                let ir = &state.schema_vector[sid.0 as usize];
+                match validate_params(ir, &params) {
+                    Ok(v) => params_value = Some(v),
+                    Err(errors) => {
+                        let body = problems::body(
+                            "validation",
+                            None,
+                            Some("path parameter validation failed"),
+                            &field_errors(&errors),
+                            &ctx.request_id,
+                        );
+                        return (Ok(json_response(422, &body)), route_id, "validation.params");
                     }
                 }
             }
 
             let mut query_value: Option<Value> = None;
-            if let Some(binding) = &route.query {
-                if let Some(key) = &binding.schema {
-                    let ir = &state.pack.schemas[key];
-                    match validate_query(ir, &ctx.query) {
-                        Ok(v) => query_value = Some(v),
-                        Err(errors) => {
-                            let body = problems::body(
-                                "validation",
-                                None,
-                                Some("query validation failed"),
-                                &field_errors(&errors),
-                                &ctx.request_id,
-                            );
-                            return (Ok(json_response(422, &body)), route_id, "validation.query");
-                        }
+            if let Some(sid) = compiled.query_schema_id {
+                let ir = &state.schema_vector[sid.0 as usize];
+                match validate_query(ir, &ctx.query) {
+                    Ok(v) => query_value = Some(v),
+                    Err(errors) => {
+                        let body = problems::body(
+                            "validation",
+                            None,
+                            Some("query validation failed"),
+                            &field_errors(&errors),
+                            &ctx.request_id,
+                        );
+                        return (Ok(json_response(422, &body)), route_id, "validation.query");
                     }
                 }
             }
@@ -279,8 +286,8 @@ async fn pipeline(
                         return (Ok(json_response(422, &body)), route_id, "validation.body");
                     }
                 };
-                if let Some(key) = &binding.schema {
-                    let ir = &state.pack.schemas[key];
+                if let Some(sid) = compiled.body_schema_id {
+                    let ir = &state.schema_vector[sid.0 as usize];
                     match q_schema_runtime::validate(ir, &parsed, Source::Body) {
                         Ok(v) => body_value = Some(v),
                         Err(errors) => {
@@ -312,12 +319,6 @@ async fn pipeline(
                     .map(|(_, v)| v.clone()),
                 body: ctx.body.clone(),
             });
-
-            // M2.3: Use precomputed CompiledRoute from router (zero string/status parsing on hot path)
-            let compiled = state
-                .router
-                .compiled_route(route_index)
-                .expect("matched route must exist in router");
 
             let policy_key = if compiled.policy_handler_id.is_none() {
                 route

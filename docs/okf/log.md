@@ -109,5 +109,22 @@
 - **Production Roadmap & Task Ledger (M23R2-GATE)** — ADR-0019 accepted; `TASKS.production.json` updated with verified status; `./scripts/validate-production-plan` validates all 120 production tasks through GA.
 - verify: ALL PASS (M0–M2 + M2.2.1 + M2.3 verified) — 146 total tests: 111 Rust tests (82 engine, 12 runtime, 17 other) + 35 TS tests.
 
+## 2026-08-19 (M23R2-GATE-CLOSE strict numeric artifacts, tamper-bound router & self-verifying release)
+
+- **Strict Numeric Mode (WP-A)** — The semantic manifest `globalThis.__velquFunctionManifest` is now MANDATORY in numeric mode: the count-only `__velquFunctions` fallback is gone. A numeric pack missing the manifest, or carrying one with swapped/missing/non-callable entries, is rejected before the socket binds (`numeric_pack_without_semantic_manifest_is_rejected`, `missing_manifest_with_swapped_functions_is_rejected`).
+- **Numeric Artifact Rules (WP-A/D)** — `QPack::verify()` now rejects any numeric pack that carries a `handlerTable` (`numeric_pack_with_handler_table_is_rejected`), lacks the compiled router (`numeric_pack_without_compiled_router_is_rejected`), or whose schema manifest does not cover every schema (`numeric_pack_with_incomplete_schema_manifest_is_rejected`). Compiler + bench generators emit handlerTable-free numeric packs.
+- **Tamper-Bound Execution Graph (WP-B)** — `routes_canonical_sha256` now covers the function manifest, schema manifest, AND serialized router nodes/terminals. Mutating a router terminal target or schema manifest key changes the execution hash (`router_terminal_target_tamper_breaks_execution_hash`, `schema_manifest_tamper_breaks_execution_hash`, `schema_manifest_ir_mismatch_rejected`).
+- **Zero Runtime Route Rebuild (WP-B)** — `Router::from_pack` consumes the serialized automaton DIRECTLY when present: no path parsing, no collision analysis, no terminal construction. `Router::build` remains only as the legacy/None-router fallback.
+- **Pure Public Contract Hash (WP-C)** — `public_contract_sha256` hashes only wire-visible semantics; `QPack::verify()` recomputes and rejects a mismatched declared `contractHash`. Handler-ID reordering keeps the public hash stable while the execution hash changes (test updated to the new canonical form).
+- **SchemaId-Indexed Validation (WP-C)** — `ServeState` carries a dense `schema_vector: Vec<SchemaIr>`; params/query/body admission validates through `SchemaId` vector indexing — zero string-map lookups on the request path.
+- **10,000-Route Evidence (WP-D)** — Route-count suite extended to 25/1,000/10,000 routes (fixtures + bytecode). Cold-start report carries the 3-size table.
+- **Evidence-Bound Ledger & Self-Verifying Release (WP-E)** — `TASKS.production.json` entries carry machine-readable `evidence_refs` (source, tests, raw evidence, report, review finding, artifact hash); `REVIEW_INDEX.json` + `EVIDENCE_INDEX.json` generated; `scripts/release-packet` builds a `release/` directory whose `SHA256SUMS.txt` lists only shipped files and passes `sha256sum -c` from inside it. Historical zips/bundles moved to untracked `history/`.
+- verify: ALL PASS — 154 Rust tests (84 engine, 12 runtime, 25 pack, 12 router, 21 other) + 35 TS tests.
 
 
+
+
+## 2026-08-20 (ADR-0020 beta-readiness program adopted)
+
+- **Beta finish line** — The owner-supplied `velqu-beta-readiness-handoff-v1` (37 docs, 98 tasks + 9 gates) is installed at `docs/beta/`; ADR-0020 accepts it as the authoritative forward roadmap targeting **0.1.0-beta.1**. ADR-0018's technical sequence is preserved; ADR-0019's GA gates become the post-beta track.
+- **Baseline status annotated** — `docs/beta/00_CURRENT_BASELINE.md` carries a status addendum mapping each open M23R2 review item to its implementation state after the GATE-CLOSE revision (items 1–6 and 8 done; item 7 partially — single clean benchmark pass committed, ≥5 randomized repetitions and allocation profiles open).

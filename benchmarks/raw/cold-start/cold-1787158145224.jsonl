@@ -1,0 +1,840 @@
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":13.584,"readyMs":1.917,"totalMs":15.501,"rssKbAfter":38148,"valid":true,"exitOk":true,"index":0}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.42,"readyMs":0.203,"totalMs":2.623,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":1}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":2,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":12.956,"readyMs":2.055,"totalMs":15.011,"rssKbAfter":38744,"valid":true,"exitOk":true,"index":3}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":4,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.069,"readyMs":0.326,"totalMs":2.395,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":5}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.831,"readyMs":0.292,"totalMs":2.123,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":6}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":81.737,"readyMs":47.39,"totalMs":129.128,"rssKbAfter":90696,"valid":true,"exitOk":true,"index":7}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":8,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.881,"readyMs":0.296,"totalMs":2.177,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":9}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.26,"readyMs":1.882,"totalMs":12.142,"rssKbAfter":38200,"valid":true,"exitOk":true,"index":10}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.815,"readyMs":0.22,"totalMs":2.035,"rssKbAfter":3532,"valid":true,"exitOk":true,"index":11}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":10.08,"readyMs":11.901,"totalMs":21.982,"rssKbAfter":39072,"valid":true,"exitOk":true,"index":12}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":13,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":14,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":15,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.131,"readyMs":0.297,"totalMs":2.428,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":16}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":17,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":18,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":82.847,"readyMs":10.732,"totalMs":93.579,"rssKbAfter":85724,"valid":true,"exitOk":true,"index":19}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.928,"readyMs":11.45,"totalMs":13.378,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":20}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.902,"readyMs":2.542,"totalMs":17.444,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":21}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":22,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":23,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":24,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":25,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":26,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":27,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":12.209,"readyMs":2.135,"totalMs":14.345,"rssKbAfter":38812,"valid":true,"exitOk":true,"index":28}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":13.364,"readyMs":3.591,"totalMs":16.956,"rssKbAfter":38128,"valid":true,"exitOk":true,"index":29}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.351,"readyMs":0.273,"totalMs":1.624,"rssKbAfter":3492,"valid":true,"exitOk":true,"index":30}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":9.207,"readyMs":3.12,"totalMs":12.326,"rssKbAfter":38256,"valid":true,"exitOk":true,"index":31}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":99.367,"readyMs":48.74,"totalMs":148.108,"rssKbAfter":93132,"valid":true,"exitOk":true,"index":32}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":79.248,"readyMs":10.633,"totalMs":89.881,"rssKbAfter":87040,"valid":true,"exitOk":true,"index":33}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.237,"readyMs":1.893,"totalMs":13.13,"rssKbAfter":38244,"valid":true,"exitOk":true,"index":34}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.478,"readyMs":0.405,"totalMs":2.883,"rssKbAfter":3448,"valid":true,"exitOk":true,"index":35}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":36,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":28.261,"readyMs":1.785,"totalMs":30.046,"rssKbAfter":38808,"valid":true,"exitOk":true,"index":37}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":38,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.291,"readyMs":11.46,"totalMs":12.751,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":39}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":102.532,"readyMs":13.261,"totalMs":115.793,"rssKbAfter":82228,"valid":true,"exitOk":true,"index":40}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":87.098,"readyMs":67.287,"totalMs":154.385,"rssKbAfter":91788,"valid":true,"exitOk":true,"index":41}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":13.265,"readyMs":3.371,"totalMs":16.636,"rssKbAfter":38736,"valid":true,"exitOk":true,"index":42}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":43,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":44,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":45,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":46,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":47,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":48,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":104.93,"readyMs":50.855,"totalMs":155.785,"rssKbAfter":90012,"valid":true,"exitOk":true,"index":49}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":119.798,"readyMs":13.312,"totalMs":133.109,"rssKbAfter":83376,"valid":true,"exitOk":true,"index":50}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.432,"readyMs":0.245,"totalMs":2.677,"rssKbAfter":3388,"valid":true,"exitOk":true,"index":51}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":52,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.345,"readyMs":0.287,"totalMs":2.632,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":53}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":54,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.915,"readyMs":0.18,"totalMs":2.096,"rssKbAfter":3512,"valid":true,"exitOk":true,"index":55}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":56,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":57,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2,"readyMs":0.317,"totalMs":2.317,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":58}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":59,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":86.878,"readyMs":9.953,"totalMs":96.831,"rssKbAfter":84300,"valid":true,"exitOk":true,"index":60}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":14.698,"readyMs":2.344,"totalMs":17.042,"rssKbAfter":38700,"valid":true,"exitOk":true,"index":61}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":94.162,"readyMs":66.051,"totalMs":160.212,"rssKbAfter":92184,"valid":true,"exitOk":true,"index":62}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":63,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":64,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":83.177,"readyMs":46.374,"totalMs":129.551,"rssKbAfter":94392,"valid":true,"exitOk":true,"index":65}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":66,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":17.254,"readyMs":27.324,"totalMs":44.578,"rssKbAfter":38484,"valid":true,"exitOk":true,"index":67}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.329,"readyMs":3.551,"totalMs":5.881,"rssKbAfter":3368,"valid":true,"exitOk":true,"index":68}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":28.895,"readyMs":29.931,"totalMs":58.826,"rssKbAfter":39000,"valid":true,"exitOk":true,"index":69}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":29.905,"readyMs":13.87,"totalMs":43.775,"rssKbAfter":38560,"valid":true,"exitOk":true,"index":70}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":71,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":72,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":12.153,"readyMs":2.321,"totalMs":14.475,"rssKbAfter":38768,"valid":true,"exitOk":true,"index":73}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.962,"readyMs":0.2,"totalMs":2.162,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":74}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":75,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.567,"readyMs":0.313,"totalMs":2.88,"rssKbAfter":3396,"valid":true,"exitOk":true,"index":76}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":18.579,"readyMs":15.958,"totalMs":34.537,"rssKbAfter":39356,"valid":true,"exitOk":true,"index":77}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":78,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":16.318,"readyMs":3.402,"totalMs":19.72,"rssKbAfter":38088,"valid":true,"exitOk":true,"index":79}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":80,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":81,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":82,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":9.455,"readyMs":12.419,"totalMs":21.874,"rssKbAfter":39096,"valid":true,"exitOk":true,"index":83}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":84,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":85,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":86,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":87,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.904,"readyMs":0.308,"totalMs":2.212,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":88}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":12.733,"readyMs":2.879,"totalMs":15.612,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":89}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":84.268,"readyMs":49.241,"totalMs":133.509,"rssKbAfter":92416,"valid":true,"exitOk":true,"index":90}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":123.455,"readyMs":49.6,"totalMs":173.055,"rssKbAfter":92788,"valid":true,"exitOk":true,"index":91}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":92,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":16.242,"readyMs":5.186,"totalMs":21.428,"rssKbAfter":38748,"valid":true,"exitOk":true,"index":93}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":123.673,"readyMs":58.401,"totalMs":182.074,"rssKbAfter":90292,"valid":true,"exitOk":true,"index":94}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.579,"readyMs":0.363,"totalMs":1.942,"rssKbAfter":3532,"valid":true,"exitOk":true,"index":95}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.333,"readyMs":0.331,"totalMs":1.665,"rssKbAfter":3392,"valid":true,"exitOk":true,"index":96}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.928,"readyMs":0.288,"totalMs":2.216,"rssKbAfter":3532,"valid":true,"exitOk":true,"index":97}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":98,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":99,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":100,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":101,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":102,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":103,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":16.319,"readyMs":3.455,"totalMs":19.774,"rssKbAfter":38176,"valid":true,"exitOk":true,"index":104}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":150.176,"readyMs":79.141,"totalMs":229.317,"rssKbAfter":86488,"valid":true,"exitOk":true,"index":105}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":18.152,"readyMs":3.381,"totalMs":21.534,"rssKbAfter":38088,"valid":true,"exitOk":true,"index":106}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.592,"readyMs":0.521,"totalMs":2.113,"rssKbAfter":3532,"valid":true,"exitOk":true,"index":107}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.893,"readyMs":0.436,"totalMs":3.329,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":108}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":14.121,"readyMs":13.783,"totalMs":27.904,"rssKbAfter":39016,"valid":true,"exitOk":true,"index":109}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":110,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":111,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.636,"readyMs":0.303,"totalMs":1.939,"rssKbAfter":3536,"valid":true,"exitOk":true,"index":112}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":87.199,"readyMs":10.543,"totalMs":97.742,"rssKbAfter":86196,"valid":true,"exitOk":true,"index":113}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":12.18,"readyMs":2.045,"totalMs":14.225,"rssKbAfter":38624,"valid":true,"exitOk":true,"index":114}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":13.45,"readyMs":3.272,"totalMs":16.722,"rssKbAfter":38700,"valid":true,"exitOk":true,"index":115}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":116,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":80.879,"readyMs":45.564,"totalMs":126.443,"rssKbAfter":91476,"valid":true,"exitOk":true,"index":117}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":118,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.582,"readyMs":0.205,"totalMs":1.787,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":119}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":84.632,"readyMs":53.226,"totalMs":137.858,"rssKbAfter":93164,"valid":true,"exitOk":true,"index":120}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":96.954,"readyMs":47.033,"totalMs":143.987,"rssKbAfter":90084,"valid":true,"exitOk":true,"index":121}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":122,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.984,"readyMs":11.321,"totalMs":13.305,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":123}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":124,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":74.296,"readyMs":10.69,"totalMs":84.986,"rssKbAfter":86716,"valid":true,"exitOk":true,"index":125}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":126,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":12.205,"readyMs":2.102,"totalMs":14.307,"rssKbAfter":39032,"valid":true,"exitOk":true,"index":127}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":76.646,"readyMs":61.885,"totalMs":138.531,"rssKbAfter":93848,"valid":true,"exitOk":true,"index":128}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.987,"readyMs":0.238,"totalMs":2.225,"rssKbAfter":3404,"valid":true,"exitOk":true,"index":129}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.728,"readyMs":0.313,"totalMs":2.041,"rssKbAfter":3404,"valid":true,"exitOk":true,"index":130}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":89.842,"readyMs":47.273,"totalMs":137.115,"rssKbAfter":92624,"valid":true,"exitOk":true,"index":131}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":81.633,"readyMs":48.687,"totalMs":130.32,"rssKbAfter":90864,"valid":true,"exitOk":true,"index":132}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":133,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":134,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.312,"readyMs":1.282,"totalMs":12.594,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":135}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":136,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":74.412,"readyMs":62.36,"totalMs":136.772,"rssKbAfter":92316,"valid":true,"exitOk":true,"index":137}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.067,"readyMs":0.28,"totalMs":2.347,"rssKbAfter":3524,"valid":true,"exitOk":true,"index":138}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":139,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":140,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.935,"readyMs":0.304,"totalMs":2.239,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":141}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":142,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":143,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.216,"readyMs":0.274,"totalMs":2.489,"rssKbAfter":3520,"valid":true,"exitOk":true,"index":144}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":110.389,"readyMs":61.325,"totalMs":171.714,"rssKbAfter":92528,"valid":true,"exitOk":true,"index":145}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":78.049,"readyMs":11.425,"totalMs":89.474,"rssKbAfter":86660,"valid":true,"exitOk":true,"index":146}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":147,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":148,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.985,"readyMs":2.142,"totalMs":12.127,"rssKbAfter":38700,"valid":true,"exitOk":true,"index":149}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":150,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":85.872,"readyMs":45.588,"totalMs":131.46,"rssKbAfter":92684,"valid":true,"exitOk":true,"index":151}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":14.534,"readyMs":19.895,"totalMs":34.429,"rssKbAfter":39296,"valid":true,"exitOk":true,"index":152}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":105.475,"readyMs":47.732,"totalMs":153.207,"rssKbAfter":86520,"valid":true,"exitOk":true,"index":153}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":85.233,"readyMs":46.89,"totalMs":132.123,"rssKbAfter":90936,"valid":true,"exitOk":true,"index":154}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":86.446,"readyMs":10.616,"totalMs":97.061,"rssKbAfter":86160,"valid":true,"exitOk":true,"index":155}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":83.715,"readyMs":93.454,"totalMs":177.169,"rssKbAfter":92428,"valid":true,"exitOk":true,"index":156}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":157,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.224,"readyMs":0.274,"totalMs":1.497,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":158}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":13.753,"readyMs":4.021,"totalMs":17.774,"rssKbAfter":38148,"valid":true,"exitOk":true,"index":159}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.497,"readyMs":0.266,"totalMs":1.763,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":160}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.763,"readyMs":11.404,"totalMs":13.167,"rssKbAfter":3472,"valid":true,"exitOk":true,"index":161}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":11.972,"readyMs":3.958,"totalMs":15.93,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":162}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.211,"readyMs":3.613,"totalMs":17.824,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":163}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":115.812,"readyMs":16.344,"totalMs":132.156,"rssKbAfter":87288,"valid":true,"exitOk":true,"index":164}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.375,"readyMs":2.843,"totalMs":12.218,"rssKbAfter":39012,"valid":true,"exitOk":true,"index":165}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":11.059,"readyMs":3.519,"totalMs":14.577,"rssKbAfter":38748,"valid":true,"exitOk":true,"index":166}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.07,"readyMs":0.251,"totalMs":2.321,"rssKbAfter":3392,"valid":true,"exitOk":true,"index":167}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":106.22,"readyMs":11.978,"totalMs":118.198,"rssKbAfter":83832,"valid":true,"exitOk":true,"index":168}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.363,"readyMs":0.257,"totalMs":1.62,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":169}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.409,"readyMs":0.228,"totalMs":1.637,"rssKbAfter":3440,"valid":true,"exitOk":true,"index":170}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":171,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":9.546,"readyMs":1.858,"totalMs":11.404,"rssKbAfter":38204,"valid":true,"exitOk":true,"index":172}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.819,"readyMs":0.289,"totalMs":2.108,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":173}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":82.618,"readyMs":46.822,"totalMs":129.439,"rssKbAfter":91096,"valid":true,"exitOk":true,"index":174}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":13.224,"readyMs":1.894,"totalMs":15.118,"rssKbAfter":38140,"valid":true,"exitOk":true,"index":175}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":176,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":78.056,"readyMs":47.301,"totalMs":125.356,"rssKbAfter":91600,"valid":true,"exitOk":true,"index":177}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":82.817,"readyMs":46.586,"totalMs":129.403,"rssKbAfter":91860,"valid":true,"exitOk":true,"index":178}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":179,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":180,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":13.821,"readyMs":1.717,"totalMs":15.538,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":181}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":182,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.399,"readyMs":0.194,"totalMs":1.594,"rssKbAfter":3508,"valid":true,"exitOk":true,"index":183}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.704,"readyMs":2.53,"totalMs":13.234,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":184}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.646,"readyMs":0.278,"totalMs":1.924,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":185}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":186,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.492,"readyMs":0.253,"totalMs":1.745,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":187}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":10.759,"readyMs":3.185,"totalMs":13.944,"rssKbAfter":39084,"valid":true,"exitOk":true,"index":188}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.925,"readyMs":0.192,"totalMs":2.118,"rssKbAfter":3436,"valid":true,"exitOk":true,"index":189}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":190,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.455,"readyMs":1.875,"totalMs":12.33,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":191}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":192,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":96.302,"readyMs":17.463,"totalMs":113.764,"rssKbAfter":86072,"valid":true,"exitOk":true,"index":193}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":194,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.915,"readyMs":0.187,"totalMs":2.101,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":195}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":85.528,"readyMs":53.142,"totalMs":138.67,"rssKbAfter":91004,"valid":true,"exitOk":true,"index":196}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.41,"readyMs":0.332,"totalMs":1.742,"rssKbAfter":3480,"valid":true,"exitOk":true,"index":197}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.044,"readyMs":0.212,"totalMs":2.256,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":198}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":110.14,"readyMs":51.78,"totalMs":161.92,"rssKbAfter":93648,"valid":true,"exitOk":true,"index":199}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.969,"readyMs":0.247,"totalMs":2.216,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":200}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":2.215,"readyMs":11.507,"totalMs":13.722,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":201}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.914,"readyMs":0.247,"totalMs":2.161,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":202}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.798,"readyMs":0.243,"totalMs":2.041,"rssKbAfter":3412,"valid":true,"exitOk":true,"index":203}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":204,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":77.627,"readyMs":11.293,"totalMs":88.92,"rssKbAfter":85696,"valid":true,"exitOk":true,"index":205}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.175,"readyMs":3.746,"totalMs":14.921,"rssKbAfter":38976,"valid":true,"exitOk":true,"index":206}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":11.78,"readyMs":3.128,"totalMs":14.909,"rssKbAfter":38172,"valid":true,"exitOk":true,"index":207}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":81.619,"readyMs":48.478,"totalMs":130.097,"rssKbAfter":91248,"valid":true,"exitOk":true,"index":208}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.984,"readyMs":0.192,"totalMs":2.176,"rssKbAfter":3400,"valid":true,"exitOk":true,"index":209}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":12.431,"readyMs":2.084,"totalMs":14.515,"rssKbAfter":38700,"valid":true,"exitOk":true,"index":210}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.171,"readyMs":2.048,"totalMs":11.219,"rssKbAfter":39004,"valid":true,"exitOk":true,"index":211}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":212,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":12.774,"readyMs":2.237,"totalMs":15.011,"rssKbAfter":38816,"valid":true,"exitOk":true,"index":213}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":85.661,"readyMs":45.984,"totalMs":131.645,"rssKbAfter":92436,"valid":true,"exitOk":true,"index":214}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.868,"readyMs":0.18,"totalMs":2.048,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":215}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.658,"readyMs":0.205,"totalMs":1.862,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":216}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.407,"readyMs":11.372,"totalMs":12.779,"rssKbAfter":3488,"valid":true,"exitOk":true,"index":217}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":218,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":77.206,"readyMs":46.53,"totalMs":123.736,"rssKbAfter":90516,"valid":true,"exitOk":true,"index":219}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":75.546,"readyMs":47.887,"totalMs":123.434,"rssKbAfter":92596,"valid":true,"exitOk":true,"index":220}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.16,"readyMs":0.189,"totalMs":2.349,"rssKbAfter":3496,"valid":true,"exitOk":true,"index":221}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.788,"readyMs":0.204,"totalMs":1.991,"rssKbAfter":3520,"valid":true,"exitOk":true,"index":222}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.323,"readyMs":1.923,"totalMs":12.246,"rssKbAfter":38744,"valid":true,"exitOk":true,"index":223}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.881,"readyMs":0.17,"totalMs":2.051,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":224}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.76,"readyMs":11.559,"totalMs":13.319,"rssKbAfter":3484,"valid":true,"exitOk":true,"index":225}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":226,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.228,"readyMs":0.248,"totalMs":2.476,"rssKbAfter":3472,"valid":true,"exitOk":true,"index":227}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.383,"readyMs":0.217,"totalMs":1.6,"rssKbAfter":3452,"valid":true,"exitOk":true,"index":228}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":229,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":230,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.986,"readyMs":0.305,"totalMs":2.291,"rssKbAfter":3448,"valid":true,"exitOk":true,"index":231}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.059,"readyMs":0.279,"totalMs":2.339,"rssKbAfter":3440,"valid":true,"exitOk":true,"index":232}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":3.642,"readyMs":12.324,"totalMs":15.965,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":233}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":14.639,"readyMs":14.565,"totalMs":29.204,"rssKbAfter":39136,"valid":true,"exitOk":true,"index":234}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":111.12,"readyMs":11.691,"totalMs":122.811,"rssKbAfter":86332,"valid":true,"exitOk":true,"index":235}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.909,"readyMs":11.41,"totalMs":13.319,"rssKbAfter":3472,"valid":true,"exitOk":true,"index":236}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":237,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":69.781,"readyMs":12.654,"totalMs":82.435,"rssKbAfter":39048,"valid":true,"exitOk":true,"index":238}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":3.002,"readyMs":11.477,"totalMs":14.478,"rssKbAfter":3448,"valid":true,"exitOk":true,"index":239}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":14.408,"readyMs":1.884,"totalMs":16.292,"rssKbAfter":38760,"valid":true,"exitOk":true,"index":240}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":241,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.966,"readyMs":1.975,"totalMs":16.941,"rssKbAfter":38256,"valid":true,"exitOk":true,"index":242}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":79.894,"readyMs":50.155,"totalMs":130.049,"rssKbAfter":90592,"valid":true,"exitOk":true,"index":243}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.872,"readyMs":0.221,"totalMs":2.093,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":244}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.97,"readyMs":0.229,"totalMs":2.199,"rssKbAfter":3380,"valid":true,"exitOk":true,"index":245}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.839,"readyMs":0.189,"totalMs":2.027,"rssKbAfter":3448,"valid":true,"exitOk":true,"index":246}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.184,"readyMs":0.359,"totalMs":2.542,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":247}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.999,"readyMs":0.213,"totalMs":2.211,"rssKbAfter":3392,"valid":true,"exitOk":true,"index":248}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":81.656,"readyMs":10.57,"totalMs":92.226,"rssKbAfter":86424,"valid":true,"exitOk":true,"index":249}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":13.097,"readyMs":2.129,"totalMs":15.226,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":250}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":95.9,"readyMs":11.109,"totalMs":107.009,"rssKbAfter":86368,"valid":true,"exitOk":true,"index":251}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":252,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":9.27,"readyMs":1.838,"totalMs":11.109,"rssKbAfter":38128,"valid":true,"exitOk":true,"index":253}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.873,"readyMs":11.429,"totalMs":13.301,"rssKbAfter":3440,"valid":true,"exitOk":true,"index":254}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.915,"readyMs":0.222,"totalMs":2.138,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":255}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":256,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.958,"readyMs":0.323,"totalMs":2.282,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":257}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":258,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":11.673,"readyMs":2.087,"totalMs":13.76,"rssKbAfter":38152,"valid":true,"exitOk":true,"index":259}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":260,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.916,"readyMs":0.246,"totalMs":2.162,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":261}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.79,"readyMs":11.547,"totalMs":13.337,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":262}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.005,"readyMs":0.24,"totalMs":2.245,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":263}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.567,"readyMs":0.323,"totalMs":2.891,"rssKbAfter":3452,"valid":true,"exitOk":true,"index":264}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.417,"readyMs":3.169,"totalMs":14.586,"rssKbAfter":38984,"valid":true,"exitOk":true,"index":265}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":266,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":267,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.971,"readyMs":0.265,"totalMs":2.236,"rssKbAfter":3528,"valid":true,"exitOk":true,"index":268}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":269,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.056,"readyMs":0.255,"totalMs":2.311,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":270}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.901,"readyMs":3.312,"totalMs":14.213,"rssKbAfter":38216,"valid":true,"exitOk":true,"index":271}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.646,"readyMs":3.449,"totalMs":15.095,"rssKbAfter":39084,"valid":true,"exitOk":true,"index":272}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":273,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.969,"readyMs":0.37,"totalMs":2.34,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":274}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.831,"readyMs":0.233,"totalMs":2.064,"rssKbAfter":3496,"valid":true,"exitOk":true,"index":275}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":276,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.893,"readyMs":11.502,"totalMs":13.396,"rssKbAfter":3528,"valid":true,"exitOk":true,"index":277}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.763,"readyMs":0.238,"totalMs":2.001,"rssKbAfter":3480,"valid":true,"exitOk":true,"index":278}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.514,"readyMs":0.211,"totalMs":1.725,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":279}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":8.619,"readyMs":1.79,"totalMs":10.409,"rssKbAfter":38136,"valid":true,"exitOk":true,"index":280}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":80.132,"readyMs":10.632,"totalMs":90.764,"rssKbAfter":86244,"valid":true,"exitOk":true,"index":281}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":282,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.322,"readyMs":0.277,"totalMs":1.599,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":283}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":94.584,"readyMs":10.182,"totalMs":104.767,"rssKbAfter":87436,"valid":true,"exitOk":true,"index":284}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":11.415,"readyMs":1.932,"totalMs":13.347,"rssKbAfter":38776,"valid":true,"exitOk":true,"index":285}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.806,"readyMs":3.498,"totalMs":18.304,"rssKbAfter":38124,"valid":true,"exitOk":true,"index":286}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.509,"readyMs":0.252,"totalMs":1.761,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":287}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":79.596,"readyMs":60.614,"totalMs":140.21,"rssKbAfter":92624,"valid":true,"exitOk":true,"index":288}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":13.608,"readyMs":2.179,"totalMs":15.787,"rssKbAfter":38800,"valid":true,"exitOk":true,"index":289}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":76.432,"readyMs":63.438,"totalMs":139.87,"rssKbAfter":92412,"valid":true,"exitOk":true,"index":290}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":102.935,"readyMs":46.676,"totalMs":149.611,"rssKbAfter":92284,"valid":true,"exitOk":true,"index":291}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.136,"readyMs":0.203,"totalMs":2.338,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":292}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":93.086,"readyMs":61.771,"totalMs":154.857,"rssKbAfter":92260,"valid":true,"exitOk":true,"index":293}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":15.494,"readyMs":1.97,"totalMs":17.465,"rssKbAfter":38712,"valid":true,"exitOk":true,"index":294}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":10.778,"readyMs":2.011,"totalMs":12.789,"rssKbAfter":38988,"valid":true,"exitOk":true,"index":295}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":13.322,"readyMs":2.109,"totalMs":15.431,"rssKbAfter":38724,"valid":true,"exitOk":true,"index":296}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":297,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":14.797,"readyMs":2.524,"totalMs":17.321,"rssKbAfter":39024,"valid":true,"exitOk":true,"index":298}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":125.287,"readyMs":48.042,"totalMs":173.329,"rssKbAfter":89484,"valid":true,"exitOk":true,"index":299}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":300,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.95,"readyMs":0.265,"totalMs":2.215,"rssKbAfter":3376,"valid":true,"exitOk":true,"index":301}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":302,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":95.008,"readyMs":75.196,"totalMs":170.204,"rssKbAfter":94604,"valid":true,"exitOk":true,"index":303}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":19.44,"readyMs":2.308,"totalMs":21.747,"rssKbAfter":38640,"valid":true,"exitOk":true,"index":304}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":305,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.949,"readyMs":11.439,"totalMs":13.387,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":306}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":17.449,"readyMs":3.012,"totalMs":20.461,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":307}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":9.462,"readyMs":2.498,"totalMs":11.96,"rssKbAfter":38124,"valid":true,"exitOk":true,"index":308}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.03,"readyMs":0.186,"totalMs":2.216,"rssKbAfter":3412,"valid":true,"exitOk":true,"index":309}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.416,"readyMs":0.193,"totalMs":2.609,"rssKbAfter":3504,"valid":true,"exitOk":true,"index":310}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.135,"readyMs":0.285,"totalMs":1.42,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":311}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":312,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":81.514,"readyMs":11.851,"totalMs":93.364,"rssKbAfter":86896,"valid":true,"exitOk":true,"index":313}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.443,"readyMs":0.208,"totalMs":1.651,"rssKbAfter":3484,"valid":true,"exitOk":true,"index":314}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":12.778,"readyMs":2.134,"totalMs":14.912,"rssKbAfter":38244,"valid":true,"exitOk":true,"index":315}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.381,"readyMs":0.364,"totalMs":2.745,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":316}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":317,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":80.465,"readyMs":10.944,"totalMs":91.409,"rssKbAfter":86536,"valid":true,"exitOk":true,"index":318}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.943,"readyMs":0.452,"totalMs":2.395,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":319}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.269,"readyMs":0.198,"totalMs":1.466,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":320}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":89.217,"readyMs":10.626,"totalMs":99.843,"rssKbAfter":86860,"valid":true,"exitOk":true,"index":321}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":322,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.339,"readyMs":2.573,"totalMs":11.913,"rssKbAfter":38644,"valid":true,"exitOk":true,"index":323}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":16.717,"readyMs":5.003,"totalMs":21.72,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":324}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.144,"readyMs":0.469,"totalMs":2.613,"rssKbAfter":3400,"valid":true,"exitOk":true,"index":325}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":11.584,"readyMs":2.199,"totalMs":13.783,"rssKbAfter":38692,"valid":true,"exitOk":true,"index":326}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":82.925,"readyMs":16.706,"totalMs":99.632,"rssKbAfter":85960,"valid":true,"exitOk":true,"index":327}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.018,"readyMs":0.251,"totalMs":2.27,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":328}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.295,"readyMs":0.208,"totalMs":1.503,"rssKbAfter":3508,"valid":true,"exitOk":true,"index":329}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":330,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":331,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.973,"readyMs":0.283,"totalMs":2.256,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":332}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":9.267,"readyMs":1.723,"totalMs":10.991,"rssKbAfter":38176,"valid":true,"exitOk":true,"index":333}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":82.106,"readyMs":10.539,"totalMs":92.645,"rssKbAfter":87216,"valid":true,"exitOk":true,"index":334}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":13.863,"readyMs":2.512,"totalMs":16.376,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":335}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.852,"readyMs":11.387,"totalMs":13.239,"rssKbAfter":3384,"valid":true,"exitOk":true,"index":336}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":102.247,"readyMs":47.695,"totalMs":149.941,"rssKbAfter":92024,"valid":true,"exitOk":true,"index":337}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":89.135,"readyMs":45.818,"totalMs":134.953,"rssKbAfter":90352,"valid":true,"exitOk":true,"index":338}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":82.909,"readyMs":61.733,"totalMs":144.642,"rssKbAfter":94716,"valid":true,"exitOk":true,"index":339}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":340,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":78.534,"readyMs":11.013,"totalMs":89.547,"rssKbAfter":85576,"valid":true,"exitOk":true,"index":341}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":90.111,"readyMs":10.614,"totalMs":100.724,"rssKbAfter":87648,"valid":true,"exitOk":true,"index":342}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.124,"readyMs":0.344,"totalMs":2.468,"rssKbAfter":3384,"valid":true,"exitOk":true,"index":343}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.8,"readyMs":0.24,"totalMs":2.04,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":344}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":81.929,"readyMs":11.014,"totalMs":92.943,"rssKbAfter":86800,"valid":true,"exitOk":true,"index":345}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":78.623,"readyMs":46.476,"totalMs":125.099,"rssKbAfter":93292,"valid":true,"exitOk":true,"index":346}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.134,"readyMs":2.015,"totalMs":16.149,"rssKbAfter":38220,"valid":true,"exitOk":true,"index":347}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":11.349,"readyMs":12.086,"totalMs":23.435,"rssKbAfter":39064,"valid":true,"exitOk":true,"index":348}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":15.555,"readyMs":1.922,"totalMs":17.477,"rssKbAfter":38120,"valid":true,"exitOk":true,"index":349}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.311,"readyMs":2.049,"totalMs":11.36,"rssKbAfter":38620,"valid":true,"exitOk":true,"index":350}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":74.8,"readyMs":10.096,"totalMs":84.897,"rssKbAfter":84348,"valid":true,"exitOk":true,"index":351}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.988,"readyMs":0.21,"totalMs":2.198,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":352}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":9.047,"readyMs":1.802,"totalMs":10.849,"rssKbAfter":38148,"valid":true,"exitOk":true,"index":353}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":76.228,"readyMs":46.361,"totalMs":122.589,"rssKbAfter":94752,"valid":true,"exitOk":true,"index":354}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":79.725,"readyMs":50.447,"totalMs":130.172,"rssKbAfter":92568,"valid":true,"exitOk":true,"index":355}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":78.707,"readyMs":12.814,"totalMs":91.52,"rssKbAfter":84112,"valid":true,"exitOk":true,"index":356}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":89.268,"readyMs":67.393,"totalMs":156.661,"rssKbAfter":91364,"valid":true,"exitOk":true,"index":357}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":358,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":94.019,"readyMs":14.113,"totalMs":108.133,"rssKbAfter":84772,"valid":true,"exitOk":true,"index":359}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":9.778,"readyMs":2.119,"totalMs":11.897,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":360}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":361,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.868,"readyMs":0.299,"totalMs":2.166,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":362}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.077,"readyMs":0.259,"totalMs":1.336,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":363}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":364,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.424,"readyMs":2.195,"totalMs":12.618,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":365}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.874,"readyMs":0.228,"totalMs":2.102,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":366}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.626,"readyMs":0.214,"totalMs":1.84,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":367}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":368,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.976,"readyMs":0.321,"totalMs":2.298,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":369}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":370,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.125,"readyMs":2.089,"totalMs":13.214,"rssKbAfter":38932,"valid":true,"exitOk":true,"index":371}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":80.527,"readyMs":10.661,"totalMs":91.188,"rssKbAfter":86192,"valid":true,"exitOk":true,"index":372}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.182,"readyMs":1.823,"totalMs":13.006,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":373}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.784,"readyMs":0.173,"totalMs":1.957,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":374}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":77.185,"readyMs":11.178,"totalMs":88.364,"rssKbAfter":86616,"valid":true,"exitOk":true,"index":375}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":10.155,"readyMs":2.316,"totalMs":12.472,"rssKbAfter":38712,"valid":true,"exitOk":true,"index":376}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":79.455,"readyMs":10.485,"totalMs":89.941,"rssKbAfter":85248,"valid":true,"exitOk":true,"index":377}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.435,"readyMs":11.522,"totalMs":12.957,"rssKbAfter":3436,"valid":true,"exitOk":true,"index":378}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":90.009,"readyMs":48.291,"totalMs":138.3,"rssKbAfter":92236,"valid":true,"exitOk":true,"index":379}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.947,"readyMs":0.184,"totalMs":2.131,"rssKbAfter":3404,"valid":true,"exitOk":true,"index":380}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":83.846,"readyMs":49.384,"totalMs":133.23,"rssKbAfter":92056,"valid":true,"exitOk":true,"index":381}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":382,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":9.571,"readyMs":2.001,"totalMs":11.571,"rssKbAfter":38812,"valid":true,"exitOk":true,"index":383}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":75.247,"readyMs":46.058,"totalMs":121.305,"rssKbAfter":90872,"valid":true,"exitOk":true,"index":384}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":385,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":12.85,"readyMs":1.938,"totalMs":14.788,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":386}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":387,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":388,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":80.683,"readyMs":10.808,"totalMs":91.491,"rssKbAfter":87052,"valid":true,"exitOk":true,"index":389}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":80.172,"readyMs":10.676,"totalMs":90.848,"rssKbAfter":87124,"valid":true,"exitOk":true,"index":390}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.394,"readyMs":2.044,"totalMs":12.438,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":391}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":87.184,"readyMs":46.471,"totalMs":133.655,"rssKbAfter":93120,"valid":true,"exitOk":true,"index":392}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":393,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":13.065,"readyMs":2.092,"totalMs":15.157,"rssKbAfter":38752,"valid":true,"exitOk":true,"index":394}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":395,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":77.651,"readyMs":47.066,"totalMs":124.718,"rssKbAfter":92972,"valid":true,"exitOk":true,"index":396}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":397,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":2.013,"readyMs":11.615,"totalMs":13.628,"rssKbAfter":3500,"valid":true,"exitOk":true,"index":398}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":17.066,"readyMs":4.283,"totalMs":21.35,"rssKbAfter":38136,"valid":true,"exitOk":true,"index":399}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":400,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.094,"readyMs":0.38,"totalMs":2.474,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":401}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":83.767,"readyMs":46.154,"totalMs":129.92,"rssKbAfter":90600,"valid":true,"exitOk":true,"index":402}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":403,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.049,"readyMs":1.986,"totalMs":11.035,"rssKbAfter":39084,"valid":true,"exitOk":true,"index":404}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":82.07,"readyMs":10.548,"totalMs":92.618,"rssKbAfter":86628,"valid":true,"exitOk":true,"index":405}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":92.915,"readyMs":47.04,"totalMs":139.955,"rssKbAfter":90880,"valid":true,"exitOk":true,"index":406}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":11.994,"readyMs":2.284,"totalMs":14.279,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":407}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.637,"readyMs":0.139,"totalMs":1.777,"rssKbAfter":3496,"valid":true,"exitOk":true,"index":408}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.328,"readyMs":2.172,"totalMs":11.5,"rssKbAfter":38704,"valid":true,"exitOk":true,"index":409}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.997,"readyMs":0.232,"totalMs":2.229,"rssKbAfter":3488,"valid":true,"exitOk":true,"index":410}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":411,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.468,"readyMs":0.231,"totalMs":2.699,"rssKbAfter":3508,"valid":true,"exitOk":true,"index":412}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":413,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":80.372,"readyMs":10.359,"totalMs":90.73,"rssKbAfter":85812,"valid":true,"exitOk":true,"index":414}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":79.329,"readyMs":10.039,"totalMs":89.369,"rssKbAfter":85056,"valid":true,"exitOk":true,"index":415}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.235,"readyMs":0.244,"totalMs":1.479,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":416}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.837,"readyMs":0.231,"totalMs":2.068,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":417}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":418,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":9.127,"readyMs":2.158,"totalMs":11.285,"rssKbAfter":38760,"valid":true,"exitOk":true,"index":419}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.918,"readyMs":0.293,"totalMs":2.211,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":420}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":92.235,"readyMs":48.409,"totalMs":140.645,"rssKbAfter":91292,"valid":true,"exitOk":true,"index":421}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.309,"readyMs":0.239,"totalMs":1.548,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":422}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.636,"readyMs":3.016,"totalMs":17.652,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":423}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":424,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":79.67,"readyMs":62.678,"totalMs":142.348,"rssKbAfter":93532,"valid":true,"exitOk":true,"index":425}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":75.484,"readyMs":9.993,"totalMs":85.476,"rssKbAfter":85172,"valid":true,"exitOk":true,"index":426}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":427,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.874,"readyMs":0.285,"totalMs":2.159,"rssKbAfter":3512,"valid":true,"exitOk":true,"index":428}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":92.351,"readyMs":47.935,"totalMs":140.287,"rssKbAfter":93808,"valid":true,"exitOk":true,"index":429}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":11.348,"readyMs":2.677,"totalMs":14.025,"rssKbAfter":38148,"valid":true,"exitOk":true,"index":430}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.233,"readyMs":2.884,"totalMs":14.117,"rssKbAfter":39032,"valid":true,"exitOk":true,"index":431}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.553,"readyMs":11.369,"totalMs":12.923,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":432}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":101.937,"readyMs":48.623,"totalMs":150.56,"rssKbAfter":94180,"valid":true,"exitOk":true,"index":433}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":434,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":79.288,"readyMs":46.475,"totalMs":125.764,"rssKbAfter":93160,"valid":true,"exitOk":true,"index":435}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":436,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":84.634,"readyMs":10.764,"totalMs":95.398,"rssKbAfter":84200,"valid":true,"exitOk":true,"index":437}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":14.487,"readyMs":2.162,"totalMs":16.649,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":438}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.892,"readyMs":0.158,"totalMs":2.05,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":439}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.763,"readyMs":0.264,"totalMs":2.028,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":440}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":84.25,"readyMs":12.066,"totalMs":96.316,"rssKbAfter":85756,"valid":true,"exitOk":true,"index":441}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":442,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.803,"readyMs":2.232,"totalMs":17.036,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":443}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.561,"readyMs":0.195,"totalMs":1.756,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":444}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":445,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":77.457,"readyMs":47.13,"totalMs":124.586,"rssKbAfter":92212,"valid":true,"exitOk":true,"index":446}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.363,"readyMs":1.879,"totalMs":12.242,"rssKbAfter":38752,"valid":true,"exitOk":true,"index":447}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":11.014,"readyMs":12.234,"totalMs":23.248,"rssKbAfter":39076,"valid":true,"exitOk":true,"index":448}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.875,"readyMs":0.283,"totalMs":2.158,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":449}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":450,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.896,"readyMs":0.367,"totalMs":2.263,"rssKbAfter":3520,"valid":true,"exitOk":true,"index":451}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.403,"readyMs":0.176,"totalMs":1.579,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":452}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":73.477,"readyMs":61.251,"totalMs":134.728,"rssKbAfter":91740,"valid":true,"exitOk":true,"index":453}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.2,"readyMs":0.252,"totalMs":2.452,"rssKbAfter":3396,"valid":true,"exitOk":true,"index":454}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":455,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":456,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":14.932,"readyMs":3.116,"totalMs":18.048,"rssKbAfter":38712,"valid":true,"exitOk":true,"index":457}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":458,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":10.029,"readyMs":3.11,"totalMs":13.14,"rssKbAfter":38204,"valid":true,"exitOk":true,"index":459}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":9.854,"readyMs":12.242,"totalMs":22.096,"rssKbAfter":39060,"valid":true,"exitOk":true,"index":460}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":78.465,"readyMs":45.471,"totalMs":123.936,"rssKbAfter":92520,"valid":true,"exitOk":true,"index":461}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.981,"readyMs":0.174,"totalMs":2.156,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":462}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.243,"readyMs":2.14,"totalMs":11.383,"rssKbAfter":38676,"valid":true,"exitOk":true,"index":463}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.05,"readyMs":1.809,"totalMs":10.859,"rssKbAfter":38636,"valid":true,"exitOk":true,"index":464}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":11.994,"readyMs":12.306,"totalMs":24.3,"rssKbAfter":39048,"valid":true,"exitOk":true,"index":465}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.332,"readyMs":0.347,"totalMs":2.679,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":466}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":16.212,"readyMs":12.885,"totalMs":29.098,"rssKbAfter":39076,"valid":true,"exitOk":true,"index":467}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":10.075,"readyMs":2.066,"totalMs":12.141,"rssKbAfter":39016,"valid":true,"exitOk":true,"index":468}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":8.946,"readyMs":1.923,"totalMs":10.869,"rssKbAfter":38152,"valid":true,"exitOk":true,"index":469}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":85.162,"readyMs":46.158,"totalMs":131.32,"rssKbAfter":89756,"valid":true,"exitOk":true,"index":470}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":471,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":90.285,"readyMs":11.256,"totalMs":101.541,"rssKbAfter":85932,"valid":true,"exitOk":true,"index":472}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.182,"readyMs":0.25,"totalMs":2.432,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":473}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":11.256,"readyMs":13.555,"totalMs":24.811,"rssKbAfter":39068,"valid":true,"exitOk":true,"index":474}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.717,"readyMs":0.213,"totalMs":1.93,"rssKbAfter":3412,"valid":true,"exitOk":true,"index":475}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":97.886,"readyMs":48.151,"totalMs":146.037,"rssKbAfter":91696,"valid":true,"exitOk":true,"index":476}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.923,"readyMs":0.242,"totalMs":2.165,"rssKbAfter":3400,"valid":true,"exitOk":true,"index":477}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":10.698,"readyMs":12.8,"totalMs":23.498,"rssKbAfter":39076,"valid":true,"exitOk":true,"index":478}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":14.92,"readyMs":12.316,"totalMs":27.236,"rssKbAfter":39092,"valid":true,"exitOk":true,"index":479}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":12.826,"readyMs":13.325,"totalMs":26.151,"rssKbAfter":39036,"valid":true,"exitOk":true,"index":480}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":82.755,"readyMs":13.177,"totalMs":95.932,"rssKbAfter":85852,"valid":true,"exitOk":true,"index":481}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":94.617,"readyMs":10.768,"totalMs":105.385,"rssKbAfter":86748,"valid":true,"exitOk":true,"index":482}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":11.471,"readyMs":1.906,"totalMs":13.376,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":483}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":14.744,"readyMs":3.341,"totalMs":18.085,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":484}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":485,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.57,"readyMs":2.243,"totalMs":11.813,"rssKbAfter":38976,"valid":true,"exitOk":true,"index":486}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":10.693,"readyMs":2.189,"totalMs":12.882,"rssKbAfter":38940,"valid":true,"exitOk":true,"index":487}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":488,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.364,"readyMs":1.926,"totalMs":12.29,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":489}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":84.958,"readyMs":54.446,"totalMs":139.404,"rssKbAfter":93728,"valid":true,"exitOk":true,"index":490}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.952,"readyMs":3.726,"totalMs":18.678,"rssKbAfter":38188,"valid":true,"exitOk":true,"index":491}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":89.902,"readyMs":49.467,"totalMs":139.368,"rssKbAfter":93372,"valid":true,"exitOk":true,"index":492}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":88.439,"readyMs":11.606,"totalMs":100.046,"rssKbAfter":83600,"valid":true,"exitOk":true,"index":493}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":89.991,"readyMs":11.676,"totalMs":101.667,"rssKbAfter":84076,"valid":true,"exitOk":true,"index":494}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":11.664,"readyMs":2.11,"totalMs":13.774,"rssKbAfter":38704,"valid":true,"exitOk":true,"index":495}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":78.266,"readyMs":10.203,"totalMs":88.47,"rssKbAfter":88016,"valid":true,"exitOk":true,"index":496}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":8.71,"readyMs":3.395,"totalMs":12.105,"rssKbAfter":38132,"valid":true,"exitOk":true,"index":497}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":498,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":77.891,"readyMs":51.608,"totalMs":129.499,"rssKbAfter":92392,"valid":true,"exitOk":true,"index":499}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":135.697,"readyMs":72.355,"totalMs":208.053,"rssKbAfter":88972,"valid":true,"exitOk":true,"index":500}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.788,"readyMs":2.505,"totalMs":14.293,"rssKbAfter":39080,"valid":true,"exitOk":true,"index":501}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":83.251,"readyMs":48.517,"totalMs":131.768,"rssKbAfter":92796,"valid":true,"exitOk":true,"index":502}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":130.711,"readyMs":64.972,"totalMs":195.683,"rssKbAfter":90872,"valid":true,"exitOk":true,"index":503}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.855,"readyMs":0.338,"totalMs":2.194,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":504}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":505,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":506,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":507,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.902,"readyMs":0.276,"totalMs":2.178,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":508}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":509,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":510,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":87.072,"readyMs":60.691,"totalMs":147.763,"rssKbAfter":90372,"valid":true,"exitOk":true,"index":511}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":14.077,"readyMs":2.131,"totalMs":16.208,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":512}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.155,"readyMs":0.227,"totalMs":2.382,"rssKbAfter":3404,"valid":true,"exitOk":true,"index":513}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":85.835,"readyMs":10.602,"totalMs":96.437,"rssKbAfter":88372,"valid":true,"exitOk":true,"index":514}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.343,"readyMs":2.086,"totalMs":11.429,"rssKbAfter":39020,"valid":true,"exitOk":true,"index":515}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":78.407,"readyMs":45.418,"totalMs":123.825,"rssKbAfter":91640,"valid":true,"exitOk":true,"index":516}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":86.982,"readyMs":48.608,"totalMs":135.591,"rssKbAfter":93004,"valid":true,"exitOk":true,"index":517}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":73.553,"readyMs":45.889,"totalMs":119.443,"rssKbAfter":90276,"valid":true,"exitOk":true,"index":518}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":84.669,"readyMs":10.708,"totalMs":95.377,"rssKbAfter":85156,"valid":true,"exitOk":true,"index":519}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":79.574,"readyMs":49.716,"totalMs":129.29,"rssKbAfter":92812,"valid":true,"exitOk":true,"index":520}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":13.547,"readyMs":12.821,"totalMs":26.368,"rssKbAfter":39076,"valid":true,"exitOk":true,"index":521}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":84.487,"readyMs":10.387,"totalMs":94.874,"rssKbAfter":86472,"valid":true,"exitOk":true,"index":522}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.984,"readyMs":2.131,"totalMs":12.115,"rssKbAfter":39012,"valid":true,"exitOk":true,"index":523}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":524,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":525,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":526,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":82.947,"readyMs":10.665,"totalMs":93.611,"rssKbAfter":83828,"valid":true,"exitOk":true,"index":527}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":2.02,"readyMs":0.201,"totalMs":2.221,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":528}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.776,"readyMs":0.214,"totalMs":1.99,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":529}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.649,"readyMs":0.254,"totalMs":1.903,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":530}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":79.291,"readyMs":10.619,"totalMs":89.91,"rssKbAfter":85112,"valid":true,"exitOk":true,"index":531}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":9.405,"readyMs":2.777,"totalMs":12.182,"rssKbAfter":38768,"valid":true,"exitOk":true,"index":532}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.988,"readyMs":11.343,"totalMs":13.331,"rssKbAfter":3540,"valid":true,"exitOk":true,"index":533}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.84,"readyMs":11.391,"totalMs":13.232,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":534}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":12.937,"readyMs":2.251,"totalMs":15.188,"rssKbAfter":39028,"valid":true,"exitOk":true,"index":535}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":13.405,"readyMs":12.269,"totalMs":25.675,"rssKbAfter":39064,"valid":true,"exitOk":true,"index":536}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.878,"readyMs":0.222,"totalMs":2.1,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":537}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":77.272,"readyMs":11.114,"totalMs":88.386,"rssKbAfter":85548,"valid":true,"exitOk":true,"index":538}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":539,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.721,"readyMs":0.31,"totalMs":2.031,"rssKbAfter":3520,"valid":true,"exitOk":true,"index":540}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":73.988,"readyMs":45.274,"totalMs":119.262,"rssKbAfter":92168,"valid":true,"exitOk":true,"index":541}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":542,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.005,"readyMs":1.919,"totalMs":10.923,"rssKbAfter":39020,"valid":true,"exitOk":true,"index":543}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":75.924,"readyMs":10.313,"totalMs":86.236,"rssKbAfter":85528,"valid":true,"exitOk":true,"index":544}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":545,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":546,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":74.144,"readyMs":10.58,"totalMs":84.724,"rssKbAfter":85772,"valid":true,"exitOk":true,"index":547}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":12.4,"readyMs":1.941,"totalMs":14.341,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":548}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":77.934,"readyMs":46.246,"totalMs":124.18,"rssKbAfter":94164,"valid":true,"exitOk":true,"index":549}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.152,"readyMs":2.07,"totalMs":11.223,"rssKbAfter":38716,"valid":true,"exitOk":true,"index":550}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.009,"readyMs":1.884,"totalMs":10.894,"rssKbAfter":39028,"valid":true,"exitOk":true,"index":551}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":12.205,"readyMs":1.519,"totalMs":13.725,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":552}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":75.486,"readyMs":10.223,"totalMs":85.709,"rssKbAfter":86572,"valid":true,"exitOk":true,"index":553}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":9.68,"readyMs":1.943,"totalMs":11.623,"rssKbAfter":39032,"valid":true,"exitOk":true,"index":554}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":81.927,"readyMs":51.02,"totalMs":132.947,"rssKbAfter":91980,"valid":true,"exitOk":true,"index":555}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.968,"readyMs":0.292,"totalMs":2.26,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":556}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.039,"readyMs":1.892,"totalMs":12.931,"rssKbAfter":38188,"valid":true,"exitOk":true,"index":557}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":73.386,"readyMs":10.01,"totalMs":83.396,"rssKbAfter":86628,"valid":true,"exitOk":true,"index":558}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":11.437,"readyMs":1.967,"totalMs":13.404,"rssKbAfter":38720,"valid":true,"exitOk":true,"index":559}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.563,"readyMs":0.161,"totalMs":1.724,"rssKbAfter":3412,"valid":true,"exitOk":true,"index":560}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.606,"readyMs":0.306,"totalMs":1.912,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":561}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":76.627,"readyMs":10.522,"totalMs":87.149,"rssKbAfter":84972,"valid":true,"exitOk":true,"index":562}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":77.004,"readyMs":10.422,"totalMs":87.426,"rssKbAfter":86120,"valid":true,"exitOk":true,"index":563}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.864,"readyMs":11.839,"totalMs":13.703,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":564}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":20.964,"readyMs":13.269,"totalMs":34.233,"rssKbAfter":39048,"valid":true,"exitOk":true,"index":565}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.589,"readyMs":0.323,"totalMs":2.912,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":566}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":17,"readyMs":12.817,"totalMs":29.816,"rssKbAfter":39068,"valid":true,"exitOk":true,"index":567}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":3.748,"readyMs":0.417,"totalMs":4.164,"rssKbAfter":3480,"valid":true,"exitOk":true,"index":568}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":18.263,"readyMs":2.21,"totalMs":20.474,"rssKbAfter":38188,"valid":true,"exitOk":true,"index":569}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.084,"readyMs":0.246,"totalMs":2.33,"rssKbAfter":3524,"valid":true,"exitOk":true,"index":570}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":15.534,"readyMs":2.152,"totalMs":17.686,"rssKbAfter":38768,"valid":true,"exitOk":true,"index":571}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":77.665,"readyMs":52.028,"totalMs":129.693,"rssKbAfter":92680,"valid":true,"exitOk":true,"index":572}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":573,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":13.651,"readyMs":1.986,"totalMs":15.637,"rssKbAfter":38172,"valid":true,"exitOk":true,"index":574}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":12.655,"readyMs":12.191,"totalMs":24.846,"rssKbAfter":39136,"valid":true,"exitOk":true,"index":575}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.939,"readyMs":0.181,"totalMs":2.12,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":576}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":14.673,"readyMs":2.978,"totalMs":17.651,"rssKbAfter":38712,"valid":true,"exitOk":true,"index":577}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.833,"readyMs":3.623,"totalMs":18.456,"rssKbAfter":38116,"valid":true,"exitOk":true,"index":578}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":75.113,"readyMs":45.113,"totalMs":120.225,"rssKbAfter":93280,"valid":true,"exitOk":true,"index":579}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.492,"readyMs":0.247,"totalMs":1.739,"rssKbAfter":3380,"valid":true,"exitOk":true,"index":580}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.69,"readyMs":11.405,"totalMs":13.095,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":581}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.792,"readyMs":0.263,"totalMs":2.054,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":582}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":84.784,"readyMs":45.285,"totalMs":130.069,"rssKbAfter":91116,"valid":true,"exitOk":true,"index":583}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":584,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":585,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.004,"readyMs":0.304,"totalMs":2.308,"rssKbAfter":3452,"valid":true,"exitOk":true,"index":586}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":79.326,"readyMs":48.784,"totalMs":128.11,"rssKbAfter":95264,"valid":true,"exitOk":true,"index":587}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":588,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":589,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":79.412,"readyMs":10.352,"totalMs":89.764,"rssKbAfter":86236,"valid":true,"exitOk":true,"index":590}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":79.674,"readyMs":10.062,"totalMs":89.736,"rssKbAfter":88296,"valid":true,"exitOk":true,"index":591}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":77.911,"readyMs":10.161,"totalMs":88.072,"rssKbAfter":86948,"valid":true,"exitOk":true,"index":592}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":82.012,"readyMs":11.236,"totalMs":93.247,"rssKbAfter":86704,"valid":true,"exitOk":true,"index":593}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":79.841,"readyMs":10.858,"totalMs":90.699,"rssKbAfter":88144,"valid":true,"exitOk":true,"index":594}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.871,"readyMs":0.212,"totalMs":2.082,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":595}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":74.831,"readyMs":47.157,"totalMs":121.988,"rssKbAfter":93888,"valid":true,"exitOk":true,"index":596}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":10.908,"readyMs":2.113,"totalMs":13.021,"rssKbAfter":39064,"valid":true,"exitOk":true,"index":597}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":83.747,"readyMs":10.039,"totalMs":93.786,"rssKbAfter":88048,"valid":true,"exitOk":true,"index":598}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":73.639,"readyMs":10.533,"totalMs":84.171,"rssKbAfter":86216,"valid":true,"exitOk":true,"index":599}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":600,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":79.597,"readyMs":45.851,"totalMs":125.448,"rssKbAfter":92872,"valid":true,"exitOk":true,"index":601}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.874,"readyMs":2.008,"totalMs":11.882,"rssKbAfter":38712,"valid":true,"exitOk":true,"index":602}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":80.867,"readyMs":61.887,"totalMs":142.754,"rssKbAfter":94468,"valid":true,"exitOk":true,"index":603}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.953,"readyMs":0.274,"totalMs":2.228,"rssKbAfter":3492,"valid":true,"exitOk":true,"index":604}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":91.203,"readyMs":10.196,"totalMs":101.399,"rssKbAfter":86540,"valid":true,"exitOk":true,"index":605}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":85.949,"readyMs":10.424,"totalMs":96.374,"rssKbAfter":88416,"valid":true,"exitOk":true,"index":606}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":74.829,"readyMs":61.583,"totalMs":136.411,"rssKbAfter":91688,"valid":true,"exitOk":true,"index":607}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":86.567,"readyMs":62.822,"totalMs":149.389,"rssKbAfter":92544,"valid":true,"exitOk":true,"index":608}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":18.677,"readyMs":13.598,"totalMs":32.275,"rssKbAfter":38992,"valid":true,"exitOk":true,"index":609}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":20.083,"readyMs":2.136,"totalMs":22.219,"rssKbAfter":38772,"valid":true,"exitOk":true,"index":610}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":77.078,"readyMs":46.471,"totalMs":123.55,"rssKbAfter":93388,"valid":true,"exitOk":true,"index":611}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.735,"readyMs":2.479,"totalMs":14.214,"rssKbAfter":38160,"valid":true,"exitOk":true,"index":612}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.69,"readyMs":11.31,"totalMs":13,"rssKbAfter":3456,"valid":true,"exitOk":true,"index":613}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":614,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":615,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":616,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":617,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":618,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":97.472,"readyMs":59.43,"totalMs":156.902,"rssKbAfter":92648,"valid":true,"exitOk":true,"index":619}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":620,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":621,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":622,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.534,"readyMs":0.52,"totalMs":2.054,"rssKbAfter":3388,"valid":true,"exitOk":true,"index":623}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":624,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":15.123,"readyMs":3.227,"totalMs":18.35,"rssKbAfter":38704,"valid":true,"exitOk":true,"index":625}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":626,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":78.17,"readyMs":62.993,"totalMs":141.162,"rssKbAfter":95460,"valid":true,"exitOk":true,"index":627}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":628,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":12.065,"readyMs":2.914,"totalMs":14.979,"rssKbAfter":38516,"valid":true,"exitOk":true,"index":629}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.868,"readyMs":0.21,"totalMs":2.078,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":630}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":631,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.401,"readyMs":2.215,"totalMs":12.616,"rssKbAfter":38772,"valid":true,"exitOk":true,"index":632}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":633,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":634,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":94.052,"readyMs":11.757,"totalMs":105.808,"rssKbAfter":85528,"valid":true,"exitOk":true,"index":635}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":90.613,"readyMs":11.482,"totalMs":102.095,"rssKbAfter":87564,"valid":true,"exitOk":true,"index":636}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":94.661,"readyMs":49.796,"totalMs":144.457,"rssKbAfter":92700,"valid":true,"exitOk":true,"index":637}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":638,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":89.637,"readyMs":71.627,"totalMs":161.264,"rssKbAfter":93732,"valid":true,"exitOk":true,"index":639}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":640,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":87.842,"readyMs":11.935,"totalMs":99.778,"rssKbAfter":86100,"valid":true,"exitOk":true,"index":641}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":642,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.551,"readyMs":0.293,"totalMs":1.844,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":643}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":644,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.39,"readyMs":2.014,"totalMs":16.404,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":645}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":646,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":86.562,"readyMs":51.497,"totalMs":138.06,"rssKbAfter":91872,"valid":true,"exitOk":true,"index":647}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.076,"readyMs":0.21,"totalMs":2.286,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":648}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":84.181,"readyMs":49.476,"totalMs":133.657,"rssKbAfter":92508,"valid":true,"exitOk":true,"index":649}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.894,"readyMs":0.316,"totalMs":2.21,"rssKbAfter":3468,"valid":true,"exitOk":true,"index":650}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":97.696,"readyMs":14.42,"totalMs":112.117,"rssKbAfter":84220,"valid":true,"exitOk":true,"index":651}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":652,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":11.253,"readyMs":2.354,"totalMs":13.607,"rssKbAfter":39052,"valid":true,"exitOk":true,"index":653}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":654,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":21.357,"readyMs":7.559,"totalMs":28.916,"rssKbAfter":38140,"valid":true,"exitOk":true,"index":655}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":90.7,"readyMs":72.72,"totalMs":163.42,"rssKbAfter":87308,"valid":true,"exitOk":true,"index":656}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.272,"readyMs":0.276,"totalMs":1.547,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":657}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":14.689,"readyMs":2.763,"totalMs":17.452,"rssKbAfter":38248,"valid":true,"exitOk":true,"index":658}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.232,"readyMs":0.27,"totalMs":1.502,"rssKbAfter":3440,"valid":true,"exitOk":true,"index":659}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":10.087,"readyMs":2.801,"totalMs":12.887,"rssKbAfter":38700,"valid":true,"exitOk":true,"index":660}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":661,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":10.241,"readyMs":1.969,"totalMs":12.21,"rssKbAfter":38104,"valid":true,"exitOk":true,"index":662}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":14.781,"readyMs":2.044,"totalMs":16.825,"rssKbAfter":38644,"valid":true,"exitOk":true,"index":663}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.986,"readyMs":0.272,"totalMs":2.257,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":664}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.809,"readyMs":0.253,"totalMs":2.062,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":665}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":11.307,"readyMs":1.95,"totalMs":13.256,"rssKbAfter":38244,"valid":true,"exitOk":true,"index":666}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":87.049,"readyMs":10.609,"totalMs":97.658,"rssKbAfter":86600,"valid":true,"exitOk":true,"index":667}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":10.152,"readyMs":2.06,"totalMs":12.213,"rssKbAfter":38680,"valid":true,"exitOk":true,"index":668}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":9.839,"readyMs":2.262,"totalMs":12.1,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":669}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":11.983,"readyMs":2.158,"totalMs":14.141,"rssKbAfter":38156,"valid":true,"exitOk":true,"index":670}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.903,"readyMs":0.193,"totalMs":2.096,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":671}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":672,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":12.48,"readyMs":12.578,"totalMs":25.059,"rssKbAfter":39116,"valid":true,"exitOk":true,"index":673}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.037,"readyMs":0.348,"totalMs":2.385,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":674}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":99.154,"readyMs":47.37,"totalMs":146.524,"rssKbAfter":92896,"valid":true,"exitOk":true,"index":675}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.506,"readyMs":0.277,"totalMs":1.783,"rssKbAfter":3412,"valid":true,"exitOk":true,"index":676}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":677,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":678,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":2.003,"readyMs":11.601,"totalMs":13.604,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":679}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":680,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":80.334,"readyMs":11.291,"totalMs":91.624,"rssKbAfter":86348,"valid":true,"exitOk":true,"index":681}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.117,"readyMs":0.285,"totalMs":2.403,"rssKbAfter":3404,"valid":true,"exitOk":true,"index":682}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":90.471,"readyMs":63.792,"totalMs":154.263,"rssKbAfter":92540,"valid":true,"exitOk":true,"index":683}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":12.009,"readyMs":2.35,"totalMs":14.359,"rssKbAfter":39048,"valid":true,"exitOk":true,"index":684}
+{"candidate":"raw-rust","class":"C4","routeId":"users.get","spawnMs":1.907,"readyMs":0.185,"totalMs":2.092,"rssKbAfter":3492,"valid":true,"exitOk":true,"index":685}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":81.748,"readyMs":47.501,"totalMs":129.249,"rssKbAfter":91156,"valid":true,"exitOk":true,"index":686}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.697,"readyMs":0.211,"totalMs":1.909,"rssKbAfter":3480,"valid":true,"exitOk":true,"index":687}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":688,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.608,"readyMs":0.241,"totalMs":1.848,"rssKbAfter":3396,"valid":true,"exitOk":true,"index":689}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":690,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":14.048,"readyMs":13.748,"totalMs":27.797,"rssKbAfter":39064,"valid":true,"exitOk":true,"index":691}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.861,"readyMs":0.218,"totalMs":2.079,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":692}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":76.961,"readyMs":48.998,"totalMs":125.959,"rssKbAfter":92552,"valid":true,"exitOk":true,"index":693}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":694,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":12.064,"readyMs":12.418,"totalMs":24.482,"rssKbAfter":39088,"valid":true,"exitOk":true,"index":695}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":17.737,"readyMs":12.43,"totalMs":30.168,"rssKbAfter":39040,"valid":true,"exitOk":true,"index":696}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":102.958,"readyMs":11.783,"totalMs":114.741,"rssKbAfter":84320,"valid":true,"exitOk":true,"index":697}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.993,"readyMs":0.207,"totalMs":2.2,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":698}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":699,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":11.874,"readyMs":12.66,"totalMs":24.535,"rssKbAfter":39096,"valid":true,"exitOk":true,"index":700}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":701,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":702,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":703,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.267,"readyMs":0.312,"totalMs":1.578,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":704}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.74,"readyMs":0.286,"totalMs":2.026,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":705}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":10.941,"readyMs":2.121,"totalMs":13.062,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":706}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":707,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":14.676,"readyMs":2.647,"totalMs":17.322,"rssKbAfter":38776,"valid":true,"exitOk":true,"index":708}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":12.056,"readyMs":2.794,"totalMs":14.85,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":709}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.928,"readyMs":0.3,"totalMs":2.229,"rssKbAfter":3424,"valid":true,"exitOk":true,"index":710}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.716,"readyMs":11.393,"totalMs":13.108,"rssKbAfter":3484,"valid":true,"exitOk":true,"index":711}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":97.79,"readyMs":47.973,"totalMs":145.763,"rssKbAfter":91992,"valid":true,"exitOk":true,"index":712}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":713,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.036,"readyMs":0.338,"totalMs":2.374,"rssKbAfter":3408,"valid":true,"exitOk":true,"index":714}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.678,"readyMs":0.244,"totalMs":1.922,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":715}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":10.265,"readyMs":1.869,"totalMs":12.133,"rssKbAfter":38192,"valid":true,"exitOk":true,"index":716}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.987,"readyMs":0.257,"totalMs":2.244,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":717}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":9.868,"readyMs":2.042,"totalMs":11.91,"rssKbAfter":38708,"valid":true,"exitOk":true,"index":718}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":80.329,"readyMs":11.275,"totalMs":91.604,"rssKbAfter":84488,"valid":true,"exitOk":true,"index":719}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":82.666,"readyMs":63.771,"totalMs":146.437,"rssKbAfter":91748,"valid":true,"exitOk":true,"index":720}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":119.496,"readyMs":10.445,"totalMs":129.941,"rssKbAfter":85600,"valid":true,"exitOk":true,"index":721}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":99.563,"readyMs":12.227,"totalMs":111.79,"rssKbAfter":86416,"valid":true,"exitOk":true,"index":722}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":723,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":81.584,"readyMs":13.56,"totalMs":95.144,"rssKbAfter":84096,"valid":true,"exitOk":true,"index":724}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":85.103,"readyMs":59.907,"totalMs":145.01,"rssKbAfter":90524,"valid":true,"exitOk":true,"index":725}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":726,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":14.203,"readyMs":2.329,"totalMs":16.532,"rssKbAfter":38724,"valid":true,"exitOk":true,"index":727}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.012,"readyMs":0.187,"totalMs":2.199,"rssKbAfter":3448,"valid":true,"exitOk":true,"index":728}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":80.145,"readyMs":48.497,"totalMs":128.643,"rssKbAfter":92552,"valid":true,"exitOk":true,"index":729}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.987,"readyMs":11.398,"totalMs":13.385,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":730}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":93.736,"readyMs":49.572,"totalMs":143.308,"rssKbAfter":92624,"valid":true,"exitOk":true,"index":731}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":86.43,"readyMs":48.083,"totalMs":134.512,"rssKbAfter":90816,"valid":true,"exitOk":true,"index":732}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":90.424,"readyMs":50.055,"totalMs":140.479,"rssKbAfter":93076,"valid":true,"exitOk":true,"index":733}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":734,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":105.011,"readyMs":113.973,"totalMs":218.984,"rssKbAfter":94272,"valid":true,"exitOk":true,"index":735}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.577,"readyMs":2.43,"totalMs":13.008,"rssKbAfter":38780,"valid":true,"exitOk":true,"index":736}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":87.169,"readyMs":15.059,"totalMs":102.228,"rssKbAfter":84484,"valid":true,"exitOk":true,"index":737}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":12.468,"readyMs":3.876,"totalMs":16.344,"rssKbAfter":38728,"valid":true,"exitOk":true,"index":738}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":11.618,"readyMs":3.211,"totalMs":14.83,"rssKbAfter":38796,"valid":true,"exitOk":true,"index":739}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.798,"readyMs":11.514,"totalMs":13.312,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":740}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":741,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":13.214,"readyMs":1.906,"totalMs":15.12,"rssKbAfter":38780,"valid":true,"exitOk":true,"index":742}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.029,"readyMs":0.315,"totalMs":2.344,"rssKbAfter":3380,"valid":true,"exitOk":true,"index":743}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.549,"readyMs":0.166,"totalMs":1.715,"rssKbAfter":3416,"valid":true,"exitOk":true,"index":744}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.681,"readyMs":0.188,"totalMs":1.869,"rssKbAfter":3368,"valid":true,"exitOk":true,"index":745}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":82.171,"readyMs":47.328,"totalMs":129.499,"rssKbAfter":92972,"valid":true,"exitOk":true,"index":746}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":747,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":90.732,"readyMs":51.232,"totalMs":141.963,"rssKbAfter":90688,"valid":true,"exitOk":true,"index":748}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":137.907,"readyMs":53.933,"totalMs":191.84,"rssKbAfter":94100,"valid":true,"exitOk":true,"index":749}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":77.696,"readyMs":13.786,"totalMs":91.482,"rssKbAfter":85308,"valid":true,"exitOk":true,"index":750}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":89.001,"readyMs":72.133,"totalMs":161.134,"rssKbAfter":93856,"valid":true,"exitOk":true,"index":751}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":23.425,"readyMs":9.696,"totalMs":33.121,"rssKbAfter":38228,"valid":true,"exitOk":true,"index":752}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":753,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":754,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":755,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":2.045,"readyMs":11.655,"totalMs":13.7,"rssKbAfter":3368,"valid":true,"exitOk":true,"index":756}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":14.48,"readyMs":2.142,"totalMs":16.621,"rssKbAfter":39040,"valid":true,"exitOk":true,"index":757}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":9.696,"readyMs":1.877,"totalMs":11.573,"rssKbAfter":38220,"valid":true,"exitOk":true,"index":758}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":77.222,"readyMs":47.761,"totalMs":124.983,"rssKbAfter":92260,"valid":true,"exitOk":true,"index":759}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":760,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":81.129,"readyMs":46.772,"totalMs":127.901,"rssKbAfter":91460,"valid":true,"exitOk":true,"index":761}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":762,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":93.372,"readyMs":10.055,"totalMs":103.427,"rssKbAfter":83800,"valid":true,"exitOk":true,"index":763}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":764,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":10.718,"readyMs":1.862,"totalMs":12.579,"rssKbAfter":38180,"valid":true,"exitOk":true,"index":765}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.565,"readyMs":0.156,"totalMs":1.722,"rssKbAfter":3420,"valid":true,"exitOk":true,"index":766}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":13.512,"readyMs":2.09,"totalMs":15.602,"rssKbAfter":39068,"valid":true,"exitOk":true,"index":767}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":9.757,"readyMs":12.284,"totalMs":22.041,"rssKbAfter":39068,"valid":true,"exitOk":true,"index":768}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":16.041,"readyMs":2.702,"totalMs":18.742,"rssKbAfter":38144,"valid":true,"exitOk":true,"index":769}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":79.047,"readyMs":61.035,"totalMs":140.082,"rssKbAfter":94184,"valid":true,"exitOk":true,"index":770}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":771,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":112.548,"readyMs":17.124,"totalMs":129.673,"rssKbAfter":83500,"valid":true,"exitOk":true,"index":772}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":189.735,"readyMs":50.565,"totalMs":240.3,"rssKbAfter":88112,"valid":true,"exitOk":true,"index":773}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":774,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":91.019,"readyMs":11.601,"totalMs":102.62,"rssKbAfter":84932,"valid":true,"exitOk":true,"index":775}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.49,"readyMs":0.315,"totalMs":2.804,"rssKbAfter":3396,"valid":true,"exitOk":true,"index":776}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":104.922,"readyMs":12.062,"totalMs":116.984,"rssKbAfter":86852,"valid":true,"exitOk":true,"index":777}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.103,"readyMs":2.359,"totalMs":12.462,"rssKbAfter":38708,"valid":true,"exitOk":true,"index":778}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":12.05,"readyMs":13.937,"totalMs":25.988,"rssKbAfter":39012,"valid":true,"exitOk":true,"index":779}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":13.303,"readyMs":2.788,"totalMs":16.091,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":780}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":15.674,"readyMs":2.905,"totalMs":18.579,"rssKbAfter":38140,"valid":true,"exitOk":true,"index":781}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":13.444,"readyMs":2.445,"totalMs":15.889,"rssKbAfter":38988,"valid":true,"exitOk":true,"index":782}
+{"candidate":"elysia2","class":"C3","routeId":"hello.get","spawnMs":79.103,"readyMs":48.388,"totalMs":127.491,"rssKbAfter":92244,"valid":true,"exitOk":true,"index":783}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.038,"readyMs":0.254,"totalMs":2.292,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":784}
+{"candidate":"raw-bun","class":"C4","routeId":"users.get","spawnMs":10.752,"readyMs":2.442,"totalMs":13.193,"rssKbAfter":38736,"valid":true,"exitOk":true,"index":785}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":786,"error":"server never accepted TCP"}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":82.389,"readyMs":65.503,"totalMs":147.892,"rssKbAfter":91412,"valid":true,"exitOk":true,"index":787}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":788,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":2.086,"readyMs":0.262,"totalMs":2.348,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":789}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":1.931,"readyMs":0.275,"totalMs":2.206,"rssKbAfter":3460,"valid":true,"exitOk":true,"index":790}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":2.002,"readyMs":0.182,"totalMs":2.184,"rssKbAfter":3464,"valid":true,"exitOk":true,"index":791}
+{"candidate":"velqu","class":"C5","routeId":"async.timer","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":792,"error":"server never accepted TCP"}
+{"candidate":"velqu","class":"C3","routeId":"hello.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":793,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":14.563,"readyMs":2.918,"totalMs":17.481,"rssKbAfter":38692,"valid":true,"exitOk":true,"index":794}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":13.286,"readyMs":2.523,"totalMs":15.81,"rssKbAfter":38168,"valid":true,"exitOk":true,"index":795}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.521,"readyMs":2.124,"totalMs":13.645,"rssKbAfter":38140,"valid":true,"exitOk":true,"index":796}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":797,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.945,"readyMs":11.583,"totalMs":13.528,"rssKbAfter":3396,"valid":true,"exitOk":true,"index":798}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":99.609,"readyMs":10.977,"totalMs":110.585,"rssKbAfter":87784,"valid":true,"exitOk":true,"index":799}
+{"candidate":"velqu","class":"C0","routeId":"health.live","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":800,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C5","routeId":"async.timer","spawnMs":14.163,"readyMs":13.918,"totalMs":28.081,"rssKbAfter":39088,"valid":true,"exitOk":true,"index":801}
+{"candidate":"elysia2","class":"C2","routeId":"js.json","spawnMs":115.517,"readyMs":11.044,"totalMs":126.561,"rssKbAfter":87332,"valid":true,"exitOk":true,"index":802}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":12.853,"readyMs":2.212,"totalMs":15.065,"rssKbAfter":38188,"valid":true,"exitOk":true,"index":803}
+{"candidate":"velqu","class":"C3b","routeId":"users.create","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":804,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.581,"readyMs":0.264,"totalMs":2.844,"rssKbAfter":3392,"valid":true,"exitOk":true,"index":805}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.169,"readyMs":0.369,"totalMs":2.537,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":806}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":99.759,"readyMs":69.477,"totalMs":169.236,"rssKbAfter":91916,"valid":true,"exitOk":true,"index":807}
+{"candidate":"elysia2","class":"C1","routeId":"js.text","spawnMs":104.622,"readyMs":11.624,"totalMs":116.247,"rssKbAfter":86544,"valid":true,"exitOk":true,"index":808}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.282,"readyMs":0.272,"totalMs":1.554,"rssKbAfter":3432,"valid":true,"exitOk":true,"index":809}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":1.758,"readyMs":0.212,"totalMs":1.971,"rssKbAfter":3480,"valid":true,"exitOk":true,"index":810}
+{"candidate":"raw-rust","class":"C2","routeId":"js.json","spawnMs":1.403,"readyMs":0.182,"totalMs":1.585,"rssKbAfter":3476,"valid":true,"exitOk":true,"index":811}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":13.188,"readyMs":2.385,"totalMs":15.573,"rssKbAfter":38752,"valid":true,"exitOk":true,"index":812}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":12.35,"readyMs":3.176,"totalMs":15.526,"rssKbAfter":38164,"valid":true,"exitOk":true,"index":813}
+{"candidate":"raw-rust","class":"C3","routeId":"hello.get","spawnMs":2.283,"readyMs":0.27,"totalMs":2.553,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":814}
+{"candidate":"raw-rust","class":"C0","routeId":"health.live","spawnMs":2.134,"readyMs":0.281,"totalMs":2.416,"rssKbAfter":3516,"valid":true,"exitOk":true,"index":815}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":82.355,"readyMs":51.295,"totalMs":133.65,"rssKbAfter":92876,"valid":true,"exitOk":true,"index":816}
+{"candidate":"elysia2","class":"C3b","routeId":"users.create","spawnMs":92.892,"readyMs":49.576,"totalMs":142.469,"rssKbAfter":91960,"valid":true,"exitOk":true,"index":817}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":87.436,"readyMs":11.494,"totalMs":98.929,"rssKbAfter":86464,"valid":true,"exitOk":true,"index":818}
+{"candidate":"raw-rust","class":"C5","routeId":"async.timer","spawnMs":1.295,"readyMs":11.396,"totalMs":12.691,"rssKbAfter":3444,"valid":true,"exitOk":true,"index":819}
+{"candidate":"velqu","class":"C1","routeId":"js.text","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":820,"error":"server never accepted TCP"}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":1.435,"readyMs":0.298,"totalMs":1.732,"rssKbAfter":3428,"valid":true,"exitOk":true,"index":821}
+{"candidate":"raw-bun","class":"C2","routeId":"js.json","spawnMs":15.245,"readyMs":3.077,"totalMs":18.322,"rssKbAfter":38172,"valid":true,"exitOk":true,"index":822}
+{"candidate":"velqu","class":"C2","routeId":"js.json","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":823,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C3b","routeId":"users.create","spawnMs":12.607,"readyMs":3.898,"totalMs":16.505,"rssKbAfter":38968,"valid":true,"exitOk":true,"index":824}
+{"candidate":"elysia2","class":"C4","routeId":"users.get","spawnMs":101.289,"readyMs":52.681,"totalMs":153.97,"rssKbAfter":89264,"valid":true,"exitOk":true,"index":825}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":11.99,"readyMs":2.261,"totalMs":14.251,"rssKbAfter":38752,"valid":true,"exitOk":true,"index":826}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":12.819,"readyMs":3.503,"totalMs":16.322,"rssKbAfter":38684,"valid":true,"exitOk":true,"index":827}
+{"candidate":"raw-rust","class":"C1","routeId":"js.text","spawnMs":1.985,"readyMs":0.305,"totalMs":2.29,"rssKbAfter":3496,"valid":true,"exitOk":true,"index":828}
+{"candidate":"elysia2","class":"C5","routeId":"async.timer","spawnMs":91.965,"readyMs":74.384,"totalMs":166.349,"rssKbAfter":90280,"valid":true,"exitOk":true,"index":829}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":13.401,"readyMs":2.781,"totalMs":16.182,"rssKbAfter":38224,"valid":true,"exitOk":true,"index":830}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":11.192,"readyMs":3.284,"totalMs":14.476,"rssKbAfter":38108,"valid":true,"exitOk":true,"index":831}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":15.226,"readyMs":2.02,"totalMs":17.246,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":832}
+{"candidate":"raw-rust","class":"C3b","routeId":"users.create","spawnMs":2.515,"readyMs":0.331,"totalMs":2.846,"rssKbAfter":3500,"valid":true,"exitOk":true,"index":833}
+{"candidate":"raw-bun","class":"C0","routeId":"health.live","spawnMs":13.337,"readyMs":2.714,"totalMs":16.051,"rssKbAfter":38196,"valid":true,"exitOk":true,"index":834}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":88.355,"readyMs":11.672,"totalMs":100.026,"rssKbAfter":85640,"valid":true,"exitOk":true,"index":835}
+{"candidate":"elysia2","class":"C0","routeId":"health.live","spawnMs":90.357,"readyMs":13.307,"totalMs":103.664,"rssKbAfter":85996,"valid":true,"exitOk":true,"index":836}
+{"candidate":"raw-bun","class":"C3","routeId":"hello.get","spawnMs":12.753,"readyMs":2.103,"totalMs":14.857,"rssKbAfter":38744,"valid":true,"exitOk":true,"index":837}
+{"candidate":"velqu","class":"C4","routeId":"users.get","spawnMs":0,"readyMs":0,"totalMs":0,"rssKbAfter":null,"valid":false,"exitOk":false,"index":838,"error":"server never accepted TCP"}
+{"candidate":"raw-bun","class":"C1","routeId":"js.text","spawnMs":14.981,"readyMs":1.908,"totalMs":16.89,"rssKbAfter":38184,"valid":true,"exitOk":true,"index":839}

@@ -303,9 +303,104 @@ impl Router {
         })
     }
 
+    /// Load router from pack. In numeric mode with precompiled automaton,
+    /// loads nodes and compiled routes directly with ZERO runtime path parsing or collision scans.
     pub fn from_pack(pack: &q_pack::QPack) -> Result<Router, RouterError> {
-        let mut router = Router::build(&pack.routes)?;
         if let Some(ref serialized) = pack.router {
+            let mut compiled = Vec::with_capacity(pack.routes.len());
+            for (i, r) in pack.routes.iter().enumerate() {
+                let (
+                    handler_id,
+                    policy_id,
+                    policy_handler_id,
+                    params_schema_id,
+                    query_schema_id,
+                    headers_schema_id,
+                    body_schema_id,
+                    default_status,
+                    allowed_statuses,
+                    response_strategy,
+                    deadline_ms,
+                ) = if let Some(p) = &r.plan {
+                    let strategy = match p.response_strategy {
+                        q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
+                        q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                    };
+                    (
+                        Some(q_engine::HandlerId(p.handler_id)),
+                        p.policy_id.map(q_engine::PolicyId),
+                        p.policy_handler_id.map(q_engine::HandlerId),
+                        p.params_schema_id.map(q_engine::SchemaId),
+                        p.query_schema_id.map(q_engine::SchemaId),
+                        p.headers_schema_id.map(q_engine::SchemaId),
+                        p.body_schema_id.map(q_engine::SchemaId),
+                        p.default_status,
+                        p.allowed_statuses.clone(),
+                        strategy,
+                        p.deadline_ms,
+                    )
+                } else {
+                    let default_status = r
+                        .responses
+                        .contains_key("200")
+                        .then_some(200)
+                        .or_else(|| r.responses.keys().next().and_then(|k| k.parse().ok()))
+                        .unwrap_or(200);
+                    let allowed_statuses: Vec<u16> =
+                        r.responses.keys().filter_map(|k| k.parse().ok()).collect();
+                    let response_strategy = match r.responses.get(&default_status.to_string()) {
+                        Some(decl) => match decl.strategy {
+                            q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
+                            q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                        },
+                        None => q_engine::ResponseStrategy::Js,
+                    };
+                    (
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        default_status,
+                        allowed_statuses,
+                        response_strategy,
+                        r.deadline_ms,
+                    )
+                };
+
+                let param_names = r
+                    .path_segments
+                    .iter()
+                    .filter_map(|s| match s.kind {
+                        SegKind::Param => Some(s.value.clone()),
+                        _ => None,
+                    })
+                    .collect();
+
+                compiled.push(CompiledRoute {
+                    index: i,
+                    route_id: q_engine::RouteId(i as u32),
+                    method: r.method.clone(),
+                    segments: r.path_segments.clone(),
+                    param_names,
+                    has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
+                    plan: r.plan.clone(),
+                    handler_id,
+                    policy_id,
+                    policy_handler_id,
+                    params_schema_id,
+                    query_schema_id,
+                    headers_schema_id,
+                    body_schema_id,
+                    default_status,
+                    allowed_statuses,
+                    response_strategy,
+                    deadline_ms,
+                });
+            }
+
             let nodes: Vec<RouterNode> = serialized
                 .nodes
                 .iter()
@@ -326,9 +421,14 @@ impl Router {
                     }),
                 })
                 .collect();
-            router.nodes = nodes;
+
+            Ok(Router {
+                routes: compiled,
+                nodes,
+            })
+        } else {
+            Router::build(&pack.routes)
         }
-        Ok(router)
     }
 
     pub fn route_count(&self) -> usize {

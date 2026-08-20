@@ -2760,12 +2760,16 @@ async fn policy_function_in_route_slot_is_rejected() {
     eng.shutdown();
 }
 
-/// M2.3 strict vector loading: a hole in __velquFunctions must be rejected during load
+/// M2.3 strict vector loading: a hole in __velquFunctionManifest must be rejected during load
 #[tokio::test]
 async fn function_vector_hole_rejected_during_load() {
     let bundle = r#"
         function fn_a() { return 1; }
-        globalThis.__velquFunctions = [fn_a, undefined, fn_a];
+        globalThis.__velquFunctionManifest = [
+            ["a", 0, fn_a],
+            undefined,
+            ["c", 0, fn_a]
+        ];
     "#;
     let (mut eng, _) = engine();
     let functions = vec![
@@ -2788,16 +2792,20 @@ async fn function_vector_hole_rejected_during_load() {
     let err = eng
         .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
-    assert!(err.contains("entry 1 is missing or not callable"));
+    assert!(err.contains("entry 1 is invalid"));
     eng.shutdown();
 }
 
-/// M2.3 strict vector loading: a non-function in __velquFunctions must be rejected during load
+/// M2.3 strict vector loading: a non-function in __velquFunctionManifest must be rejected during load
 #[tokio::test]
 async fn function_vector_non_function_rejected_during_load() {
     let bundle = r#"
         function fn_a() { return 1; }
-        globalThis.__velquFunctions = [fn_a, 42, fn_a];
+        globalThis.__velquFunctionManifest = [
+            ["a", 0, fn_a],
+            ["b", 0, 42],
+            ["c", 0, fn_a]
+        ];
     "#;
     let (mut eng, _) = engine();
     let functions = vec![
@@ -2820,7 +2828,7 @@ async fn function_vector_non_function_rejected_during_load() {
     let err = eng
         .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
-    assert!(err.contains("entry 1 is missing or not callable"));
+    assert!(err.contains("entry 1 (b) is not a callable function"));
     eng.shutdown();
 }
 
@@ -2829,7 +2837,9 @@ async fn function_vector_non_function_rejected_during_load() {
 async fn function_vector_length_mismatch_rejected() {
     let bundle = r#"
         function fn_a() { return 1; }
-        globalThis.__velquFunctions = [fn_a];
+        globalThis.__velquFunctionManifest = [
+            ["a", 0, fn_a]
+        ];
     "#;
     let (mut eng, _) = engine();
     let functions = vec![
@@ -2847,7 +2857,7 @@ async fn function_vector_length_mismatch_rejected() {
     let err = eng
         .load(bundle, None, EngineLoadPlan::Numeric { functions })
         .unwrap_err();
-    assert!(err.contains("function vector length 1 != expected manifest count 2"));
+    assert!(err.contains("function manifest length 1 != expected manifest count 2"));
     eng.shutdown();
 }
 
@@ -2856,7 +2866,9 @@ async fn function_vector_length_mismatch_rejected() {
 async fn numeric_out_of_range_handler_id_fails_closed() {
     let bundle = r#"
         function fn_a() { return { ok: true }; }
-        globalThis.__velquFunctions = [fn_a];
+        globalThis.__velquFunctionManifest = [
+            ["a", 0, fn_a]
+        ];
     "#;
     let (mut eng, store) = engine();
     let functions = vec![FunctionDecl {
@@ -2875,6 +2887,58 @@ async fn numeric_out_of_range_handler_id_fails_closed() {
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::EngineFailure { .. }));
     assert_eq!(store.live_slots(), 0);
+    eng.shutdown();
+}
+
+/// M2.3-r3/r4: Numeric mode strictly requires the semantic manifest; raw vector without manifest is rejected
+#[tokio::test]
+async fn numeric_pack_without_semantic_manifest_is_rejected() {
+    let bundle = r#"
+        function fn_a() { return { ok: true }; }
+        globalThis.__velquFunctions = [fn_a];
+    "#;
+    let (mut eng, _) = engine();
+    let functions = vec![FunctionDecl {
+        id: 0,
+        key: "fn.a".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
+    let err = eng
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
+        .unwrap_err();
+    assert!(
+        err.contains("semantic function manifest (globalThis.__velquFunctionManifest) is missing")
+    );
+    eng.shutdown();
+}
+
+/// M2.3-r3/r4: Missing manifest with swapped functions fails closed
+#[tokio::test]
+async fn missing_manifest_with_swapped_functions_is_rejected() {
+    let bundle = r#"
+        function auth_session() { return { session: {} }; }
+        function users_get() { return { user: "alice" }; }
+        globalThis.__velquFunctions = [auth_session, users_get];
+    "#;
+    let (mut eng, _) = engine();
+    let functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "users.get".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "auth.session".into(),
+            kind: FunctionKind::PolicyHandler,
+        },
+    ];
+    let err = eng
+        .load(bundle, None, EngineLoadPlan::Numeric { functions })
+        .unwrap_err();
+    assert!(
+        err.contains("semantic function manifest (globalThis.__velquFunctionManifest) is missing")
+    );
     eng.shutdown();
 }
 

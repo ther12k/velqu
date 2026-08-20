@@ -23,13 +23,13 @@ rquickjs 0.12.2. Release builds for all candidates. 2026-08-19.
 
 | Class | velqu | raw-rust (lower bound) | raw-bun | elysia2 AOT |
 |---|---|---|---|---|
-| C0 native liveness | **2.9 / 4.8** | 2.1 / 3.3 | 14.2 / 23.9 | 101.7 / 131.6 |
-| C1 JS plaintext | **3.0 / 6.1** | 2.1 / 3.4 | 13.6 / 21.9 | 99.8 / 134.3 |
-| C2 JS small JSON | **3.0 / 4.9** | 2.1 / 3.6 | 14.9 / 21.1 | 98.8 / 129.9 |
-| C3 validated path (hello) | **3.1 / 5.1** | 2.1 / 3.3 | 13.6 / 20.4 | 137.1 / 167.7 |
-| C3 validated body (users) | **3.1 / 5.0** | 2.2 / 5.4 | 14.2 / 21.9 | 141.0 / 156.6 |
-| C4 policy + validation | **3.3 / 6.0** | 2.2 / 3.6 | 14.0 / 22.2 | 139.0 / 160.6 |
-| C5 async (10ms timer) | 14.3 / 18.8 | 13.4 / 15.9 | 24.8 / 32.3 | 155.5 / 192.5 |
+| C0: native liveness | **3.2 / 5.8** | 2.2 / 3.1 | 16.8 / 23.8 | 106.0 / 141.8 |
+| C1: JS plaintext | **3.1 / 4.2** | 2.4 / 4.3 | 14.8 / 21.6 | 115.7 / 155.7 |
+| C2: JS small JSON | **3.3 / 5.5** | 2.2 / 5.1 | 15.7 / 36.5 | 107.1 / 136.6 |
+| C3: validated path (hello) | **3.4 / 5.0** | 2.2 / 3.3 | 14.3 / 23.2 | 150.2 / 180.2 |
+| C3b: validated body (users) | **3.3 / 15.6** | 2.3 / 4.0 | 16.1 / 33.9 | 149.3 / 199.3 |
+| C4: policy + validation | **3.6 / 5.6** | 2.2 / 2.8 | 16.7 / 29.1 | 144.8 / 173.3 |
+| C5: async (10ms timer) | **14.6 / 18.3** | 13.5 / 15.3 | 26.3 / 49.3 | 167.4 / 192.9 |
 
 (C5 includes the 10ms deliberate timer wait; startup itself is C0–C4-like.)
 
@@ -37,20 +37,20 @@ rquickjs 0.12.2. Release builds for all candidates. 2026-08-19.
 
 > Velqu C3 and C4 p95 ≤ 60% of matched Elysia 2 AOT p95
 
-- C3 p95: velqu 5.1ms vs elysia 167.7ms → **3.0%** — PASS (33× lower)
-- C4 p95: velqu 6.0ms vs elysia 160.6ms → **3.7%** — PASS (27× lower)
-- velqu C3 p95 vs raw-bun 20.4ms → 25% — PASS
+- C3 p95: velqu 5.0ms vs elysia 180.2ms → **2.8%** — PASS (36× lower)
+- C4 p95: velqu 5.6ms vs elysia 173.3ms → **3.2%** — PASS (31× lower)
+- velqu C3 p95 vs raw-bun 23.2ms → 22% — PASS
 
 ## Absolute budgets (aspirational, this host)
 
 | Budget | Target | Observed | Status |
 |---|---:|---:|---|
-| C0 p95 | ≤8ms | 4.8ms | PASS |
-| C1 p95 | ≤12ms | 6.1ms | PASS |
-| C2 p95 | ≤15ms | 4.9ms | PASS |
-| C3 p95 | ≤18ms | 5.1ms | PASS |
-| C4 p95 | ≤22ms | 6.0ms | PASS |
-| failures/timeouts | 0 | **0 of 1680** | PASS |
+| C0 p95 | ≤8ms | 5.8ms | PASS |
+| C1 p95 | ≤12ms | 4.2ms | PASS |
+| C2 p95 | ≤15ms | 5.5ms | PASS |
+| C3 p95 | ≤18ms | 5.0ms | PASS |
+| C4 p95 | ≤22ms | 5.6ms | PASS |
+| failures/timeouts | 0 | **0 of 840** | PASS |
 
 ## Startup decomposition (velqu, from ready-line stages)
 
@@ -61,19 +61,20 @@ IR are pre-compiled in the pack).
 
 ## Route-count scaling (PERF-005) — sync handlers & bytecode scaling
 
-Measured route `GET /res7/item/7` (`benchmarks/raw/route-count/`):
+Measured route `GET /res7/item/7` (`benchmarks/raw/route-count/`, 20 samples per cell, 0 failures):
 
-| Candidate | 25 routes p50 | 1,000 routes p50 | 1,000 routes p95 | Δ (p50) |
-|---|---:|---:|---:|---:|
-| velqu (source) | 3.31ms | 20.20ms | 24.47ms | +509.8% |
-| velqu (bytecode, ADR-0017) | 3.21ms | 17.83ms | 22.48ms | +455.0% (−2.38ms vs source) |
-| raw-bun | 14.82ms | 14.01ms | 21.92ms | −5.5% |
-| elysia2 | 153.93ms | 185.07ms | 216.22ms | +20.2% |
+| Candidate | 25 routes p50 | 1,000 routes p50 | 10,000 routes p50 | 10,000 p95 | 10,000 RSS |
+|---|---:|---:|---:|---:|---:|
+| velqu (source) | 3.68ms | 26.48ms | 170.20ms | 211.93ms | 85.1 MB |
+| velqu (bytecode, ADR-0017) | 3.27ms | 20.84ms | 150.61ms | 211.10ms | 84.7 MB |
+| raw-bun | 16.13ms | 17.49ms | 16.55ms | 19.65ms | 37.8 MB |
+| elysia2 | 150.15ms | 172.82ms | 311.66ms | 365.44ms | 159.3 MB |
 
-Bytecode compilation (`velqu-bytecode embed`, ADR-0017) saves **2.38 ms**
-at 1,000 routes by eliminating QuickJS source tokenization and AST parsing at load time.
-Absolute velqu bytecode cold start (17.83 ms) is **~10.4× faster** than the matched Elysia
-candidate (185.1 ms) and ~104 MB lighter RSS.
+At 10,000 routes, velqu bytecode cold start (150.6 ms) is **2.1× faster** than the matched
+Elysia candidate (311.7 ms) with **76 MB less RSS**. Startup decomposition at 10,000 routes
+shows `pack.load` (JSON parse of the 17.5 MB pack) dominating at ~120 ms; `router.build`
+consumes the serialized automaton in 5.8 ms with zero route parsing. Eliminating JSON pack
+parsing is the M2.6 binary QPack v2 target and is the dominant remaining lever.
 
 ## Scope
 

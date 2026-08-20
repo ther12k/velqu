@@ -574,10 +574,129 @@ fn fixture_pack() -> q_pack::QPack {
             bytecode_sha256: None,
         },
     };
-    use sha2::{Digest, Sha256};
-    pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
-    pack.integrity.routes_sha256 = hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
+        pack.integrity.routes_sha256 =
+            hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+    }
     pack
+}
+
+/// Mirror of the compiler's numeric current-pack finalization: empty handler
+/// table, dense complete schema manifest, serialized router automaton.
+fn finalize_numeric(pack: &mut QPack) {
+    pack.handler_table.clear();
+    pack.schema_manifest = pack
+        .schemas
+        .keys()
+        .enumerate()
+        .map(|(i, k)| q_pack::SchemaDecl {
+            id: i as u32,
+            key: k.clone(),
+            ir: pack.schemas[k].clone(),
+        })
+        .collect();
+    // Bind plan schema IDs from each route's declared schema keys
+    let schema_id = |key: &str| -> Option<u32> {
+        pack.schema_manifest
+            .iter()
+            .find(|s| s.key == key)
+            .map(|s| s.id)
+    };
+    for route in pack.routes.iter_mut() {
+        let Some(ref mut plan) = route.plan else {
+            continue;
+        };
+        plan.params_schema_id = route
+            .params
+            .as_ref()
+            .and_then(|b| b.schema.as_deref())
+            .and_then(schema_id);
+        plan.query_schema_id = route
+            .query
+            .as_ref()
+            .and_then(|b| b.schema.as_deref())
+            .and_then(schema_id);
+        plan.body_schema_id = route
+            .body
+            .as_ref()
+            .and_then(|b| b.schema.as_deref())
+            .and_then(schema_id);
+        plan.headers_schema_id = route
+            .headers
+            .as_ref()
+            .and_then(|b| b.schema.as_deref())
+            .and_then(schema_id);
+    }
+    let method_index = |m: &str| -> usize {
+        match m.to_ascii_uppercase().as_str() {
+            "GET" => 0,
+            "POST" => 1,
+            "PUT" => 2,
+            "PATCH" => 3,
+            "DELETE" => 4,
+            "OPTIONS" => 5,
+            "HEAD" => 6,
+            _ => 0,
+        }
+    };
+    let mut nodes: Vec<q_pack::SerializedRouterNode> =
+        vec![q_pack::SerializedRouterNode::default()];
+    for (r_idx, route) in pack.routes.iter().enumerate() {
+        let mut curr = 0usize;
+        for seg in &route.path_segments {
+            match seg.kind {
+                q_pack::SegKind::Static => {
+                    if let Some(existing) = nodes[curr]
+                        .static_edges
+                        .iter()
+                        .find(|e| e.segment == seg.value)
+                        .map(|e| e.target_node)
+                    {
+                        curr = existing;
+                    } else {
+                        let next = nodes.len();
+                        nodes.push(q_pack::SerializedRouterNode::default());
+                        nodes[curr].static_edges.push(q_pack::SerializedStaticEdge {
+                            segment: seg.value.clone(),
+                            target_node: next,
+                        });
+                        curr = next;
+                    }
+                }
+                q_pack::SegKind::Param => {
+                    if let Some(next) = nodes[curr].param_edge {
+                        curr = next;
+                    } else {
+                        let next = nodes.len();
+                        nodes.push(q_pack::SerializedRouterNode::default());
+                        nodes[curr].param_edge = Some(next);
+                        curr = next;
+                    }
+                }
+                q_pack::SegKind::Wildcard => {
+                    if let Some(next) = nodes[curr].wildcard_edge {
+                        curr = next;
+                    } else {
+                        let next = nodes.len();
+                        nodes.push(q_pack::SerializedRouterNode::default());
+                        nodes[curr].wildcard_edge = Some(next);
+                        curr = next;
+                    }
+                }
+            }
+        }
+        let terminal = nodes[curr]
+            .terminal
+            .get_or_insert_with(q_pack::SerializedTerminal::default);
+        let m_idx = method_index(&route.method);
+        terminal.method_mask |= 1 << m_idx;
+        terminal.route_by_method[m_idx] = Some(r_idx);
+    }
+    pack.router = Some(q_pack::SerializedRouter { nodes });
 }
 
 #[allow(dead_code)]
@@ -639,19 +758,20 @@ function poison_chain(ctx) {
   return { ok: true };
 }
 
-globalThis.__velquFunctions = [
-  health_live,
-  js_text,
-  js_json,
-  hello_get,
-  users_create,
-  users_get,
-  async_timer,
-  async_cancel,
-  throw_redacted,
-  poison_chain,
-  auth_session
+globalThis.__velquFunctionManifest = [
+  ["health.live", 0, health_live],
+  ["js.text", 0, js_text],
+  ["js.json", 0, js_json],
+  ["hello.get", 0, hello_get],
+  ["users.create", 0, users_create],
+  ["users.get", 0, users_get],
+  ["async.timer", 0, async_timer],
+  ["async.cancel", 0, async_cancel],
+  ["throw.redacted", 0, throw_redacted],
+  ["poison.chain", 0, poison_chain],
+  ["auth.session.check", 1, auth_session]
 ];
+globalThis.__velquFunctions = globalThis.__velquFunctionManifest.map(function(e) { return e[2]; });
 "#;
 
 // ---------------------------------------------------------------- harness
@@ -1164,7 +1284,7 @@ fn graceful_shutdown_exits_zero() {
 fn source_mapped_exception_identifies_original_location() {
     use sourcemap::SourceMapBuilder;
     // generated bundle with the throw on line 2
-    let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\nglobalThis.__velquFunctions = [thrower];\n";
+    let bundle = "async function thrower() {\n  throw new Error(\"origin-boom\");\n}\nglobalThis.__velquFunctionManifest = [[\"t\", 0, thrower]];\nglobalThis.__velquFunctions = [thrower];\n";
     let mut b = SourceMapBuilder::new(None);
     b.add(
         1,
@@ -1217,9 +1337,12 @@ fn source_mapped_exception_identifies_original_location() {
     });
     pack.routes = vec![route];
     pack.policies.clear();
-    // recompute integrity
+    // recompute integrity (numeric finalization: no handlerTable, complete
+    // schema manifest, serialized router over the CURRENT route set)
+    finalize_numeric(&mut pack);
     {
         use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
         pack.integrity.bundle_sha256 = {
             let h = Sha256::digest(pack.bundle.as_bytes());
             h.iter().map(|b| format!("{:02x}", b)).collect()
@@ -1353,6 +1476,7 @@ fn response_schema_violation_is_a_controlled_500() {
     // handler returns a shape that does NOT match its declared response schema
     let bundle = r#"
 async function bad_shape(ctx) { return { wrong: true }; }
+globalThis.__velquFunctionManifest = [["bad.shape", 0, bad_shape]];
 globalThis.__velquFunctions = [bad_shape];
 "#;
     let dir = temp_dir("respval");
@@ -1423,8 +1547,10 @@ globalThis.__velquFunctions = [bad_shape];
             required: vec!["expected".into()],
         },
     );
+    finalize_numeric(&mut pack);
     {
         use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
         pack.integrity.bundle_sha256 = {
             let h = Sha256::digest(pack.bundle.as_bytes());
             h.iter().map(|b| format!("{:02x}", b)).collect()

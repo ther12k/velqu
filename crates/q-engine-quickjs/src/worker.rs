@@ -659,74 +659,53 @@ impl WorkerInner {
                 match plan {
                     q_engine::EngineLoadPlan::Numeric { functions } => {
                         let count = functions.len();
-                        if let Ok(manifest_array) =
-                            ctx.globals().get::<_, rquickjs::Array>("__velquFunctionManifest")
-                        {
-                            let len = manifest_array.len();
-                            if len != count {
-                                return Err(format!(
-                                    "function manifest length {len} != expected manifest count {count}"
-                                ));
-                            }
-                            let mut vec_fns = Vec::with_capacity(len);
-                            for (idx, expected_decl) in functions.iter().enumerate().take(len) {
-                                let entry: rquickjs::Array = manifest_array.get(idx).map_err(|e| {
-                                    format!("function manifest entry {idx} is invalid: {e}")
-                                })?;
-                                let key: String = entry.get(0).map_err(|e| {
-                                    format!("function manifest entry {idx} missing key: {e}")
-                                })?;
-                                let kind_num: u32 = entry.get(1).map_err(|e| {
-                                    format!("function manifest entry {idx} missing kind: {e}")
-                                })?;
-                                let f: Function = entry.get(2).map_err(|e| {
-                                    format!(
-                                        "function manifest entry {idx} ({key}) is not a callable function: {e}"
-                                    )
-                                })?;
-
-                                if key != expected_decl.key {
-                                    return Err(format!(
-                                        "function manifest index {idx} key mismatch: bundle has '{key}', pack expected '{}'",
-                                        expected_decl.key
-                                    ));
-                                }
-                                let expected_kind_num = match expected_decl.kind {
-                                    q_engine::FunctionKind::RouteHandler => 0,
-                                    q_engine::FunctionKind::PolicyHandler => 1,
-                                };
-                                if kind_num != expected_kind_num {
-                                    return Err(format!(
-                                        "function manifest index {idx} ({key}) kind mismatch: bundle has {kind_num}, pack expected {expected_kind_num}",
-                                    ));
-                                }
-                                vec_fns.push(Persistent::save(&ctx, f));
-                            }
-                            Ok((0, BTreeMap::new(), vec_fns))
-                        } else {
-                            let fn_array = ctx
-                                .globals()
-                                .get::<_, rquickjs::Array>("__velquFunctions")
-                                .map_err(|_| {
-                                    "globalThis.__velquFunctions or __velquFunctionManifest is missing from bundle".to_string()
-                                })?;
-                            let len = fn_array.len();
-                            if len != count {
-                                return Err(format!(
-                                    "function vector length {len} != expected manifest count {count}"
-                                ));
-                            }
-                            let mut vec_fns = Vec::with_capacity(len);
-                            for idx in 0..len {
-                                let f: Function = fn_array.get(idx).map_err(|e| {
-                                    format!(
-                                        "function vector entry {idx} is missing or not callable: {e}"
-                                    )
-                                })?;
-                                vec_fns.push(Persistent::save(&ctx, f));
-                            }
-                            Ok((0, BTreeMap::new(), vec_fns))
+                        let manifest_array = ctx
+                            .globals()
+                            .get::<_, rquickjs::Array>("__velquFunctionManifest")
+                            .map_err(|_| {
+                                "semantic function manifest (globalThis.__velquFunctionManifest) is missing from numeric bundle".to_string()
+                            })?;
+                        let len = manifest_array.len();
+                        if len != count {
+                            return Err(format!(
+                                "function manifest length {len} != expected manifest count {count}"
+                            ));
                         }
+                        let mut vec_fns = Vec::with_capacity(len);
+                        for (idx, expected_decl) in functions.iter().enumerate().take(len) {
+                            let entry: rquickjs::Array = manifest_array.get(idx).map_err(|e| {
+                                format!("function manifest entry {idx} is invalid: {e}")
+                            })?;
+                            let key: String = entry.get(0).map_err(|e| {
+                                format!("function manifest entry {idx} missing key: {e}")
+                            })?;
+                            let kind_num: u32 = entry.get(1).map_err(|e| {
+                                format!("function manifest entry {idx} missing kind: {e}")
+                            })?;
+                            let f: Function = entry.get(2).map_err(|e| {
+                                format!(
+                                    "function manifest entry {idx} ({key}) is not a callable function: {e}"
+                                )
+                            })?;
+
+                            if key != expected_decl.key {
+                                return Err(format!(
+                                    "function manifest index {idx} key mismatch: bundle has '{key}', pack expected '{}'",
+                                    expected_decl.key
+                                ));
+                            }
+                            let expected_kind_num = match expected_decl.kind {
+                                q_engine::FunctionKind::RouteHandler => 0,
+                                q_engine::FunctionKind::PolicyHandler => 1,
+                            };
+                            if kind_num != expected_kind_num {
+                                return Err(format!(
+                                    "function manifest index {idx} ({key}) kind mismatch: bundle has {kind_num}, pack expected {expected_kind_num}",
+                                ));
+                            }
+                            vec_fns.push(Persistent::save(&ctx, f));
+                        }
+                        Ok((0, BTreeMap::new(), vec_fns))
                     }
                     q_engine::EngineLoadPlan::Legacy { expected_handlers } => {
                         let handlers: Object = ctx

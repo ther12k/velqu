@@ -129,6 +129,32 @@ export function schemaRegistry(app: ExtractedApp): Record<string, unknown> {
   return reg;
 }
 
+/** IR-aware canonical sort matching Rust serde:
+ *  - IR nodes ({"kind": tag}) keep declaration field order, only `properties` maps sort
+ *  - plain map containers sort by key
+ *  - arrays keep order */
+function sortIR(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortIR);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if ("kind" in o) {
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(o)) out[k] = k === "properties" ? sortProps(o[k]) : sortIR(o[k]);
+      return out;
+    }
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
+    return out;
+  }
+  return v;
+}
+function sortProps(v: unknown): Record<string, unknown> {
+  const o = v as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
+  return out;
+}
+
 /** Rust-canonical: routes keep field order, schema registry keys sorted, IR maps inside sorted (properties). */
 function rustCanonical(
   routes: unknown[],
@@ -136,31 +162,26 @@ function rustCanonical(
   policies: unknown,
   capabilities: string[],
   functions: unknown[],
+  schemaManifest: unknown[],
+  router: unknown,
 ): string {
-  const sortIR = (v: unknown): unknown => {
-    if (Array.isArray(v)) return v.map(sortIR);
-    if (v && typeof v === "object") {
-      const o = v as Record<string, unknown>;
-      if ("kind" in o) {
-        const out: Record<string, unknown> = {};
-        for (const k of Object.keys(o)) out[k] = k === "properties" ? sortProps(o[k]) : sortIR(o[k]);
-        return out;
-      }
-      const out: Record<string, unknown> = {};
-      for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
-      return out;
-    }
-    return v;
-  };
-  const sortProps = (v: unknown): Record<string, unknown> => {
-    const o = v as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
-    return out;
-  };
   const schemasSorted: Record<string, unknown> = {};
   for (const k of Object.keys(schemas).sort()) schemasSorted[k] = sortIR(schemas[k]);
-  return JSON.stringify({ routes, schemas: schemasSorted, policies, capabilities, functions });
+  // Rust serializes SchemaDecl.ir with BTreeMap-backed IR (sorted properties);
+  // deep-sort each manifest entry's IR the same way
+  const manifestSorted = (schemaManifest as Array<Record<string, unknown>>).map((e) => ({
+    ...e,
+    ir: sortIR(e.ir),
+  }));
+  return JSON.stringify({
+    routes,
+    schemas: schemasSorted,
+    policies,
+    capabilities,
+    functions,
+    schemaManifest: manifestSorted,
+    router,
+  });
 }
 
 function buildSerializedRouter(routes: Array<{ method: string; pathSegments: Array<{ kind: string; value: string }> }>) {
@@ -334,9 +355,8 @@ export function buildPack(
       plan,
     };
   });
+  // Numeric current packs carry no legacy handler table (M23R2 gate rule)
   const handlerTable: Record<string, string> = {};
-  for (const r of app.routes) handlerTable[r.id] = r.id;
-  for (const p of app.policies) handlerTable[p.id] = p.id;
 
   const functions = [
     ...app.routes.map((r, i) => ({
@@ -352,20 +372,38 @@ export function buildPack(
   ];
 
   const router = buildSerializedRouter(packRoutes);
-  const canonical = rustCanonical(packRoutes, schemas, policyPacks, capabilities, functions);
+  const canonical = rustCanonical(
+    packRoutes,
+    schemas,
+    policyPacks,
+    capabilities,
+    functions,
+    schemaManifest,
+    router,
+  );
 
-  // M2.3-r3: publicContractHash is stable across internal function manifest reordering
-  const publicRoutes = packRoutes.map((r) => ({
-    id: r.id,
-    method: r.method,
-    path: r.path,
-    params: r.params?.schema ?? null,
-    query: r.query?.schema ?? null,
-    body: r.body?.schema ?? null,
-    responses: r.responses,
-    security: r.security,
-  }));
-  const publicContractCanonical = JSON.stringify([publicRoutes, schemas, policyPacks]);
+  // M2.3-r3: publicContractHash is stable across internal function manifest reordering.
+  // Mirrors Rust public_contract_canonical_json exactly:
+  // [routes, schemas(BTreeMap sorted, IR-aware sort), policies(BTreeMap sorted)]
+  const policiesPublic: Record<string, unknown> = {};
+  for (const k of Object.keys(policyPacks).sort()) policiesPublic[k] = policyPacks[k];
+  const schemasPublic: Record<string, unknown> = {};
+  for (const k of Object.keys(schemas).sort()) schemasPublic[k] = sortIR(schemas[k]);
+  const publicRoutes = packRoutes.map((r) => {
+    const responsesSorted: Record<string, unknown> = {};
+    for (const k of Object.keys(r.responses).sort()) responsesSorted[k] = r.responses[k];
+    return {
+      id: r.id,
+      method: r.method,
+      path: r.path,
+      params: r.params?.schema ?? null,
+      query: r.query?.schema ?? null,
+      body: r.body?.schema ?? null,
+      responses: responsesSorted,
+      security: r.security,
+    };
+  });
+  const publicContractCanonical = JSON.stringify([publicRoutes, schemasPublic, policiesPublic]);
   const contractHash = sha(publicContractCanonical).slice(0, 32);
 
   const pack = {

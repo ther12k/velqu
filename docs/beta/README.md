@@ -1,0 +1,71 @@
+---
+type: Handoff
+title: Velqu Beta-Readiness Handoff
+status: draft
+tags:
+- velqu
+- beta
+- roadmap
+- agent-handoff
+
+---
+
+# Velqu Beta-Readiness Handoff
+
+This bundle is the rewritten, beta-focused implementation program for **Velqu / VelquJS**. It starts from the latest reviewed M2.3-r3 checkpoint and ends at a **public beta**, not production-ready GA.
+
+## Baseline
+
+```text
+Source commit:  e2b379d775a79e619753aaf39eb9ea5f8a763f15
+Source archive: velqu-m0-m2-20260819T141529Z.zip
+Source SHA-256: e66bd2da0d7e74ae277a819df6d38c453a119413eaf939755ccabc97efbcce41
+Git bundle:     velqu-m2.3-r3-e2b379d.bundle
+Bundle SHA-256: a5ba061b422e857e1f8f1411ed5ced90c3148e492a6ed950aa418600e91d3554
+```
+
+The baseline already demonstrates the Rust + QuickJS-NG runtime thesis, bounded scheduler, bytecode path, typed contracts/Treaty foundations, numeric dispatch, and an in-memory compiled router. The latest review still keeps the **M23 production gate open**, so this plan begins with a finite gate-closure milestone rather than pretending M2.3 is fully accepted.
+
+## Finish line
+
+The target is **`0.1.0-beta.1`**:
+
+- installable by external developers;
+- actual Rust/QuickJS development and production execution paths;
+- typed routes, Treaty, OpenAPI, contract lock/diff;
+- lazy request bridge and schema-specialized codecs;
+- binary QPack v2;
+- minimal Web capabilities and outbound fetch;
+- multi-worker service mode;
+- optional first-party Postgres capability and JWT reference package;
+- observability, configuration, proxy/drain semantics, security baseline, soak evidence, docs, and self-verifying artifacts;
+- clearly labeled **beta**, with no SLA and no production-ready claim.
+
+## Start here
+
+1. [Master agent prompt](MASTER_AGENT_PROMPT.md)
+2. [Current state and baseline](00_CURRENT_BASELINE.md)
+3. [Beta definition](01_BETA_DEFINITION.md)
+4. [Scope matrix](02_SCOPE_MATRIX.md)
+5. [Critical path](03_CRITICAL_PATH.md)
+6. [Task ledger](04_TASK_LEDGER.md)
+7. [Dependency map](05_DEPENDENCY_MAP.md)
+8. [Milestone plans](milestones/00_M23R2_GATE_CLOSE.md)
+9. [Evidence standard](governance/EVIDENCE_STANDARD.md)
+10. [Final review packet template](governance/FINAL_REVIEW_PACKET_TEMPLATE.md)
+
+## Milestone path
+
+```text
+G0 M23R2 gate closure
+→ M2.4 zero-copy ingress
+→ M2.5 schema codecs
+→ M2.6 QPack v2
+→ M2.7 capability linker
+→ M2.8 fetch
+→ M3 multi-worker
+→ M4A private alpha
+→ Public Beta gate
+```
+
+No calendar estimate is embedded. Progress is determined by evidence and dependency gates.

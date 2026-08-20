@@ -1,79 +1,115 @@
 {
   "format": "velqu-route-count-v1",
-  "samples": 40,
-  "generatedAt": "2026-08-19T13:54:59.826Z",
+  "samples": 20,
+  "generatedAt": "2026-08-19T16:52:10.761Z",
   "results": [
     {
       "candidate": "velqu (source)",
       "routes": 25,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 3.313,
-      "p95Ms": 4.136,
-      "rssP50Kb": 6568
+      "p50Ms": 3.683,
+      "p95Ms": 4.576,
+      "rssP50Kb": 6456
     },
     {
       "candidate": "velqu (source)",
       "routes": 1000,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 20.204,
-      "p95Ms": 24.466,
-      "rssP50Kb": 14928
+      "p50Ms": 26.482,
+      "p95Ms": 34.952,
+      "rssP50Kb": 14372
+    },
+    {
+      "candidate": "velqu (source)",
+      "routes": 10000,
+      "samples": 20,
+      "failures": 0,
+      "p50Ms": 170.198,
+      "p95Ms": 211.93,
+      "rssP50Kb": 87164
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 25,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 3.212,
-      "p95Ms": 4.883,
-      "rssP50Kb": 6564
+      "p50Ms": 3.273,
+      "p95Ms": 3.732,
+      "rssP50Kb": 6480
     },
     {
       "candidate": "velqu (bytecode)",
       "routes": 1000,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 17.826,
-      "p95Ms": 22.48,
-      "rssP50Kb": 14712
+      "p50Ms": 20.836,
+      "p95Ms": 40.43,
+      "rssP50Kb": 14304
+    },
+    {
+      "candidate": "velqu (bytecode)",
+      "routes": 10000,
+      "samples": 20,
+      "failures": 0,
+      "p50Ms": 150.607,
+      "p95Ms": 211.1,
+      "rssP50Kb": 86684
     },
     {
       "candidate": "raw-bun",
       "routes": 25,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 14.823,
-      "p95Ms": 20.106,
-      "rssP50Kb": 38708
+      "p50Ms": 16.13,
+      "p95Ms": 20.408,
+      "rssP50Kb": 38716
     },
     {
       "candidate": "raw-bun",
       "routes": 1000,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 14.006,
-      "p95Ms": 21.916,
+      "p50Ms": 17.49,
+      "p95Ms": 22.512,
+      "rssP50Kb": 38712
+    },
+    {
+      "candidate": "raw-bun",
+      "routes": 10000,
+      "samples": 20,
+      "failures": 0,
+      "p50Ms": 16.545,
+      "p95Ms": 19.646,
       "rssP50Kb": 38704
     },
     {
       "candidate": "elysia2",
       "routes": 25,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 153.932,
-      "p95Ms": 186.848,
-      "rssP50Kb": 95016
+      "p50Ms": 150.149,
+      "p95Ms": 166.097,
+      "rssP50Kb": 94692
     },
     {
       "candidate": "elysia2",
       "routes": 1000,
-      "samples": 40,
+      "samples": 20,
       "failures": 0,
-      "p50Ms": 185.069,
-      "p95Ms": 216.222,
-      "rssP50Kb": 118856
+      "p50Ms": 172.821,
+      "p95Ms": 204.546,
+      "rssP50Kb": 119224
+    },
+    {
+      "candidate": "elysia2",
+      "routes": 10000,
+      "samples": 20,
+      "failures": 0,
+      "p50Ms": 311.656,
+      "p95Ms": 365.437,
+      "rssP50Kb": 163136
     }
   ]
 }

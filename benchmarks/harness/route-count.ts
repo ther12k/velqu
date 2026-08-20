@@ -5,7 +5,7 @@
  */
 const ROOT = import.meta.dir + "/../..";
 
-const N_VALUES = [25, 1000] as const;
+const N_VALUES = [25, 1000, 10000] as const;
 
 interface Cand {
   id: string;
