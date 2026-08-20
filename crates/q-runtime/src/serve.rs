@@ -53,6 +53,52 @@ impl LogMode {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Default)]
+pub struct StageMetrics {
+    pub route: AtomicU64,
+    pub queue: AtomicU64,
+    pub decode: AtomicU64,
+    pub bridge: AtomicU64,
+    pub js: AtomicU64,
+    pub encode: AtomicU64,
+    pub write: AtomicU64,
+    pub slab_live: AtomicU64,
+    pub queue_pending: AtomicU64,
+    pub body_bytes: AtomicU64,
+}
+
+impl StageMetrics {
+    pub fn snapshot(&self) -> StageMetricsSnapshot {
+        StageMetricsSnapshot {
+            route: self.route.load(Ordering::Relaxed),
+            queue: self.queue.load(Ordering::Relaxed),
+            decode: self.decode.load(Ordering::Relaxed),
+            bridge: self.bridge.load(Ordering::Relaxed),
+            js: self.js.load(Ordering::Relaxed),
+            encode: self.encode.load(Ordering::Relaxed),
+            write: self.write.load(Ordering::Relaxed),
+            slab_live: self.slab_live.load(Ordering::Relaxed),
+            queue_pending: self.queue_pending.load(Ordering::Relaxed),
+            body_bytes: self.body_bytes.load(Ordering::Relaxed),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct StageMetricsSnapshot {
+    pub route: u64,
+    pub queue: u64,
+    pub decode: u64,
+    pub bridge: u64,
+    pub js: u64,
+    pub encode: u64,
+    pub write: u64,
+    pub slab_live: u64,
+    pub queue_pending: u64,
+    pub body_bytes: u64,
+}
+
 pub struct ServeState {
     pub pack: Arc<q_pack::QPack>,
     pub router: q_router::Router,
@@ -63,6 +109,9 @@ pub struct ServeState {
     pub health: q_engine_quickjs::EngineHealth,
     pub invocation_clock: AtomicU64,
     pub log_mode: LogMode,
+    pub log_sample: u64,
+    pub log_sequence: AtomicU64,
+    pub metrics: Arc<StageMetrics>,
 }
 
 #[allow(clippy::type_complexity)]
@@ -79,7 +128,11 @@ pub fn make_handler(
     move |req: NativeRequest| {
         let state = Arc::clone(&state);
         Box::pin(async move {
-            let started = if state.log_mode != LogMode::Off {
+            let sequence = state.log_sequence.fetch_add(1, Ordering::Relaxed) + 1;
+            let sampled = state.log_sample == 0 || sequence.is_multiple_of(state.log_sample);
+            let started = if state.log_mode != LogMode::Off
+                && (state.log_mode == LogMode::Errors || sampled)
+            {
                 Some(req.started)
             } else {
                 None
@@ -96,6 +149,7 @@ pub fn make_handler(
                 None
             };
             let (result, route_id, stage) = pipeline(&state, req).await;
+            state.metrics.write.fetch_add(1, Ordering::Relaxed);
             if let Some(started) = started {
                 log_completion(&state, log_ctx.as_ref(), &result, &route_id, stage, started);
             }
@@ -157,6 +211,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
     } = req;
     let method_str = method.as_str();
     let path = uri.path();
+    state.metrics.route.fetch_add(1, Ordering::Relaxed);
     let is_get_or_head = method_str == "GET" || method_str == "HEAD";
     // ---- M2.2.1-r4.1/r4.2.1: built-in readiness probe (liveness stays a pack route)
     // Liveness = process + listener alive; readiness = engine can execute
@@ -353,6 +408,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             if needs.body {
                 // QPack::verify proves body binding and RoutePlan agree. The
                 // plan flag, not HTTP method, controls stream polling.
+                state.metrics.decode.fetch_add(1, Ordering::Relaxed);
                 let binding = route.body.as_ref().expect("verified body plan binding");
                 let ctype = headers
                     .get("content-type")
@@ -396,7 +452,13 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 }
                 let raw = match collect_body_bounded(body, max_body).await {
-                    Ok(bytes) => bytes,
+                    Ok(bytes) => {
+                        state
+                            .metrics
+                            .body_bytes
+                            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+                        bytes
+                    }
                     Err(HttpError::Limited { .. }) => {
                         let body = problems::body("limit", None, None, &[], &request_id);
                         return (Ok(json_response(413, &body)), route_id, "admission.body");
@@ -490,6 +552,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             // ---- invocation through the engine
+            state.metrics.queue_pending.fetch_add(1, Ordering::Relaxed);
+            state.metrics.queue.fetch_add(1, Ordering::Relaxed);
+            state.metrics.bridge.fetch_add(1, Ordering::Relaxed);
+            state.metrics.js.fetch_add(1, Ordering::Relaxed);
             let invocation_id = state.invocation_clock.fetch_add(1, Ordering::Relaxed);
             let requestless = !needs.params
                 && !needs.query
@@ -588,6 +654,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .map(|r| r.unwrap_or(Outcome::Timeout))
                 .unwrap_or(Outcome::Timeout);
             cancel_guard.disarm();
+            state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
 
             // client gone (connection dropped) → cancel invocation
             // SCHEMA-003: declared response bodies are validated at runtime.
@@ -640,6 +707,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 }
             }
+            state.metrics.encode.fetch_add(1, Ordering::Relaxed);
             let mapped = match outcome {
                 Outcome::Response {
                     status,

@@ -1,0 +1,1 @@
+{"format":"velqu-observability-overhead-v1","iters":100000,"warmup":10000,"counter":100000,"disabled_us":{"mean":0.017217,"p50":0.016000,"p95":0.020000,"p99":0.023000},"enabled_us":{"mean":0.033104,"p50":0.035000,"p95":0.037000,"p99":0.039000}}

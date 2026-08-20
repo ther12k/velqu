@@ -75,9 +75,17 @@ function headers_lazy(ctx) {
     hasContentType: "content-type" in ctx.headers,
   };
 }
+function capability_identity(ctx) {
+  const first = globalThis.__velquNativeCapabilities;
+  return { shared: ctx.native === first, frozen: Object.isFrozen(ctx.native) && Object.isFrozen(ctx.native.timer) };
+}
+function web_fallback(ctx) {
+  const request = ctx.webRequest();
+  return { url: request.url, header: request.headers.authorization, query: request.query.ms };
+}
 function lazy_ctx(ctx) {
   // deliberately do NOT touch ctx.params/query/body: laziness proof
-  return { untouched: true };
+  return { untouched: true, routePlan: ctx.routePlan };
 }
 function read_query(ctx) { return { ms: ctx.query.ms }; }
 function read_body(ctx) { return { echo: ctx.json().name }; }
@@ -262,6 +270,8 @@ __velquRegister("hello.get", hello);
 __velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("headers.lazy", headers_lazy);
 __velquRegister("lazy.ctx", lazy_ctx);
+__velquRegister("web.fallback", web_fallback);
+__velquRegister("capability.identity", capability_identity);
 __velquRegister("query.read", read_query);
 __velquRegister("body.read", read_body);
 __velquRegister("timer.route", timer_route);
@@ -370,6 +380,8 @@ fn expected_table() -> BTreeMap<String, String> {
         "params.lazyb",
         "headers.lazy",
         "lazy.ctx",
+        "web.fallback",
+        "capability.identity",
         "query.read",
         "body.read",
         "timer.route",
@@ -437,7 +449,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 54);
+    assert_eq!(stats.handlers_registered, 56);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -1198,6 +1210,108 @@ async fn headers_are_declared_only_and_per_key_lazy() {
     assert_eq!(snap.materialized_fields, 1, "one key = one value");
     assert_eq!(snap.materialized_bytes, 14, "\"Bearer tok-123\" bytes");
     assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn shared_context_request_prototypes_are_reused() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut first = spec(4, "lazy.ctx", &[200], 1000);
+    first.slot = handle.slot();
+    first.generation = handle.generation();
+    let _ = run(&mut eng, first).await;
+    let handle2 = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut second = spec(5, "lazy.ctx", &[200], 1000);
+    second.slot = handle2.slot();
+    second.generation = handle2.generation();
+    let _ = run(&mut eng, second).await;
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn route_plan_references_do_not_copy_request_bytes() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_engine::RequestMeta {
+            path: "/opaque".into(),
+            body: Some(bytes::Bytes::from_static(b"secret-request-body")),
+            ..Default::default()
+        },
+    );
+    let mut s = spec(4, "lazy.ctx", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    s.params_schema_id = Some(q_engine::SchemaId(7));
+    s.query_schema_id = Some(q_engine::SchemaId(11));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            println!("route plan proof: {text}");
+            assert!(text.contains("\"routePlan\""));
+            assert!(text.contains("\"paramsSchemaId\":7"));
+            assert!(text.contains("\"querySchemaId\":11"));
+            assert!(!text.contains("secret-request-body"));
+        }
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn native_capability_graph_is_cached_and_immutable() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    for id in 1..=2 {
+        let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+        let mut s = spec(id, "capability.identity", &[200], 1000);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let out = run(&mut eng, s).await;
+        match out {
+            Outcome::Response {
+                body: BodyOut::JsonText(text),
+                ..
+            } => {
+                assert!(text.contains("\"shared\":true"));
+                assert!(text.contains("\"frozen\":true"));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn explicit_web_request_fallback_materializes_on_demand() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            path: "/fallback".into(),
+            query: vec![("ms".into(), "9".into())],
+            headers: vec![("authorization".into(), "Bearer x".into())],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(77, "web.fallback", &[200], 1000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    assert!(matches!(out, Outcome::Response { .. }));
+    let snap = eng.bridge_snapshot();
+    assert!(snap.materialized_fields > 0);
+    assert_eq!(snap.live_slots, 0);
     eng.shutdown();
 }
 

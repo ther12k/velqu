@@ -4,7 +4,7 @@ parent_task: M24-008
 milestone: M24
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -104,6 +104,21 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Fallback tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+M24-008 implementation and verification commits are present through parent PR #688 merge `ed4674085d3f910c24ef651c27d60ff534bf6c46`.
+
+Evidence matrix:
+
+- Shared prototypes: `shared_context_request_prototypes_are_reused`.
+- Opaque route-plan references and no request-byte copy: `route_plan_references_do_not_copy_request_bytes`.
+- Cached native capability graph: `native_capability_graph_is_cached_and_immutable`.
+- Explicit Web fallback: `explicit_web_request_fallback_materializes_on_demand`.
+- Bridge stale-handle, settlement, cancellation, timeout, quarantine, and shutdown suites remain green.
+- Rust suites, typecheck, format, clippy, and `./scripts/verify` passed locally.
+- Bun conformance result retained honestly: 28 pass, 8 fail from runtime timeouts and missing generated proof pack in fresh worktree.
+- No heap/allocation profile or benchmark manifest rewrite; unsupported performance claims omitted.
 
 ## Out of scope
 

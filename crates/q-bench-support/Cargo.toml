@@ -8,6 +8,10 @@ license.workspace = true
 name = "q-bridge-bench"
 path = "src/bin/bridge_bench.rs"
 
+[[bin]]
+name = "metrics-overhead"
+path = "src/bin/metrics_overhead.rs"
+
 [dependencies]
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
