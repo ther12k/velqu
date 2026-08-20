@@ -74,7 +74,9 @@ pub struct CompiledRoute {
     pub route_id: q_engine::RouteId,
     pub method: String,
     pub segments: Vec<PathSegment>,
-    pub param_names: Vec<String>,
+    /// M24-004-B: indices into the Router's interned param-name table;
+    /// binding happens from the RouteId-selected dense entry.
+    pub param_name_ids: Vec<u32>,
     pub has_params: bool,
     pub plan: Option<q_pack::RoutePlanDecl>,
     pub handler_id: Option<q_engine::HandlerId>,
@@ -114,11 +116,25 @@ pub enum MatchResult {
 pub struct Router {
     routes: Vec<CompiledRoute>,
     nodes: Vec<RouterNode>,
+    /// Interned parameter names shared by every route (M24-004-B): names
+    /// bind after RouteId selection through dense ids, not per-route clones.
+    param_name_table: Vec<String>,
+}
+
+/// Intern a parameter name into the shared table, returning its dense id.
+/// Insertion-ordered dedup: equal names share one id across all routes.
+fn intern(table: &mut Vec<String>, name: &str) -> u32 {
+    if let Some(idx) = table.iter().position(|n| n == name) {
+        return idx as u32;
+    }
+    table.push(name.to_string());
+    (table.len() - 1) as u32
 }
 
 impl Router {
     /// Build from pack routes into an in-memory terminal automaton (M2.3-r2); rejects collisions.
     pub fn build(routes: &[RouteEntry]) -> Result<Router, RouterError> {
+        let mut param_name_table: Vec<String> = Vec::new();
         let mut compiled = Vec::with_capacity(routes.len());
         for (i, r) in routes.iter().enumerate() {
             for (si, seg) in r.path_segments.iter().enumerate() {
@@ -199,21 +215,21 @@ impl Router {
                 )
             };
 
-            let param_names = r
+            let param_name_ids = r
                 .path_segments
                 .iter()
                 .filter_map(|s| match s.kind {
-                    SegKind::Param => Some(s.value.clone()),
+                    SegKind::Param => Some(intern(&mut param_name_table, &s.value)),
                     _ => None,
                 })
-                .collect();
+                .collect::<Vec<u32>>();
 
             compiled.push(CompiledRoute {
                 index: i,
                 route_id: q_engine::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
-                param_names,
+                param_name_ids,
                 has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
                 plan: r.plan.clone(),
                 handler_id,
@@ -294,6 +310,7 @@ impl Router {
         }
 
         Ok(Router {
+            param_name_table,
             routes: compiled,
             nodes,
         })
@@ -303,6 +320,7 @@ impl Router {
     /// loads nodes and compiled routes directly with ZERO runtime path parsing or collision scans.
     pub fn from_pack(pack: &q_pack::QPack) -> Result<Router, RouterError> {
         if let Some(ref serialized) = pack.router {
+            let mut param_name_table: Vec<String> = Vec::new();
             let mut compiled = Vec::with_capacity(pack.routes.len());
             for (i, r) in pack.routes.iter().enumerate() {
                 let (
@@ -366,21 +384,21 @@ impl Router {
                     )
                 };
 
-                let param_names = r
+                let param_name_ids = r
                     .path_segments
                     .iter()
                     .filter_map(|s| match s.kind {
-                        SegKind::Param => Some(s.value.clone()),
+                        SegKind::Param => Some(intern(&mut param_name_table, &s.value)),
                         _ => None,
                     })
-                    .collect();
+                    .collect::<Vec<u32>>();
 
                 compiled.push(CompiledRoute {
                     index: i,
                     route_id: q_engine::RouteId(i as u32),
                     method: r.method.clone(),
                     segments: r.path_segments.clone(),
-                    param_names,
+                    param_name_ids,
                     has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
                     plan: r.plan.clone(),
                     handler_id,
@@ -419,6 +437,7 @@ impl Router {
                 .collect();
 
             Ok(Router {
+                param_name_table,
                 routes: compiled,
                 nodes,
             })
@@ -433,6 +452,7 @@ impl Router {
         routes: &[RouteEntry],
         serialized: &q_pack::SerializedRouter,
     ) -> Result<Router, RouterError> {
+        let mut param_name_table: Vec<String> = Vec::new();
         let mut compiled = Vec::with_capacity(routes.len());
         for (i, r) in routes.iter().enumerate() {
             let strategy = match r
@@ -487,20 +507,20 @@ impl Router {
                     r.deadline_ms,
                 ),
             };
-            let param_names = r
+            let param_name_ids = r
                 .path_segments
                 .iter()
                 .filter_map(|s| match s.kind {
-                    SegKind::Param => Some(s.value.clone()),
+                    SegKind::Param => Some(intern(&mut param_name_table, &s.value)),
                     _ => None,
                 })
-                .collect();
+                .collect::<Vec<u32>>();
             compiled.push(CompiledRoute {
                 index: i,
                 route_id: q_engine::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
-                param_names,
+                param_name_ids,
                 has_params: r.path_segments.iter().any(|s| s.kind != SegKind::Static),
                 plan: r.plan.clone(),
                 handler_id,
@@ -539,6 +559,7 @@ impl Router {
         Ok(Router {
             routes: compiled,
             nodes,
+            param_name_table,
         })
     }
 
@@ -786,15 +807,35 @@ impl Router {
             return Vec::new();
         };
         route
-            .param_names
+            .param_name_ids
             .iter()
             .zip(ranges)
-            .map(|(name, (start, end))| {
+            .map(|(id, (start, end))| {
                 let start = *start as usize;
                 let end = *end as usize;
                 let value = path.get(start..end).unwrap_or_default();
-                (name.clone(), value.to_string())
+                // M24-004-B: the name borrows from the interned table
+                // selected by RouteId; only the pair itself is owned.
+                let name = self
+                    .param_name_table
+                    .get(*id as usize)
+                    .map(String::as_str)
+                    .unwrap_or_default();
+                (name.to_string(), value.to_string())
             })
+            .collect()
+    }
+
+    /// Borrow the RouteId-selected route's parameter names from the interned
+    /// table — zero allocation, zero copying on unread paths.
+    pub fn param_names(&self, route_index: usize) -> Vec<&str> {
+        let Some(route) = self.routes.get(route_index) else {
+            return Vec::new();
+        };
+        route
+            .param_name_ids
+            .iter()
+            .filter_map(|id| self.param_name_table.get(*id as usize).map(String::as_str))
             .collect()
     }
 }
@@ -918,6 +959,80 @@ mod tests {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    /// M24-004-B: parameter names bind from the RouteId-selected route's
+    /// dense entry in the interned table — the same path shape under two
+    /// methods binds each route's OWN names, borrowed with zero allocation.
+    #[test]
+    fn param_names_bind_after_routeid_selection_and_are_borrowed() {
+        let routes = vec![
+            route("get_user", "GET", vec![st("users"), pm("id")], "/users/:id"),
+            route(
+                "post_user",
+                "POST",
+                vec![st("users"), pm("userId")],
+                "/users/:userId",
+            ),
+            route(
+                "multi",
+                "PUT",
+                vec![pm("id"), st("x"), pm("id")],
+                "/:id/x/:id",
+            ),
+        ];
+        let r = Router::build(&routes).unwrap();
+
+        match r.resolve("GET", "/users/123") {
+            MatchResult::Found {
+                route_index,
+                param_ranges,
+                ..
+            } => {
+                let names = r.param_names(route_index);
+                assert_eq!(names, vec!["id"]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/users/123", &param_ranges),
+                    vec![("id".to_string(), "123".to_string())]
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+        match r.resolve("POST", "/users/123") {
+            MatchResult::Found {
+                route_index,
+                param_ranges,
+                ..
+            } => {
+                // same path, different RouteId → that route's own names
+                assert_eq!(r.param_names(route_index), vec!["userId"]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/users/123", &param_ranges),
+                    vec![("userId".to_string(), "123".to_string())]
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+        match r.resolve("PUT", "/v/x/w") {
+            MatchResult::Found {
+                route_index,
+                param_ranges,
+                ..
+            } => {
+                // repeated name within one route binds positionally per capture
+                assert_eq!(r.param_names(route_index), vec!["id", "id"]);
+                assert_eq!(
+                    r.materialize_params(route_index, "/v/x/w", &param_ranges),
+                    vec![
+                        ("id".to_string(), "v".to_string()),
+                        ("id".to_string(), "w".to_string())
+                    ]
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+        // out-of-range route index fails closed with no names
+        assert!(r.param_names(999).is_empty());
     }
 
     /// M24-004-A: captures are Copy byte ranges; the owned parameter string
