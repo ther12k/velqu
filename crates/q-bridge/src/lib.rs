@@ -27,6 +27,8 @@ struct Slot {
 pub enum BridgeError {
     #[error("request handle expired (slot settled or cancelled): access denied")]
     Expired,
+    #[error("request handle belongs to another worker: access denied")]
+    ForeignWorker,
     #[error("request handle does not exist")]
     NoSuchSlot,
     #[error("request slab capacity reached")]
@@ -269,10 +271,12 @@ impl RequestStore {
     ) -> Result<T, BridgeError> {
         self.counters.host_calls.fetch_add(1, Ordering::Relaxed);
         if handle.worker_id != self.worker_id {
+            // M24-003-D: cross-worker handles get a dedicated deterministic
+            // denial, decided before any slot of this slab is inspected.
             self.counters
                 .expired_accesses
                 .fetch_add(1, Ordering::Relaxed);
-            return Err(BridgeError::Expired);
+            return Err(BridgeError::ForeignWorker);
         }
         let slots = self.slots.borrow();
         let s = slots.get(handle.slot).ok_or(BridgeError::NoSuchSlot)?;
@@ -390,20 +394,101 @@ mod tests {
         let store_b = RequestStore::new();
         assert_ne!(store_a.worker_id(), store_b.worker_id());
         let handle_a = store_a.insert(meta(Some(vec![1, 2, 3])));
-        // worker A's minted handle presented to worker B's slab: denied on the
-        // worker-identity check before any slot of store_b is inspected
+        // worker A's minted handle presented to worker B's slab: the dedicated
+        // deterministic ForeignWorker denial fires before any slot of store_b
+        // is inspected — even when store_b has a live slot at the same index
+        let decoy = store_b.insert(meta(Some(vec![9; 8])));
+        assert_eq!(decoy.slot(), handle_a.slot());
         assert_eq!(
             store_b.access(handle_a, 1, 3, |m| m.body.clone()),
-            Err(BridgeError::Expired)
+            Err(BridgeError::ForeignWorker)
         );
+        // the decoy slot was neither read nor settled by the denial
+        assert_eq!(store_b.snapshot().materialized_fields, 0);
+        assert_eq!(store_b.live_slots(), 1);
         // settle from the wrong worker must not touch either slab
         store_b.settle(handle_a);
-        assert_eq!(store_b.live_slots(), 0);
+        assert_eq!(store_b.live_slots(), 1);
         assert_eq!(store_a.live_slots(), 1);
         // the true owner still works and settles exactly once
         assert!(store_a.access(handle_a, 0, 0, |_| ()).is_ok());
         store_a.settle(handle_a);
+        store_b.settle(decoy);
         assert_eq!(store_a.live_slots(), 0);
+        assert_eq!(store_b.live_slots(), 0);
+    }
+
+    /// M24-003-D: bounded fuzz corpus over arbitrary (worker, slot,
+    /// generation) triples across two slabs. No forged operation may read
+    /// request bytes, settle a live slot, or perturb the valid handles'
+    /// accounting.
+    #[test]
+    fn fuzzed_handle_triples_fail_closed_without_side_effects() {
+        let store = RequestStore::with_capacity(2);
+        let foreign = RequestStore::with_capacity(2);
+        let live = store.insert(meta(Some(vec![7; 64])));
+        let baseline = store.snapshot();
+        let foreign_baseline = foreign.snapshot();
+
+        // deterministic LCG: bounded corpus, no external rand dependency
+        let mut state: u64 = 0x9E3779B97F4A7C15;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..2048 {
+            let worker_id = (next() % 3) as u32; // 0/1 → almost surely foreign; 2 → maybe local
+            let slot = (next() % 4) as usize; // spans live slot, settled, and holes
+            let generation = next();
+            let forged = RequestHandle {
+                worker_id,
+                slot,
+                generation,
+            };
+            let outcome = store.access(forged, 1, 64, |m| m.body.clone());
+            // a forged triple is only valid if it happens to be EXACTLY the
+            // live handle; everything else fails deterministically
+            if forged != live {
+                assert!(
+                    matches!(
+                        outcome,
+                        Err(BridgeError::ForeignWorker
+                            | BridgeError::Expired
+                            | BridgeError::NoSuchSlot)
+                    ),
+                    "forged triple {forged:?} must fail closed"
+                );
+            } else {
+                assert!(outcome.is_ok(), "the exact live handle must still work");
+            }
+            // forged settles never free another worker's or generation's slot
+            store.settle(forged);
+            assert_eq!(
+                store.live_slots(),
+                1,
+                "live slot must survive forged settles"
+            );
+            let _ = foreign.access(forged, 0, 0, |_| ());
+            foreign.settle(forged);
+        }
+
+        let after = store.snapshot();
+        assert_eq!(after.live_slots, 1);
+        // only the exact-live-handle hits may have materialized anything
+        assert_eq!(after.materialized_bytes % 64, 0);
+        assert_eq!(
+            foreign.snapshot().materialized_fields,
+            foreign_baseline.materialized_fields
+        );
+        assert_eq!(foreign.snapshot().live_slots, 0);
+        // the honest handle still reads and settles exactly once
+        let body = store.access(live, 1, 64, |m| m.body.clone()).unwrap();
+        assert_eq!(body.unwrap(), vec![7u8; 64]);
+        store.settle(live);
+        assert_eq!(store.live_slots(), 0);
+        let _ = baseline;
     }
 
     #[test]

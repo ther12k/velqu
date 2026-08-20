@@ -85,7 +85,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M24-003-A — Move request slots into each QuickJS worker](tasks/01_m24_zero_copy_ingress/M24-003-A-move-request-slots-into-each-quickjs-worker.md)
 - [x] [M24-003-B — Use slot plus generation handles](tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md)
 - [x] [M24-003-C — Invalidate at settlement, timeout, cancellation, quarantine, and shutdown](tasks/01_m24_zero_copy_ingress/M24-003-C-invalidate-at-settlement-timeout-cancellation-quarantine-and-shutdown.md)
-- [ ] [M24-003-D — Reject stale or cross-worker handles deterministically](tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md)
+- [x] [M24-003-D — Reject stale or cross-worker handles deterministically](tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md)
 - [ ] [M24-003-V — Verify Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md)
 - [ ] [M24-003-Z — Package evidence for Implement worker-local generation-checked request slab](tasks/01_m24_zero_copy_ingress/M24-003-Z-package-evidence-for-implement-worker-local-generation-checked-request-slab.md)
 - [ ] [M24-004-A — Store capture start/end ranges against the URI path](tasks/01_m24_zero_copy_ingress/M24-004-A-store-capture-start-end-ranges-against-the-uri-path.md)
