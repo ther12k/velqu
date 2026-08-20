@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use q_engine::Engine as _;
 use q_engine::{BodyOut, InvocationSpec, Outcome};
 use q_engine_quickjs::QuickJsEngine;
-use q_http::{collect_body_bounded, parse_query};
+use q_http::{collect_body_bounded, declared_header_value, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
 use q_schema_runtime::{validate_query, Source};
@@ -431,12 +431,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                 .iter()
                                 .filter_map(|id| {
                                     let name = table.get(*id as usize)?;
-                                    headers.get(name.as_str()).map(|v| {
-                                        (
-                                            name.clone(),
-                                            String::from_utf8_lossy(v.as_bytes()).into_owned(),
-                                        )
-                                    })
+                                    // M24-005-C contract: duplicates join with
+                                    // ", ", non-UTF8 converts lossily, absent
+                                    // declared names are omitted.
+                                    declared_header_value(&headers, name.as_str())
+                                        .map(|value| (name.clone(), value))
                                 })
                                 .collect::<Vec<_>>()
                         })

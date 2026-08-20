@@ -4,7 +4,7 @@ parent_task: M24-005
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -119,3 +119,17 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record
+
+- Status: **PASS**
+- Deliverable: the duplicate-header and byte/string conversion contract, frozen and tested. `q_http::declared_header_value(map, name)` is the single implementation of the contract: repeated values for a declared name join with `", "` in arrival order (HTTP list semantics); header bytes convert lossily to UTF-8 (invalid sequences become U+FFFD — never a panic, never a rejection); a declared-but-absent name yields `None` and is omitted. `serve.rs` admission now reads every plan-declared header through this helper (replacing the first-value `headers.get` lookup M24-005-B used), so policy/auth header access observes exactly this contract.
+- Changed files:
+  - `crates/q-http/src/lib.rs` (`declared_header_value` + duplicate/non-UTF8/absent contract tests)
+  - `crates/q-runtime/src/serve.rs` (declared-header copy uses the contract helper)
+  - `docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/M24-005-C-define-duplicate-header-behavior-and-byte-string-conversion.md`, `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+- Tests: new `declared_header_value_joins_duplicates_and_is_lossy` (q-http: duplicate `authorization` values join in arrival order; declared-absent → None; `[0x41,0xff,0xfe,0x42]` converts lossily with U+FFFD and no panic). Auth flow end-to-end unchanged: runtime policy conformance (401/200) and all suites green.
+- Verification: `cargo test -p q-pack` PASS (35 + 2 fuzz); `cargo test -p q-engine-quickjs` PASS (1 + 92); `cargo test -p q-http` PASS (3 unit + 3 parser fuzz); `cargo test -p q-bridge` PASS (9); `cargo test -p q-schema-runtime` PASS; `cargo test -p q-router` PASS (15); `cargo test -p velqu-runtime` PASS (13 — `graceful_shutdown_exits_zero` flaked once under full parallel matrix load, same known SIGTERM-race flake recorded in M24-002-Z; isolated rerun and full-suite rerun both pass); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `bun run typecheck` PASS; `bun test` PASS (35/0). Raw logs: `/tmp/m24-005-c-rust.log`, `/tmp/m24-005-c-bun.log`.
+- Guardrail status: secret-header redaction in diagnostics unchanged (header values never logged — SEC-004); the explicit full-Headers escape hatch is M24-005-D.
+- Next dependency-ready task: M24-005-D (keep full Headers escape hatch explicit and costed).
+
