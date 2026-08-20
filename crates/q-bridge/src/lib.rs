@@ -234,6 +234,29 @@ impl RequestStore {
         self.free.borrow_mut().push(handle.slot);
     }
 
+    /// Worker-owned terminal sweep for quarantine/shutdown: settles every
+    /// Active slot in one bounded pass (the slab is capacity-bounded), so no
+    /// slot can survive its worker even if no PendingInvocation tracks it.
+    /// Already-settled slots are skipped, so overlap with per-handle settles
+    /// is idempotent. Returns the number of slots this pass settled.
+    pub fn settle_all(&self) -> usize {
+        let mut slots = self.slots.borrow_mut();
+        let mut free = self.free.borrow_mut();
+        let mut settled = 0usize;
+        for (idx, s) in slots.iter_mut().enumerate() {
+            if s.state != SlotState::Active {
+                continue;
+            }
+            s.state = SlotState::Settled;
+            s.meta = None;
+            s.generation = s.generation.wrapping_add(1).max(1);
+            self.counters.live_slots.fetch_sub(1, Ordering::Relaxed);
+            free.push(idx);
+            settled += 1;
+        }
+        settled
+    }
+
     /// Worker- and generation-checked access. The closure returns owned data
     /// before the local borrow ends, and materialization accounting is scalar
     /// only. A foreign-worker handle is denied before any slot is touched.
@@ -299,6 +322,30 @@ mod tests {
         assert_eq!(store.try_insert(meta(None)), Err(BridgeError::Capacity));
         store.settle(first);
         assert!(store.try_insert(meta(None)).is_ok());
+    }
+
+    #[test]
+    fn settle_all_is_bounded_and_idempotent_with_handle_settles() {
+        let store = RequestStore::with_capacity(4);
+        let a = store.insert(meta(None));
+        let b = store.insert(meta(None));
+        let c = store.insert(meta(None));
+        assert_eq!(store.live_slots(), 3);
+        // one slot settles through its own handle first (the single owner path)
+        store.settle(a);
+        // the terminal sweep settles the remaining Active slots exactly once
+        assert_eq!(store.settle_all(), 2);
+        assert_eq!(store.live_slots(), 0);
+        // a repeated sweep — and late per-handle settles — are checked no-ops
+        assert_eq!(store.settle_all(), 0);
+        store.settle(b);
+        store.settle(c);
+        assert_eq!(store.live_slots(), 0, "no double decrement of live_slots");
+        // settled slots are reusable with fresh generations
+        let d = store.insert(meta(None));
+        assert_ne!(d.generation(), b.generation());
+        assert_eq!(store.settle_all(), 1);
+        assert_eq!(store.live_slots(), 0);
     }
 
     #[test]

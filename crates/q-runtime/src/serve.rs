@@ -475,6 +475,17 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             };
 
             let (tx, rx) = tokio::sync::oneshot::channel();
+            // M24-003-C: disconnect/outer-timeout ownership. If this pipeline
+            // future is dropped before the engine replies (client disconnect
+            // aborts the response future, or the outer deadline fires),
+            // cancellation is delivered to the worker so the request slot and
+            // its native operations settle exactly once through the single
+            // settlement owner. Normal completion disarms the guard.
+            let mut cancel_guard = CancelOnDrop {
+                state,
+                invocation_id,
+                armed: true,
+            };
             {
                 let mut eng = state.engine.lock().unwrap();
                 eng.invoke(spec, tx);
@@ -483,6 +494,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .await
                 .map(|r| r.unwrap_or(Outcome::Timeout))
                 .unwrap_or(Outcome::Timeout);
+            cancel_guard.disarm();
 
             // client gone (connection dropped) → cancel invocation
             // SCHEMA-003: declared response bodies are validated at runtime.
@@ -633,6 +645,34 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 }
             };
             mapped
+        }
+    }
+}
+
+/// M24-003-C: cancellation ownership for the response future. Dropping the
+/// pipeline future (client disconnect, host shutdown of the connection task)
+/// delivers `Engine::cancel` so the worker's single settlement owner
+/// invalidates the slot and aborts native operations exactly once. The guard
+/// is disarmed on normal completion, so a delivered outcome is never
+/// double-settled.
+struct CancelOnDrop<'a> {
+    state: &'a ServeState,
+    invocation_id: u64,
+    armed: bool,
+}
+
+impl CancelOnDrop<'_> {
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for CancelOnDrop<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            if let Ok(mut eng) = self.state.engine.lock() {
+                eng.cancel(self.invocation_id);
+            }
         }
     }
 }

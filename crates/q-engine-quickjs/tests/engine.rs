@@ -2234,6 +2234,55 @@ async fn pathological_timeout_cleanup_still_quarantines() {
     eng.shutdown();
 }
 
+/// M24-003-C / ADR-0021 T7: quarantine is a terminal path — the worker-owned
+/// settle_all sweep must invalidate Active slots that no pending entry tracks
+/// (here: a slot admitted but never attached to an invocation), exactly once.
+#[tokio::test]
+async fn quarantine_settles_slots_without_pending_entries() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // orphan slot: admitted into the slab, tracked by no invocation
+    let orphan = insert_request(&eng, q_bridge::RequestMeta::default());
+    assert_eq!(eng.bridge_snapshot().live_slots, 1);
+
+    // poison the runtime through a pathological timeout cleanup chain
+    let handle = insert_request(&eng, q_bridge::RequestMeta::default());
+    let mut s = spec(1, "timeout.catchchain", &[200], 50);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    assert!(matches!(out, Outcome::Timeout), "got {out:?}");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(eng.stats().queue_poisoned, "chain must quarantine runtime");
+
+    // both the poisoned invocation's slot and the orphan settle: zero live
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "quarantine sweep must settle every active slot, tracked or not"
+    );
+    let _ = orphan; // handle retained; sweep invalidated it by generation
+    eng.shutdown();
+}
+
+/// M24-003-C / ADR-0021 T8: shutdown is a terminal path — after the worker
+/// thread joins, no slot of the slab remains live.
+#[tokio::test]
+async fn shutdown_settles_all_remaining_slots() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let _first = insert_request(&eng, q_bridge::RequestMeta::default());
+    let _second = insert_request(&eng, q_bridge::RequestMeta::default());
+    assert_eq!(eng.bridge_snapshot().live_slots, 2);
+    eng.shutdown();
+    assert_eq!(
+        eng.bridge_snapshot().live_slots,
+        0,
+        "shutdown sweep must leave zero live slots"
+    );
+}
+
 // ------------------------------------------------------------ M2.2.1-r4.2.1 drain-local report & cleanup budget
 
 /// Interruption during request B's cleanup drain must be DRAIN-LOCAL:
