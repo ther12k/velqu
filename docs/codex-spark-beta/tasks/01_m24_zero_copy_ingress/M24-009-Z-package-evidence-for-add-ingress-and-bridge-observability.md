@@ -4,7 +4,7 @@ parent_task: M24-009
 milestone: M24
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -107,6 +107,19 @@ cargo clippy --workspace --all-targets -- -D warnings
 - Redaction tests.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+M24-009-A through D implementation commits and M24-009-V verification are merged through PR #694 merge `4ef8b7be0ea1b44bfcf0fc988effa450dffe836b`.
+
+Packaged evidence:
+
+- `StageMetricsSnapshot` schema covers seven stage counters and slab/queue/body gauges.
+- `--log-sample N` provides bounded successful-request sampling; errors remain visible.
+- Completion logs redact headers and body contents.
+- Raw matched overhead evidence: `benchmarks/raw/observability/metrics-overhead.json`.
+- Full Rust package suites, format, clippy, and `./scripts/verify` pass.
+- Canonical benchmark manifest remains unchanged; no unsupported performance claim added.
 
 ## Out of scope
 
