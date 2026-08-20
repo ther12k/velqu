@@ -4,6 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Match release hashes across checkout paths; rquickjs-sys embeds C OUT_DIR.
+export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$(pwd)=/velqu-src"
+export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src"
+
 bun install --silent
 cargo build --release --workspace --quiet
 (cd baselines/raw-rust && cargo build --release --quiet)
