@@ -132,3 +132,14 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification blocker record
+
+- Task ID: `M24-001-V`
+- Blocking fact: The frozen M24 design is not implemented in the current branch, so parent acceptance cannot be truthfully proven. `q-http` still clones headers, eagerly parses query, and collects the body before route/`FieldNeeds` admission; `q-bridge::RequestStore` is still process-wide `Mutex<Vec<Slot>>`.
+- Exact source locations: `crates/q-http/src/lib.rs:209-337`, `crates/q-bridge/src/lib.rs:76-147`, `crates/q-runtime/src/serve.rs:50`.
+- Exact commands/results: `cargo test -p q-pack -p q-router -p q-engine-quickjs -p q-http -p q-bridge -p velqu-runtime` PASS; `bun test` PASS (35/35) after proof-pack build; `bun run typecheck` PASS; `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `./scripts/validate-okf` PASS (174 links); `scripts/validate-benchmark-evidence.py` FAIL because worktree `target/release/velqu-runtime` hash differs from canonical manifest.
+- Dependency or owner required: Implement and evidence M24-002 through M24-010, then rerun the M24-001 acceptance matrix. Keep `M24-001-V` and `M24-001-Z` TODO until those proofs exist.
+- Safe work completed before stopping: mapped INV-1..INV-4, T1..T12, D-T1..D-T8, and the ADR/specification/threat-review artifacts; ran all available verification suites; preserved production backlog and Spark indexes as TODO.
+- Files changed but not committed: this packet record only.
+- Suggested next action: start M24-001-Z only after a separate evidence decision, or proceed to M24-002-A implementation; do not mark M24-001 parent or M24-GATE PASS.
