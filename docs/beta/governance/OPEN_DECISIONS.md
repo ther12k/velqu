@@ -16,7 +16,7 @@ The agent may prepare options but may not invent authority.
 | ID | Decision | Blocks | Status |
 |---|---|---|---|
 | OD-BETA-001 | Public repository and organization | Publishing | Accepted (2026-08-20) |
-| OD-BETA-002 | License and contribution model | Public beta | Open |
+| OD-BETA-002 | License and contribution model | Public beta | Accepted (2026-08-20) |
 | OD-BETA-003 | Beta release authority and version | Public beta | Open |
 | OD-BETA-004 | Security contact/disclosure channel | Public beta | Open |
 | OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Open |
@@ -70,3 +70,53 @@ Required by gate: Publishing
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-003 marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-A-repository-organization.md` (completion record)
+
+## OD-BETA-002 Decision Record
+
+```text
+Decision ID: OD-BETA-002
+Title: License and contribution model
+Status: accepted
+Date: 2026-08-20
+Decider: Owner (ther12k)
+Required by gate: Public beta
+```
+
+### Context
+
+- A public beta needs an explicit license and contribution terms before external distribution.
+- The repository previously used `UNLICENSED-BEFORE-OWNER-DECISION` as a deliberate publication blocker.
+
+### Options considered
+
+- MIT License: accepted for its permissive reuse terms and simple contribution model.
+- Apache-2.0: not selected for this beta decision; it adds patent and NOTICE obligations not required by the chosen scope.
+- Keep the repository unlicensed: rejected because public beta distribution and contributions require explicit terms.
+
+### Decision
+
+- Velqu source is released under the MIT License in the repository root `LICENSE` file.
+- Contributions are accepted through reviewed GitHub pull requests and are distributed under the repository MIT License, subject to contributor authority and compatible licensing.
+- Contribution workflow and scope rules are documented in `CONTRIBUTING.md`.
+- Public issues are not a vulnerability disclosure channel; security reporting remains governed by OD-BETA-004.
+
+### Consequences
+
+- Rust workspace crates and repository source have a canonical public license.
+- External users may use, modify, and redistribute the software under MIT terms with the required notice and disclaimer.
+- Contributions require provenance review and compatible licensing before merge.
+- Replacing MIT or changing contribution terms requires a new owner decision superseding OD-BETA-002.
+
+### Security/operations implications
+
+- MIT does not grant trademark rights or imply support or production readiness.
+- Maintainers must reject submissions containing secrets, private data, incompatible licensed code, or unreviewed generated artifacts.
+- Vulnerability reports must use the private channel defined when OD-BETA-004 is accepted.
+
+### Documentation and task updates
+
+- `LICENSE`
+- `CONTRIBUTING.md`
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (OD-004 marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-B-license-contribution-model.md` (completion record)
