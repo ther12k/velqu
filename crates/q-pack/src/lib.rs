@@ -117,7 +117,7 @@ pub struct LivenessSpec {
     pub body: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldNeeds {
     #[serde(default)]
