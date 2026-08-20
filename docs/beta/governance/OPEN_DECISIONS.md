@@ -18,7 +18,7 @@ The agent may prepare options but may not invent authority.
 | OD-BETA-001 | Public repository and organization | Publishing | Accepted (2026-08-20) |
 | OD-BETA-002 | License and contribution model | Public beta | Accepted (2026-08-20) |
 | OD-BETA-003 | Beta release authority and version | Public beta | Accepted (2026-08-20) |
-| OD-BETA-004 | Security contact/disclosure channel | Public beta | Open |
+| OD-BETA-004 | Security contact/disclosure channel | Public beta | Accepted (2026-08-20) |
 | OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Open |
 | OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Open |
 | OD-BETA-007 | Official first-party Postgres package versus reference capability | Package list | Open |
@@ -167,3 +167,52 @@ Required by gate: Public beta
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-006 marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-C-release-authority.md` (completion record)
+
+## OD-BETA-004 Decision Record
+
+```text
+Decision ID: OD-BETA-004
+Title: Security contact/disclosure channel
+Status: accepted
+Date: 2026-08-20
+Decider: Owner (ther12k)
+Required by gate: Public beta
+```
+
+### Context
+
+- A public beta needs a private vulnerability reporting channel that keeps sensitive details out of public issues.
+- No security email or advisory workflow was previously documented; inventing a personal address or response SLA would create unsupported operational commitments.
+
+### Options considered
+
+- GitHub Security Advisories for `ther12k/velqu`: accepted; private, repository-scoped, and already supported by the public repository.
+- Publish a dedicated security email: rejected for this beta; no owner-provided address exists and publishing one would invent contact authority.
+- Accept reports in public issues: rejected; public disclosure can expose users before remediation.
+
+### Decision
+
+- Vulnerability reports must use the private GitHub Security Advisory flow at `https://github.com/ther12k/velqu/security/advisories/new`.
+- Public issues, pull requests, and discussions are not vulnerability disclosure channels.
+- Reporters should include affected version/commit, impact, prerequisites, safe reproduction details, logs/configuration where safe, and known workarounds.
+- Triage and coordinated disclosure expectations are documented in `SECURITY.md`; no response-time or remediation SLA is promised for beta.
+
+### Consequences
+
+- Sensitive vulnerability details have a documented private intake path.
+- Maintainers may request additional details, coordinate fixes, publish an advisory, or recommend withdrawal/yank through the release authority process.
+- The policy does not claim a 24/7 security team, guaranteed response time, or production support commitment.
+
+### Security/operations implications
+
+- GitHub account access is required to submit an advisory; reporters must avoid putting secrets or private data in public channels.
+- The beta remains trusted-code-only, non-SLA, and not production-ready GA.
+- Changes to the disclosure channel require a new owner decision superseding OD-BETA-004.
+
+### Documentation and task updates
+
+- `SECURITY.md`
+- `CONTRIBUTING.md`
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (security contact marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-D-security-contact.md` (completion record)
