@@ -152,8 +152,12 @@ impl QuickJsEngine {
     /// Test/benchmark admission helper. Production request admission moves the
     /// metadata in `InvocationSpec`; this method exists only for suites that
     /// need to arrange a handle before constructing a legacy fixture spec.
+    /// The returned typed handle is minted by the worker's own slab.
     #[doc(hidden)]
-    pub fn insert_request(&self, meta: q_engine::RequestMeta) -> Result<(usize, u64), String> {
+    pub fn insert_request(
+        &self,
+        meta: q_engine::RequestMeta,
+    ) -> Result<q_bridge::RequestHandle, String> {
         let (tx, rx) = std::sync::mpsc::channel();
         self.tx
             .send(WorkerMsg::InsertRequest { meta, reply: tx })
@@ -162,8 +166,8 @@ impl QuickJsEngine {
     }
 
     #[doc(hidden)]
-    pub fn settle_request(&self, slot: usize, generation: u64) {
-        let _ = self.tx.send(WorkerMsg::SettleRequest { slot, generation });
+    pub fn settle_request(&self, handle: q_bridge::RequestHandle) {
+        let _ = self.tx.send(WorkerMsg::SettleRequest { handle });
     }
 
     /// M2.2.1-r4.2.1: narrow lock-free health handle for per-request readiness check
