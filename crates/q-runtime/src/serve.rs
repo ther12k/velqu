@@ -104,6 +104,7 @@ pub struct ServeState {
     pub router: q_router::Router,
     /// Dense schema vector indexed by SchemaId (from the pack's schema manifest);
     /// request admission validates through this vector — zero string lookups.
+    #[allow(dead_code)]
     pub schema_vector: Vec<q_schema_runtime::SchemaIr>,
     /// Pre-compiled direct decoder programs keyed by SchemaId (M25-003-A).
     pub decoder_table: q_schema_runtime::DecoderTable,
@@ -504,8 +505,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 };
                 if let Some(sid) = compiled.body_schema_id {
-                    let ir = &state.schema_vector[sid.0 as usize];
-                    match q_schema_runtime::validate(ir, &parsed, Source::Body) {
+                    match state.decoder_table.decode_body_value(sid.0, &parsed) {
                         Ok(v) => body_value = Some(v),
                         Err(errors) => {
                             let body = problems::body(
