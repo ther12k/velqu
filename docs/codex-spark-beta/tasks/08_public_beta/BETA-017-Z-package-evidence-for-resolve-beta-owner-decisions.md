@@ -4,7 +4,7 @@ parent_task: BETA-017
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -136,3 +136,20 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+## Completion record
+
+- Status: **PASS**
+- Parent verification confirmed: BETA-017-V PASS at `924d4c2` (merge #712); tree clean before evidence commit.
+- Evidence collected (source paths):
+  - Decision records: `docs/beta/governance/OPEN_DECISIONS.md` (OD-BETA-001..006, 008 accepted; template-aligned records), `docs/open-decisions.md` (OD-001..009 decided).
+  - Release authorization: `docs/beta/governance/RELEASE_AUTHORITY.md` (Owner sole authority; `0.1.0-beta.1`).
+  - Contact/support documents: `SECURITY.md` (private GitHub Security Advisories channel), `CONTRIBUTING.md`.
+  - Platform/support scope: `docs/beta/governance/PLATFORM_SUPPORT.md`, `REVERSE_PROXY_POLICY.md`, `BENCHMARK_WORDING.md`.
+  - Subtask completion records: `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-{A..G,V}-*.md` (PRs #660, #663, #665, #673, #681, #696, #711, #712).
+- Status updated: `docs/beta/04_TASK_LEDGER.md` BETA-017 → PASS (parent acceptance criteria proven by BETA-017-V).
+- Index/checksum binding checked: root `REVIEW_INDEX.json`/`EVIDENCE_INDEX.json` remain M24 milestone indexes using the `BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD` placeholder; `scripts/release-packet` rewrites commit/releaseCommit/generatedAt to the clean candidate HEAD at packet time; `reviewedImplementationCommit` 75bda51 is an ancestor of HEAD. Beta-milestone indexes are deferred to BETA-GATE packaging by design.
+- Tests and exact results: `cargo test -p q-pack` PASS (37 unit + 2 fuzz); `cargo test -p q-engine-quickjs` PASS (1 unit + 96 engine); `cargo fmt --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `./scripts/verify` — `verify: ALL PASS` (benchmark artifact validation `errors: []`); `./scripts/validate-okf` PASS (174 links, manifest hashes).
+- Reports unchanged: raw benchmark evidence and generated reports untouched; `generate-benchmark-reports.py --check` reports current (inside verify).
+- Remaining risk / deferred by design: OD-BETA-007 (Postgres package) and OD-BETA-009 (support channel) stay open for their own gates; BETA-GATE owns the final self-verifying release packet.
+- Next dependency-ready task: BETA-GATE remains blocked on BETA-001..BETA-016 (minus 017); M-line work continues at M25-001-A (#120).
+- Working tree clean: yes after commit.
