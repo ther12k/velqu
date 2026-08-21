@@ -4,7 +4,7 @@ parent_task: BETA-017
 milestone: BETA
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -148,3 +148,18 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+## Completion record
+
+- Status: **PASS**
+- Dependencies confirmed: BETA-017-A..G all `status: PASS` on this branch; OD-BETA-001..006 and OD-BETA-008 accepted in `docs/beta/governance/OPEN_DECISIONS.md` with dated decision records; OD-001..009 decided in `docs/open-decisions.md`. OD-BETA-007 (Postgres package; blocks Package list) and OD-BETA-009 (support channel; blocks Beta docs) are outside BETA-017's seven-decision scope and tracked by their own gates.
+- Acceptance criteria mapped:
+  - Decisions recorded in open-decision log — seven template-aligned decision records in `docs/beta/governance/OPEN_DECISIONS.md`; register cross-links in `docs/open-decisions.md`.
+  - No agent invents owner authority — each record names Owner (ther12k) and date; owner-selected options documented in the A–G completion records and PR history (#660, #663, #665, #673, #681, #696, #711).
+  - Security reporting channel exists — `SECURITY.md` (private GitHub Security Advisories; negative guarantee: public issues are not a disclosure channel), linked from `CONTRIBUTING.md`.
+  - Platform/support scope published — `docs/beta/governance/PLATFORM_SUPPORT.md` (Linux x86_64 glibc only), `REVERSE_PROXY_POLICY.md` (proxy-terminated TLS), `BENCHMARK_WORDING.md` (scoped evidence-only claims), `RELEASE_AUTHORITY.md` (0.1.0-beta.1, owner-controlled).
+- Tests and exact results: `cargo test -p q-pack` PASS (37 unit + 2 fuzz); `cargo test -p q-http` PASS (4 unit + 6 fuzz + 1 regression corpus); `cargo test -p q-schema-runtime` PASS (9 unit + 2 fuzz); `bun test` PASS (36/36, runtime-local conformance drove the release binary over HTTP); `bun run typecheck` PASS; `cargo fmt --all --check` PASS; `cargo clippy --workspace --all-targets -- -D warnings` PASS; `./scripts/verify` — `verify: ALL PASS` including benchmark artifact validation (`errors: []`; reproducible-build flags from 75bda51 make fresh-worktree artifact hashes match the manifest, resolving the environment-bound caveat recorded in BETA-017-G).
+- Fail-before-ready/cleanup inspection: runtime rejects tampered packs before ready (`tampered_pack_fails_before_ready`), poisoned runtime marks readiness false, graceful shutdown exits zero, queue saturation returns 503 — no weakened assertions found.
+- Findings handled here: none (no defect in the seven decisions' artifacts required fixes). The BETA-017-G artifact-hash caveat was already resolved upstream by reproducible builds.
+- Remaining risk / deferred by design: OD-BETA-007 and OD-BETA-009 remain open by design for their own gates; the broader BETA-GATE checklist items (clean-install tutorial, soak, packaging) belong to BETA-014/015/016 and BETA-GATE.
+- Next dependency-ready task: BETA-017-Z (Package evidence for Resolve beta owner decisions) — #624.
+- Working tree clean: yes after commit.
