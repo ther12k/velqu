@@ -4,7 +4,7 @@ parent_task: M25-001
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,68 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification evidence (M25-001-V)
+
+Status: **PASS**. All four implementation dependencies are present on
+`origin/master`: M25-001-A (`2d029d1`), M25-001-B (`9879f02`), M25-001-C
+(`cd7a448`), and M25-001-D (`734aae4`). The parent acceptance guardrails are
+proven by the source-backed records and tests below; this packet does not mark
+the M25 milestone gate PASS.
+
+### Acceptance matrix
+
+- **One schema identity produces equivalent runtime and public projections.**
+  Rust and TypeScript share `SCHEMA_IR_VERSION = 2`; compiler extraction and
+  emission feed the q-pack schema registry, Treaty/type projection, OpenAPI,
+  contract lock, and golden wire corpus. Positive coverage: `golden_corpus_round_trips`,
+  `Schema IR v2 golden corpus (M25-001-A)`, `determinism (COMP-003/009)`,
+  and `contract lock workflow (PR-006/SCHEMA-007)`.
+- **Canonical form is deterministic.** Recursive object-key ordering, ordered
+  arrays, integral-float normalization, and both hash surfaces are covered by
+  `m25_001_c_tests::canonical_json_sorts_all_keys_recursively`,
+  `canonical_form_normalizes_integral_floats`,
+  `canonical_value_is_emission_order_insensitive`,
+  `canonical_corpus_matches_golden_files`, and the compiler test
+  `option literal field order never changes canonical hashes`.
+- **Unsupported constructs fail or use explicit fallback.** Typed unsupported
+  validation, closed fallback reasons, manifest feature verification, compiler
+  diagnostics, and the normative unsupported-transformations specification are
+  covered by `v2_nodes_return_typed_unsupported_validation_errors`,
+  `fallback_without_inner_fails_closed_with_typed_error`,
+  `fallback_rejects_unknown_reason`,
+  `schema_manifest_unknown_fallback_reason_rejected`, and the three
+  M25-001-D documentation-drift tests.
+- **Schema diff can classify nested changes.** The contract-lock semantic diff
+  suite `semantic diff detects schema structural changes accurately` passes;
+  canonical schema identity is shared by the diff input and emitted contract.
+
+### Exact verification results
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-engine-quickjs` | 1 unit + 96 integration tests passed |
+| `cargo test -p q-schema-runtime` | 28 library + 2 fuzz tests passed |
+| `bun test` | 66 passed, 0 failed, 233 expect calls |
+| `bun run typecheck` | clean (`tsc -b tsconfig.json`) |
+| `cargo fmt --check` | clean |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `./scripts/verify` | all Rust, typecheck, proof build, and TypeScript stages passed; final benchmark evidence validation failed only for isolated-worktree `qRuntimeRelease` and `proofPack` hash mismatches |
+
+`./scripts/verify` also reported `scripts/validate-okf`: 176 links checked,
+0 errors; production task validation reported 120 tasks, current head
+`6181d8629df7b13628de46c3bac8d2234cec497d`, 0 errors. The benchmark manifest
+was not changed and no performance claim is made. The hash mismatch is scoped
+to reproducibility of this temporary verification worktree and is not evidence
+that the implementation or committed manifest is invalid.
+
+### Evidence locations and scope
+
+- Schema golden corpus: `conformance/schema/golden/` and
+  `conformance/schema/golden/canonical/`.
+- Compatibility matrix: `conformance/schema/golden/COMPATIBILITY.md`.
+- Canonicalization ADR: `docs/okf/decisions/0023-canonical-ordering-and-hashing.md`.
+- Unsupported transformation specification:
+  `docs/specs/unsupported-transformations.md`.
+- No source or generated tracked files changed during verification besides this
+  packet record; benchmark manifests remain untouched.
