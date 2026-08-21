@@ -1,0 +1,1 @@
+{"input":{"kind":"string","maxLength":64},"kind":"transform","name":"parse-count","output":{"kind":"integer","minimum":0}}

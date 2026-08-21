@@ -371,21 +371,22 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
 
   const router = buildSerializedRouter(packRoutes);
 
-  // MUST match the Rust canonical form byte-for-byte (q-pack routes_canonical_json):
-  // routes keep Vec order + struct field declaration order; schemas/policies are
-  // BTreeMaps (sorted keys, nested values in IR field order); no deep sorting.
-  const canonical = JSON.stringify({
-    routes: packRoutes,
-    schemas: sortIR(schemas) as Record<string, unknown>,
-    policies: routes.some((r) => r.policy === "auth.session")
-      ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
-      : {},
-    capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
-    functions,
-    schemaManifest,
-    policyManifest,
-    router,
-  });
+  // MUST match the Rust canonical form byte-for-byte (q-pack
+  // routes_canonical_json, M25-001-C): whole view through sortIR.
+  const canonical = JSON.stringify(
+    sortIR({
+      routes: packRoutes,
+      schemas,
+      policies: routes.some((r) => r.policy === "auth.session")
+        ? { "auth.session": { id: "auth.session", handler: "auth.session", declaredStatuses: [401], provides: "session" } }
+        : {},
+      capabilities: routes.some((r) => r.capabilities?.includes("timer")) ? ["timer"] : [],
+      functions,
+      schemaManifest,
+      policyManifest,
+      router,
+    }),
+  );
 
   const projectBinding = (b: { schema: string | null; coerce: string | null; contentType: string | null; limitBytes: number } | null) =>
     b ? { schema: b.schema, coerce: b.coerce, contentType: b.contentType, limitBytes: b.limitBytes } : null;
@@ -419,7 +420,7 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
   const policiesPublic = routes.some((r) => r.policy === "auth.session")
     ? { "auth.session": { declaredStatuses: [401], provides: "session" } }
     : {};
-  const publicContractCanonical = JSON.stringify([publicRoutes, schemasPublic, policiesPublic]);
+  const publicContractCanonical = JSON.stringify(sortIR([publicRoutes, schemasPublic, policiesPublic]));
   const contractHash = sha(publicContractCanonical).slice(0, 32);
 
   const pack = {
@@ -458,35 +459,19 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
  * struct-shaped values keep field order.
  */
 /**
- * Match Rust serialization exactly:
- * - schema registry / properties maps are BTreeMaps → keys sorted
- * - IR nodes serialize as {"kind": tag, ...declared fields in order}
- *   (skip_serializing_if for absent options)
+ * Rust-canonical sortIR (M25-001-C): every object's keys sorted recursively;
+ * arrays keep order. Mirrors q_schema_runtime::canonical_value so the fixture
+ * pack's integrity hashes match the runtime byte-for-byte.
  */
 function sortIR(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortIR);
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
-    if ("kind" in o) {
-      // IR node: keep authoring (field) order; sort only `properties` map
-      const out: Record<string, unknown> = {};
-      for (const k of Object.keys(o)) {
-        out[k] = k === "properties" ? sortProperties(o[k]) : sortIR(o[k]);
-      }
-      return out;
-    }
-    // map container: sorted keys
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
     return out;
   }
   return v;
-}
-function sortProperties(v: unknown): Record<string, unknown> {
-  const o = v as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
-  return out;
 }
 
 // ---------------------------------------------------------------- route-count packs

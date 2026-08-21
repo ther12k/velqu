@@ -1293,6 +1293,8 @@ impl QPack {
 
     /// Canonical JSON over the execution graph (routes with plans, schemas, policies,
     /// capabilities, function manifest, schema manifest, serialized router).
+    /// M25-001-C: the whole view passes through `canonical_value` (sorted keys,
+    /// normalized numbers) so the hash is independent of field emission order.
     pub fn routes_canonical_json(&self) -> String {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -1316,7 +1318,8 @@ impl QPack {
             policy_manifest: &self.policy_manifest,
             router: &self.router,
         };
-        serde_json::to_string(&c).expect("canonical serialization cannot fail")
+        let v = serde_json::to_value(&c).expect("canonical serialization cannot fail");
+        q_schema_runtime::canonical_value(&v).to_string()
     }
 
     /// Verification path: hash the canonical form through a Writer adapter —
@@ -1345,8 +1348,11 @@ impl QPack {
             policy_manifest: &self.policy_manifest,
             router: &self.router,
         };
+        // hash the canonical (sorted-key, number-normalized) form, matching
+        // routes_canonical_json byte-for-byte
+        let v = serde_json::to_value(&c).expect("canonical serialization cannot fail");
         let mut hasher = Sha256::new();
-        serde_json::to_writer(&mut hasher, &c).expect("canonical serialization cannot fail");
+        hasher.update(q_schema_runtime::canonical_value(&v).to_string().as_bytes());
         hex(&hasher.finalize())
     }
 
@@ -1459,8 +1465,10 @@ impl QPack {
                 )
             })
             .collect();
-        serde_json::to_string(&(&routes, &schemas, &policies))
-            .expect("canonical serialization cannot fail")
+        let v = serde_json::to_value((&routes, &schemas, &policies))
+            .expect("canonical serialization cannot fail");
+        // M25-001-C: same canonical form as the execution-graph hash
+        q_schema_runtime::canonical_value(&v).to_string()
     }
 
     pub fn public_contract_sha256(&self) -> String {

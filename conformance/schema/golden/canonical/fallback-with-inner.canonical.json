@@ -1,0 +1,1 @@
+{"inner":{"kind":"object","properties":{"n":{"kind":"integer","minimum":1}},"required":["n"]},"kind":"fallback","reason":"unsupported-transform"}

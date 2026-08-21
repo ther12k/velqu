@@ -165,6 +165,9 @@ export declare function featuresOf(ir: Schema<unknown> | {
     kind?: string;
     [k: string]: unknown;
 }): FeatureTag[];
+/** Canonical JSON form (M25-001-C): keys sorted recursively; mirrors `q_schema_runtime::canonical_value`. */
+export declare function canonicalValue<T = unknown>(v: unknown): T;
+export declare function canonicalJson(ir: unknown): string;
 /** Convenience namespace so `s.string()` reads naturally. */
 export declare const s: {
     string: typeof s_string;

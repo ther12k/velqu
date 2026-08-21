@@ -130,33 +130,24 @@ export function schemaRegistry(app: ExtractedApp): Record<string, unknown> {
   return reg;
 }
 
-/** IR-aware canonical sort matching Rust serde:
- *  - IR nodes ({"kind": tag}) keep declaration field order, only `properties` maps sort
- *  - plain map containers sort by key
- *  - arrays keep order */
+/**
+ * Canonical JSON form (M25-001-C, ADR-0023): every object's keys are sorted
+ * recursively (code-unit order), arrays keep their order. Mirrors
+ * `q_schema_runtime::canonical_value` — both sides hash the same canonical
+ * string regardless of source literal field order.
+ */
 function sortIR(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortIR);
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
-    if ("kind" in o) {
-      const out: Record<string, unknown> = {};
-      for (const k of Object.keys(o)) out[k] = k === "properties" ? sortProps(o[k]) : sortIR(o[k]);
-      return out;
-    }
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
     return out;
   }
   return v;
 }
-function sortProps(v: unknown): Record<string, unknown> {
-  const o = v as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  for (const k of Object.keys(o).sort()) out[k] = sortIR(o[k]);
-  return out;
-}
 
-/** Rust-canonical: routes keep field order, schema registry keys sorted, IR maps inside sorted (properties). */
+/** Rust-canonical: the whole execution-graph view passes through sortIR. */
 function rustCanonical(
   routes: unknown[],
   schemas: Record<string, unknown>,
@@ -167,24 +158,18 @@ function rustCanonical(
   policyManifest: unknown[],
   router: unknown,
 ): string {
-  const schemasSorted: Record<string, unknown> = {};
-  for (const k of Object.keys(schemas).sort()) schemasSorted[k] = sortIR(schemas[k]);
-  // Rust serializes SchemaDecl.ir with BTreeMap-backed IR (sorted properties);
-  // deep-sort each manifest entry's IR the same way
-  const manifestSorted = (schemaManifest as Array<Record<string, unknown>>).map((e) => ({
-    ...e,
-    ir: sortIR(e.ir),
-  }));
-  return JSON.stringify({
-    routes,
-    schemas: schemasSorted,
-    policies,
-    capabilities,
-    functions,
-    schemaManifest: manifestSorted,
-    policyManifest,
-    router,
-  });
+  return JSON.stringify(
+    sortIR({
+      routes,
+      schemas,
+      policies,
+      capabilities,
+      functions,
+      schemaManifest,
+      policyManifest,
+      router,
+    }),
+  );
 }
 
 function buildSerializedRouter(routes: Array<{ method: string; pathSegments: Array<{ kind: string; value: string }> }>) {
@@ -469,7 +454,9 @@ export function buildPack(
     const p = policyPacks[k] as { declaredStatuses: unknown; provides: unknown };
     policiesPublic[k] = { declaredStatuses: p.declaredStatuses, provides: p.provides }; // NO handler
   }
-  const publicContractCanonical = JSON.stringify([publicRoutes, schemasPublic, policiesPublic]);
+  // M25-001-C: whole public-contract view canonicalized (sorted keys), matching
+  // q_pack::public_contract_canonical_json
+  const publicContractCanonical = JSON.stringify(sortIR([publicRoutes, schemasPublic, policiesPublic]));
   const contractHash = sha(publicContractCanonical).slice(0, 32);
 
   const pack = {

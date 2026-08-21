@@ -24,3 +24,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 20. [ADR-0020 — Beta-Readiness Program (0.1.0-beta.1)](0020-beta-readiness-program.md) (accepted; supersedes GA-first framing; authoritative forward roadmap under `docs/beta/`)
 21. [ADR-0021 — M2.4 Zero-Copy Ingress and Worker-Local Request Ownership](0021-m24-zero-copy-ingress-ownership.md) (accepted; freezes the M24 ownership spine, terminal invariants, state-machine tests plan, and threat review)
 22. [ADR-0022 — Schema IR v2: Declarative Transform, File, and Problem Nodes](0022-schema-ir-v2.md) (accepted; implements the M2.5 schema track; M25-001-A)
+23. [ADR-0023 — Canonical Ordering and Hashing for Schema IR v2 Projections](0023-canonical-ordering-and-hashing.md) (accepted; implements ADR-0022; M25-001-C)

@@ -4,7 +4,7 @@ parent_task: M25-001
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -117,3 +117,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-001-C)
+
+Status: **PASS**. Canonical ordering and hashing implemented per ADR-0023:
+recursively sorted object keys, ordered arrays, integral-float normalization
+(0.0 → 0). Both hash surfaces — the execution-graph hash
+(`routes_canonical_sha256` / `routes_canonical_json`) and the public-contract
+hash (`public_contract_canonical_json` / TS `contractHash`) — canonicalize
+their whole view. Source literal field order no longer affects any hash.
+
+### Changed files
+
+- `crates/q-schema-runtime/src/lib.rs` — `canonical_value`, `canonical_json`,
+  `m25_001_c_tests` (4 tests incl. golden canonical corpus).
+- `crates/q-pack/src/lib.rs` — both canonical surfaces pass through
+  `canonical_value`; hashing path matches `routes_canonical_json` bytes.
+- `packages/schema/src/index.ts`, `index.d.ts`, `index.js` — `canonicalValue`,
+  `canonicalJson` exports (shared canonical form for diff/hashing).
+- `packages/compiler/src/emit.ts` — `sortIR` now full recursive key sort;
+  `rustCanonical` and `publicContractCanonical` canonicalize whole views.
+- `benchmarks/harness/build-proof-pack.ts` — fixture canonicalization mirrors
+  the same form (bundle/contract hashes stay runtime-verified).
+- `conformance/schema/golden/canonical/*.canonical.json` — committed canonical
+  corpus (8 nodes), byte-exact expectation for both languages.
+- `conformance/schema/schema.conformance.test.ts` — canonical form suite (3).
+- `conformance/compiler/compiler.test.ts` + fixtures `order-a-app.ts` /
+  `order-b-app.ts` — reversed option orders compile to identical
+  `routesSha256`/`contractHash`.
+- `docs/okf/decisions/0023-canonical-ordering-and-hashing.md` (+ index),
+  `docs/specs/pack-format-v1.md` (canonicalization note),
+  `conformance/schema/golden/COMPATIBILITY.md` (matrix updated).
+
+### Evidence
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-schema-runtime` | 28 lib + 2 fuzz passed |
+| `cargo test -p q-pack` | 40 + 2 passed |
+| `cargo test -p q-engine-quickjs` | 1 + 96 passed |
+| `cargo test -p velqu-runtime` | 15 passed |
+| `bun test` (full) | 63 passed |
+| `bun run typecheck` | clean |
+| `cargo fmt --check` / `clippy -D warnings` | clean |
+| `./scripts/validate-okf` | 0 errors |
+
+Test names (selection): `m25_001_c_tests::canonical_json_sorts_all_keys_recursively`,
+`m25_001_c_tests::canonical_form_normalizes_integral_floats`,
+`m25_001_c_tests::canonical_value_is_emission_order_insensitive`,
+`m25_001_c_tests::canonical_corpus_matches_golden_files`,
+"option literal field order never changes canonical hashes" (compiler),
+"canonical corpus matches committed golden canonical files" (schema).
+
+### Notes
+
+- Pack hash values change by design (canonical bytes are hashed); packs
+  rebuild. Benchmark evidence refresh with raw samples happens at the M25
+  gate, not in this packet (ADR-0012 discipline).
+- No performance claims made.

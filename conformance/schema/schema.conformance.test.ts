@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { s, s_transform, s_file, s_problem, s_fallback, featuresOf, SCHEMA_IR_VERSION, MAX_FILE_BYTES, FALLBACK_REASONS, type Schema, type Infer } from "@velqu/schema";
+import { s, s_transform, s_file, s_problem, s_fallback, featuresOf, canonicalJson, SCHEMA_IR_VERSION, MAX_FILE_BYTES, FALLBACK_REASONS, type Schema, type Infer } from "@velqu/schema";
 
 describe("Schema IR v1 builders (SCHEMA-001)", () => {
   test("string schema options and IR structure", () => {
@@ -214,6 +214,44 @@ describe("Fallback and compatibility markers (M25-001-B, ADR-0009)", () => {
     for (const [file, expected] of cases) {
       const golden = await import(`./golden/${file}`, { with: { type: "json" } });
       expect(featuresOf(golden.default as never)).toEqual(expected);
+    }
+  });
+});
+
+describe("Canonical form (M25-001-C, ADR-0023)", () => {
+  test("canonicalJson is emission-order insensitive", () => {
+    const a = { kind: "x", a: 1, b: { y: 2, x: [3, { q: 1, p: 2 }] } };
+    const b = { b: { x: [3, { p: 2, q: 1 }], y: 2 }, a: 1, kind: "x" };
+    expect(canonicalJson(a)).toBe(canonicalJson(b));
+  });
+
+  test("schemas differing only in option literal order canonicalize identically", () => {
+    const forward = s.string({ minLength: 1, maxLength: 32, format: "uuid" });
+    const reversed = s.string({ format: "uuid", maxLength: 32, minLength: 1 });
+    expect(canonicalJson(forward)).toBe(canonicalJson(reversed));
+
+    const numA = s.number({ minimum: 0, maximum: 1.5 });
+    const numB = s.number({ maximum: 1.5, minimum: 0 });
+    expect(canonicalJson(numA)).toBe(canonicalJson(numB));
+  });
+
+  test("canonical corpus matches committed golden canonical files (Rust parity)", async () => {
+    const names = [
+      "transform",
+      "file",
+      "file-content-type",
+      "problem",
+      "problem-minimal",
+      "nested-composition",
+      "fallback-with-inner",
+      "fallback-minimal",
+    ];
+    for (const n of names) {
+      const golden = await import(`./golden/${n}.json`, { with: { type: "json" } });
+      const canonical = await import(`./golden/canonical/${n}.canonical.json`, { with: { type: "json" } });
+      // committed canonical file (single line) must equal canonicalJson of the
+      // corpus node — the exact string q_schema_runtime::canonical_json emits
+      expect(canonicalJson(golden.default)).toBe(JSON.stringify(canonical.default));
     }
   });
 });

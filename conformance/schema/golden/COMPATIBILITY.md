@@ -22,6 +22,9 @@ Round-trip tests: `conformance/schema/golden.conformance.test.ts` (builders)
 and `m25_001_a_tests::golden_corpus_round_trips` in `q-schema-runtime`.
 Feature-derivation parity: `golden_corpus_feature_expectations` (Rust) and
 "featuresOf parity with the Rust walker on the golden corpus" (TS).
+Canonical-form parity (M25-001-C): `m25_001_c_tests::canonical_corpus_matches_golden_files`
+(Rust) and "canonical corpus matches committed golden canonical files" (TS)
+assert byte-equality against `canonical/*.canonical.json` on both sides.
 
 ## Compatibility matrix
 
@@ -36,7 +39,7 @@ Feature-derivation parity: `golden_corpus_feature_expectations` (Rust) and
 | TS builder receives executable callback for transform/file/problem | Not representable: builder signatures take declarative metadata only; runtime shapes are JSON-serializable |
 | Builder bounds violation (name charset/length, maxBytes, status, title, typeUri) | Builder-time `throw` (TS) / source-located `CompileError` (compiler extract) |
 | Runtime validates a value against transform/file/problem node | Typed `unsupported` field error until M25-002+ codecs |
-| Canonical ordering / hash algorithm | Unchanged from M24; structural parity fixtures only — algorithm owned by M25-001-C |
+| Canonical ordering / hash algorithm | **Canonicalized** (M25-001-C, ADR-0023): recursively sorted keys, arrays ordered, integral floats normalized; committed canonical corpus in `golden/canonical/`; source literal field order no longer affects any hash |
 | Handler-facing transform codec documentation | Owned by M25-001-D |
 
 ## Projection coverage (v2 metadata)
