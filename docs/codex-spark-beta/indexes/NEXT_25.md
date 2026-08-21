@@ -1,29 +1,29 @@
 # Next 25 Dependency-Safe Tasks
 
-The next dependency-ready implementation task is M25-002-V; this short queue lists the first 25 unchecked packets with their issue numbers.
+The next dependency-ready implementation task is M25-002-Z; this short queue lists the first 25 unchecked packets with their issue numbers.
 
-1. [M25-002-V — Verify Build reproducible decoder/encoder strategy benchmark](tasks/02_m25_schema_codecs/M25-002-V-verify-build-reproducible-decoder-encoder-strategy-benchmark.md) — deps: M25-002-A, M25-002-B, M25-002-C, M25-002-D — #130
-2. [M25-002-Z — Package evidence for Build reproducible decoder/encoder strategy benchmark](tasks/02_m25_schema_codecs/M25-002-Z-package-evidence-for-build-reproducible-decoder-encoder-strategy-benchmark.md) — deps: M25-002-V — #131
-3. [M25-003-A — Generate direct decoder programs keyed by SchemaId](tasks/02_m25_schema_codecs/M25-003-A-generate-direct-decoder-programs-keyed-by-schemaid.md) — deps: M25-001-Z, M24-GATE — #132
-4. [M25-003-B — Validate byte ranges and header/query values without generic object trees](tasks/02_m25_schema_codecs/M25-003-B-validate-byte-ranges-and-header-query-values-without-generic-object-trees.md) — deps: M25-003-A — #133
-5. [M25-003-C — Return typed RFC 9457 problems](tasks/02_m25_schema_codecs/M25-003-C-return-typed-rfc-9457-problems.md) — deps: M25-003-B — #134
-6. [M25-003-D — Preserve declared coercion semantics exactly](tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md) — deps: M25-003-C — #135
-7. [M25-003-V — Verify Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md) — deps: M25-003-A, M25-003-B, M25-003-C, M25-003-D — #136
-8. [M25-003-Z — Package evidence for Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-Z-package-evidence-for-generate-params-query-header-decoders.md) — deps: M25-003-V — #137
-9. [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md) — deps: M25-001-Z, M24-007-Z — #138
-10. [M25-004-B — Retain QuickJS/generic fallback for unsupported transformations](tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md) — deps: M25-004-A — #139
-11. [M25-004-C — Enforce depth, size, array, string, and numeric limits](tasks/02_m25_schema_codecs/M25-004-C-enforce-depth-size-array-string-and-numeric-limits.md) — deps: M25-004-B — #140
-12. [M25-004-D — Propagate cancellation and request deadlines](tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md) — deps: M25-004-C — #141
-13. [M25-004-V — Verify Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-V-verify-generate-json-body-decoders.md) — deps: M25-004-A, M25-004-B, M25-004-C, M25-004-D — #142
-14. [M25-004-Z — Package evidence for Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-Z-package-evidence-for-generate-json-body-decoders.md) — deps: M25-004-V — #143
-15. [M25-005-A — Generate per-status encoders](tasks/02_m25_schema_codecs/M25-005-A-generate-per-status-encoders.md) — deps: M25-001-Z, M25-002-Z — #144
-16. [M25-005-B — Read declared properties in fixed order](tasks/02_m25_schema_codecs/M25-005-B-read-declared-properties-in-fixed-order.md) — deps: M25-005-A — #145
-17. [M25-005-C — Handle optional/null/union fields](tasks/02_m25_schema_codecs/M25-005-C-handle-optional-null-union-fields.md) — deps: M25-005-B — #146
-18. [M25-005-D — Keep QuickJS stringify or generic fallback when measured better](tasks/02_m25_schema_codecs/M25-005-D-keep-quickjs-stringify-or-generic-fallback-when-measured-better.md) — deps: M25-005-C — #147
-19. [M25-005-V — Verify Generate status-specific response encoders](tasks/02_m25_schema_codecs/M25-005-V-verify-generate-status-specific-response-encoders.md) — deps: M25-005-A, M25-005-B, M25-005-C, M25-005-D — #148
-20. [M25-005-Z — Package evidence for Generate status-specific response encoders](tasks/02_m25_schema_codecs/M25-005-Z-package-evidence-for-generate-status-specific-response-encoders.md) — deps: M25-005-V — #149
-21. [M25-006-A — Generate problem type/status/title/detail/custom-field encoders](tasks/02_m25_schema_codecs/M25-006-A-generate-problem-type-status-title-detail-custom-field-encoders.md) — deps: M25-001-Z, M25-005-Z — #150
-22. [M25-006-B — Redact unexpected failures](tasks/02_m25_schema_codecs/M25-006-B-redact-unexpected-failures.md) — deps: M25-006-A — #151
-23. [M25-006-C — Ensure policy-provided errors flow into Treaty unions](tasks/02_m25_schema_codecs/M25-006-C-ensure-policy-provided-errors-flow-into-treaty-unions.md) — deps: M25-006-B — #152
-24. [M25-006-D — Include content type and instance behavior](tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md) — deps: M25-006-C — #153
-25. [M25-006-V — Verify Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-V-verify-generate-rfc-9457-problem-encoders.md) — deps: M25-006-A, M25-006-B, M25-006-C, M25-006-D — #154
+1. [M25-002-Z — Package evidence for Build reproducible decoder/encoder strategy benchmark](tasks/02_m25_schema_codecs/M25-002-Z-package-evidence-for-build-reproducible-decoder-encoder-strategy-benchmark.md) — deps: M25-002-V — #131
+2. [M25-003-A — Generate direct decoder programs keyed by SchemaId](tasks/02_m25_schema_codecs/M25-003-A-generate-direct-decoder-programs-keyed-by-schemaid.md) — deps: M25-001-Z, M24-GATE — #132
+3. [M25-003-B — Validate byte ranges and header/query values without generic object trees](tasks/02_m25_schema_codecs/M25-003-B-validate-byte-ranges-and-header-query-values-without-generic-object-trees.md) — deps: M25-003-A — #133
+4. [M25-003-C — Return typed RFC 9457 problems](tasks/02_m25_schema_codecs/M25-003-C-return-typed-rfc-9457-problems.md) — deps: M25-003-B — #134
+5. [M25-003-D — Preserve declared coercion semantics exactly](tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md) — deps: M25-003-C — #135
+6. [M25-003-V — Verify Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md) — deps: M25-003-A, M25-003-B, M25-003-C, M25-003-D — #136
+7. [M25-003-Z — Package evidence for Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-Z-package-evidence-for-generate-params-query-header-decoders.md) — deps: M25-003-V — #137
+8. [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md) — deps: M25-001-Z, M24-007-Z — #138
+9. [M25-004-B — Retain QuickJS/generic fallback for unsupported transformations](tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md) — deps: M25-004-A — #139
+10. [M25-004-C — Enforce depth, size, array, string, and numeric limits](tasks/02_m25_schema_codecs/M25-004-C-enforce-depth-size-array-string-and-numeric-limits.md) — deps: M25-004-B — #140
+11. [M25-004-D — Propagate cancellation and request deadlines](tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md) — deps: M25-004-C — #141
+12. [M25-004-V — Verify Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-V-verify-generate-json-body-decoders.md) — deps: M25-004-A, M25-004-B, M25-004-C, M25-004-D — #142
+13. [M25-004-Z — Package evidence for Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-Z-package-evidence-for-generate-json-body-decoders.md) — deps: M25-004-V — #143
+14. [M25-005-A — Generate per-status encoders](tasks/02_m25_schema_codecs/M25-005-A-generate-per-status-encoders.md) — deps: M25-001-Z, M25-002-Z — #144
+15. [M25-005-B — Read declared properties in fixed order](tasks/02_m25_schema_codecs/M25-005-B-read-declared-properties-in-fixed-order.md) — deps: M25-005-A — #145
+16. [M25-005-C — Handle optional/null/union fields](tasks/02_m25_schema_codecs/M25-005-C-handle-optional-null-union-fields.md) — deps: M25-005-B — #146
+17. [M25-005-D — Keep QuickJS stringify or generic fallback when measured better](tasks/02_m25_schema_codecs/M25-005-D-keep-quickjs-stringify-or-generic-fallback-when-measured-better.md) — deps: M25-005-C — #147
+18. [M25-005-V — Verify Generate status-specific response encoders](tasks/02_m25_schema_codecs/M25-005-V-verify-generate-status-specific-response-encoders.md) — deps: M25-005-A, M25-005-B, M25-005-C, M25-005-D — #148
+19. [M25-005-Z — Package evidence for Generate status-specific response encoders](tasks/02_m25_schema_codecs/M25-005-Z-package-evidence-for-generate-status-specific-response-encoders.md) — deps: M25-005-V — #149
+20. [M25-006-A — Generate problem type/status/title/detail/custom-field encoders](tasks/02_m25_schema_codecs/M25-006-A-generate-problem-type-status-title-detail-custom-field-encoders.md) — deps: M25-001-Z, M25-005-Z — #150
+21. [M25-006-B — Redact unexpected failures](tasks/02_m25_schema_codecs/M25-006-B-redact-unexpected-failures.md) — deps: M25-006-A — #151
+22. [M25-006-C — Ensure policy-provided errors flow into Treaty unions](tasks/02_m25_schema_codecs/M25-006-C-ensure-policy-provided-errors-flow-into-treaty-unions.md) — deps: M25-006-B — #152
+23. [M25-006-D — Include content type and instance behavior](tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md) — deps: M25-006-C — #153
+24. [M25-006-V — Verify Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-V-verify-generate-rfc-9457-problem-encoders.md) — deps: M25-006-A, M25-006-B, M25-006-C, M25-006-D — #154
+25. [M25-006-Z — Package evidence for Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-Z-package-evidence-for-generate-rfc-9457-problem-encoders.md) — deps: M25-006-V — #155
