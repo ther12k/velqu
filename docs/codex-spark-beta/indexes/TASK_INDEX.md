@@ -140,12 +140,12 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
-| [M25-001-A](../tasks/02_m25_schema_codecs/M25-001-A-specify-objects-arrays-unions-literals-enums-formats-defaults-optional-null-tran.md) | P0 | implement | TODO | M24-GATE | Specify objects, arrays, unions, literals, enums, formats, defaults, optional/null, transforms, files, and problem schemas |
-| [M25-001-B](../tasks/02_m25_schema_codecs/M25-001-B-define-compatibility-and-fallback-markers.md) | P0 | implement | TODO | M25-001-A | Define compatibility and fallback markers |
-| [M25-001-C](../tasks/02_m25_schema_codecs/M25-001-C-canonicalize-ordering-and-hashing.md) | P0 | implement | TODO | M25-001-B | Canonicalize ordering and hashing |
-| [M25-001-D](../tasks/02_m25_schema_codecs/M25-001-D-document-unsupported-transformations.md) | P0 | implement | TODO | M25-001-C | Document unsupported transformations |
-| [M25-001-V](../tasks/02_m25_schema_codecs/M25-001-V-verify-define-canonical-schema-ir-v2.md) | P0 | verify | TODO | M25-001-A, M25-001-B, M25-001-C, M25-001-D | Verify Define canonical Schema IR v2 |
-| [M25-001-Z](../tasks/02_m25_schema_codecs/M25-001-Z-package-evidence-for-define-canonical-schema-ir-v2.md) | P0 | evidence | TODO | M25-001-V | Package evidence for Define canonical Schema IR v2 |
+| [M25-001-A](../tasks/02_m25_schema_codecs/M25-001-A-specify-objects-arrays-unions-literals-enums-formats-defaults-optional-null-tran.md) | P0 | implement | PASS | M24-GATE | Specify objects, arrays, unions, literals, enums, formats, defaults, optional/null, transforms, files, and problem schemas |
+| [M25-001-B](../tasks/02_m25_schema_codecs/M25-001-B-define-compatibility-and-fallback-markers.md) | P0 | implement | PASS | M25-001-A | Define compatibility and fallback markers |
+| [M25-001-C](../tasks/02_m25_schema_codecs/M25-001-C-canonicalize-ordering-and-hashing.md) | P0 | implement | PASS | M25-001-B | Canonicalize ordering and hashing |
+| [M25-001-D](../tasks/02_m25_schema_codecs/M25-001-D-document-unsupported-transformations.md) | P0 | implement | PASS | M25-001-C | Document unsupported transformations |
+| [M25-001-V](../tasks/02_m25_schema_codecs/M25-001-V-verify-define-canonical-schema-ir-v2.md) | P0 | verify | PASS | M25-001-A, M25-001-B, M25-001-C, M25-001-D | Verify Define canonical Schema IR v2 |
+| [M25-001-Z](../tasks/02_m25_schema_codecs/M25-001-Z-package-evidence-for-define-canonical-schema-ir-v2.md) | P0 | evidence | PASS | M25-001-V | Package evidence for Define canonical Schema IR v2 |
 | [M25-002-A](../tasks/02_m25_schema_codecs/M25-002-A-compare-quickjs-parse-stringify-generic-rust-conversion-and-generated-schema-awa.md) | P1 | implement | TODO | M25-001-Z | Compare QuickJS parse/stringify, generic Rust conversion, and generated schema-aware codecs |
 | [M25-002-B](../tasks/02_m25_schema_codecs/M25-002-B-use-256b-1kb-16kb-64kb-nested-objects-arrays-100-1-000-optional-null-and-problem.md) | P1 | implement | TODO | M25-002-A | Use 256B, 1KB, 16KB, 64KB, nested objects, arrays 100/1,000, optional/null, and problems |
 | [M25-002-C](../tasks/02_m25_schema_codecs/M25-002-C-capture-cpu-allocation-bridge-time-and-tails.md) | P1 | implement | TODO | M25-002-B | Capture CPU, allocation, bridge time, and tails |

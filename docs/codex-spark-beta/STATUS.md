@@ -134,12 +134,12 @@ Update a checkbox only after the task commit and required tests pass.
 
 ## M25 — Schema-Specialized Validation and JSON Codecs
 
-- [ ] [M25-001-A — Specify objects, arrays, unions, literals, enums, formats, defaults, optional/null, transforms, files, and problem schemas](tasks/02_m25_schema_codecs/M25-001-A-specify-objects-arrays-unions-literals-enums-formats-defaults-optional-null-tran.md)
-- [ ] [M25-001-B — Define compatibility and fallback markers](tasks/02_m25_schema_codecs/M25-001-B-define-compatibility-and-fallback-markers.md)
-- [ ] [M25-001-C — Canonicalize ordering and hashing](tasks/02_m25_schema_codecs/M25-001-C-canonicalize-ordering-and-hashing.md)
-- [ ] [M25-001-D — Document unsupported transformations](tasks/02_m25_schema_codecs/M25-001-D-document-unsupported-transformations.md)
-- [ ] [M25-001-V — Verify Define canonical Schema IR v2](tasks/02_m25_schema_codecs/M25-001-V-verify-define-canonical-schema-ir-v2.md)
-- [ ] [M25-001-Z — Package evidence for Define canonical Schema IR v2](tasks/02_m25_schema_codecs/M25-001-Z-package-evidence-for-define-canonical-schema-ir-v2.md)
+- [x] [M25-001-A — Specify objects, arrays, unions, literals, enums, formats, defaults, optional/null, transforms, files, and problem schemas](tasks/02_m25_schema_codecs/M25-001-A-specify-objects-arrays-unions-literals-enums-formats-defaults-optional-null-tran.md)
+- [x] [M25-001-B — Define compatibility and fallback markers](tasks/02_m25_schema_codecs/M25-001-B-define-compatibility-and-fallback-markers.md)
+- [x] [M25-001-C — Canonicalize ordering and hashing](tasks/02_m25_schema_codecs/M25-001-C-canonicalize-ordering-and-hashing.md)
+- [x] [M25-001-D — Document unsupported transformations](tasks/02_m25_schema_codecs/M25-001-D-document-unsupported-transformations.md)
+- [x] [M25-001-V — Verify Define canonical Schema IR v2](tasks/02_m25_schema_codecs/M25-001-V-verify-define-canonical-schema-ir-v2.md)
+- [x] [M25-001-Z — Package evidence for Define canonical Schema IR v2](tasks/02_m25_schema_codecs/M25-001-Z-package-evidence-for-define-canonical-schema-ir-v2.md)
 - [ ] [M25-002-A — Compare QuickJS parse/stringify, generic Rust conversion, and generated schema-aware codecs](tasks/02_m25_schema_codecs/M25-002-A-compare-quickjs-parse-stringify-generic-rust-conversion-and-generated-schema-awa.md)
 - [ ] [M25-002-B — Use 256B, 1KB, 16KB, 64KB, nested objects, arrays 100/1,000, optional/null, and problems](tasks/02_m25_schema_codecs/M25-002-B-use-256b-1kb-16kb-64kb-nested-objects-arrays-100-1-000-optional-null-and-problem.md)
 - [ ] [M25-002-C — Capture CPU, allocation, bridge time, and tails](tasks/02_m25_schema_codecs/M25-002-C-capture-cpu-allocation-bridge-time-and-tails.md)
