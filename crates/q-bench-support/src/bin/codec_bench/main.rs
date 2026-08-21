@@ -1,5 +1,6 @@
-//! M25-002-A codec strategy benchmark: compares three JSON input→handler→
-//! output strategies inside a controlled host process (no network).
+//! M25-002-A/B codec strategy benchmark: compares three JSON input→handler→
+//! output strategies across the frozen payload matrix inside a controlled host
+//! process (no network).
 //!
 //! Candidates (input direction):
 //!   quickjs-json     — bounded bytes enter the engine; the handler parses via
@@ -57,6 +58,7 @@ __velquRegister("codec.pass_body", pass_body);
 const WARMUP: usize = 200;
 const GENERATED_MODULE_PATH: &str = "crates/q-bench-support/src/bin/codec_bench/generated.rs";
 const COMMAND: &str = "./target/release/q-codec-bench --out-dir benchmarks/raw/codec --iters 2000";
+const PACKET: &str = "M25-002-B";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Cand {
@@ -119,7 +121,7 @@ fn main() {
     let _ = std::fs::create_dir_all(&out_dir);
 
     let run_id = format!(
-        "m25-002-a-{}",
+        "m25-002-b-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -175,6 +177,7 @@ fn main() {
         let in_bytes = body_bytes.len() as u64;
         for (cand_idx, cand) in CANDS.iter().enumerate() {
             let id_base = (schema_idx * 100 + cand_idx) as u64 * 1_000_000;
+            let expected = expected_output(schema, *cand, &body_bytes);
             // correctness pass (untimed rows are never recorded)
             let (_, outcome) = invoke(
                 rt.handle(),
@@ -184,7 +187,7 @@ fn main() {
                 &body_bytes,
                 id_base,
             );
-            if !outcome_ok(&outcome, &schema.valid) {
+            if !outcome_ok(&outcome, &expected) {
                 summary_cases.push(json!({
                     "case": schema.name,
                     "candidate": cand.name(),
@@ -215,7 +218,7 @@ fn main() {
                     &body_bytes,
                     id_base + 100_000 + i as u64,
                 );
-                let ok = outcome_ok(&outcome, &schema.valid);
+                let ok = outcome_ok(&outcome, &expected);
                 if ok {
                     correct += 1;
                 }
@@ -262,6 +265,8 @@ fn main() {
         "engine": "quickjs-ng/0.15.1",
         "iters": iters,
         "warmup": WARMUP,
+        "packet": PACKET,
+        "corpusCases": corpus.iter().map(|s| s.name).collect::<Vec<_>>(),
         "generatedModule": GENERATED_MODULE_PATH,
         "prototype": "generated-schema is a fused decode/validate projection over the serde_json parse; the direct byte scanner/decoder is M25-003/M25-004 work and is NOT measured here",
         "fairness": [
@@ -370,6 +375,23 @@ fn invoke(
         .and_then(|r| r.ok());
     let d = t0.elapsed().as_secs_f64() * 1e6;
     (d, outcome)
+}
+
+fn expected_output(schema: &schemas::BenchSchema, cand: Cand, body_bytes: &bytes::Bytes) -> Value {
+    if cand == Cand::QuickJsJson {
+        return schema.valid.clone();
+    }
+    let parsed: Value = serde_json::from_slice(body_bytes).expect("fixture parses");
+    match cand {
+        Cand::QuickJsJson => unreachable!(),
+        Cand::GenericRust => {
+            q_schema_runtime::validate(&schema.ir, &parsed, q_schema_runtime::Source::Body)
+                .expect("fixture validates")
+        }
+        Cand::GeneratedSchema => generated::decode(schema.name, &parsed)
+            .expect("schema has a generated decoder")
+            .expect("fixture decodes"),
+    }
 }
 
 fn outcome_ok(outcome: &Option<Outcome>, expected: &Value) -> bool {
