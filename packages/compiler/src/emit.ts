@@ -475,7 +475,7 @@ export function buildPack(
     runtimeAbi: 1,
     executionMode: "numeric",
     engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
-    schemaIrVersion: 1,
+    schemaIrVersion: 2,
     contractVersion: 1,
     contractHash,
     builtBy: { compiler: meta.compilerVersion, typescript: meta.typescriptVersion, bun: Bun.version },
@@ -523,6 +523,16 @@ export function tsTypeOfIr(ir: Record<string, unknown>): string {
     }
     case "union":
       return (ir.members as Record<string, unknown>[]).map(tsTypeOfIr).join(" | ");
+    case "transform":
+      return tsTypeOfIr(ir.output as Record<string, unknown>);
+    case "file":
+      return "Uint8Array";
+    case "problem": {
+      const detail = ir.detail as Record<string, unknown> | undefined;
+      const fields = [`title: string`, `status: number`];
+      if (detail) fields.push(`detail?: ${tsTypeOfIr(detail)}`);
+      return `{ ${fields.join("; ")} }`;
+    }
     default:
       return "unknown";
   }
@@ -607,6 +617,25 @@ export function openapiFor(app: ExtractedApp): Record<string, unknown> {
       if (v.kind === "array") out.items = conv(v.items as Record<string, unknown>);
       if (v.kind === "enum") { out.type = "string"; out.enum = v.values; }
       if (v.kind === "literal") { out.type = typeof v.value; out.enum = [v.value]; }
+      if (v.kind === "union") {
+        out.type = undefined;
+        out.oneOf = (v.members as Record<string, unknown>[]).map(conv);
+      }
+      if (v.kind === "transform") return conv(v.output as Record<string, unknown>);
+      if (v.kind === "file") {
+        return { type: "string", format: "binary", "x-maxBytes": v.maxBytes, ...(v.contentType !== undefined ? { "x-contentType": v.contentType } : {}) };
+      }
+      if (v.kind === "problem") {
+        const detail = v.detail as Record<string, unknown> | undefined;
+        const props: Record<string, unknown> = { title: { type: "string" }, status: { type: "integer" } };
+        if (detail) props.detail = conv(detail);
+        return {
+          type: "object",
+          properties: props,
+          required: ["title", "status"],
+          "x-problem": { ...(v.typeUri !== undefined ? { typeUri: v.typeUri } : {}), title: v.title, status: v.status },
+        };
+      }
       if (v.kind === "optional" || v.kind === "nullable") return conv(v.inner as Record<string, unknown>);
       if (v.kind === "object") {
         out.type = "object";

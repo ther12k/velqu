@@ -128,6 +128,45 @@ fn validator_never_panics_and_is_deterministic() {
                 }),
             ],
         },
+        // IR v2 nodes: must classify (typed unsupported error) without panicking
+        SchemaIr::Transform {
+            input: Box::new(SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            }),
+            output: Box::new(SchemaIr::Integer {
+                minimum: None,
+                maximum: None,
+            }),
+            name: "parse-count".into(),
+        },
+        SchemaIr::File {
+            content_type: Some("text/csv".into()),
+            max_bytes: 1024,
+        },
+        SchemaIr::File {
+            content_type: None,
+            max_bytes: 1,
+        },
+        SchemaIr::Problem {
+            type_uri: Some("https://example.com/probs/oos".into()),
+            title: "Out of stock".into(),
+            status: 409,
+            detail: Some(Box::new(SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            })),
+        },
+        SchemaIr::Problem {
+            type_uri: None,
+            title: "Boom".into(),
+            status: 500,
+            detail: None,
+        },
     ];
     let mut rng = Rng(0xf00dfeedfaceb00c);
     for _ in 0..40_000 {

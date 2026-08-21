@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 
 pub const PACK_FORMAT_VERSION: u32 = 1;
 pub const RUNTIME_ABI: u32 = 1;
-pub const SCHEMA_IR_VERSION: u32 = 1;
+pub const SCHEMA_IR_VERSION: u32 = 2;
 pub const CONTRACT_VERSION: u32 = 1;
 /// Engine this runtime build embeds (quickjs-ng vendored by rquickjs =0.12.2).
 pub const ENGINE_NAME: &str = "quickjs-ng";
