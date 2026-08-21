@@ -15,7 +15,7 @@ startup; everything below is consumed as-is.
   "kind": "velqu.qpack",
   "runtimeAbi": 1,                    // q-runtime ABI this pack targets
   "engine": { "name": "quickjs-ng", "version": "0.15.1", "binding": "rquickjs-0.12.2" },
-  "schemaIrVersion": 1,
+  "schemaIrVersion": 2,
   "contractVersion": 1,
   "contractHash": "sha256:<hex of contract.json canonicalization>",
   "builtBy": { "compiler": "<semver>", "typescript": "<semver>", "bun": "<semver>" },

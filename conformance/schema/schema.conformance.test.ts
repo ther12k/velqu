@@ -255,3 +255,31 @@ describe("Canonical form (M25-001-C, ADR-0023)", () => {
     }
   });
 });
+
+describe("Unsupported transformations documentation (M25-001-D)", () => {
+  const SPEC = "docs/specs/unsupported-transformations.md";
+
+  test("spec exists and documents the closed fallback reason registry", async () => {
+    const spec = await Bun.file(SPEC).text();
+    for (const reason of FALLBACK_REASONS) {
+      expect(spec).toContain(`| \`${reason}\` |`);
+    }
+  });
+
+  test("spec documents the runtime failure codes the validator emits", async () => {
+    const spec = await Bun.file(SPEC).text();
+    // codes produced by q-schema-runtime for unsupported classes
+    expect(spec).toContain("`unsupported`");
+    expect(spec).toContain("`fallback`");
+    expect(spec).toContain("`invalid-schema`");
+    // and the never-representable classes
+    expect(spec).toContain("Executable callbacks");
+    expect(spec).toContain("no silent downgrade");
+  });
+
+  test("pack format spec example carries schema IR v2", async () => {
+    const spec = await Bun.file("docs/specs/pack-format-v1.md").text();
+    expect(spec).toContain('"schemaIrVersion": 2');
+    expect(spec).toContain("conformance/schema/golden/canonical/");
+  });
+});

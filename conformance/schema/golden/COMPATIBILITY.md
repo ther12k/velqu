@@ -40,7 +40,7 @@ assert byte-equality against `canonical/*.canonical.json` on both sides.
 | Builder bounds violation (name charset/length, maxBytes, status, title, typeUri) | Builder-time `throw` (TS) / source-located `CompileError` (compiler extract) |
 | Runtime validates a value against transform/file/problem node | Typed `unsupported` field error until M25-002+ codecs |
 | Canonical ordering / hash algorithm | **Canonicalized** (M25-001-C, ADR-0023): recursively sorted keys, arrays ordered, integral floats normalized; committed canonical corpus in `golden/canonical/`; source literal field order no longer affects any hash |
-| Handler-facing transform codec documentation | Owned by M25-001-D |
+| Handler-facing transform codec documentation | **Documented** (M25-001-D): `docs/specs/unsupported-transformations.md` — transformation classes, per-layer failure identities, fallback reason registry, forward codec mapping |
 
 ## Projection coverage (v2 metadata)
 
