@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import type { ExtractedApp, RouteInfo } from "./extract";
 import { hash } from "./extract";
 import { featuresOf } from "@velqu/schema";
+import { selectRouteStrategies } from "./strategy";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -323,6 +324,7 @@ export function buildPack(
   const queryNameTable = [...queryNameSet].sort();
 
   const packRoutes = app.routes.map((r, routeIdx) => {
+    const decision = selectRouteStrategies(r);
     const defaultStatus = Object.keys(r.responses).includes("200")
       ? 200
       : Number(Object.keys(r.responses)[0] ?? 200);
@@ -330,7 +332,7 @@ export function buildPack(
       .map((k) => Number(k))
       .filter((n) => !isNaN(n))
       .sort((a, b) => a - b);
-    const responseStrategy = r.responses["200"]?.strategy ?? (Object.values(r.responses)[0]?.strategy ?? "js");
+    const responseStrategy = decision.primaryResponseStrategy;
 
     const paramsSchemaKey = r.paramsIr ? `sch:${r.id}.params` : null;
     const querySchemaKey = r.queryIr ? `sch:${r.id}.query` : null;
@@ -379,12 +381,12 @@ export function buildPack(
           k,
           {
             schema: v.ir && !v.problem ? `sch:${r.id}.${k}` : null,
-            strategy: v.strategy,
+            strategy: decision.responseStrategies[k] ?? v.strategy ?? "native",
             problem: v.problem ?? null,
           },
         ]),
       ),
-      validationStrategy: "native",
+      validationStrategy: decision.validationStrategy,
       nativeLiveness: r.liveness,
       security: r.policyId ? [{ scheme: "bearer", header: "authorization", problemStatus: 401 }] : [],
       capabilities: r.capabilities,
