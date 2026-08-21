@@ -209,3 +209,21 @@ describe("contract lock workflow (PR-006/SCHEMA-007)", () => {
     expect(diff3.some((d) => d.kind === "breaking" && d.change.includes("response field removed"))).toBe(true);
   });
 });
+describe("canonicalization (M25-001-C: order-insensitive hashing)", () => {
+  test("option literal field order never changes canonical hashes", async () => {
+    const outA = `${TMP}/order-a`;
+    const outB = `${TMP}/order-b`;
+    rmSync(outA, { recursive: true, force: true });
+    rmSync(outB, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/order-a-app.ts", outDir: outA });
+    await build({ project: "conformance/compiler/fixtures/order-b-app.ts", outDir: outB });
+    const a = JSON.parse(readFileSync(`${outA}/app.qpack`, "utf8"));
+    const b = JSON.parse(readFileSync(`${outB}/app.qpack`, "utf8"));
+    // same canonical execution graph and public contract despite reversed
+    // option literal order in every schema
+    expect(a.integrity.routesSha256).toBe(b.integrity.routesSha256);
+    expect(a.contractHash).toBe(b.contractHash);
+    // the bundle source text does differ; only canonical forms are stable
+    expect(a.integrity.bundleSha256).not.toBe(b.integrity.bundleSha256);
+  });
+});

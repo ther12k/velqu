@@ -229,6 +229,28 @@ export function featuresOf(ir: Schema<unknown> | IrLike): FeatureTag[] {
   return [...seen].sort() as FeatureTag[];
 }
 
+/**
+ * Canonical JSON form (M25-001-C, ADR-0023): every object's keys sorted
+ * recursively (code-unit order), arrays keep order, integral floats already
+ * stringify as integers in JS. Mirrors `q_schema_runtime::canonical_value` /
+ * `canonical_json` byte-for-byte; one canonical string feeds hashes and
+ * semantic diff on both sides of the boundary.
+ */
+export function canonicalValue<T = unknown>(v: unknown): T {
+  if (Array.isArray(v)) return v.map(canonicalValue) as unknown as T;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(o).sort()) out[k] = canonicalValue(o[k]);
+    return out as unknown as T;
+  }
+  return v as unknown as T;
+}
+
+export function canonicalJson(ir: unknown): string {
+  return JSON.stringify(canonicalValue(ir));
+}
+
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
   string: s_string,

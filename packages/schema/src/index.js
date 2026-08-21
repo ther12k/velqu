@@ -142,6 +142,22 @@ export function featuresOf(ir) {
     walk(ir);
     return [...seen].sort();
 }
+/** Canonical JSON form (M25-001-C): keys sorted recursively; mirrors `q_schema_runtime::canonical_value`. */
+export function canonicalValue(v) {
+    if (Array.isArray(v))
+        return v.map(canonicalValue);
+    if (v && typeof v === "object") {
+        const o = v;
+        const out = {};
+        for (const k of Object.keys(o).sort())
+            out[k] = canonicalValue(o[k]);
+        return out;
+    }
+    return v;
+}
+export function canonicalJson(ir) {
+    return JSON.stringify(canonicalValue(ir));
+}
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
     string: s_string,

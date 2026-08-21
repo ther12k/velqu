@@ -171,6 +171,52 @@ pub fn is_valid_fallback_reason(reason: &str) -> bool {
     FALLBACK_REASONS.contains(&reason)
 }
 
+/// Largest magnitude whose integral f64 values are exactly representable and
+/// shared with JavaScript's canonical integer formatting.
+const CANONICAL_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0; // 2^53 - 1
+
+/// Canonical JSON value form (M25-001-C, ADR-0023):
+/// - object keys recursively sorted (byte order),
+/// - arrays keep their order,
+/// - integral floats within ±(2^53-1) normalize to integers so Rust (`0.0`)
+///   and JavaScript (`0`) agree byte-for-byte.
+///
+/// Applied to every hashed projection of the schema IR; both sides hash the
+/// same canonical string regardless of source literal field order.
+pub fn canonical_value(v: &Value) -> Value {
+    match v {
+        Value::Object(m) => {
+            let mut keys: Vec<&String> = m.keys().collect();
+            keys.sort();
+            let mut out = Map::new();
+            for k in keys {
+                out.insert(k.clone(), canonical_value(&m[k]));
+            }
+            Value::Object(out)
+        }
+        Value::Array(a) => Value::Array(a.iter().map(canonical_value).collect()),
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                if f.is_finite()
+                    && f.fract() == 0.0
+                    && f.abs() <= CANONICAL_SAFE_INTEGER
+                    && n.as_i64().is_none()
+                {
+                    return Value::Number(Number::from(f as i64));
+                }
+            }
+            Value::Number(n.clone())
+        }
+        other => other.clone(),
+    }
+}
+
+/// Canonical JSON string of a schema IR graph (sorted keys, normalized numbers).
+pub fn canonical_json(ir: &SchemaIr) -> String {
+    let v = serde_json::to_value(ir).expect("schema IR serializes");
+    canonical_value(&v).to_string()
+}
+
 impl SchemaIr {
     /// Every fallback reason appearing anywhere in the graph (load-time
     /// vocabulary verification; duplicates preserved in walk order).
@@ -1434,5 +1480,134 @@ mod m25_001_b_tests {
                 "transform".to_string()
             ]
         );
+    }
+}
+
+/// M25-001-C: canonical ordering and hashing (ADR-0023) — sorted-key
+/// canonical JSON shared byte-for-byte with the TypeScript side.
+#[cfg(test)]
+mod m25_001_c_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn canonical_json_sorts_all_keys_recursively() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "zeta".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "alpha".to_string(),
+                    Box::new(SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                ),
+            ]),
+            required: vec!["zeta".into()],
+        };
+        assert_eq!(
+            canonical_json(&ir),
+            r#"{"kind":"object","properties":{"alpha":{"kind":"integer"},"zeta":{"kind":"string"}},"required":["zeta"]}"#
+        );
+    }
+
+    #[test]
+    fn canonical_form_normalizes_integral_floats() {
+        // Rust serializes f64 0.0 as "0.0"; canonical form must emit "0" so it
+        // matches JavaScript's formatting byte-for-byte
+        let ir = SchemaIr::Number {
+            minimum: Some(0.0),
+            maximum: Some(1.5),
+        };
+        assert_eq!(
+            canonical_json(&ir),
+            r#"{"kind":"number","maximum":1.5,"minimum":0}"#
+        );
+
+        let raw = json!({"kind": "number", "minimum": 0.0, "maximum": 1.5});
+        assert_eq!(
+            canonical_value(&raw).to_string(),
+            r#"{"kind":"number","maximum":1.5,"minimum":0}"#
+        );
+        // already-integer numbers pass through untouched
+        let raw = json!({"a": 3});
+        assert_eq!(canonical_value(&raw).to_string(), r#"{"a":3}"#);
+    }
+
+    #[test]
+    fn canonical_value_is_emission_order_insensitive() {
+        let a = json!({"kind": "x", "a": 1, "b": {"y": 2, "x": [3, {"q": 1, "p": 2}]}});
+        let b = json!({"b": {"x": [3, {"p": 2, "q": 1}], "y": 2}, "a": 1, "kind": "x"});
+        assert_eq!(
+            canonical_value(&a).to_string(),
+            canonical_value(&b).to_string()
+        );
+        // arrays keep their order (never sorted)
+        let c = json!([3, 1, 2]);
+        assert_eq!(canonical_value(&c).to_string(), "[3,1,2]");
+    }
+
+    /// Cross-language canonical corpus: the committed canonical files are the
+    /// byte-exact expectation for both this crate and @velqu/schema.
+    #[test]
+    fn canonical_corpus_matches_golden_files() {
+        let corpus = [
+            (
+                "transform",
+                include_str!("../../../conformance/schema/golden/transform.json"),
+                include_str!("../../../conformance/schema/golden/canonical/transform.canonical.json"),
+            ),
+            (
+                "file",
+                include_str!("../../../conformance/schema/golden/file.json"),
+                include_str!("../../../conformance/schema/golden/canonical/file.canonical.json"),
+            ),
+            (
+                "file-content-type",
+                include_str!("../../../conformance/schema/golden/file-content-type.json"),
+                include_str!("../../../conformance/schema/golden/canonical/file-content-type.canonical.json"),
+            ),
+            (
+                "problem",
+                include_str!("../../../conformance/schema/golden/problem.json"),
+                include_str!("../../../conformance/schema/golden/canonical/problem.canonical.json"),
+            ),
+            (
+                "problem-minimal",
+                include_str!("../../../conformance/schema/golden/problem-minimal.json"),
+                include_str!("../../../conformance/schema/golden/canonical/problem-minimal.canonical.json"),
+            ),
+            (
+                "nested-composition",
+                include_str!("../../../conformance/schema/golden/nested-composition.json"),
+                include_str!("../../../conformance/schema/golden/canonical/nested-composition.canonical.json"),
+            ),
+            (
+                "fallback-with-inner",
+                include_str!("../../../conformance/schema/golden/fallback-with-inner.json"),
+                include_str!("../../../conformance/schema/golden/canonical/fallback-with-inner.canonical.json"),
+            ),
+            (
+                "fallback-minimal",
+                include_str!("../../../conformance/schema/golden/fallback-minimal.json"),
+                include_str!("../../../conformance/schema/golden/canonical/fallback-minimal.canonical.json"),
+            ),
+        ];
+        for (name, raw, want) in corpus {
+            let ir: SchemaIr = serde_json::from_str(raw).expect(name);
+            assert_eq!(
+                canonical_json(&ir),
+                want.trim_end(),
+                "{name} canonical form"
+            );
+        }
     }
 }

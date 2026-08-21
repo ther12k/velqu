@@ -94,6 +94,13 @@ startup; everything below is consumed as-is.
 }
 ```
 
+Canonical JSON (ADR-0023, M25-001-C): object keys recursively sorted
+(byte order), arrays keep order, integral floats ≤ 2^53-1 normalize to
+integers (`0.0` → `0`). Both hash surfaces — `integrity.routesSha256`
+(execution graph) and `contractHash` (public contract) — canonicalize
+their whole view through this form; the compiler and the runtime share
+the committed canonical corpus in `conformance/schema/golden/canonical/`.
+
 ## Schema IR v1 subset
 
 ```jsonc
