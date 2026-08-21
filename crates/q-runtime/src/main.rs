@@ -226,10 +226,12 @@ fn run(args: Args) -> i32 {
             .iter()
             .map(|s| s.ir.clone())
             .collect();
+        let decoder_table = q_schema_runtime::DecoderTable::from_schemas(&schema_vector);
         let state = Arc::new(serve::ServeState {
             pack: Arc::new(pack),
             router,
             schema_vector,
+            decoder_table,
             engine: std::sync::Mutex::new(engine),
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
