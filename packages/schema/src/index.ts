@@ -1,11 +1,16 @@
 /**
- * @velqu/schema — Schema IR v1 builders.
+ * @velqu/schema — Schema IR v2 builders.
  *
  * Each builder returns a value whose RUNTIME representation is exactly the
  * Schema IR JSON node consumed by the Rust runtime (docs/specs/pack-format-v1.md)
  * and whose TYPE carries the inferred TypeScript type. One declaration drives
  * types, runtime validation, Treaty inputs, and OpenAPI (SCHEMA-001).
  */
+
+export const SCHEMA_IR_VERSION = 2 as const;
+
+export type JsonLiteral = null | string | number | boolean | JsonLiteral[] | { readonly [key: string]: JsonLiteral };
+export type LiteralValue = JsonLiteral;
 
 export type Schema<T> =
   | { readonly kind: "string"; minLength?: number; maxLength?: number; pattern?: string; format?: string; readonly __t?: T }
@@ -18,9 +23,10 @@ export type Schema<T> =
   | { readonly kind: "nullable"; readonly inner: Schema<unknown>; readonly __t?: T }
   | { readonly kind: "array"; readonly items: Schema<unknown>; minItems?: number; maxItems?: number; readonly __t?: T }
   | { readonly kind: "object"; readonly properties: Readonly<Record<string, Schema<unknown>>>; readonly required: readonly string[]; readonly __t?: T }
-  | { readonly kind: "union"; readonly members: readonly Schema<unknown>[]; readonly __t?: T };
-
-export type LiteralValue = string | number | boolean;
+  | { readonly kind: "union"; readonly members: readonly Schema<unknown>[]; readonly __t?: T }
+  | { readonly kind: "transform"; readonly input: Schema<unknown>; readonly output: Schema<unknown>; readonly name: string; readonly __t?: T }
+  | { readonly kind: "file"; readonly contentType?: string; readonly maxBytes: number; readonly __t?: T }
+  | { readonly kind: "problem"; readonly typeUri?: string; readonly title: string; readonly status: number; readonly detail?: Schema<unknown>; readonly __t?: T };
 
 /** Infer the TypeScript type carried by a schema. */
 export type Infer<S> = S extends { __t?: infer T } ? T : never;
@@ -96,6 +102,63 @@ export function s_union<A, B, C = never, D = never>(
   return { kind: "union", members: members.filter((m) => m !== undefined) } as unknown as Schema<A | B | C | D>;
 }
 
+/** Transform names are declarative identifiers, never executed by Schema IR. */
+const TRANSFORM_NAME_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
+
+/** Declarative transform: input/output schema pair + stable name. No callbacks. */
+export function s_transform<I, O>(input: Schema<I>, output: Schema<O>, name: string): Schema<O> {
+  if (!TRANSFORM_NAME_RE.test(name)) {
+    throw new Error("s_transform: name must match [A-Za-z0-9_.:-]{1,64}");
+  }
+  return { kind: "transform", input, output, name } as unknown as Schema<O>;
+}
+
+/** Hard transport bound for file payloads (matches bounded-body limits). */
+export const MAX_FILE_BYTES = 16 * 1024 * 1024;
+
+export interface FileOpts {
+  contentType?: string;
+  maxBytes: number;
+}
+
+/** Bounded file metadata. The value stays an opaque byte payload owned by transport. */
+export function s_file(opts: FileOpts): Schema<Uint8Array> {
+  if (!Number.isSafeInteger(opts.maxBytes) || opts.maxBytes < 1 || opts.maxBytes > MAX_FILE_BYTES) {
+    throw new Error(`s_file: maxBytes must be an integer in [1, ${MAX_FILE_BYTES}]`);
+  }
+  if (opts.contentType !== undefined && (opts.contentType.length === 0 || opts.contentType.length > 128)) {
+    throw new Error("s_file: contentType must be 1..128 characters");
+  }
+  return { kind: "file", ...(opts.contentType !== undefined ? { contentType: opts.contentType } : {}), maxBytes: opts.maxBytes } as unknown as Schema<Uint8Array>;
+}
+
+export interface ProblemOpts {
+  typeUri?: string;
+  title: string;
+  status: number;
+  detail?: Schema<unknown>;
+}
+
+/** RFC 9457 problem metadata. `detail` is a declarative schema, not free-form. */
+export function s_problem<T>(opts: ProblemOpts): Schema<T> {
+  if (opts.title.length === 0 || opts.title.length > 128) {
+    throw new Error("s_problem: title must be 1..128 characters");
+  }
+  if (!Number.isSafeInteger(opts.status) || opts.status < 400 || opts.status > 599) {
+    throw new Error("s_problem: status must be an integer in [400, 599]");
+  }
+  if (opts.typeUri !== undefined && opts.typeUri.length > 2048) {
+    throw new Error("s_problem: typeUri must be at most 2048 characters");
+  }
+  return {
+    kind: "problem",
+    ...(opts.typeUri !== undefined ? { typeUri: opts.typeUri } : {}),
+    title: opts.title,
+    status: opts.status,
+    ...(opts.detail !== undefined ? { detail: opts.detail } : {}),
+  } as unknown as Schema<T>;
+}
+
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
   string: s_string,
@@ -109,4 +172,7 @@ export const s = {
   array: s_array,
   object: s_object,
   union: s_union,
+  transform: s_transform,
+  file: s_file,
+  problem: s_problem,
 };

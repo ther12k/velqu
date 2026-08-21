@@ -1,0 +1,7 @@
+{
+  "kind": "problem",
+  "typeUri": "https://example.com/probs/out-of-stock",
+  "title": "Out of stock",
+  "status": 409,
+  "detail": { "kind": "string", "maxLength": 256 }
+}

@@ -111,6 +111,22 @@ function propKey(p: ts.PropertyAssignment | ts.ShorthandPropertyAssignment | ts.
   throw new CompileError("unsupported property name in schema", nodeLoc(p, file));
 }
 
+/** Option bag as ordered [key, initializer] pairs so each key can get its own validation. */
+function propsFrom(arg: ts.Expression | undefined, node: ts.Node, file: string): [string, ts.Expression][] {
+  if (!arg) return [];
+  if (!ts.isObjectLiteralExpression(arg)) {
+    throw new CompileError("schema options must be an object literal", nodeLoc(arg, file));
+  }
+  const out: [string, ts.Expression][] = [];
+  for (const p of arg.properties) {
+    if (!ts.isPropertyAssignment(p)) {
+      throw new CompileError("schema options must use literal properties", nodeLoc(p, file));
+    }
+    out.push([propKey(p, file), p.initializer]);
+  }
+  return out;
+}
+
 function schemaFromNode(node: ts.Node, file: string): Ir {
   if (!ts.isCallExpression(node)) {
     throw new CompileError(
@@ -196,6 +212,70 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
       // keep insertion order (properties is a plain map in JSON)
       return { kind: "object", properties, required };
     }
+    case "transform": {
+      if (args.length !== 3 || !ts.isStringLiteral(args[2])) throw new CompileError("s.transform requires input, output, and literal name", nodeLoc(node, file));
+      const name = args[2].text;
+      if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(name)) {
+        throw new CompileError("s.transform name must match [A-Za-z0-9_.:-]{1,64}", nodeLoc(args[2], file));
+      }
+      return { kind: "transform", input: schemaFromNode(args[0], file), output: schemaFromNode(args[1], file), name };
+    }
+    case "file": {
+      const props = propsFrom(args[0], node, file);
+      let contentType: string | undefined;
+      let maxBytes: number | undefined;
+      for (const [k, init] of props) {
+        if (k === "contentType") {
+          const v = literalValue(init, file);
+          if (typeof v !== "string" || v.length === 0 || v.length > 128) throw new CompileError("s.file contentType must be 1..128 characters", nodeLoc(init, file));
+          contentType = v;
+        } else if (k === "maxBytes") {
+          const v = literalValue(init, file);
+          if (!Number.isInteger(v) || (v as number) < 1 || (v as number) > 16 * 1024 * 1024) {
+            throw new CompileError("s.file maxBytes must be an integer in [1, 16777216]", nodeLoc(init, file));
+          }
+          maxBytes = v as number;
+        } else {
+          throw new CompileError(`s.file has no option '${k}'`, nodeLoc(init, file));
+        }
+      }
+      if (maxBytes === undefined) throw new CompileError("s.file requires maxBytes", nodeLoc(node, file));
+      // field order matches the Rust SchemaIr declaration so canonical hashes agree
+      return { kind: "file", ...(contentType !== undefined ? { contentType } : {}), maxBytes };
+    }
+    case "problem": {
+      const props = propsFrom(args[0], node, file);
+      let typeUri: string | undefined;
+      let title: string | undefined;
+      let status: number | undefined;
+      let detail: Ir | undefined;
+      for (const [k, init] of props) {
+        if (k === "typeUri") {
+          const v = literalValue(init, file);
+          if (typeof v !== "string" || v.length > 2048) throw new CompileError("s.problem typeUri must be at most 2048 characters", nodeLoc(init, file));
+          typeUri = v;
+        } else if (k === "title") {
+          const v = literalValue(init, file);
+          if (typeof v !== "string" || v.length === 0 || v.length > 128) throw new CompileError("s.problem title must be 1..128 characters", nodeLoc(init, file));
+          title = v;
+        } else if (k === "status") {
+          const v = literalValue(init, file);
+          if (!Number.isInteger(v) || (v as number) < 400 || (v as number) > 599) {
+            throw new CompileError("s.problem status must be an integer in [400, 599]", nodeLoc(init, file));
+          }
+          status = v as number;
+        } else if (k === "detail") {
+          detail = schemaFromNode(init, file);
+        } else {
+          throw new CompileError(`s.problem has no option '${k}'`, nodeLoc(init, file));
+        }
+      }
+      if (title === undefined || status === undefined) {
+        throw new CompileError("s.problem requires title and status", nodeLoc(node, file));
+      }
+      // field order matches the Rust SchemaIr declaration so canonical hashes agree
+      return { kind: "problem", ...(typeUri !== undefined ? { typeUri } : {}), title, status, ...(detail !== undefined ? { detail } : {}) };
+    }
     case "union": {
       if (!ts.isArrayLiteralExpression(args[0])) {
         throw new CompileError("s.union expects an array literal", nodeLoc(args[0], file));
@@ -209,7 +289,7 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
       throw new CompileError(
         `unsupported schema builder '${callee}'`,
         nodeLoc(node, file),
-        "Schema IR v1 subset only (docs/specs/pack-format-v1.md)",
+        "Schema IR v2 subset only (docs/specs/pack-format-v1.md)",
       );
   }
 }

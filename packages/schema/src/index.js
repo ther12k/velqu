@@ -1,11 +1,12 @@
 /**
- * @q/schema — Schema IR v1 builders.
+ * @velqu/schema — Schema IR v2 builders.
  *
  * Each builder returns a value whose RUNTIME representation is exactly the
  * Schema IR JSON node consumed by the Rust runtime (docs/specs/pack-format-v1.md)
  * and whose TYPE carries the inferred TypeScript type. One declaration drives
  * types, runtime validation, Treaty inputs, and OpenAPI (SCHEMA-001).
  */
+export const SCHEMA_IR_VERSION = 2;
 export function s_string(opts = {}) {
     return { kind: "string", ...opts };
 }
@@ -48,6 +49,44 @@ export function s_object(properties) {
 export function s_union(members) {
     return { kind: "union", members: members.filter((m) => m !== undefined) };
 }
+/** Declarative transform: input/output schema pair + stable name. No callbacks. */
+export function s_transform(input, output, name) {
+    if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(name)) {
+        throw new Error("s_transform: name must match [A-Za-z0-9_.:-]{1,64}");
+    }
+    return { kind: "transform", input, output, name };
+}
+/** Hard transport bound for file payloads (matches bounded-body limits). */
+export const MAX_FILE_BYTES = 16 * 1024 * 1024;
+/** Bounded file metadata. The value stays an opaque byte payload owned by transport. */
+export function s_file(opts) {
+    if (!Number.isSafeInteger(opts.maxBytes) || opts.maxBytes < 1 || opts.maxBytes > MAX_FILE_BYTES) {
+        throw new Error(`s_file: maxBytes must be an integer in [1, ${MAX_FILE_BYTES}]`);
+    }
+    if (opts.contentType !== undefined && (opts.contentType.length === 0 || opts.contentType.length > 128)) {
+        throw new Error("s_file: contentType must be 1..128 characters");
+    }
+    return { kind: "file", ...(opts.contentType !== undefined ? { contentType: opts.contentType } : {}), maxBytes: opts.maxBytes };
+}
+/** RFC 9457 problem metadata. `detail` is a declarative schema, not free-form. */
+export function s_problem(opts) {
+    if (opts.title.length === 0 || opts.title.length > 128) {
+        throw new Error("s_problem: title must be 1..128 characters");
+    }
+    if (!Number.isSafeInteger(opts.status) || opts.status < 400 || opts.status > 599) {
+        throw new Error("s_problem: status must be an integer in [400, 599]");
+    }
+    if (opts.typeUri !== undefined && opts.typeUri.length > 2048) {
+        throw new Error("s_problem: typeUri must be at most 2048 characters");
+    }
+    return {
+        kind: "problem",
+        ...(opts.typeUri !== undefined ? { typeUri: opts.typeUri } : {}),
+        title: opts.title,
+        status: opts.status,
+        ...(opts.detail !== undefined ? { detail: opts.detail } : {}),
+    };
+}
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
     string: s_string,
@@ -61,4 +100,7 @@ export const s = {
     array: s_array,
     object: s_object,
     union: s_union,
+    transform: s_transform,
+    file: s_file,
+    problem: s_problem,
 };

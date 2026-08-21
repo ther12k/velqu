@@ -1,0 +1,6 @@
+{
+  "kind": "transform",
+  "input": { "kind": "string", "maxLength": 64 },
+  "output": { "kind": "integer", "minimum": 0 },
+  "name": "parse-count"
+}

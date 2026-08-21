@@ -1,0 +1,20 @@
+{
+  "kind": "object",
+  "properties": {
+    "upload": { "kind": "file", "contentType": "application/octet-stream", "maxBytes": 8192 },
+    "tags": { "kind": "array", "items": { "kind": "string", "minLength": 1 }, "minItems": 1, "maxItems": 8 },
+    "limit": { "kind": "optional", "inner": { "kind": "integer", "minimum": 1, "maximum": 100 }, "default": 10 },
+    "nickname": { "kind": "nullable", "inner": { "kind": "string", "maxLength": 30 } },
+    "normalized": { "kind": "transform", "input": { "kind": "string" }, "output": { "kind": "integer", "minimum": 0 }, "name": "len" },
+    "failure": { "kind": "problem", "typeUri": "https://example.com/probs/rejected", "title": "Rejected", "status": 422 },
+    "mode": { "kind": "enum", "values": ["fast", "slow"] },
+    "origin": { "kind": "literal", "value": "api" },
+    "either": { "kind": "union", "members": [{ "kind": "string" }, { "kind": "integer" }] },
+    "score": { "kind": "number", "minimum": 0.0, "maximum": 1.0 },
+    "active": { "kind": "boolean" },
+    "contact": { "kind": "string", "format": "email" },
+    "id": { "kind": "string", "format": "uuid" },
+    "code": { "kind": "string", "pattern": "^usr_[0-9]+$" }
+  },
+  "required": ["upload", "tags", "nickname", "normalized", "failure", "mode", "origin", "either", "score", "active", "contact", "id", "code"]
+}

@@ -1,4 +1,4 @@
-//! q-schema-runtime — Schema IR v1 types, native validator, source-aware coercion.
+//! q-schema-runtime — Schema IR v2 types, native validator, source-aware coercion.
 //!
 //! Semantics frozen in `docs/specs/pack-format-v1.md`:
 //! - `Body` values must match IR types exactly (no string→number coercion).
@@ -6,6 +6,9 @@
 //!   is a validation problem, never a 500.
 //! - Unknown query keys are ignored; unknown body keys are rejected
 //!   (additionalProperties: false).
+
+/// Current normalized schema IR wire version.
+pub const SCHEMA_IR_VERSION: u32 = 2;
 
 use std::collections::BTreeMap;
 
@@ -74,6 +77,30 @@ pub enum SchemaIr {
     },
     Union {
         members: Vec<Box<SchemaIr>>,
+    },
+    /// Closed declarative transform metadata. Executable callbacks are not representable.
+    #[serde(rename_all = "camelCase")]
+    Transform {
+        input: Box<SchemaIr>,
+        output: Box<SchemaIr>,
+        name: String,
+    },
+    /// Bounded file metadata; stream ownership and I/O stay outside Schema IR.
+    #[serde(rename_all = "camelCase")]
+    File {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        content_type: Option<String>,
+        max_bytes: u64,
+    },
+    /// RFC 9457 problem shape metadata.
+    #[serde(rename_all = "camelCase")]
+    Problem {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        type_uri: Option<String>,
+        title: String,
+        status: u16,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        detail: Option<Box<SchemaIr>>,
     },
 }
 
@@ -152,6 +179,13 @@ fn validate_node(
                 return Ok(Value::Null);
             }
             validate_node(inner, value, path, coerce_strings)
+        }
+        SchemaIr::Transform { .. } | SchemaIr::File { .. } | SchemaIr::Problem { .. } => {
+            Err(vec![FieldError::new(
+                path,
+                "unsupported",
+                "schema node requires a specialized codec",
+            )])
         }
         SchemaIr::Union { members } => {
             let mut _last = Vec::new();
@@ -342,7 +376,7 @@ fn validate_node(
             let mut out = Vec::with_capacity(arr.len());
             for (i, item) in arr.iter().enumerate() {
                 let p = format!("{}[{}]", path, i);
-                out.push(validate_node(items, item, &p, false)?);
+                out.push(validate_node(items, item, &p, coerce_strings)?);
             }
             Ok(Value::Array(out))
         }
@@ -381,11 +415,6 @@ fn validate_node(
             let mut out = Map::new();
             for (key, ir) in properties {
                 if let Some(v) = obj.get(key) {
-                    if v.is_null() {
-                        // null for a non-nullable member is a type error unless optional/nullable
-                        out.insert(key.clone(), Value::Null);
-                        continue;
-                    }
                     let p = join_path(path, key);
                     match validate_node(ir, v, &p, coerce_strings) {
                         Ok(nv) => {
@@ -822,5 +851,243 @@ mod m24_004_c_tests {
             validate_params_bytes(&ir, &bytes).unwrap(),
             validate_params(&ir, &owned).unwrap()
         );
+    }
+}
+
+/// M25-001-A: Schema IR v2 nodes — serde wire forms, version boundary, and the
+/// validation semantics fixed alongside v2 (object null handling, array coercion).
+#[cfg(test)]
+mod m25_001_a_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn schema_ir_version_is_two() {
+        assert_eq!(SCHEMA_IR_VERSION, 2);
+    }
+
+    #[test]
+    fn transform_serde_round_trip_camel_case() {
+        let node = json!({
+            "kind": "transform",
+            "input": { "kind": "string" },
+            "output": { "kind": "integer" },
+            "name": "parse-count"
+        });
+        let ir: SchemaIr = serde_json::from_value(node.clone()).unwrap();
+        match &ir {
+            SchemaIr::Transform { name, .. } => assert_eq!(name, "parse-count"),
+            other => panic!("wrong variant: {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&ir).unwrap(), node);
+    }
+
+    #[test]
+    fn file_serde_round_trip_omits_absent_content_type() {
+        let node = json!({ "kind": "file", "maxBytes": 1024 });
+        let ir: SchemaIr = serde_json::from_value(node.clone()).unwrap();
+        match &ir {
+            SchemaIr::File {
+                content_type,
+                max_bytes,
+            } => {
+                assert_eq!(content_type, &None);
+                assert_eq!(*max_bytes, 1024);
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&ir).unwrap(), node);
+
+        let with_type = json!({ "kind": "file", "contentType": "text/csv", "maxBytes": 4 });
+        let ir: SchemaIr = serde_json::from_value(with_type.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&ir).unwrap(), with_type);
+    }
+
+    #[test]
+    fn problem_serde_round_trip_camel_case() {
+        let node = json!({
+            "kind": "problem",
+            "typeUri": "https://example.com/probs/oos",
+            "title": "Out of stock",
+            "status": 409,
+            "detail": { "kind": "string" }
+        });
+        let ir: SchemaIr = serde_json::from_value(node.clone()).unwrap();
+        match &ir {
+            SchemaIr::Problem {
+                type_uri,
+                title,
+                status,
+                ..
+            } => {
+                assert_eq!(type_uri.as_deref(), Some("https://example.com/probs/oos"));
+                assert_eq!(title, "Out of stock");
+                assert_eq!(*status, 409);
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&ir).unwrap(), node);
+
+        let minimal = json!({ "kind": "problem", "title": "Boom", "status": 500 });
+        let ir: SchemaIr = serde_json::from_value(minimal.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&ir).unwrap(), minimal);
+    }
+
+    #[test]
+    fn v2_nodes_return_typed_unsupported_validation_errors() {
+        // Runtime codecs for transform/file/problem land in M25-002+; until then
+        // validating against one is a typed field error, never a silent accept
+        // and never a panic.
+        let cases: Vec<SchemaIr> = vec![
+            SchemaIr::Transform {
+                input: Box::new(SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                }),
+                output: Box::new(SchemaIr::Integer {
+                    minimum: None,
+                    maximum: None,
+                }),
+                name: "parse-count".into(),
+            },
+            SchemaIr::File {
+                content_type: None,
+                max_bytes: 8,
+            },
+            SchemaIr::Problem {
+                type_uri: None,
+                title: "Boom".into(),
+                status: 500,
+                detail: None,
+            },
+        ];
+        for ir in &cases {
+            for source in [Source::Body, Source::Path, Source::Query] {
+                let err = validate(ir, &json!("anything"), source).unwrap_err();
+                assert_eq!(err.len(), 1);
+                assert_eq!(err[0].code, "unsupported");
+            }
+        }
+    }
+
+    #[test]
+    fn object_rejects_null_for_non_nullable_member() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "name".to_string(),
+                Box::new(SchemaIr::String {
+                    min_length: Some(1),
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                }),
+            )]),
+            required: vec!["name".into()],
+        };
+        // present-but-null on a non-nullable member is a type error
+        let err = validate(&ir, &json!({ "name": null }), Source::Body).unwrap_err();
+        assert_eq!(err[0].path, "name");
+        assert_eq!(err[0].code, "type");
+    }
+
+    #[test]
+    fn object_accepts_null_for_nullable_and_optional_members() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "nick".to_string(),
+                    Box::new(SchemaIr::Nullable {
+                        inner: Box::new(SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                    }),
+                ),
+                (
+                    "page".to_string(),
+                    Box::new(SchemaIr::Optional {
+                        inner: Box::new(SchemaIr::Integer {
+                            minimum: None,
+                            maximum: None,
+                        }),
+                        default: Some(json!(1)),
+                    }),
+                ),
+            ]),
+            required: vec!["nick".into()],
+        };
+        let out = validate(&ir, &json!({ "nick": null, "page": null }), Source::Body).unwrap();
+        // nullable stays null; optional null falls back to the declared default
+        assert_eq!(out, json!({ "nick": null, "page": 1 }));
+    }
+
+    #[test]
+    fn query_array_items_coerce_strings_consistently() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "ids".to_string(),
+                Box::new(SchemaIr::Array {
+                    items: Box::new(SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                    min_items: None,
+                    max_items: None,
+                }),
+            )]),
+            required: vec!["ids".into()],
+        };
+        // query values arrive as strings; nested array items coerce like scalars
+        let out = validate(&ir, &json!({ "ids": ["1", "2"] }), Source::Query).unwrap();
+        assert_eq!(out, json!({ "ids": [1, 2] }));
+        // body values must match exactly: strings stay type errors
+        let err = validate(&ir, &json!({ "ids": ["1"] }), Source::Body).unwrap_err();
+        assert_eq!(err[0].path, "ids[0]");
+        assert_eq!(err[0].code, "type");
+    }
+
+    /// Shared wire corpus with @velqu/schema (conformance/schema/golden/).
+    /// Deserialization and re-serialization must be identity for every node.
+    #[test]
+    fn golden_corpus_round_trips() {
+        let corpus = [
+            (
+                "transform",
+                include_str!("../../../conformance/schema/golden/transform.json"),
+            ),
+            (
+                "file",
+                include_str!("../../../conformance/schema/golden/file.json"),
+            ),
+            (
+                "file-content-type",
+                include_str!("../../../conformance/schema/golden/file-content-type.json"),
+            ),
+            (
+                "problem",
+                include_str!("../../../conformance/schema/golden/problem.json"),
+            ),
+            (
+                "problem-minimal",
+                include_str!("../../../conformance/schema/golden/problem-minimal.json"),
+            ),
+            (
+                "nested-composition",
+                include_str!("../../../conformance/schema/golden/nested-composition.json"),
+            ),
+        ];
+        for (name, raw) in corpus {
+            let value: Value = serde_json::from_str(raw).expect(name);
+            let ir: SchemaIr = serde_json::from_value(value.clone()).expect(name);
+            let back = serde_json::to_value(&ir).expect(name);
+            assert_eq!(back, value, "{name} must round-trip identically");
+            // classification terminates without panic for every source
+            let _ = validate(&ir, &json!({}), Source::Body);
+            let _ = validate(&ir, &json!("x"), Source::Query);
+        }
     }
 }

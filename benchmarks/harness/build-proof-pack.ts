@@ -426,7 +426,7 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     runtimeAbi: 1,
     executionMode: "numeric",
     engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
-    schemaIrVersion: 1,
+    schemaIrVersion: 2,
     contractVersion: 1,
     contractHash,
     builtBy: { compiler: "bench-fixture-0.1.0", typescript: Bun.version, bun: Bun.version },
