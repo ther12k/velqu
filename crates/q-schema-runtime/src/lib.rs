@@ -268,6 +268,81 @@ pub enum Source {
     Body,
 }
 
+/// Typed field-error codes (M25-003-C): the closed vocabulary every decoder
+/// program emits. Wire strings are stable (RFC 9457 problem `errors[].code`);
+/// the enum guarantees decoder problems never carry an undeclared code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldErrorCode {
+    Type,
+    MinLength,
+    MaxLength,
+    Pattern,
+    Format,
+    Minimum,
+    Maximum,
+    MinItems,
+    MaxItems,
+    Additional,
+    Required,
+    Enum,
+    Literal,
+    Union,
+    Fallback,
+    InvalidSchema,
+    Unsupported,
+}
+
+impl FieldErrorCode {
+    pub const ALL: &'static [FieldErrorCode] = &[
+        FieldErrorCode::Type,
+        FieldErrorCode::MinLength,
+        FieldErrorCode::MaxLength,
+        FieldErrorCode::Pattern,
+        FieldErrorCode::Format,
+        FieldErrorCode::Minimum,
+        FieldErrorCode::Maximum,
+        FieldErrorCode::MinItems,
+        FieldErrorCode::MaxItems,
+        FieldErrorCode::Additional,
+        FieldErrorCode::Required,
+        FieldErrorCode::Enum,
+        FieldErrorCode::Literal,
+        FieldErrorCode::Union,
+        FieldErrorCode::Fallback,
+        FieldErrorCode::InvalidSchema,
+        FieldErrorCode::Unsupported,
+    ];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            FieldErrorCode::Type => "type",
+            FieldErrorCode::MinLength => "minLength",
+            FieldErrorCode::MaxLength => "maxLength",
+            FieldErrorCode::Pattern => "pattern",
+            FieldErrorCode::Format => "format",
+            FieldErrorCode::Minimum => "minimum",
+            FieldErrorCode::Maximum => "maximum",
+            FieldErrorCode::MinItems => "minItems",
+            FieldErrorCode::MaxItems => "maxItems",
+            FieldErrorCode::Additional => "additional",
+            FieldErrorCode::Required => "required",
+            FieldErrorCode::Enum => "enum",
+            FieldErrorCode::Literal => "literal",
+            FieldErrorCode::Union => "union",
+            FieldErrorCode::Fallback => "fallback",
+            FieldErrorCode::InvalidSchema => "invalid-schema",
+            FieldErrorCode::Unsupported => "unsupported",
+        }
+    }
+
+    pub fn from_wire(code: &str) -> Option<Self> {
+        FieldErrorCode::ALL
+            .iter()
+            .copied()
+            .find(|c| c.as_str() == code)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FieldError {
     pub path: String,
@@ -282,6 +357,22 @@ impl FieldError {
             code: code.into(),
             message: message.into(),
         }
+    }
+
+    /// Typed constructor (M25-003-C): the code always comes from the closed
+    /// `FieldErrorCode` vocabulary, so decoder problems are typed values.
+    pub fn typed(path: &str, code: FieldErrorCode, message: impl Into<String>) -> Self {
+        FieldError {
+            path: path.into(),
+            code: code.as_str().into(),
+            message: message.into(),
+        }
+    }
+
+    /// Parse this error's code back into the typed vocabulary. `None` means
+    /// the code is outside the closed set (impossible for decoder output).
+    pub fn typed_code(&self) -> Option<FieldErrorCode> {
+        FieldErrorCode::from_wire(&self.code)
     }
 }
 
@@ -1612,5 +1703,28 @@ mod m25_001_c_tests {
                 "{name} canonical form"
             );
         }
+    }
+}
+
+/// M25-003-C: typed RFC 9457 problem codes.
+#[cfg(test)]
+mod m25_003_c_tests {
+    use super::*;
+
+    #[test]
+    fn field_error_codes_round_trip_with_wire_strings() {
+        for code in FieldErrorCode::ALL {
+            let s = code.as_str();
+            assert_eq!(FieldErrorCode::from_wire(s), Some(*code));
+            let err = FieldError::typed(".field", *code, "test msg");
+            assert_eq!(err.code, s);
+            assert_eq!(err.typed_code(), Some(*code));
+        }
+    }
+
+    #[test]
+    fn unknown_error_code_returns_none_for_typed_code() {
+        let err = FieldError::new(".field", "unregistered-code", "msg");
+        assert_eq!(err.typed_code(), None);
     }
 }

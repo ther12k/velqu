@@ -11,7 +11,7 @@ use serde_json::{Map, Number, Value};
 
 use crate::{
     is_email, is_uuid, is_uuid_bytes, is_valid_fallback_reason, join_path, simple_pattern_match,
-    FieldError, SchemaIr, Source, ValidationResult,
+    FieldError, FieldErrorCode, SchemaIr, Source, ValidationResult,
 };
 
 /// A compiled field-level specification for direct decoding.
@@ -127,25 +127,33 @@ impl FieldSpec {
         match self {
             FieldSpec::Integer { minimum, maximum } => {
                 let Ok(s) = std::str::from_utf8(bytes) else {
-                    return Err(vec![FieldError::new(path, "type", "expected integer")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected integer",
+                    )]);
                 };
-                let n = s
-                    .parse::<i64>()
-                    .map_err(|_| vec![FieldError::new(path, "type", "expected integer")])?;
+                let n = s.parse::<i64>().map_err(|_| {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected integer",
+                    )]
+                })?;
                 if let Some(min) = minimum {
                     if n < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minimum",
+                            FieldErrorCode::Minimum,
                             format!("must be at least {}", min),
                         )]);
                     }
                 }
                 if let Some(max) = maximum {
                     if n > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maximum",
+                            FieldErrorCode::Maximum,
                             format!("must be at most {}", max),
                         )]);
                     }
@@ -154,42 +162,58 @@ impl FieldSpec {
             }
             FieldSpec::Number { minimum, maximum } => {
                 let Ok(s) = std::str::from_utf8(bytes) else {
-                    return Err(vec![FieldError::new(path, "type", "expected number")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected number",
+                    )]);
                 };
-                let n = s
-                    .parse::<f64>()
-                    .map_err(|_| vec![FieldError::new(path, "type", "expected number")])?;
+                let n = s.parse::<f64>().map_err(|_| {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected number",
+                    )]
+                })?;
                 if !n.is_finite() {
-                    return Err(vec![FieldError::new(path, "type", "not a finite number")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]);
                 }
                 if let Some(min) = minimum {
                     if n < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minimum",
+                            FieldErrorCode::Minimum,
                             format!("must be at least {}", min),
                         )]);
                     }
                 }
                 if let Some(max) = maximum {
                     if n > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maximum",
+                            FieldErrorCode::Maximum,
                             format!("must be at most {}", max),
                         )]);
                     }
                 }
-                Number::from_f64(n)
-                    .map(Value::Number)
-                    .ok_or_else(|| vec![FieldError::new(path, "type", "not a finite number")])
+                Number::from_f64(n).map(Value::Number).ok_or_else(|| {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]
+                })
             }
             FieldSpec::Boolean => match bytes {
                 b"true" => Ok(Value::Bool(true)),
                 b"false" => Ok(Value::Bool(false)),
-                _ => Err(vec![FieldError::new(
+                _ => Err(vec![FieldError::typed(
                     path,
-                    "type",
+                    FieldErrorCode::Type,
                     "expected boolean (true/false)",
                 )]),
             },
@@ -198,20 +222,28 @@ impl FieldSpec {
                 ..
             } if f == "uuid" => {
                 if !is_uuid_bytes(bytes) {
-                    return Err(vec![FieldError::new(
+                    return Err(vec![FieldError::typed(
                         path,
-                        "format",
+                        FieldErrorCode::Format,
                         "must be a valid uuid",
                     )]);
                 }
                 let s = std::str::from_utf8(bytes).map_err(|_| {
-                    vec![FieldError::new(path, "type", "expected valid utf-8 string")]
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected valid utf-8 string",
+                    )]
                 })?;
                 Ok(Value::String(s.to_string()))
             }
             _ => {
                 let s = std::str::from_utf8(bytes).map_err(|_| {
-                    vec![FieldError::new(path, "type", "expected valid utf-8 string")]
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected valid utf-8 string",
+                    )]
                 })?;
                 self.decode_str(s, path, true)
             }
@@ -235,27 +267,27 @@ impl FieldSpec {
                 let s = raw_str;
                 if let Some(min) = min_length {
                     if (s.len() as u64) < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minLength",
+                            FieldErrorCode::MinLength,
                             format!("must be at least {} characters", min),
                         )]);
                     }
                 }
                 if let Some(max) = max_length {
                     if (s.len() as u64) > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maxLength",
+                            FieldErrorCode::MaxLength,
                             format!("must be at most {} characters", max),
                         )]);
                     }
                 }
                 if let Some(p) = pattern {
                     if !simple_pattern_match(p, s) {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "pattern",
+                            FieldErrorCode::Pattern,
                             format!("must match {}", p),
                         )]);
                     }
@@ -265,17 +297,17 @@ impl FieldSpec {
                         "email" => is_email(s),
                         "uuid" => is_uuid(s),
                         other => {
-                            return Err(vec![FieldError::new(
+                            return Err(vec![FieldError::typed(
                                 path,
-                                "format",
+                                FieldErrorCode::Format,
                                 format!("unknown format {}", other),
                             )])
                         }
                     };
                     if !ok {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "format",
+                            FieldErrorCode::Format,
                             format!("must be a valid {}", f),
                         )]);
                     }
@@ -284,26 +316,34 @@ impl FieldSpec {
             }
             FieldSpec::Integer { minimum, maximum } => {
                 let n = if coerce_strings {
-                    raw_str
-                        .parse::<i64>()
-                        .map_err(|_| vec![FieldError::new(path, "type", "expected integer")])?
+                    raw_str.parse::<i64>().map_err(|_| {
+                        vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected integer",
+                        )]
+                    })?
                 } else {
-                    return Err(vec![FieldError::new(path, "type", "expected integer")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected integer",
+                    )]);
                 };
                 if let Some(min) = minimum {
                     if n < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minimum",
+                            FieldErrorCode::Minimum,
                             format!("must be at least {}", min),
                         )]);
                     }
                 }
                 if let Some(max) = maximum {
                     if n > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maximum",
+                            FieldErrorCode::Maximum,
                             format!("must be at most {}", max),
                         )]);
                     }
@@ -312,59 +352,79 @@ impl FieldSpec {
             }
             FieldSpec::Number { minimum, maximum } => {
                 let n = if coerce_strings {
-                    raw_str
-                        .parse::<f64>()
-                        .map_err(|_| vec![FieldError::new(path, "type", "expected number")])?
+                    raw_str.parse::<f64>().map_err(|_| {
+                        vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected number",
+                        )]
+                    })?
                 } else {
-                    return Err(vec![FieldError::new(path, "type", "expected number")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected number",
+                    )]);
                 };
                 if !n.is_finite() {
-                    return Err(vec![FieldError::new(path, "type", "not a finite number")]);
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]);
                 }
                 if let Some(min) = minimum {
                     if n < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minimum",
+                            FieldErrorCode::Minimum,
                             format!("must be at least {}", min),
                         )]);
                     }
                 }
                 if let Some(max) = maximum {
                     if n > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maximum",
+                            FieldErrorCode::Maximum,
                             format!("must be at most {}", max),
                         )]);
                     }
                 }
-                Number::from_f64(n)
-                    .map(Value::Number)
-                    .ok_or_else(|| vec![FieldError::new(path, "type", "not a finite number")])
+                Number::from_f64(n).map(Value::Number).ok_or_else(|| {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]
+                })
             }
             FieldSpec::Boolean => {
                 if coerce_strings {
                     match raw_str {
                         "true" => Ok(Value::Bool(true)),
                         "false" => Ok(Value::Bool(false)),
-                        _ => Err(vec![FieldError::new(
+                        _ => Err(vec![FieldError::typed(
                             path,
-                            "type",
+                            FieldErrorCode::Type,
                             "expected boolean (true/false)",
                         )]),
                     }
                 } else {
-                    Err(vec![FieldError::new(path, "type", "expected boolean")])
+                    Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected boolean",
+                    )])
                 }
             }
             FieldSpec::Literal { value } => match value {
                 Value::String(s) if s == raw_str => Ok(value.clone()),
                 Value::Number(n) if coerce_strings && n.to_string() == raw_str => Ok(value.clone()),
                 Value::Bool(b) if coerce_strings && b.to_string() == raw_str => Ok(value.clone()),
-                _ => Err(vec![FieldError::new(
+                _ => Err(vec![FieldError::typed(
                     path,
-                    "literal",
+                    FieldErrorCode::Literal,
                     format!("must equal {}", value),
                 )]),
             },
@@ -381,7 +441,11 @@ impl FieldSpec {
                         _ => {}
                     }
                 }
-                Err(vec![FieldError::new(path, "enum", "value not in enum")])
+                Err(vec![FieldError::typed(
+                    path,
+                    FieldErrorCode::Enum,
+                    "value not in enum",
+                )])
             }
             FieldSpec::Optional { inner, default } => {
                 if raw_str.is_empty() || raw_str == "null" {
@@ -409,18 +473,18 @@ impl FieldSpec {
                 };
                 if let Some(min) = min_items {
                     if (parts.len() as u64) < *min {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "minItems",
+                            FieldErrorCode::MinItems,
                             format!("must have at least {} items", min),
                         )]);
                     }
                 }
                 if let Some(max) = max_items {
                     if (parts.len() as u64) > *max {
-                        return Err(vec![FieldError::new(
+                        return Err(vec![FieldError::typed(
                             path,
-                            "maxItems",
+                            FieldErrorCode::MaxItems,
                             format!("must have at most {} items", max),
                         )]);
                     }
@@ -441,9 +505,9 @@ impl FieldSpec {
                     }
                 }
                 Err(if last_err.is_empty() {
-                    vec![FieldError::new(
+                    vec![FieldError::typed(
                         path,
-                        "union",
+                        FieldErrorCode::Union,
                         format!("value matched none of {} union members", members.len()),
                     )]
                 } else {
@@ -452,24 +516,24 @@ impl FieldSpec {
             }
             FieldSpec::Fallback { reason, inner } => {
                 if !is_valid_fallback_reason(reason) {
-                    return Err(vec![FieldError::new(
+                    return Err(vec![FieldError::typed(
                         path,
-                        "invalid-schema",
+                        FieldErrorCode::InvalidSchema,
                         format!("unknown fallback reason {}", reason),
                     )]);
                 }
                 match inner {
                     Some(inner) => inner.decode_str(raw_str, path, coerce_strings),
-                    None => Err(vec![FieldError::new(
+                    None => Err(vec![FieldError::typed(
                         path,
-                        "fallback",
+                        FieldErrorCode::Fallback,
                         format!("fallback ({}) requires the generic codec path", reason),
                     )]),
                 }
             }
-            FieldSpec::Unsupported { .. } => Err(vec![FieldError::new(
+            FieldSpec::Unsupported { .. } => Err(vec![FieldError::typed(
                 path,
-                "unsupported",
+                FieldErrorCode::Unsupported,
                 "schema node requires a specialized codec",
             )]),
         }
@@ -543,9 +607,9 @@ impl DecoderProgram {
         if !self.allow_unknown {
             for (name, _) in params {
                 if !self.properties.contains_key(*name) {
-                    errors.push(FieldError::new(
+                    errors.push(FieldError::typed(
                         &join_path("", name),
-                        "additional",
+                        FieldErrorCode::Additional,
                         "unknown field",
                     ));
                 }
@@ -555,9 +619,9 @@ impl DecoderProgram {
         // 2. Missing required field checks
         for req in &self.required {
             if !params.iter().any(|(n, _)| n == req) {
-                errors.push(FieldError::new(
+                errors.push(FieldError::typed(
                     &join_path("", req),
-                    "required",
+                    FieldErrorCode::Required,
                     "missing required field",
                 ));
             }
@@ -631,9 +695,9 @@ impl DecoderProgram {
         if !self.allow_unknown {
             for key in latest_query.keys() {
                 if !self.properties.contains_key(*key) {
-                    errors.push(FieldError::new(
+                    errors.push(FieldError::typed(
                         &join_path("", key),
-                        "additional",
+                        FieldErrorCode::Additional,
                         "unknown field",
                     ));
                 }
@@ -643,9 +707,9 @@ impl DecoderProgram {
         // 2. Missing required field checks
         for req in &self.required {
             if !latest_query.contains_key(req.as_str()) {
-                errors.push(FieldError::new(
+                errors.push(FieldError::typed(
                     &join_path("", req),
-                    "required",
+                    FieldErrorCode::Required,
                     "missing required field",
                 ));
             }
@@ -696,9 +760,9 @@ impl DecoderProgram {
         for req in &self.required {
             let req_lower = req.to_ascii_lowercase();
             if !lower_headers.contains_key(&req_lower) {
-                errors.push(FieldError::new(
+                errors.push(FieldError::typed(
                     &join_path("", req),
-                    "required",
+                    FieldErrorCode::Required,
                     "missing required field",
                 ));
             }
@@ -770,9 +834,9 @@ impl DecoderTable {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_params_bytes(params)
         } else {
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "",
-                "invalid-schema",
+                FieldErrorCode::InvalidSchema,
                 format!("unknown schema id {schema_id}"),
             )])
         }
@@ -789,9 +853,9 @@ impl DecoderTable {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_params_ranges(path_bytes, param_names, ranges)
         } else {
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "",
-                "invalid-schema",
+                FieldErrorCode::InvalidSchema,
                 format!("unknown schema id {schema_id}"),
             )])
         }
@@ -802,9 +866,9 @@ impl DecoderTable {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_query_pairs(query)
         } else {
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "",
-                "invalid-schema",
+                FieldErrorCode::InvalidSchema,
                 format!("unknown schema id {schema_id}"),
             )])
         }
@@ -815,9 +879,9 @@ impl DecoderTable {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_headers(headers)
         } else {
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "",
-                "invalid-schema",
+                FieldErrorCode::InvalidSchema,
                 format!("unknown schema id {schema_id}"),
             )])
         }
@@ -925,9 +989,9 @@ mod tests {
         let res = prog.decode_params_bytes(&[("slug", b"post")]);
         assert_eq!(
             res,
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "id",
-                "required",
+                FieldErrorCode::Required,
                 "missing required field"
             )])
         );
@@ -936,9 +1000,9 @@ mod tests {
         let res = prog.decode_params_bytes(&[("id", b"10"), ("slug", b"post"), ("extra", b"x")]);
         assert_eq!(
             res,
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "extra",
-                "additional",
+                FieldErrorCode::Additional,
                 "unknown field"
             )])
         );
@@ -947,7 +1011,11 @@ mod tests {
         let res = prog.decode_params_bytes(&[("id", b"0"), ("slug", b"post")]);
         assert_eq!(
             res,
-            Err(vec![FieldError::new("id", "minimum", "must be at least 1")])
+            Err(vec![FieldError::typed(
+                "id",
+                FieldErrorCode::Minimum,
+                "must be at least 1"
+            )])
         );
 
         // format failure
@@ -955,9 +1023,9 @@ mod tests {
             prog.decode_params_bytes(&[("id", b"10"), ("slug", b"post"), ("uuid", b"bad-uuid")]);
         assert_eq!(
             res,
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "uuid",
-                "format",
+                FieldErrorCode::Format,
                 "must be a valid uuid"
             )])
         );
@@ -1031,9 +1099,9 @@ mod tests {
         let res_err = prog.decode_headers(&[("X-Other", "value")]);
         assert_eq!(
             res_err,
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "x-api-key",
-                "required",
+                FieldErrorCode::Required,
                 "missing required field"
             )])
         );
@@ -1086,9 +1154,9 @@ mod tests {
         let res_utf8 = prog.decode_params_bytes(&[("id", b"1"), ("slug", bad_utf8)]);
         assert_eq!(
             res_utf8,
-            Err(vec![FieldError::new(
+            Err(vec![FieldError::typed(
                 "slug",
-                "type",
+                FieldErrorCode::Type,
                 "expected valid utf-8 string"
             )])
         );
