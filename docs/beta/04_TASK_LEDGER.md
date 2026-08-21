@@ -37,7 +37,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M24-010 | P0 | TODO | M24-004, M24-005, M24-006, M24-007, M24-008 | M24 | Complete ingress bridge fuzzing and conformance |
 | M24-GATE | P0 | TODO | M24-001, M24-002, M24-003, M24-004, M24-005, M24-006, M24-007, M24-008, M24-009, M24-010 | M24 | M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge exit gate |
 | M25-001 | P0 | PASS | M24-GATE | M25 | Define canonical Schema IR v2 |
-| M25-002 | P1 | TODO | M25-001 | M25 | Build reproducible decoder/encoder strategy benchmark |
+| M25-002 | P1 | PASS | M25-001 | M25 | Build reproducible decoder/encoder strategy benchmark |
 | M25-003 | P0 | TODO | M25-001, M24-GATE | M25 | Generate params/query/header decoders |
 | M25-004 | P0 | TODO | M25-001, M24-007 | M25 | Generate JSON body decoders |
 | M25-005 | P0 | TODO | M25-001, M25-002 | M25 | Generate status-specific response encoders |

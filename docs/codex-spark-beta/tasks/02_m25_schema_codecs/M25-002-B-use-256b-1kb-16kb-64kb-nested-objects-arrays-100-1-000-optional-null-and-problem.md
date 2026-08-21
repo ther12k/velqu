@@ -4,7 +4,7 @@ parent_task: M25-002
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-002-B)
+
+Status: **PASS**. The benchmark corpus now covers the required payload matrix:
+`small_user`, `nested_order`, `records100`, `records1000`, approximately
+256 B / 1 KB / 16 KB / 64 KB objects, an optional/null-heavy object, and an
+RFC 9457-shaped problem object. The generated projection remains benchmark-only;
+production codec selection and fallback behavior are unchanged.
+
+### Changed files
+
+- `crates/q-bench-support/src/bin/codec_bench/schemas.rs` — ten-schema corpus,
+  deterministic payload generators, optional/default and problem fixtures, and
+  invalid differential cases.
+- `crates/q-bench-support/src/bin/codec_bench/generator.rs` — M25-002-A/B
+  generated decoder metadata and long-function allowance.
+- `crates/q-bench-support/src/bin/codec_bench/generated.rs` — regenerated
+  ten-schema projection source, locked by `generated_source_is_current`.
+- `crates/q-bench-support/src/bin/codec_bench/main.rs` — M25-002-B metadata,
+  candidate-aware normalized-output correctness, and ten-case evidence identity.
+- `benchmarks/raw/codec/{codec.jsonl,codec-summary.json,evidence.json}` —
+  60,000 raw rows, 30 OK cells, and current artifact hashes.
+- `docs/reports/m25-002-b-payload-matrix.md` — source-backed matrix report with
+  p50/p95/p99 values, fairness limitations, normalization semantics, and hashes.
+- `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`,
+  `docs/beta/04_TASK_LEDGER.md` — M25-002-A/B and aggregate M25-002 status.
+
+### Tests and evidence
+
+- `generated_source_is_current`
+- `corpus_is_supported_by_generated_decoder`
+- `generated_supports_matches_generator_guard`
+- `unsupported_schemas_fail_closed_in_supports`
+- `differential_decode_matches_generic_validator` (all ten valid fixtures and
+  expanded invalid mutations)
+- `fallback_without_inner_stays_unavailable`
+- `cargo test -p q-bench-support` — 6 codec tests + 1 existing test passed.
+- `cargo test -p q-engine-quickjs` — 1 unit + 96 integration tests passed.
+- `cargo test -p q-schema-runtime` — 28 library + 2 fuzz tests passed.
+- `bun test` — 66 passed, 0 failed, 233 expect calls.
+- `bun run typecheck` — clean.
+- `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- Release benchmark — run `m25-002-b-1787289561`, 30 cells, 2,000/2,000
+  correct per cell, 60,000 JSONL samples.
+
+`./scripts/verify` completed all Rust, TypeScript, proof-build, and OKF stages.
+Its final benchmark-evidence check reports only the known isolated-worktree
+hash mismatches for `qRuntimeRelease` and `proofPack` against the canonical
+`benchmarks/manifest.json`; that manifest was intentionally preserved and no
+benchmark claim depends on those mismatched artifacts.
+
+Artifact hashes and the complete matrix are recorded in
+`docs/reports/m25-002-b-payload-matrix.md` and
+`benchmarks/raw/codec/evidence.json`.
+
+Commit: `11b07bf`.
