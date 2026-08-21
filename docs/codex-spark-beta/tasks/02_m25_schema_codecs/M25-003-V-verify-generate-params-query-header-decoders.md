@@ -4,7 +4,7 @@ parent_task: M25-003
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -132,3 +132,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record (M25-003-V)
+
+Status: **PASS**. All parent acceptance guardrails for M25-003 are proven
+against source and reproducible tests:
+
+### Acceptance Guardrail Mapping
+
+1. **Invalid inputs produce exact declared envelopes**:
+   - `crates/q-schema-runtime/src/decoder.rs`, `crates/q-schema-runtime/src/lib.rs`
+     (`FieldErrorCode` 17 closed variants, `FieldError::typed`)
+   - `crates/q-runtime/src/problems.rs` (`problems::body("validation", ...)`)
+   - `crates/q-runtime/src/serve.rs` (422 validation.params, validation.query, validation.headers)
+   - Tests: `runtime_conformance.rs` (validates exact 422 problem envelopes with RFC 9457 type URI, title, instance, errors array)
+2. **No duplicate parse/validation pass**:
+   - `DecoderProgram::decode_params_ranges` slices path bytes directly from capture ranges without intermediate String allocations
+   - `DecoderProgram::decode_headers` performs single-pass case-insensitive extraction and coercion
+   - `DecoderProgram::decode_query_pairs` fuses last-value-wins query resolution and type validation
+3. **Treaty and OpenAPI types agree**:
+   - One canonical Schema IR v2 builder model in `@velqu/schema` projects to OpenAPI (`emit.ts`), Treaty client types (`packages/treaty/`), and runtime decoder programs
+   - Tests: `treaty.test.ts`, `schema.conformance.test.ts`, `compiler.test.ts`
+4. **Decoder programs are bounded and fuzzable**:
+   - Property-based fuzz tests in `crates/q-schema-runtime/tests/fuzz_validator.rs` (`direct_decoder_programs_never_panic_and_are_deterministic`)
+   - Unit tests in `crates/q-schema-runtime/src/decoder.rs` (malformed ranges, non-UTF-8 bytes, scalar coercions, bounds, enums, literals, options, nullables)
+
+### Verification Commands & Results
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-schema-runtime` | 38 unit tests + 3 fuzz tests passed |
+| `cargo test -p velqu-runtime` | 15 integration tests passed |
+| `cargo test -p q-engine-quickjs` | 1 unit + 96 integration tests passed |
+| `cargo test -p q-http` | 4 tests passed |
+| `cargo test -p q-bridge` | 11 passed |
+| `bun test` | 69 passed, 0 failed, 296 expect calls |
+| `bun run typecheck` | clean (`tsc -b tsconfig.json` exit 0) |
+| `cargo fmt --check` | clean |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `scripts/validate-okf` | 176 links, 0 errors |
+| `./scripts/verify` | all stages pass except known isolated-worktree hash mismatch |
+
+Commit: `179f9ba`.

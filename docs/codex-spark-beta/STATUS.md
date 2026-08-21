@@ -150,7 +150,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-003-B — Validate byte ranges and header/query values without generic object trees](tasks/02_m25_schema_codecs/M25-003-B-validate-byte-ranges-and-header-query-values-without-generic-object-trees.md)
 - [x] [M25-003-C — Return typed RFC 9457 problems](tasks/02_m25_schema_codecs/M25-003-C-return-typed-rfc-9457-problems.md)
 - [x] [M25-003-D — Preserve declared coercion semantics exactly](tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md)
-- [ ] [M25-003-V — Verify Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md)
+- [x] [M25-003-V — Verify Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md)
 - [ ] [M25-003-Z — Package evidence for Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-Z-package-evidence-for-generate-params-query-header-decoders.md)
 - [ ] [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md)
 - [ ] [M25-004-B — Retain QuickJS/generic fallback for unsupported transformations](tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md)
