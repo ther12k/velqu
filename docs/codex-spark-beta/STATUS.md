@@ -152,7 +152,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-003-D — Preserve declared coercion semantics exactly](tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md)
 - [x] [M25-003-V — Verify Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md)
 - [x] [M25-003-Z — Package evidence for Generate params/query/header decoders](tasks/02_m25_schema_codecs/M25-003-Z-package-evidence-for-generate-params-query-header-decoders.md)
-- [ ] [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md)
+- [x] [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md)
 - [ ] [M25-004-B — Retain QuickJS/generic fallback for unsupported transformations](tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md)
 - [ ] [M25-004-C — Enforce depth, size, array, string, and numeric limits](tasks/02_m25_schema_codecs/M25-004-C-enforce-depth-size-array-string-and-numeric-limits.md)
 - [ ] [M25-004-D — Propagate cancellation and request deadlines](tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md)

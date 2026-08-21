@@ -538,6 +538,329 @@ impl FieldSpec {
             )]),
         }
     }
+
+    /// Decode a structured JSON value against this field specification.
+    /// When `coerce_strings` is false (e.g. for JSON bodies per Source::Body),
+    /// strict JSON types are required (strings are not coerced to integers/numbers/booleans).
+    pub fn decode_value(
+        &self,
+        value: &Value,
+        path: &str,
+        coerce_strings: bool,
+    ) -> Result<Value, Vec<FieldError>> {
+        match self {
+            FieldSpec::String {
+                min_length,
+                max_length,
+                pattern,
+                format,
+            } => {
+                let s = match value.as_str() {
+                    Some(s) => s,
+                    None => {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected string",
+                        )])
+                    }
+                };
+                if let Some(min) = min_length {
+                    if (s.len() as u64) < *min {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::MinLength,
+                            format!("must be at least {} characters", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = max_length {
+                    if (s.len() as u64) > *max {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::MaxLength,
+                            format!("must be at most {} characters", max),
+                        )]);
+                    }
+                }
+                if let Some(p) = pattern {
+                    if !simple_pattern_match(p, s) {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Pattern,
+                            format!("must match {}", p),
+                        )]);
+                    }
+                }
+                if let Some(f) = format {
+                    let ok = match f.as_str() {
+                        "email" => is_email(s),
+                        "uuid" => is_uuid(s),
+                        other => {
+                            return Err(vec![FieldError::typed(
+                                path,
+                                FieldErrorCode::Format,
+                                format!("unknown format {}", other),
+                            )])
+                        }
+                    };
+                    if !ok {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Format,
+                            format!("must be a valid {}", f),
+                        )]);
+                    }
+                }
+                Ok(Value::String(s.to_string()))
+            }
+            FieldSpec::Integer { minimum, maximum } => {
+                let n = if let Some(i) = value.as_i64() {
+                    i
+                } else if coerce_strings {
+                    if let Some(s) = value.as_str() {
+                        s.parse::<i64>().map_err(|_| {
+                            vec![FieldError::typed(
+                                path,
+                                FieldErrorCode::Type,
+                                "expected integer",
+                            )]
+                        })?
+                    } else {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected integer",
+                        )]);
+                    }
+                } else {
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected integer",
+                    )]);
+                };
+                if let Some(min) = minimum {
+                    if n < *min {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Minimum,
+                            format!("must be at least {}", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = maximum {
+                    if n > *max {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Maximum,
+                            format!("must be at most {}", max),
+                        )]);
+                    }
+                }
+                Ok(Value::Number(Number::from(n)))
+            }
+            FieldSpec::Number { minimum, maximum } => {
+                let n = if let Some(f) = value.as_f64() {
+                    f
+                } else if coerce_strings {
+                    if let Some(s) = value.as_str() {
+                        s.parse::<f64>().map_err(|_| {
+                            vec![FieldError::typed(
+                                path,
+                                FieldErrorCode::Type,
+                                "expected number",
+                            )]
+                        })?
+                    } else {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected number",
+                        )]);
+                    }
+                } else {
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected number",
+                    )]);
+                };
+                if !n.is_finite() {
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]);
+                }
+                if let Some(min) = minimum {
+                    if n < *min {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Minimum,
+                            format!("must be at least {}", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = maximum {
+                    if n > *max {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Maximum,
+                            format!("must be at most {}", max),
+                        )]);
+                    }
+                }
+                Number::from_f64(n).map(Value::Number).ok_or_else(|| {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "not a finite number",
+                    )]
+                })
+            }
+            FieldSpec::Boolean => {
+                let b = if let Some(b) = value.as_bool() {
+                    b
+                } else if coerce_strings {
+                    match value.as_str() {
+                        Some("true") => true,
+                        Some("false") => false,
+                        _ => {
+                            return Err(vec![FieldError::typed(
+                                path,
+                                FieldErrorCode::Type,
+                                "expected boolean (true/false)",
+                            )])
+                        }
+                    }
+                } else {
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Type,
+                        "expected boolean",
+                    )]);
+                };
+                Ok(Value::Bool(b))
+            }
+            FieldSpec::Literal { value: lit } => {
+                if value == lit {
+                    Ok(lit.clone())
+                } else {
+                    Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Literal,
+                        format!("must equal {}", lit),
+                    )])
+                }
+            }
+            FieldSpec::Enum { values } => {
+                if values.contains(value) {
+                    Ok(value.clone())
+                } else {
+                    Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Enum,
+                        "value not in enum",
+                    )])
+                }
+            }
+            FieldSpec::Optional { inner, default } => {
+                if value.is_null() {
+                    Ok(default.clone().unwrap_or(Value::Null))
+                } else {
+                    inner.decode_value(value, path, coerce_strings)
+                }
+            }
+            FieldSpec::Nullable { inner } => {
+                if value.is_null() {
+                    Ok(Value::Null)
+                } else {
+                    inner.decode_value(value, path, coerce_strings)
+                }
+            }
+            FieldSpec::Array {
+                items,
+                min_items,
+                max_items,
+            } => {
+                let arr = match value.as_array() {
+                    Some(a) => a,
+                    None => {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::Type,
+                            "expected array",
+                        )])
+                    }
+                };
+                if let Some(min) = min_items {
+                    if (arr.len() as u64) < *min {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::MinItems,
+                            format!("must have at least {} items", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = max_items {
+                    if (arr.len() as u64) > *max {
+                        return Err(vec![FieldError::typed(
+                            path,
+                            FieldErrorCode::MaxItems,
+                            format!("must have at most {} items", max),
+                        )]);
+                    }
+                }
+                let mut out = Vec::with_capacity(arr.len());
+                for (i, item) in arr.iter().enumerate() {
+                    let item_path = format!("{}[{}]", path, i);
+                    out.push(items.decode_value(item, &item_path, coerce_strings)?);
+                }
+                Ok(Value::Array(out))
+            }
+            FieldSpec::Union { members } => {
+                let mut last_err = Vec::new();
+                for m in members {
+                    match m.decode_value(value, path, coerce_strings) {
+                        Ok(v) => return Ok(v),
+                        Err(e) => last_err = e,
+                    }
+                }
+                Err(if last_err.is_empty() {
+                    vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Union,
+                        format!("value matched none of {} union members", members.len()),
+                    )]
+                } else {
+                    last_err
+                })
+            }
+            FieldSpec::Fallback { reason, inner } => {
+                if !is_valid_fallback_reason(reason) {
+                    return Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::InvalidSchema,
+                        format!("unknown fallback reason {}", reason),
+                    )]);
+                }
+                match inner {
+                    Some(inner) => inner.decode_value(value, path, coerce_strings),
+                    None => Err(vec![FieldError::typed(
+                        path,
+                        FieldErrorCode::Fallback,
+                        format!("fallback ({}) requires the generic codec path", reason),
+                    )]),
+                }
+            }
+            FieldSpec::Unsupported { .. } => Err(vec![FieldError::typed(
+                path,
+                FieldErrorCode::Unsupported,
+                "schema node requires a specialized codec",
+            )]),
+        }
+    }
 }
 
 /// A property specification inside a `DecoderProgram`.
@@ -799,6 +1122,73 @@ impl DecoderProgram {
             Ok(Value::Object(out))
         }
     }
+
+    /// Direct decode for JSON body values (Source::Body semantics: strict types, unknown keys rejected).
+    pub fn decode_body_value(&self, value: &Value) -> ValidationResult {
+        let obj = match value.as_object() {
+            Some(o) => o,
+            None => {
+                return Err(vec![FieldError::typed(
+                    "",
+                    FieldErrorCode::Type,
+                    "expected object",
+                )])
+            }
+        };
+        let mut errors: Vec<FieldError> = Vec::new();
+
+        // 1. Unknown body keys are rejected (additionalProperties: false)
+        for key in obj.keys() {
+            if !self.properties.contains_key(key) {
+                errors.push(FieldError::typed(
+                    &join_path("", key),
+                    FieldErrorCode::Additional,
+                    "unknown field",
+                ));
+            }
+        }
+
+        // 2. Required fields must be present
+        for req in &self.required {
+            if !obj.contains_key(req) {
+                errors.push(FieldError::typed(
+                    &join_path("", req),
+                    FieldErrorCode::Required,
+                    "missing required field",
+                ));
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        // 3. Direct decode per declared property (coerce_strings: false for Body)
+        let mut out = Map::new();
+        for (key, prop) in &self.properties {
+            if let Some(v) = obj.get(key) {
+                match prop.spec.decode_value(v, &join_path("", key), false) {
+                    Ok(nv) => {
+                        out.insert(key.clone(), nv);
+                    }
+                    Err(mut e) => {
+                        errors.append(&mut e);
+                    }
+                }
+            } else if let FieldSpec::Optional {
+                default: Some(d), ..
+            } = &prop.spec
+            {
+                out.insert(key.clone(), d.clone());
+            }
+        }
+
+        if !errors.is_empty() {
+            Err(errors)
+        } else {
+            Ok(Value::Object(out))
+        }
+    }
 }
 
 /// A dense table of direct decoder programs keyed by SchemaId index.
@@ -878,6 +1268,19 @@ impl DecoderTable {
     pub fn decode_headers(&self, schema_id: u32, headers: &[(&str, &str)]) -> ValidationResult {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_headers(headers)
+        } else {
+            Err(vec![FieldError::typed(
+                "",
+                FieldErrorCode::InvalidSchema,
+                format!("unknown schema id {schema_id}"),
+            )])
+        }
+    }
+
+    /// Decode a JSON body value using the direct decoder program keyed by `schema_id`.
+    pub fn decode_body_value(&self, schema_id: u32, value: &Value) -> ValidationResult {
+        if let Some(decoder) = self.get(schema_id) {
+            decoder.decode_body_value(value)
         } else {
             Err(vec![FieldError::typed(
                 "",
@@ -1345,5 +1748,130 @@ mod tests {
         let err = prog.decode_query_pairs(&query_bad_int).unwrap_err();
         assert_eq!(err[0].path, "i");
         assert_eq!(err[0].code, "type");
+    }
+
+    #[test]
+    fn decoder_program_decodes_and_validates_json_body_value() {
+        let user_schema = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "name".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: Some(1),
+                        max_length: Some(50),
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "email".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: Some("email".to_string()),
+                    }),
+                ),
+                (
+                    "age".to_string(),
+                    Box::new(SchemaIr::Optional {
+                        inner: Box::new(SchemaIr::Integer {
+                            minimum: Some(0),
+                            maximum: Some(120),
+                        }),
+                        default: Some(json!(25)),
+                    }),
+                ),
+                (
+                    "nickname".to_string(),
+                    Box::new(SchemaIr::Nullable {
+                        inner: Box::new(SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                    }),
+                ),
+            ]),
+            required: vec!["name".into(), "email".into()],
+        };
+
+        let prog = DecoderProgram::compile(&user_schema, Source::Body);
+
+        // Valid body decode
+        let valid_body = json!({
+            "name": "Grace Hopper",
+            "email": "grace@navy.mil",
+            "nickname": "Amazing Grace",
+        });
+        let res = prog.decode_body_value(&valid_body).unwrap();
+        assert_eq!(
+            res,
+            json!({
+                "name": "Grace Hopper",
+                "email": "grace@navy.mil",
+                "age": 25, // default inserted
+                "nickname": "Amazing Grace",
+            })
+        );
+
+        // Non-object body rejected
+        let non_obj = json!("just a string");
+        assert_eq!(
+            prog.decode_body_value(&non_obj),
+            Err(vec![FieldError::typed(
+                "",
+                FieldErrorCode::Type,
+                "expected object"
+            )])
+        );
+
+        // Unknown body fields rejected (additionalProperties: false)
+        let with_extra = json!({
+            "name": "Grace",
+            "email": "grace@navy.mil",
+            "extra_field": true,
+        });
+        assert_eq!(
+            prog.decode_body_value(&with_extra),
+            Err(vec![FieldError::typed(
+                "extra_field",
+                FieldErrorCode::Additional,
+                "unknown field"
+            )])
+        );
+
+        // Missing required field
+        let missing_req = json!({
+            "name": "Grace",
+        });
+        assert_eq!(
+            prog.decode_body_value(&missing_req),
+            Err(vec![FieldError::typed(
+                "email",
+                FieldErrorCode::Required,
+                "missing required field"
+            )])
+        );
+
+        // No string coercion for Body source (string "30" for integer age is a type error)
+        let bad_type = json!({
+            "name": "Grace",
+            "email": "grace@navy.mil",
+            "age": "30",
+        });
+        assert_eq!(
+            prog.decode_body_value(&bad_type),
+            Err(vec![FieldError::typed(
+                "age",
+                FieldErrorCode::Type,
+                "expected integer"
+            )])
+        );
+
+        // Differential parity against validate(Source::Body)
+        let ref_valid = crate::validate(&user_schema, &valid_body, Source::Body).unwrap();
+        assert_eq!(res, ref_valid);
     }
 }
