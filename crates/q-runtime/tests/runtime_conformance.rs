@@ -534,7 +534,7 @@ fn fixture_pack() -> q_pack::QPack {
             version: q_pack::ENGINE_VERSION.into(),
             binding: q_pack::ENGINE_BINDING.into(),
         },
-        schema_ir_version: 1,
+        schema_ir_version: q_pack::SCHEMA_IR_VERSION,
         contract_version: 1,
         contract_hash: String::new(),
         built_by: q_pack::BuiltBy {
@@ -702,6 +702,7 @@ fn finalize_numeric(pack: &mut QPack) {
         .map(|(i, k)| q_pack::SchemaDecl {
             id: i as u32,
             key: k.clone(),
+            features: q_schema_runtime::features_of(&pack.schemas[k]),
             ir: pack.schemas[k].clone(),
         })
         .collect();

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { s, s_transform, s_file, s_problem, SCHEMA_IR_VERSION, MAX_FILE_BYTES, type Schema, type Infer } from "@velqu/schema";
+import { s, s_transform, s_file, s_problem, s_fallback, featuresOf, SCHEMA_IR_VERSION, MAX_FILE_BYTES, FALLBACK_REASONS, type Schema, type Infer } from "@velqu/schema";
 
 describe("Schema IR v1 builders (SCHEMA-001)", () => {
   test("string schema options and IR structure", () => {
@@ -164,3 +164,56 @@ describe("Schema IR v2 nodes (SCHEMA-001, IR v2)", () => {
   });
 });
 
+
+describe("Fallback and compatibility markers (M25-001-B, ADR-0009)", () => {
+  test("fallback vocabulary is closed and matches the runtime", () => {
+    expect(FALLBACK_REASONS).toEqual(["unsupported-transform", "unrepresentable", "measured", "explicit"]);
+  });
+
+  test("s_fallback emits marker node in canonical field order", () => {
+    const withInner = s_fallback("unsupported-transform", s.integer({ minimum: 1 })) as any;
+    expect(withInner).toEqual({ kind: "fallback", reason: "unsupported-transform", inner: { kind: "integer", minimum: 1 } });
+    expect(Object.keys(withInner)).toEqual(["kind", "reason", "inner"]);
+
+    const minimal = s_fallback("explicit") as any;
+    expect(minimal).toEqual({ kind: "fallback", reason: "explicit" });
+    expect("inner" in minimal).toBe(false);
+  });
+
+  test("s_fallback rejects reasons outside the vocabulary", () => {
+    expect(() => s_fallback("because" as never)).toThrow();
+    expect(() => s_fallback("unsupported" as never)).toThrow();
+    expect(() => s_fallback("" as never)).toThrow();
+  });
+
+  test("featuresOf derives sorted deduplicated tags from a nested graph", () => {
+    const graph = s.object({
+      t: s_transform(s.string(), s_file({ maxBytes: 8 }), "x"),
+      p: s_problem({ title: "T", status: 422 }),
+      f: s_fallback("explicit", s_fallback("measured")),
+      opt: s.optional(s.string()),
+      arr: s.array(s.string()),
+    });
+    expect(featuresOf(graph)).toEqual(["fallback", "file", "problem", "transform"]);
+
+    const plain = s.object({ a: s.string(), b: s.array(s.integer()) });
+    expect(featuresOf(plain)).toEqual([]);
+  });
+
+  test("featuresOf parity with the Rust walker on the golden corpus", async () => {
+    const cases: Array<[string, string[]]> = [
+      ["transform.json", ["transform"]],
+      ["file.json", ["file"]],
+      ["file-content-type.json", ["file"]],
+      ["problem.json", ["problem"]],
+      ["problem-minimal.json", ["problem"]],
+      ["nested-composition.json", ["file", "problem", "transform"]],
+      ["fallback-with-inner.json", ["fallback"]],
+      ["fallback-minimal.json", ["fallback"]],
+    ];
+    for (const [file, expected] of cases) {
+      const golden = await import(`./golden/${file}`, { with: { type: "json" } });
+      expect(featuresOf(golden.default as never)).toEqual(expected);
+    }
+  });
+});

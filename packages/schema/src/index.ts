@@ -26,7 +26,8 @@ export type Schema<T> =
   | { readonly kind: "union"; readonly members: readonly Schema<unknown>[]; readonly __t?: T }
   | { readonly kind: "transform"; readonly input: Schema<unknown>; readonly output: Schema<unknown>; readonly name: string; readonly __t?: T }
   | { readonly kind: "file"; readonly contentType?: string; readonly maxBytes: number; readonly __t?: T }
-  | { readonly kind: "problem"; readonly typeUri?: string; readonly title: string; readonly status: number; readonly detail?: Schema<unknown>; readonly __t?: T };
+  | { readonly kind: "problem"; readonly typeUri?: string; readonly title: string; readonly status: number; readonly detail?: Schema<unknown>; readonly __t?: T }
+  | { readonly kind: "fallback"; readonly reason: string; readonly inner?: Schema<unknown>; readonly __t?: T };
 
 /** Infer the TypeScript type carried by a schema. */
 export type Infer<S> = S extends { __t?: infer T } ? T : never;
@@ -159,6 +160,75 @@ export function s_problem<T>(opts: ProblemOpts): Schema<T> {
   } as unknown as Schema<T>;
 }
 
+/** Closed fallback vocabulary (M25-001-B). Mirrors FALLBACK_REASONS in q-schema-runtime. */
+export const FALLBACK_REASONS = ["unsupported-transform", "unrepresentable", "measured", "explicit"] as const;
+export type FallbackReason = (typeof FALLBACK_REASONS)[number];
+
+export type FallbackT = { readonly kind: "fallback"; readonly reason: FallbackReason; readonly inner?: Schema<unknown> };
+
+/**
+ * Explicit fallback marker (ADR-0009: no silent downgrade). `inner` is the
+ * optional best-effort shape the native path validates against until the
+ * generic codec path lands (M25-004-B).
+ */
+export function s_fallback<T = unknown>(reason: FallbackReason, inner?: Schema<T>): Schema<T> {
+  if (!(FALLBACK_REASONS as readonly string[]).includes(reason)) {
+    throw new Error(`s_fallback: reason must be one of ${FALLBACK_REASONS.join(", ")}`);
+  }
+  return { kind: "fallback", reason, ...(inner !== undefined ? { inner } : {}) } as unknown as Schema<T>;
+}
+
+/**
+ * Compatibility markers (M25-001-B): feature tags derived from an IR graph.
+ * Sorted, deduplicated; mirrors `features_of` in q-schema-runtime. Feeds the
+ * pack schema manifest, which q-pack verifies fail-closed.
+ */
+export const FEATURE_TAGS = ["fallback", "file", "problem", "transform"] as const;
+export type FeatureTag = (typeof FEATURE_TAGS)[number];
+
+type IrLike = { kind?: string; [k: string]: unknown };
+
+export function featuresOf(ir: Schema<unknown> | IrLike): FeatureTag[] {
+  const seen = new Set<FeatureTag>();
+  const walk = (node: IrLike): void => {
+    switch (node.kind) {
+      case "transform":
+        seen.add("transform");
+        walk(node.input as IrLike);
+        walk(node.output as IrLike);
+        break;
+      case "file":
+        seen.add("file");
+        break;
+      case "problem":
+        seen.add("problem");
+        if (node.detail !== undefined) walk(node.detail as IrLike);
+        break;
+      case "fallback":
+        seen.add("fallback");
+        if (node.inner !== undefined) walk(node.inner as IrLike);
+        break;
+      case "optional":
+      case "nullable":
+        walk(node.inner as IrLike);
+        break;
+      case "array":
+        walk(node.items as IrLike);
+        break;
+      case "object":
+        for (const p of Object.values(node.properties as Record<string, IrLike>)) walk(p);
+        break;
+      case "union":
+        for (const m of node.members as IrLike[]) walk(m);
+        break;
+      default:
+        break;
+    }
+  };
+  walk(ir as IrLike);
+  return [...seen].sort() as FeatureTag[];
+}
+
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
   string: s_string,
@@ -175,4 +245,5 @@ export const s = {
   transform: s_transform,
   file: s_file,
   problem: s_problem,
+  fallback: s_fallback,
 };

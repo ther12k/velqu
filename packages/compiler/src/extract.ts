@@ -285,6 +285,21 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
       }
       return { kind: "union", members: args[0].elements.map((e) => schemaFromNode(e, file)) };
     }
+    case "fallback": {
+      if (args.length < 1 || args.length > 2 || !ts.isStringLiteral(args[0])) {
+        throw new CompileError("s.fallback requires a literal reason and an optional inner schema", nodeLoc(node, file));
+      }
+      const reason = args[0].text;
+      if (!["unsupported-transform", "unrepresentable", "measured", "explicit"].includes(reason)) {
+        throw new CompileError(
+          `s.fallback reason '${reason}' is not in the closed vocabulary`,
+          nodeLoc(args[0], file),
+          "reasons: unsupported-transform | unrepresentable | measured | explicit",
+        );
+      }
+      // field order matches the Rust SchemaIr declaration so canonical hashes agree
+      return { kind: "fallback", reason, ...(args[1] ? { inner: schemaFromNode(args[1], file) } : {}) };
+    }
     default:
       throw new CompileError(
         `unsupported schema builder '${callee}'`,
