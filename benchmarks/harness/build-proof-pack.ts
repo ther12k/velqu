@@ -6,6 +6,7 @@
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { featuresOf } from "@velqu/schema";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -340,13 +341,14 @@ function buildSerializedRouter(routes: Array<{ method: string; pathSegments: Arr
 function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: string, appId: string) {
   const sortedSchemaKeys = Object.keys(schemas).sort();
   const schemaKeyToId = new Map<string, number>();
-  const schemaManifest: Array<{ id: number; key: string; ir: unknown }> = [];
+  const schemaManifest: Array<{ id: number; key: string; features: string[]; ir: unknown }> = [];
   for (let i = 0; i < sortedSchemaKeys.length; i++) {
     const k = sortedSchemaKeys[i];
     schemaKeyToId.set(k, i);
     schemaManifest.push({
       id: i,
       key: k,
+      features: featuresOf(schemas[k] as Parameters<typeof featuresOf>[0]),
       ir: sortIR(schemas[k]),
     });
   }

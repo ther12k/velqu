@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import type { ExtractedApp, RouteInfo } from "./extract";
 import { hash } from "./extract";
+import { featuresOf } from "@velqu/schema";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -294,13 +295,15 @@ export function buildPack(
 
   const sortedSchemaKeys = Object.keys(schemas).sort();
   const schemaKeyToId = new Map<string, number>();
-  const schemaManifest: Array<{ id: number; key: string; ir: unknown }> = [];
+  const schemaManifest: Array<{ id: number; key: string; features: string[]; ir: unknown }> = [];
   for (let i = 0; i < sortedSchemaKeys.length; i++) {
     const k = sortedSchemaKeys[i];
     schemaKeyToId.set(k, i);
+    // compatibility markers (M25-001-B): field order matches Rust SchemaDecl
     schemaManifest.push({
       id: i,
       key: k,
+      features: featuresOf(schemas[k] as Parameters<typeof featuresOf>[0]),
       ir: schemas[k],
     });
   }
@@ -533,6 +536,8 @@ export function tsTypeOfIr(ir: Record<string, unknown>): string {
       if (detail) fields.push(`detail?: ${tsTypeOfIr(detail)}`);
       return `{ ${fields.join("; ")} }`;
     }
+    case "fallback":
+      return ir.inner !== undefined ? tsTypeOfIr(ir.inner as Record<string, unknown>) : "unknown";
     default:
       return "unknown";
   }
@@ -635,6 +640,12 @@ export function openapiFor(app: ExtractedApp): Record<string, unknown> {
           required: ["title", "status"],
           "x-problem": { ...(v.typeUri !== undefined ? { typeUri: v.typeUri } : {}), title: v.title, status: v.status },
         };
+      }
+      if (v.kind === "fallback") {
+        // explicit fallback stays visible in the projection (ADR-0009)
+        return v.inner !== undefined
+          ? { ...conv(v.inner as Record<string, unknown>), "x-fallback": v.reason }
+          : { "x-fallback": v.reason };
       }
       if (v.kind === "optional" || v.kind === "nullable") return conv(v.inner as Record<string, unknown>);
       if (v.kind === "object") {

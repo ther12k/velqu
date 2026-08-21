@@ -87,6 +87,61 @@ export function s_problem(opts) {
         ...(opts.detail !== undefined ? { detail: opts.detail } : {}),
     };
 }
+/** Closed fallback vocabulary (M25-001-B). Mirrors FALLBACK_REASONS in q-schema-runtime. */
+export const FALLBACK_REASONS = ["unsupported-transform", "unrepresentable", "measured", "explicit"];
+/** Explicit fallback marker (ADR-0009: no silent downgrade). */
+export function s_fallback(reason, inner) {
+    if (!FALLBACK_REASONS.includes(reason)) {
+        throw new Error(`s_fallback: reason must be one of ${FALLBACK_REASONS.join(", ")}`);
+    }
+    return { kind: "fallback", reason, ...(inner !== undefined ? { inner } : {}) };
+}
+/** Compatibility markers (M25-001-B): feature tags derived from an IR graph. */
+export const FEATURE_TAGS = ["fallback", "file", "problem", "transform"];
+export function featuresOf(ir) {
+    const seen = new Set();
+    const walk = (node) => {
+        switch (node.kind) {
+            case "transform":
+                seen.add("transform");
+                walk(node.input);
+                walk(node.output);
+                break;
+            case "file":
+                seen.add("file");
+                break;
+            case "problem":
+                seen.add("problem");
+                if (node.detail !== undefined)
+                    walk(node.detail);
+                break;
+            case "fallback":
+                seen.add("fallback");
+                if (node.inner !== undefined)
+                    walk(node.inner);
+                break;
+            case "optional":
+            case "nullable":
+                walk(node.inner);
+                break;
+            case "array":
+                walk(node.items);
+                break;
+            case "object":
+                for (const p of Object.values(node.properties))
+                    walk(p);
+                break;
+            case "union":
+                for (const m of node.members)
+                    walk(m);
+                break;
+            default:
+                break;
+        }
+    };
+    walk(ir);
+    return [...seen].sort();
+}
 /** Convenience namespace so `s.string()` reads naturally. */
 export const s = {
     string: s_string,
@@ -103,4 +158,5 @@ export const s = {
     transform: s_transform,
     file: s_file,
     problem: s_problem,
+    fallback: s_fallback,
 };

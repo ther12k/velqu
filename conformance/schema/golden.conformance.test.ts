@@ -1,12 +1,13 @@
 /**
- * Golden corpus round-trip (M25-001-A): every committed wire node must be
+ * Golden corpus round-trip (M25-001-A/B): every committed wire node must be
  * produced byte-identically by the @velqu/schema builders and stay stable
- * under JSON serialization. Rust parity is asserted by the companion test
- * `m25_001_a_tests::golden_corpus_round_trips` in q-schema-runtime.
+ * under JSON serialization. Rust parity is asserted by the companion tests
+ * `m25_001_a_tests::golden_corpus_round_trips` and
+ * `golden_corpus_feature_expectations` in q-schema-runtime.
  */
 
 import { describe, expect, test } from "bun:test";
-import { s, s_transform, s_file, s_problem } from "@velqu/schema";
+import { s, s_transform, s_file, s_problem, s_fallback } from "@velqu/schema";
 
 const corpus: Record<string, unknown> = {
   "transform.json": s_transform(
@@ -16,6 +17,11 @@ const corpus: Record<string, unknown> = {
   ),
   "file.json": s_file({ maxBytes: 4096 }),
   "file-content-type.json": s_file({ contentType: "text/csv", maxBytes: 1_048_576 }),
+  "fallback-with-inner.json": s_fallback(
+    "unsupported-transform",
+    s.object({ n: s.integer({ minimum: 1 }) }),
+  ),
+  "fallback-minimal.json": s_fallback("explicit"),
   "problem.json": s_problem({
     typeUri: "https://example.com/probs/out-of-stock",
     title: "Out of stock",

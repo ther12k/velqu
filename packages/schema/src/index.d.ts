@@ -81,6 +81,11 @@ export type Schema<T> = {
     readonly status: number;
     readonly detail?: Schema<unknown>;
     readonly __t?: T;
+} | {
+    readonly kind: "fallback";
+    readonly reason: string;
+    readonly inner?: Schema<unknown>;
+    readonly __t?: T;
 };
 /** Infer the TypeScript type carried by a schema. */
 export type Infer<S> = S extends {
@@ -143,6 +148,23 @@ export interface ProblemOpts {
 }
 /** RFC 9457 problem metadata. `detail` is a declarative schema, not free-form. */
 export declare function s_problem<T>(opts: ProblemOpts): Schema<T>;
+/** Closed fallback vocabulary (M25-001-B). Mirrors FALLBACK_REASONS in q-schema-runtime. */
+export declare const FALLBACK_REASONS: readonly ["unsupported-transform", "unrepresentable", "measured", "explicit"];
+export type FallbackReason = "unsupported-transform" | "unrepresentable" | "measured" | "explicit";
+/**
+ * Explicit fallback marker (ADR-0009: no silent downgrade). `inner` is the
+ * optional best-effort shape the native path validates against until the
+ * generic codec path lands (M25-004-B).
+ */
+export declare function s_fallback<T = unknown>(reason: FallbackReason, inner?: Schema<T>): Schema<T>;
+/** Compatibility markers (M25-001-B): feature tags derived from an IR graph. */
+export declare const FEATURE_TAGS: readonly ["fallback", "file", "problem", "transform"];
+export type FeatureTag = "fallback" | "file" | "problem" | "transform";
+/** Feature tags for a schema graph; sorted, deduplicated; mirrors `features_of`. */
+export declare function featuresOf(ir: Schema<unknown> | {
+    kind?: string;
+    [k: string]: unknown;
+}): FeatureTag[];
 /** Convenience namespace so `s.string()` reads naturally. */
 export declare const s: {
     string: typeof s_string;
@@ -159,5 +181,6 @@ export declare const s: {
     transform: typeof s_transform;
     file: typeof s_file;
     problem: typeof s_problem;
+    fallback: typeof s_fallback;
 };
 export {};

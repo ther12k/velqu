@@ -167,6 +167,27 @@ fn validator_never_panics_and_is_deterministic() {
             status: 500,
             detail: None,
         },
+        // M25-001-B fallback markers: must classify without panicking
+        SchemaIr::Fallback {
+            reason: "unsupported-transform".into(),
+            inner: Some(Box::new(SchemaIr::Integer {
+                minimum: None,
+                maximum: None,
+            })),
+        },
+        SchemaIr::Fallback {
+            reason: "measured".into(),
+            inner: None,
+        },
+        SchemaIr::Fallback {
+            reason: "unrepresentable".into(),
+            inner: Some(Box::new(SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            })),
+        },
     ];
     let mut rng = Rng(0xf00dfeedfaceb00c);
     for _ in 0..40_000 {

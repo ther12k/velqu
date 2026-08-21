@@ -181,6 +181,10 @@ pub struct RoutePlanDecl {
 pub struct SchemaDecl {
     pub id: u32,
     pub key: String,
+    /// Compatibility marker (M25-001-B): v2 feature tags derived from `ir`.
+    /// Verified against `features_of(&ir)` at load; spoofing fails closed.
+    #[serde(default)]
+    pub features: Vec<String>,
     pub ir: q_schema_runtime::SchemaIr,
 }
 
@@ -942,6 +946,26 @@ impl QPack {
                     return reject(format!(
                         "schema manifest entry {} ({}) IR does not match declared schema IR",
                         schema_decl.id, schema_decl.key
+                    ));
+                }
+                // compatibility markers (M25-001-B): declared features must
+                // equal the derived ones — no hiding fallback/schema usage
+                let derived = q_schema_runtime::features_of(&schema_decl.ir);
+                if schema_decl.features != derived {
+                    return reject(format!(
+                        "schema manifest entry {} ({}) features {:?} do not match derived features {:?}",
+                        schema_decl.id, schema_decl.key, schema_decl.features, derived
+                    ));
+                }
+                if let Some(r) = schema_decl
+                    .ir
+                    .fallback_reasons()
+                    .into_iter()
+                    .find(|r| !q_schema_runtime::is_valid_fallback_reason(r))
+                {
+                    return reject(format!(
+                        "schema manifest entry {} ({}) has unknown fallback reason {}",
+                        schema_decl.id, schema_decl.key, r
                     ));
                 }
             }
@@ -1765,10 +1789,7 @@ mod tests {
         // structural check is what fires, not the digest check
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
         let err = p.verify().expect_err("policy handler gap must be rejected");
-        assert!(
-            matches!(&err, PackError::Rejected(m) if m.contains("unknown handler")),
-            "unexpected error: {err:?}"
-        );
+        assert!(matches!(&err, PackError::Rejected(m) if m.contains("unknown handler")));
     }
 
     /// A policy whose handler IS present must verify cleanly.
@@ -1899,6 +1920,7 @@ mod tests {
         pack.schema_manifest.push(SchemaDecl {
             id: 0,
             key: "sch:health.query".into(),
+            features: q_schema_runtime::features_of(&pack.schemas["sch:health.query"]),
             ir: pack.schemas["sch:health.query"].clone(),
         });
         pack.routes[0].query = Some(SourceBinding {
@@ -2172,6 +2194,7 @@ mod tests {
         p.schema_manifest = vec![SchemaDecl {
             id: 0,
             key: "sch:health.query".into(),
+            features: vec![],
             ir: q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
                 required: vec![],
@@ -2188,6 +2211,7 @@ mod tests {
         p.schema_manifest = vec![SchemaDecl {
             id: 0,
             key: "sch:health.query".into(),
+            features: vec![],
             ir: q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
                 required: vec![],
@@ -2498,6 +2522,7 @@ mod tests {
         p.schema_manifest = vec![SchemaDecl {
             id: 0,
             key: "sch:test".into(),
+            features: vec![],
             ir: q_schema_runtime::SchemaIr::String {
                 min_length: None,
                 max_length: None,
@@ -2512,6 +2537,80 @@ mod tests {
             h1, h2,
             "tampering with schema manifest MUST change execution hash"
         );
+    }
+
+    /// M25-001-B: compatibility markers fail closed — declared features must
+    /// equal derived features; spoofing or omission rejects the pack.
+    #[test]
+    fn schema_manifest_features_mismatch_rejected() {
+        let mut p = minimal_pack();
+        p.schemas.insert(
+            "sch:test".into(),
+            q_schema_runtime::SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+        );
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:test".into(),
+            // claims a fallback the IR does not use
+            features: vec!["fallback".into()],
+            ir: q_schema_runtime::SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+        }];
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("features") && m.contains("derived"))
+        );
+    }
+
+    #[test]
+    fn schema_manifest_fallback_feature_must_be_declared() {
+        let mut p = minimal_pack();
+        let fallback_ir = q_schema_runtime::SchemaIr::Fallback {
+            reason: "explicit".into(),
+            inner: None,
+        };
+        p.schemas.insert("sch:test".into(), fallback_ir.clone());
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:test".into(),
+            // hides the fallback marker the IR uses
+            features: vec![],
+            ir: fallback_ir,
+        }];
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(
+            matches!(err, PackError::Rejected(m) if m.contains("do not match derived features"))
+        );
+    }
+
+    #[test]
+    fn schema_manifest_unknown_fallback_reason_rejected() {
+        let mut p = minimal_pack();
+        let fallback_ir = q_schema_runtime::SchemaIr::Fallback {
+            reason: "trust-me".into(),
+            inner: None,
+        };
+        p.schemas.insert("sch:test".into(), fallback_ir.clone());
+        p.schema_manifest = vec![SchemaDecl {
+            id: 0,
+            key: "sch:test".into(),
+            features: q_schema_runtime::features_of(&fallback_ir),
+            ir: fallback_ir,
+        }];
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+        let err = p.verify().unwrap_err();
+        assert!(matches!(err, PackError::Rejected(m) if m.contains("unknown fallback reason")));
     }
 
     #[test]
@@ -2529,6 +2628,7 @@ mod tests {
         p.schema_manifest = vec![SchemaDecl {
             id: 0,
             key: "sch:test".into(),
+            features: vec![],
             ir: q_schema_runtime::SchemaIr::String {
                 min_length: Some(10), // mismatch with pack.schemas
                 max_length: None,

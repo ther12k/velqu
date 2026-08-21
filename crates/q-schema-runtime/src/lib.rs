@@ -102,6 +102,114 @@ pub enum SchemaIr {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         detail: Option<Box<SchemaIr>>,
     },
+    /// Explicit fallback marker (ADR-0009: no silent downgrade). `reason` comes
+    /// from the closed FALLBACK_REASONS vocabulary; `inner` is the optional
+    /// best-effort shape the generic path validates against.
+    #[serde(rename_all = "camelCase")]
+    Fallback {
+        reason: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        inner: Option<Box<SchemaIr>>,
+    },
+}
+
+/// Closed vocabulary for `SchemaIr::Fallback` reasons.
+pub const FALLBACK_REASONS: [&str; 4] = [
+    "unsupported-transform", // transform name has no native codec (M25-004-B)
+    "unrepresentable",       // construct outside the native IR
+    "measured",              // generic path chosen by benchmark evidence (M25-002-D/M25-005-D)
+    "explicit",              // developer-forced generic path
+];
+
+/// Marker feature tags derived from an IR graph (compatibility markers).
+/// Sorted and deduplicated; mirrors the TypeScript walker in @velqu/schema.
+pub fn features_of(ir: &SchemaIr) -> Vec<String> {
+    fn walk(ir: &SchemaIr, set: &mut std::collections::BTreeSet<&'static str>) {
+        match ir {
+            SchemaIr::Transform { input, output, .. } => {
+                set.insert("transform");
+                walk(input, set);
+                walk(output, set);
+            }
+            SchemaIr::File { .. } => {
+                set.insert("file");
+            }
+            SchemaIr::Problem { detail, .. } => {
+                set.insert("problem");
+                if let Some(d) = detail {
+                    walk(d, set);
+                }
+            }
+            SchemaIr::Fallback { inner, .. } => {
+                set.insert("fallback");
+                if let Some(i) = inner {
+                    walk(i, set);
+                }
+            }
+            SchemaIr::Optional { inner, .. } | SchemaIr::Nullable { inner } => walk(inner, set),
+            SchemaIr::Array { items, .. } => walk(items, set),
+            SchemaIr::Object { properties, .. } => {
+                for b in properties.values() {
+                    walk(b, set);
+                }
+            }
+            SchemaIr::Union { members } => {
+                for m in members {
+                    walk(m, set);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut set = std::collections::BTreeSet::new();
+    walk(ir, &mut set);
+    set.into_iter().map(String::from).collect()
+}
+
+/// True when `reason` is a member of the closed fallback vocabulary.
+pub fn is_valid_fallback_reason(reason: &str) -> bool {
+    FALLBACK_REASONS.contains(&reason)
+}
+
+impl SchemaIr {
+    /// Every fallback reason appearing anywhere in the graph (load-time
+    /// vocabulary verification; duplicates preserved in walk order).
+    pub fn fallback_reasons(&self) -> Vec<&str> {
+        fn walk<'a>(ir: &'a SchemaIr, out: &mut Vec<&'a str>) {
+            match ir {
+                SchemaIr::Fallback { reason, inner } => {
+                    out.push(reason);
+                    if let Some(i) = inner {
+                        walk(i, out);
+                    }
+                }
+                SchemaIr::Transform { input, output, .. } => {
+                    walk(input, out);
+                    walk(output, out);
+                }
+                SchemaIr::Problem {
+                    detail: Some(d), ..
+                } => walk(d, out),
+                SchemaIr::Problem { .. } => {}
+                SchemaIr::Optional { inner, .. } | SchemaIr::Nullable { inner } => walk(inner, out),
+                SchemaIr::Array { items, .. } => walk(items, out),
+                SchemaIr::Object { properties, .. } => {
+                    for b in properties.values() {
+                        walk(b, out);
+                    }
+                }
+                SchemaIr::Union { members } => {
+                    for m in members {
+                        walk(m, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut out = Vec::new();
+        walk(self, &mut out);
+        out
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -186,6 +294,27 @@ fn validate_node(
                 "unsupported",
                 "schema node requires a specialized codec",
             )])
+        }
+        SchemaIr::Fallback { reason, inner } => {
+            if !is_valid_fallback_reason(reason) {
+                return Err(vec![FieldError::new(
+                    path,
+                    "invalid-schema",
+                    format!("unknown fallback reason {}", reason),
+                )]);
+            }
+            match inner {
+                // explicit fallback with a best-effort shape: native validation
+                // applies the inner schema (the marker itself is transparent)
+                Some(inner) => validate_node(inner, value, path, coerce_strings),
+                // no shape declared: the generic path must execute; until
+                // M25-004-B wires it, this fails closed as a typed error
+                None => Err(vec![FieldError::new(
+                    path,
+                    "fallback",
+                    format!("fallback ({}) requires the generic codec path", reason),
+                )]),
+            }
         }
         SchemaIr::Union { members } => {
             let mut _last = Vec::new();
@@ -1079,6 +1208,14 @@ mod m25_001_a_tests {
                 "nested-composition",
                 include_str!("../../../conformance/schema/golden/nested-composition.json"),
             ),
+            (
+                "fallback-with-inner",
+                include_str!("../../../conformance/schema/golden/fallback-with-inner.json"),
+            ),
+            (
+                "fallback-minimal",
+                include_str!("../../../conformance/schema/golden/fallback-minimal.json"),
+            ),
         ];
         for (name, raw) in corpus {
             let value: Value = serde_json::from_str(raw).expect(name);
@@ -1089,5 +1226,213 @@ mod m25_001_a_tests {
             let _ = validate(&ir, &json!({}), Source::Body);
             let _ = validate(&ir, &json!("x"), Source::Query);
         }
+    }
+
+    /// M25-001-B: feature derivation parity on the shared corpus — the Rust
+    /// walker and the TypeScript walker must agree (canonicalization test).
+    #[test]
+    fn golden_corpus_feature_expectations() {
+        let expected: &[(&str, &[&str])] = &[
+            ("transform", &["transform"]),
+            ("file", &["file"]),
+            ("file-content-type", &["file"]),
+            ("problem", &["problem"]),
+            ("problem-minimal", &["problem"]),
+            ("nested-composition", &["file", "problem", "transform"]),
+            ("fallback-with-inner", &["fallback"]),
+            ("fallback-minimal", &["fallback"]),
+        ];
+        let files = [
+            (
+                "transform",
+                include_str!("../../../conformance/schema/golden/transform.json"),
+            ),
+            (
+                "file",
+                include_str!("../../../conformance/schema/golden/file.json"),
+            ),
+            (
+                "file-content-type",
+                include_str!("../../../conformance/schema/golden/file-content-type.json"),
+            ),
+            (
+                "problem",
+                include_str!("../../../conformance/schema/golden/problem.json"),
+            ),
+            (
+                "problem-minimal",
+                include_str!("../../../conformance/schema/golden/problem-minimal.json"),
+            ),
+            (
+                "nested-composition",
+                include_str!("../../../conformance/schema/golden/nested-composition.json"),
+            ),
+            (
+                "fallback-with-inner",
+                include_str!("../../../conformance/schema/golden/fallback-with-inner.json"),
+            ),
+            (
+                "fallback-minimal",
+                include_str!("../../../conformance/schema/golden/fallback-minimal.json"),
+            ),
+        ];
+        for ((name, raw), (_, want)) in files.iter().zip(expected.iter()) {
+            let ir: SchemaIr = serde_json::from_str(raw).expect(name);
+            assert_eq!(
+                features_of(&ir),
+                want.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                "{name} derived features must match the corpus expectation"
+            );
+        }
+    }
+}
+
+/// M25-001-B: explicit fallback markers and derived compatibility features.
+#[cfg(test)]
+mod m25_001_b_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn fallback_serde_round_trip_with_and_without_inner() {
+        let with_inner = json!({
+            "kind": "fallback",
+            "reason": "unsupported-transform",
+            "inner": { "kind": "string" }
+        });
+        let ir: SchemaIr = serde_json::from_value(with_inner.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&ir).unwrap(), with_inner);
+
+        let minimal = json!({ "kind": "fallback", "reason": "explicit" });
+        let ir: SchemaIr = serde_json::from_value(minimal.clone()).unwrap();
+        match &ir {
+            SchemaIr::Fallback { reason, inner } => {
+                assert_eq!(reason, "explicit");
+                assert!(inner.is_none());
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
+        assert_eq!(serde_json::to_value(&ir).unwrap(), minimal);
+    }
+
+    #[test]
+    fn fallback_with_inner_validates_against_inner() {
+        let ir = SchemaIr::Fallback {
+            reason: "unsupported-transform".into(),
+            inner: Some(Box::new(SchemaIr::Object {
+                properties: BTreeMap::from([(
+                    "n".to_string(),
+                    Box::new(SchemaIr::Integer {
+                        minimum: Some(1),
+                        maximum: None,
+                    }),
+                )]),
+                required: vec!["n".into()],
+            })),
+        };
+        // best-effort native validation applies the inner schema
+        let out = validate(&ir, &json!({ "n": 5 }), Source::Body).unwrap();
+        assert_eq!(out, json!({ "n": 5 }));
+        let err = validate(&ir, &json!({ "n": 0 }), Source::Body).unwrap_err();
+        assert_eq!(err[0].code, "minimum");
+    }
+
+    #[test]
+    fn fallback_without_inner_fails_closed_with_typed_error() {
+        let ir = SchemaIr::Fallback {
+            reason: "measured".into(),
+            inner: None,
+        };
+        let err = validate(&ir, &json!({ "x": 1 }), Source::Body).unwrap_err();
+        assert_eq!(err[0].code, "fallback");
+        assert!(err[0].message.contains("generic codec path"));
+    }
+
+    #[test]
+    fn fallback_rejects_unknown_reason() {
+        let ir = SchemaIr::Fallback {
+            reason: "because".into(),
+            inner: Some(Box::new(SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            })),
+        };
+        let err = validate(&ir, &json!("s"), Source::Body).unwrap_err();
+        assert_eq!(err[0].code, "invalid-schema");
+        assert!(!is_valid_fallback_reason("because"));
+        for r in FALLBACK_REASONS {
+            assert!(is_valid_fallback_reason(r));
+        }
+    }
+
+    #[test]
+    fn features_are_derived_sorted_and_deduplicated() {
+        // plain v1 node: no features
+        let plain = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "a".to_string(),
+                Box::new(SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                }),
+            )]),
+            required: vec!["a".into()],
+        };
+        assert_eq!(features_of(&plain), Vec::<String>::new());
+
+        // nested graph: transform (with file inside output) + problem + fallback
+        let graph = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "t".to_string(),
+                    Box::new(SchemaIr::Transform {
+                        input: Box::new(SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                        output: Box::new(SchemaIr::File {
+                            content_type: None,
+                            max_bytes: 8,
+                        }),
+                        name: "x".into(),
+                    }),
+                ),
+                (
+                    "p".to_string(),
+                    Box::new(SchemaIr::Problem {
+                        type_uri: None,
+                        title: "T".into(),
+                        status: 422,
+                        detail: None,
+                    }),
+                ),
+                (
+                    "f".to_string(),
+                    Box::new(SchemaIr::Fallback {
+                        reason: "explicit".into(),
+                        inner: Some(Box::new(SchemaIr::Fallback {
+                            reason: "explicit".into(),
+                            inner: None,
+                        })),
+                    }),
+                ),
+            ]),
+            required: vec![],
+        };
+        assert_eq!(
+            features_of(&graph),
+            vec![
+                "fallback".to_string(),
+                "file".to_string(),
+                "problem".to_string(),
+                "transform".to_string()
+            ]
+        );
     }
 }
