@@ -338,12 +338,12 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // allocated.
             if let Some(sid) = compiled.params_schema_id {
                 let names = state.router.param_names(route_index);
-                let param_bytes: Vec<(&str, &[u8])> = names
-                    .iter()
-                    .zip(&param_ranges)
-                    .map(|(n, (start, end))| (*n, &path.as_bytes()[*start as usize..*end as usize]))
-                    .collect();
-                match state.decoder_table.decode_params(sid.0, &param_bytes) {
+                match state.decoder_table.decode_params_ranges(
+                    sid.0,
+                    path.as_bytes(),
+                    &names,
+                    &param_ranges,
+                ) {
                     Ok(v) => params_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(
@@ -394,6 +394,31 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.query");
+                    }
+                }
+            }
+
+            let mut headers_value: Option<Value> = None;
+            if let Some(sid) = compiled.headers_schema_id {
+                let header_pairs: Vec<(&str, &str)> = headers
+                    .iter()
+                    .filter_map(|(name, val)| val.to_str().ok().map(|s| (name.as_str(), s)))
+                    .collect();
+                match state.decoder_table.decode_headers(sid.0, &header_pairs) {
+                    Ok(v) => headers_value = Some(v),
+                    Err(errors) => {
+                        let body = problems::body(
+                            "validation",
+                            None,
+                            Some("header validation failed"),
+                            &field_errors(&errors),
+                            &request_id,
+                        );
+                        return (
+                            Ok(json_response(422, &body)),
+                            route_id,
+                            "validation.headers",
+                        );
                     }
                 }
             }
@@ -625,7 +650,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 generation: 0,
                 params: params_value,
                 query: query_value,
-                headers: None,
+                headers: headers_value,
                 body: body_value,
                 allowed_statuses: compiled.allowed_statuses.clone(),
                 default_status: compiled.default_status,

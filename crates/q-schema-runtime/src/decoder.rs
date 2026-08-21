@@ -1,16 +1,17 @@
-//! Direct decoder programs keyed by SchemaId (M25-003-A).
+//! Direct decoder programs keyed by SchemaId (M25-003-A / M25-003-B).
 //!
 //! Compiles an object SchemaIr into a specialized, direct field decoder program
-//! that fuses field extraction, string/byte coercion, bounds validation, and
-//! default application into a single pass without intermediate generic AST trees.
+//! that fuses field extraction, byte-range slicing, string/byte coercion, bounds
+//! validation, and default application into a single pass without intermediate
+//! generic AST trees.
 
 use std::collections::BTreeMap;
 
 use serde_json::{Map, Number, Value};
 
 use crate::{
-    is_email, is_uuid, is_valid_fallback_reason, join_path, simple_pattern_match, FieldError,
-    SchemaIr, Source, ValidationResult,
+    is_email, is_uuid, is_uuid_bytes, is_valid_fallback_reason, join_path, simple_pattern_match,
+    FieldError, SchemaIr, Source, ValidationResult,
 };
 
 /// A compiled field-level specification for direct decoding.
@@ -120,8 +121,104 @@ impl FieldSpec {
         }
     }
 
-    /// Decode a single raw string value (e.g. from params, query, or headers)
-    /// with source-appropriate coercion and bounds validation.
+    /// Direct decode from borrowed byte slices (e.g. from path parameter byte ranges).
+    /// Avoids UTF-8 String allocations for integer, number, boolean, and UUID validation.
+    pub fn decode_bytes(&self, bytes: &[u8], path: &str) -> Result<Value, Vec<FieldError>> {
+        match self {
+            FieldSpec::Integer { minimum, maximum } => {
+                let Ok(s) = std::str::from_utf8(bytes) else {
+                    return Err(vec![FieldError::new(path, "type", "expected integer")]);
+                };
+                let n = s
+                    .parse::<i64>()
+                    .map_err(|_| vec![FieldError::new(path, "type", "expected integer")])?;
+                if let Some(min) = minimum {
+                    if n < *min {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "minimum",
+                            format!("must be at least {}", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = maximum {
+                    if n > *max {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "maximum",
+                            format!("must be at most {}", max),
+                        )]);
+                    }
+                }
+                Ok(Value::Number(Number::from(n)))
+            }
+            FieldSpec::Number { minimum, maximum } => {
+                let Ok(s) = std::str::from_utf8(bytes) else {
+                    return Err(vec![FieldError::new(path, "type", "expected number")]);
+                };
+                let n = s
+                    .parse::<f64>()
+                    .map_err(|_| vec![FieldError::new(path, "type", "expected number")])?;
+                if !n.is_finite() {
+                    return Err(vec![FieldError::new(path, "type", "not a finite number")]);
+                }
+                if let Some(min) = minimum {
+                    if n < *min {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "minimum",
+                            format!("must be at least {}", min),
+                        )]);
+                    }
+                }
+                if let Some(max) = maximum {
+                    if n > *max {
+                        return Err(vec![FieldError::new(
+                            path,
+                            "maximum",
+                            format!("must be at most {}", max),
+                        )]);
+                    }
+                }
+                Number::from_f64(n)
+                    .map(Value::Number)
+                    .ok_or_else(|| vec![FieldError::new(path, "type", "not a finite number")])
+            }
+            FieldSpec::Boolean => match bytes {
+                b"true" => Ok(Value::Bool(true)),
+                b"false" => Ok(Value::Bool(false)),
+                _ => Err(vec![FieldError::new(
+                    path,
+                    "type",
+                    "expected boolean (true/false)",
+                )]),
+            },
+            FieldSpec::String {
+                format: Some(ref f),
+                ..
+            } if f == "uuid" => {
+                if !is_uuid_bytes(bytes) {
+                    return Err(vec![FieldError::new(
+                        path,
+                        "format",
+                        "must be a valid uuid",
+                    )]);
+                }
+                let s = std::str::from_utf8(bytes).map_err(|_| {
+                    vec![FieldError::new(path, "type", "expected valid utf-8 string")]
+                })?;
+                Ok(Value::String(s.to_string()))
+            }
+            _ => {
+                let s = std::str::from_utf8(bytes).map_err(|_| {
+                    vec![FieldError::new(path, "type", "expected valid utf-8 string")]
+                })?;
+                self.decode_str(s, path, true)
+            }
+        }
+    }
+
+    /// Decode a single raw string value with source-appropriate coercion and bounds validation.
     pub fn decode_str(
         &self,
         raw_str: &str,
@@ -474,18 +571,7 @@ impl DecoderProgram {
         let mut out = Map::new();
         for (key, prop) in &self.properties {
             if let Some((_, bytes)) = params.iter().find(|(n, _)| *n == key.as_str()) {
-                let s = match std::str::from_utf8(bytes) {
-                    Ok(s) => s,
-                    Err(_) => {
-                        errors.push(FieldError::new(
-                            &join_path("", key),
-                            "type",
-                            "expected valid utf-8 string",
-                        ));
-                        continue;
-                    }
-                };
-                match prop.spec.decode_str(s, &join_path("", key), true) {
+                match prop.spec.decode_bytes(bytes, &join_path("", key)) {
                     Ok(val) => {
                         out.insert(key.clone(), val);
                     }
@@ -506,6 +592,29 @@ impl DecoderProgram {
         } else {
             Ok(Value::Object(out))
         }
+    }
+
+    /// Fast zero-copy decode directly from raw path bytes and (start, end) byte ranges.
+    pub fn decode_params_ranges(
+        &self,
+        path_bytes: &[u8],
+        param_names: &[&str],
+        ranges: &[(u32, u32)],
+    ) -> ValidationResult {
+        let params: Vec<(&str, &[u8])> = param_names
+            .iter()
+            .zip(ranges)
+            .filter_map(|(name, (start, end))| {
+                let s = *start as usize;
+                let e = *end as usize;
+                if s <= e && e <= path_bytes.len() {
+                    Some((*name, &path_bytes[s..e]))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.decode_params_bytes(&params)
     }
 
     /// Direct decode for query key-value pairs (last-value-wins for repeated keys).
@@ -572,6 +681,60 @@ impl DecoderProgram {
             Ok(Value::Object(out))
         }
     }
+
+    /// Direct decode for HTTP request headers (case-insensitive name lookup, unknown headers ignored).
+    pub fn decode_headers(&self, headers: &[(&str, &str)]) -> ValidationResult {
+        let mut errors: Vec<FieldError> = Vec::new();
+
+        // Build lowercase lookup table for headers
+        let mut lower_headers: BTreeMap<String, &str> = BTreeMap::new();
+        for (k, v) in headers {
+            lower_headers.insert(k.to_ascii_lowercase(), *v);
+        }
+
+        // 1. Missing required field checks
+        for req in &self.required {
+            let req_lower = req.to_ascii_lowercase();
+            if !lower_headers.contains_key(&req_lower) {
+                errors.push(FieldError::new(
+                    &join_path("", req),
+                    "required",
+                    "missing required field",
+                ));
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        // 2. Direct decode per declared property
+        let mut out = Map::new();
+        for (key, prop) in &self.properties {
+            let key_lower = key.to_ascii_lowercase();
+            if let Some(raw_val) = lower_headers.get(&key_lower) {
+                match prop.spec.decode_str(raw_val, &join_path("", key), true) {
+                    Ok(val) => {
+                        out.insert(key.clone(), val);
+                    }
+                    Err(mut e) => {
+                        errors.append(&mut e);
+                    }
+                }
+            } else if let FieldSpec::Optional {
+                default: Some(d), ..
+            } = &prop.spec
+            {
+                out.insert(key.clone(), d.clone());
+            }
+        }
+
+        if !errors.is_empty() {
+            Err(errors)
+        } else {
+            Ok(Value::Object(out))
+        }
+    }
 }
 
 /// A dense table of direct decoder programs keyed by SchemaId index.
@@ -615,10 +778,42 @@ impl DecoderTable {
         }
     }
 
+    /// Decode path parameter ranges directly from path bytes using the decoder program keyed by `schema_id`.
+    pub fn decode_params_ranges(
+        &self,
+        schema_id: u32,
+        path_bytes: &[u8],
+        param_names: &[&str],
+        ranges: &[(u32, u32)],
+    ) -> ValidationResult {
+        if let Some(decoder) = self.get(schema_id) {
+            decoder.decode_params_ranges(path_bytes, param_names, ranges)
+        } else {
+            Err(vec![FieldError::new(
+                "",
+                "invalid-schema",
+                format!("unknown schema id {schema_id}"),
+            )])
+        }
+    }
+
     /// Decode query parameters using the decoder program keyed by `schema_id`.
     pub fn decode_query(&self, schema_id: u32, query: &[(String, String)]) -> ValidationResult {
         if let Some(decoder) = self.get(schema_id) {
             decoder.decode_query_pairs(query)
+        } else {
+            Err(vec![FieldError::new(
+                "",
+                "invalid-schema",
+                format!("unknown schema id {schema_id}"),
+            )])
+        }
+    }
+
+    /// Decode HTTP headers using the decoder program keyed by `schema_id`.
+    pub fn decode_headers(&self, schema_id: u32, headers: &[(&str, &str)]) -> ValidationResult {
+        if let Some(decoder) = self.get(schema_id) {
+            decoder.decode_headers(headers)
         } else {
             Err(vec![FieldError::new(
                 "",
@@ -704,6 +899,24 @@ mod tests {
     }
 
     #[test]
+    fn decoder_program_decodes_ranges_directly() {
+        let ir = test_param_schema();
+        let prog = DecoderProgram::compile(&ir, Source::Path);
+        let path = b"/posts/99/rust-guide";
+        let names = vec!["id", "slug"];
+        let ranges = vec![(7u32, 9u32), (10u32, 20u32)];
+        let res = prog.decode_params_ranges(path, &names, &ranges).unwrap();
+        assert_eq!(
+            res,
+            json!({
+                "id": 99,
+                "slug": "rust-guide",
+                "tag": "default-tag",
+            })
+        );
+    }
+
+    #[test]
     fn decoder_program_rejects_invalid_param_fields() {
         let ir = test_param_schema();
         let prog = DecoderProgram::compile(&ir, Source::Path);
@@ -772,6 +985,61 @@ mod tests {
     }
 
     #[test]
+    fn decoder_program_decodes_headers_case_insensitively() {
+        let header_schema = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "x-api-key".to_string(),
+                    Box::new(SchemaIr::String {
+                        min_length: Some(4),
+                        max_length: None,
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "x-rate-limit".to_string(),
+                    Box::new(SchemaIr::Optional {
+                        inner: Box::new(SchemaIr::Integer {
+                            minimum: Some(0),
+                            maximum: None,
+                        }),
+                        default: Some(json!(100)),
+                    }),
+                ),
+            ]),
+            required: vec!["x-api-key".into()],
+        };
+
+        let prog = DecoderProgram::compile(&header_schema, Source::Query);
+
+        // Header names arrived with mixed casing
+        let headers = vec![
+            ("X-Api-Key", "secret-key-123"),
+            ("User-Agent", "Mozilla"), // unknown header ignored
+        ];
+        let res = prog.decode_headers(&headers).unwrap();
+        assert_eq!(
+            res,
+            json!({
+                "x-api-key": "secret-key-123",
+                "x-rate-limit": 100,
+            })
+        );
+
+        // Missing required header
+        let res_err = prog.decode_headers(&[("X-Other", "value")]);
+        assert_eq!(
+            res_err,
+            Err(vec![FieldError::new(
+                "x-api-key",
+                "required",
+                "missing required field"
+            )])
+        );
+    }
+
+    #[test]
     fn decoder_table_indexes_and_dispatches_by_schema_id() {
         let ir1 = test_param_schema();
         let ir2 = SchemaIr::Object {
@@ -799,5 +1067,114 @@ mod tests {
         // Schema 2: Out of bounds -> error
         let res2 = table.decode_params(2, &[]);
         assert!(res2.is_err());
+    }
+
+    #[test]
+    fn decoder_program_malformed_byte_ranges_rejects_cleanly() {
+        let ir = test_param_schema();
+        let prog = DecoderProgram::compile(&ir, Source::Path);
+
+        // Inverted ranges or out of bounds range returns missing required field error
+        let path = b"/posts/123/rust";
+        let names = vec!["id", "slug"];
+        let inverted_ranges = vec![(10u32, 5u32), (200u32, 300u32)];
+        let res = prog.decode_params_ranges(path, &names, &inverted_ranges);
+        assert!(res.is_err());
+
+        // Non-UTF8 byte slice returns type error
+        let bad_utf8: &[u8] = &[0xff, 0xfe, 0xfd];
+        let res_utf8 = prog.decode_params_bytes(&[("id", b"1"), ("slug", bad_utf8)]);
+        assert_eq!(
+            res_utf8,
+            Err(vec![FieldError::new(
+                "slug",
+                "type",
+                "expected valid utf-8 string"
+            )])
+        );
+    }
+
+    #[test]
+    fn decoder_program_query_arrays_comma_separated() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([
+                (
+                    "tags".to_string(),
+                    Box::new(SchemaIr::Array {
+                        items: Box::new(SchemaIr::String {
+                            min_length: Some(1),
+                            max_length: Some(10),
+                            pattern: None,
+                            format: None,
+                        }),
+                        min_items: Some(1),
+                        max_items: Some(5),
+                    }),
+                ),
+                (
+                    "ids".to_string(),
+                    Box::new(SchemaIr::Array {
+                        items: Box::new(SchemaIr::Integer {
+                            minimum: Some(0),
+                            maximum: Some(100),
+                        }),
+                        min_items: None,
+                        max_items: None,
+                    }),
+                ),
+            ]),
+            required: vec!["tags".into()],
+        };
+
+        let prog = DecoderProgram::compile(&ir, Source::Query);
+        let query = vec![
+            ("tags".to_string(), "rust,wasm,fast".to_string()),
+            ("ids".to_string(), "1,2,3,4".to_string()),
+        ];
+        let res = prog.decode_query_pairs(&query).unwrap();
+        assert_eq!(
+            res,
+            json!({
+                "tags": ["rust", "wasm", "fast"],
+                "ids": [1, 2, 3, 4],
+            })
+        );
+    }
+
+    #[test]
+    fn decoder_program_matches_reference_validator_on_mixed_corpus() {
+        let ir = test_param_schema();
+        let prog = DecoderProgram::compile(&ir, Source::Query);
+
+        let cases = vec![
+            vec![
+                ("id".to_string(), "5".to_string()),
+                ("slug".to_string(), "abc".to_string()),
+            ],
+            vec![
+                ("id".to_string(), "99".to_string()),
+                ("slug".to_string(), "valid-slug".to_string()),
+                ("tag".to_string(), "custom".to_string()),
+            ],
+            vec![
+                ("id".to_string(), "0".to_string()),
+                ("slug".to_string(), "abc".to_string()),
+            ], // invalid min
+            vec![("id".to_string(), "5".to_string())], // missing required slug
+            vec![
+                ("id".to_string(), "abc".to_string()),
+                ("slug".to_string(), "def".to_string()),
+            ], // invalid type
+        ];
+
+        for query in cases {
+            let res_prog = prog.decode_query_pairs(&query);
+            let res_ref = crate::validate_query(&ir, &query);
+            assert_eq!(res_prog.is_ok(), res_ref.is_ok(), "query: {query:?}");
+            if let (Err(e1), Err(e2)) = (&res_prog, &res_ref) {
+                assert_eq!(e1.len(), e2.len(), "error counts match");
+                assert_eq!(e1[0].code, e2[0].code, "error code match: {e1:?} vs {e2:?}");
+            }
+        }
     }
 }

@@ -4,7 +4,7 @@ parent_task: M25-003
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -122,3 +122,50 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-003-B)
+
+Status: **PASS**. Path parameters now decode directly from borrowed path
+bytes via `(start, end)` ranges (no intermediate String allocation for
+integer/number/boolean/UUID fields), and header values validate through the
+same direct decoder programs — no generic object trees anywhere on the
+non-body input path.
+
+### Changed files
+
+- `crates/q-schema-runtime/src/decoder.rs` — `FieldSpec::decode_bytes`
+  (borrowed-slice decoding: integer, number, boolean, and UUID validated
+  before any UTF-8 allocation), `DecoderProgram::decode_params_ranges`
+  (zero-copy path-byte range slicing), `DecoderProgram::decode_headers`
+  (case-insensitive header lookup, unknown headers ignored),
+  `DecoderTable::decode_params_ranges` / `decode_headers` dispatch.
+- `crates/q-runtime/src/serve.rs` — params pipeline switched from materialized
+  byte-slice vectors to `decode_params_ranges` over `path.as_bytes()`; new
+  header validation stage keyed by `headers_schema_id` producing 422
+  `validation.headers` problems; validated headers flow into `InvocationSpec`.
+- `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  — M25-003-B marked PASS.
+
+### Tests and evidence
+
+New tests in `crates/q-schema-runtime/src/decoder.rs`:
+- `decoder_program_decodes_ranges_directly` — zero-copy range decode
+- `decoder_program_decodes_headers_case_insensitively` — mixed-case headers,
+  unknown-header tolerance, missing-required rejection
+- `decoder_program_malformed_byte_ranges_rejects_cleanly` — inverted/out-of-
+  bounds ranges and non-UTF-8 bytes produce typed errors
+- `decoder_program_query_arrays_comma_separated` — comma-separated array query
+  decoding with item bounds
+- `decoder_program_matches_reference_validator_on_mixed_corpus` — differential
+  parity with `validate_query` across valid/invalid/malformed corpus
+
+Results: `cargo test -p q-schema-runtime` (37 unit + 3 fuzz pass),
+`cargo test -p velqu-runtime` (15 pass), `cargo test -p q-engine-quickjs`
+(1 + 96 pass), `cargo test -p q-http` (pass), `cargo test -p q-bridge` (pass),
+`bun test` (69 pass, 0 fail, 296 expects), `bun run typecheck` clean,
+`cargo fmt --check` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+clean, `scripts/validate-okf` (176 links, 0 errors). `./scripts/verify` passes
+all stages except the known isolated-worktree `qRuntimeRelease`/`proofPack`
+manifest hash mismatch (documented since PR #714; canonical manifest preserved).
+
+Commit: `e414562`.
