@@ -4,7 +4,7 @@ parent_task: M25-002
 milestone: M25
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,47 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record (M25-002-V)
+
+Status: **PASS**. All parent acceptance guardrails for M25-002 are proven
+against source and reproducible tests:
+
+### Acceptance Guardrail Mapping
+
+1. **Raw and generated results are committed**:
+   - `benchmarks/raw/codec/` (M25-002-A/B, 60,000 rows, 30 OK cells)
+   - `benchmarks/raw/codec-c/` (M25-002-C, 60,000 rows, 30 OK cells, CPU/alloc/bridge metrics)
+   - `crates/q-bench-support/src/bin/codec_bench/generated.rs` (generated decoder source)
+   - Test: `generated_source_is_current`, `corpus_is_supported_by_generated_decoder`,
+     `differential_decode_matches_generic_validator` (all pass)
+2. **No single strategy is forced globally**:
+   - `packages/compiler/src/strategy.ts` (`selectRouteStrategies`, `evaluateAppStrategies`)
+   - Evaluates input/response schemas per route; native vs JS strategy chosen per route/status
+   - Report: `docs/reports/m25-002-d-strategy-selection.md`
+   - Test: `strategy selection > explicit fallback nodes select js strategy` (passes)
+3. **Compiler decision rules are deterministic**:
+   - Pure, deterministic evaluation in `packages/compiler/src/strategy.ts`
+   - Test: `strategy decisions are deterministic across repeated builds` (passes)
+4. **Fallback cost is visible in inspect output**:
+   - `packages/cli/src/index.ts` (`velqu inspect fallbacks`)
+   - `packages/compiler/src/index.ts` (`build-report.json`, `build-report.md`)
+   - Test: `explicit fallback nodes select js strategy and record estimated overhead` (passes)
+
+### Verification Commands & Results
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-engine-quickjs` | 1 unit + 96 integration tests passed |
+| `cargo test -p q-schema-runtime` | 28 library + 2 fuzz tests passed |
+| `cargo test -p q-bridge` / `--features bench-instrumentation` | 11 passed (default) / 13 passed (feature) |
+| `cargo test -p q-bench-support` | 6 codec tests + 1 existing test passed |
+| `bun test` | 69 passed, 0 failed, 296 expect calls |
+| `bun run typecheck` | clean (`tsc -b tsconfig.json` exit 0) |
+| `cargo fmt --check` | clean |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `scripts/validate-okf` | 176 links, 0 errors |
+| `scripts/validate-benchmark-evidence.py` | codec-c checks clean |
+| `./scripts/verify` | all stages pass except known isolated-worktree hash mismatch |
+
+Commit: `e0d0b44`.
