@@ -3,9 +3,19 @@ import { dirname, join } from "node:path";
 import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
 import { bundleApp, buildPack, contractFor, contractDts, openapiFor, diffContracts } from "./emit";
+import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 
 export { CompileError } from "./extract";
 export { diffContracts, type DiffEntry } from "./emit";
+export {
+  evaluateAppStrategies,
+  selectRouteStrategies,
+  type StrategyName,
+  type FallbackReason,
+  type FallbackDescriptor,
+  type RouteStrategyDecision,
+  type AppStrategyReport,
+} from "./strategy";
 
 export interface BuildOptions {
   project: string;           // path to the app entry (app.ts) or its directory
@@ -113,6 +123,9 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     routes: contract.routes,
   };
 
+  // evaluate strategy selection from measured evidence
+  const { report: strategyReport } = evaluateAppStrategies(app.routes);
+
   // build report
   const buildReport = {
     formatVersion: 1,
@@ -121,14 +134,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     routes: routeManifest,
     schemas: schemaManifest,
     capabilities: capabilityManifest,
-    strategies: {
-      fallbacks: [] as string[],
-      notes: [
-        "validation: native (ADR-0015)",
-        "responses: native serialization (ADR-0015)",
-        "engine JS strategy available per-route; none used in this build",
-      ],
-    },
+    strategies: strategyReport,
     nativeStages: app.routes.filter((r) => r.liveness).map((r) => ({ route: r.id, stage: "native-liveness" })),
     integrity: (pack as { integrity: unknown }).integrity,
     versions: (pack as { engine: unknown; runtimeAbi: number }).engine,
@@ -182,6 +188,14 @@ function resolveEntry(project: string): string {
 
 function renderBuildReportMd(report: Record<string, unknown>, bytes: Record<string, number>): string {
   const routes = report.routes as Array<Record<string, unknown>>;
+  const strategies = (report.strategies ?? {}) as {
+    notes?: string[];
+    fallbacks?: Array<{ route: string; location: string; strategy: string; reason: string; estimatedOverheadUs: number; description: string }>;
+    decisions?: Array<{ route: string; validationStrategy: string; responseStrategy: string }>;
+  };
+  const decisionMap = new Map((strategies.decisions ?? []).map((d) => [d.route, d]));
+  const fallbacks = strategies.fallbacks ?? [];
+
   const lines = [
     `# Build report — ${report.appId}`,
     "",
@@ -191,17 +205,19 @@ function renderBuildReportMd(report: Record<string, unknown>, bytes: Record<stri
     "",
     "| Route | Method | Path | Stage | Policy | Caps | Validation | Response |",
     "|---|---|---|---|---|---|---|---|",
-    ...routes.map(
-      (r) =>
-        `| ${r.id} | ${r.method} | ${r.path} | ${r.nativeStage} | ${r.policy ?? "—"} | ${(r.capabilities as string[]).join(",") || "—"} | native | native |`,
-    ),
+    ...routes.map((r) => {
+      const d = decisionMap.get(r.id as string);
+      const val = d?.validationStrategy ?? "native";
+      const resp = d?.responseStrategy ?? "native";
+      return `| ${r.id} | ${r.method} | ${r.path} | ${r.nativeStage} | ${r.policy ?? "—"} | ${(r.capabilities as string[]).join(",") || "—"} | ${val} | ${resp} |`;
+    }),
     "",
     "## Strategies",
     "",
-    ...(report.strategies as { notes: string[] }).notes.map((n) => `- ${n}`),
-    (report.strategies as { fallbacks: string[] }).fallbacks.length === 0
+    ...(strategies.notes ?? []).map((n) => `- ${n}`),
+    fallbacks.length === 0
       ? "- JS fallbacks used: **none** (SCHEMA-005)"
-      : (report.strategies as { fallbacks: string[] }).fallbacks.map((f) => `- FALLBACK: ${f}`),
+      : fallbacks.map((f) => `- FALLBACK: ${f.route} [${f.location}]: strategy=${f.strategy} reason=${f.reason} (+${f.estimatedOverheadUs}µs) — ${f.description}`),
     "",
     "## Artifacts",
     "",

@@ -227,3 +227,83 @@ describe("canonicalization (M25-001-C: order-insensitive hashing)", () => {
     expect(a.integrity.bundleSha256).not.toBe(b.integrity.bundleSha256);
   });
 });
+
+describe("strategy selection (M25-002-D: evidence-driven codec selection)", () => {
+  test("standard representable routes select native validation and response strategies", async () => {
+    const out = `${TMP}/strat-std`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "examples/proof/src/app.ts", outDir: out });
+    const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
+    const report = JSON.parse(readFileSync(`${out}/build-report.json`, "utf8"));
+
+    expect(report.strategies.validation).toBe("native");
+    expect(report.strategies.responses).toBe("native");
+    expect(report.strategies.fallbacks).toEqual([]);
+    expect(report.strategies.decisions.length).toBe(pack.routes.length);
+    for (const d of report.strategies.decisions) {
+      expect(d.validationStrategy).toBe("native");
+      expect(d.responseStrategy).toBe("native");
+    }
+    for (const r of pack.routes) {
+      expect(r.validationStrategy).toBe("native");
+      expect(r.plan.responseStrategy).toBe("native");
+    }
+  });
+
+  test("explicit fallback nodes select js strategy and record estimated overhead", async () => {
+    const out = `${TMP}/strat-fallback`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/fallback-app.ts", outDir: out });
+    const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
+    const report = JSON.parse(readFileSync(`${out}/build-report.json`, "utf8"));
+
+    expect(report.strategies.validation).toBe("hybrid");
+    expect(report.strategies.responses).toBe("hybrid");
+    expect(report.strategies.fallbacks.length).toBe(3);
+
+    const bodyFb = report.strategies.fallbacks.find((f: { route: string }) => f.route === "fb.body");
+    expect(bodyFb).toBeDefined();
+    expect(bodyFb.location).toBe("body");
+    expect(bodyFb.reason).toBe("unsupported-transform");
+    expect(bodyFb.strategy).toBe("js");
+    expect(bodyFb.estimatedOverheadUs).toBeGreaterThan(0);
+
+    const respFb = report.strategies.fallbacks.find((f: { route: string }) => f.route === "fb.resp");
+    expect(respFb).toBeDefined();
+    expect(respFb.location).toBe("response.200");
+    expect(respFb.reason).toBe("measured");
+    expect(respFb.strategy).toBe("js");
+    expect(respFb.estimatedOverheadUs).toBeGreaterThan(0);
+
+    const queryFb = report.strategies.fallbacks.find((f: { route: string }) => f.route === "fb.query");
+    expect(queryFb).toBeDefined();
+    expect(queryFb.location).toBe("query");
+    expect(queryFb.reason).toBe("explicit");
+    expect(queryFb.strategy).toBe("js");
+    expect(queryFb.estimatedOverheadUs).toBeGreaterThan(0);
+
+    // Verify pack route plan flags match strategy selection
+    const fbBodyRoute = pack.routes.find((r: { id: string }) => r.id === "fb.body");
+    expect(fbBodyRoute.validationStrategy).toBe("js");
+
+    const fbRespRoute = pack.routes.find((r: { id: string }) => r.id === "fb.resp");
+    expect(fbRespRoute.plan.responseStrategy).toBe("js");
+
+    const stdRoute = pack.routes.find((r: { id: string }) => r.id === "std.get");
+    expect(stdRoute.validationStrategy).toBe("native");
+    expect(stdRoute.plan.responseStrategy).toBe("native");
+  });
+
+  test("strategy decisions are deterministic across repeated builds", async () => {
+    const out1 = `${TMP}/strat-det1`;
+    const out2 = `${TMP}/strat-det2`;
+    rmSync(out1, { recursive: true, force: true });
+    rmSync(out2, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/fallback-app.ts", outDir: out1 });
+    await build({ project: "conformance/compiler/fixtures/fallback-app.ts", outDir: out2 });
+
+    const rep1 = JSON.parse(readFileSync(`${out1}/build-report.json`, "utf8"));
+    const rep2 = JSON.parse(readFileSync(`${out2}/build-report.json`, "utf8"));
+    expect(rep1.strategies).toEqual(rep2.strategies);
+  });
+});
