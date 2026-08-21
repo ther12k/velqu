@@ -155,7 +155,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-003-A](../tasks/02_m25_schema_codecs/M25-003-A-generate-direct-decoder-programs-keyed-by-schemaid.md) | P0 | implement | PASS | M25-001-Z, M24-GATE | Generate direct decoder programs keyed by SchemaId |
 | [M25-003-B](../tasks/02_m25_schema_codecs/M25-003-B-validate-byte-ranges-and-header-query-values-without-generic-object-trees.md) | P0 | implement | PASS | M25-003-A | Validate byte ranges and header/query values without generic object trees |
 | [M25-003-C](../tasks/02_m25_schema_codecs/M25-003-C-return-typed-rfc-9457-problems.md) | P0 | implement | PASS | M25-003-B | Return typed RFC 9457 problems |
-| [M25-003-D](../tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md) | P0 | implement | TODO | M25-003-C | Preserve declared coercion semantics exactly |
+| [M25-003-D](../tasks/02_m25_schema_codecs/M25-003-D-preserve-declared-coercion-semantics-exactly.md) | P0 | implement | PASS | M25-003-C | Preserve declared coercion semantics exactly |
 | [M25-003-V](../tasks/02_m25_schema_codecs/M25-003-V-verify-generate-params-query-header-decoders.md) | P0 | verify | TODO | M25-003-A, M25-003-B, M25-003-C, M25-003-D | Verify Generate params/query/header decoders |
 | [M25-003-Z](../tasks/02_m25_schema_codecs/M25-003-Z-package-evidence-for-generate-params-query-header-decoders.md) | P0 | evidence | TODO | M25-003-V | Package evidence for Generate params/query/header decoders |
 | [M25-004-A](../tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md) | P0 | implement | TODO | M25-001-Z, M24-007-Z | Implement generated direct decode where supported |

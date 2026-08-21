@@ -1245,4 +1245,105 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn decoder_program_preserves_coercion_for_all_scalar_types() {
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([
+                ("b".to_string(), Box::new(SchemaIr::Boolean)),
+                (
+                    "i".to_string(),
+                    Box::new(SchemaIr::Integer {
+                        minimum: Some(-50),
+                        maximum: Some(50),
+                    }),
+                ),
+                (
+                    "n".to_string(),
+                    Box::new(SchemaIr::Number {
+                        minimum: Some(-10.0),
+                        maximum: Some(10.0),
+                    }),
+                ),
+                (
+                    "e".to_string(),
+                    Box::new(SchemaIr::Enum {
+                        values: vec![json!("on"), json!("off")],
+                    }),
+                ),
+                (
+                    "l".to_string(),
+                    Box::new(SchemaIr::Literal { value: json!(99) }),
+                ),
+                (
+                    "null_s".to_string(),
+                    Box::new(SchemaIr::Nullable {
+                        inner: Box::new(SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                    }),
+                ),
+            ]),
+            required: vec![
+                "b".into(),
+                "i".into(),
+                "n".into(),
+                "e".into(),
+                "l".into(),
+                "null_s".into(),
+            ],
+        };
+
+        let prog = DecoderProgram::compile(&ir, Source::Query);
+
+        // Valid coercion from string representations
+        let query_ok = vec![
+            ("b".to_string(), "true".to_string()),
+            ("i".to_string(), "-42".to_string()),
+            ("n".to_string(), "3.5".to_string()),
+            ("e".to_string(), "on".to_string()),
+            ("l".to_string(), "99".to_string()),
+            ("null_s".to_string(), "null".to_string()),
+        ];
+        let res = prog.decode_query_pairs(&query_ok).unwrap();
+        assert_eq!(
+            res,
+            json!({
+                "b": true,
+                "i": -42,
+                "n": 3.5,
+                "e": "on",
+                "l": 99,
+                "null_s": null,
+            })
+        );
+
+        // Type coercion failures
+        let query_bad_bool = vec![
+            ("b".to_string(), "maybe".to_string()),
+            ("i".to_string(), "1".to_string()),
+            ("n".to_string(), "1.0".to_string()),
+            ("e".to_string(), "on".to_string()),
+            ("l".to_string(), "99".to_string()),
+            ("null_s".to_string(), "null".to_string()),
+        ];
+        let err = prog.decode_query_pairs(&query_bad_bool).unwrap_err();
+        assert_eq!(err[0].path, "b");
+        assert_eq!(err[0].code, "type");
+
+        let query_bad_int = vec![
+            ("b".to_string(), "false".to_string()),
+            ("i".to_string(), "not-int".to_string()),
+            ("n".to_string(), "1.0".to_string()),
+            ("e".to_string(), "on".to_string()),
+            ("l".to_string(), "99".to_string()),
+            ("null_s".to_string(), "null".to_string()),
+        ];
+        let err = prog.decode_query_pairs(&query_bad_int).unwrap_err();
+        assert_eq!(err[0].path, "i");
+        assert_eq!(err[0].code, "type");
+    }
 }

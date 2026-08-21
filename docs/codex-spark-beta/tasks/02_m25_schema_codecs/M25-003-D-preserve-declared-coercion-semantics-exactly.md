@@ -4,7 +4,7 @@ parent_task: M25-003
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -122,3 +122,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-003-D)
+
+Status: **PASS**. Declared coercion semantics across all scalar types (integer,
+number, boolean, string, enum, literal), optional defaults, nullable nulls,
+and comma-separated arrays are preserved with exact parity between the
+direct decoder programs and the reference validator across `Source::Path` and
+`Source::Query`.
+
+### Changed files
+
+- `crates/q-schema-runtime/src/decoder.rs` — comprehensive scalar coercion tests
+  covering booleans, signed/unsigned integers, floating-point numbers, enums,
+  literals, nullables, optionals, and differential parity against `validate_query`.
+- `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  — M25-003-D marked PASS.
+
+### Tests and evidence
+
+- `cargo test -p q-schema-runtime` — 38 unit tests + 3 fuzz tests passed.
+- `cargo test -p velqu-runtime` — 15 integration tests passed.
+- `cargo test -p q-engine-quickjs` — 1 unit + 96 integration tests passed.
+- `cargo test -p q-http` — 4 tests passed.
+- `cargo test -p q-bridge` — 11 passed.
+- `bun test` — 69 passed, 0 failed, 296 expect calls.
+- `bun run typecheck` — clean.
+- `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+
+Commit: `2281342`.
