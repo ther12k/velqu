@@ -212,3 +212,77 @@ fn path_source_coerces_strings_but_body_does_not() {
     // body: "7" is a type error
     assert!(validate(&int_ir, &json!("7"), Source::Body).is_err());
 }
+
+#[test]
+fn direct_decoder_programs_never_panic_and_are_deterministic() {
+    use q_schema_runtime::DecoderProgram;
+    use std::collections::BTreeMap;
+
+    let test_ir = SchemaIr::Object {
+        properties: BTreeMap::from([
+            (
+                "id".to_string(),
+                Box::new(SchemaIr::Integer {
+                    minimum: Some(1),
+                    maximum: Some(500),
+                }),
+            ),
+            (
+                "name".to_string(),
+                Box::new(SchemaIr::String {
+                    min_length: Some(1),
+                    max_length: Some(20),
+                    pattern: None,
+                    format: None,
+                }),
+            ),
+            (
+                "active".to_string(),
+                Box::new(SchemaIr::Optional {
+                    inner: Box::new(SchemaIr::Boolean),
+                    default: Some(json!(true)),
+                }),
+            ),
+            (
+                "score".to_string(),
+                Box::new(SchemaIr::Optional {
+                    inner: Box::new(SchemaIr::Number {
+                        minimum: Some(0.0),
+                        maximum: Some(100.0),
+                    }),
+                    default: None,
+                }),
+            ),
+        ]),
+        required: vec!["id".into(), "name".into()],
+    };
+
+    let prog = DecoderProgram::compile(&test_ir, Source::Path);
+    let mut rng = Rng(0xbadc0ffeed000001);
+
+    for _ in 0..20_000 {
+        let id_val = format!("{}", (rng.next() % 1000) as i64 - 200);
+        let name_val = format!("usr_{}", rng.next() % 100);
+        let active_val = if rng.next().is_multiple_of(2) {
+            "true"
+        } else {
+            "invalid"
+        };
+        let score_val = format!("{:.2}", (rng.next() % 200) as f64 - 50.0);
+
+        let params: Vec<(&str, &[u8])> = vec![
+            ("id", id_val.as_bytes()),
+            ("name", name_val.as_bytes()),
+            ("active", active_val.as_bytes()),
+            ("score", score_val.as_bytes()),
+        ];
+
+        let r1 = prog.decode_params_bytes(&params);
+        let r2 = prog.decode_params_bytes(&params);
+        assert_eq!(
+            r1.is_ok(),
+            r2.is_ok(),
+            "direct decoder must be deterministic"
+        );
+    }
+}

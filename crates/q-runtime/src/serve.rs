@@ -12,7 +12,7 @@ use q_engine_quickjs::QuickJsEngine;
 use q_http::{collect_body_bounded, declared_header_value, materialize_headers, parse_query};
 use q_http::{HandlerResult, HttpError, NativeRequest, PlainResponse};
 use q_router::MatchResult;
-use q_schema_runtime::{validate_query, Source};
+use q_schema_runtime::Source;
 use serde_json::Value;
 
 use crate::problems;
@@ -105,6 +105,8 @@ pub struct ServeState {
     /// Dense schema vector indexed by SchemaId (from the pack's schema manifest);
     /// request admission validates through this vector — zero string lookups.
     pub schema_vector: Vec<q_schema_runtime::SchemaIr>,
+    /// Pre-compiled direct decoder programs keyed by SchemaId (M25-003-A).
+    pub decoder_table: q_schema_runtime::DecoderTable,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
     pub invocation_clock: AtomicU64,
@@ -335,14 +337,13 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // invalid value rejects with 422 before any parameter string is
             // allocated.
             if let Some(sid) = compiled.params_schema_id {
-                let ir = &state.schema_vector[sid.0 as usize];
                 let names = state.router.param_names(route_index);
                 let param_bytes: Vec<(&str, &[u8])> = names
                     .iter()
                     .zip(&param_ranges)
                     .map(|(n, (start, end))| (*n, &path.as_bytes()[*start as usize..*end as usize]))
                     .collect();
-                match q_schema_runtime::validate_params_bytes(ir, &param_bytes) {
+                match state.decoder_table.decode_params(sid.0, &param_bytes) {
                     Ok(v) => params_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(
@@ -382,8 +383,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
 
             let mut query_value: Option<Value> = None;
             if let Some(sid) = compiled.query_schema_id {
-                let ir = &state.schema_vector[sid.0 as usize];
-                match validate_query(ir, &query_pairs) {
+                match state.decoder_table.decode_query(sid.0, &query_pairs) {
                     Ok(v) => query_value = Some(v),
                     Err(errors) => {
                         let body = problems::body(

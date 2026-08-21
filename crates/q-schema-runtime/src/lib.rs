@@ -10,6 +10,9 @@
 /// Current normalized schema IR wire version.
 pub const SCHEMA_IR_VERSION: u32 = 2;
 
+mod decoder;
+pub use decoder::{DecoderProgram, DecoderTable, FieldSpec, PropertyDecoder};
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -273,7 +276,7 @@ pub struct FieldError {
 }
 
 impl FieldError {
-    fn new(path: &str, code: &str, message: impl Into<String>) -> Self {
+    pub fn new(path: &str, code: &str, message: impl Into<String>) -> Self {
         FieldError {
             path: path.into(),
             code: code.into(),
@@ -284,7 +287,7 @@ impl FieldError {
 
 pub type ValidationResult = Result<Value, Vec<FieldError>>;
 
-fn is_email(s: &str) -> bool {
+pub(crate) fn is_email(s: &str) -> bool {
     // pragmatic RFC-ish check sufficient for the proof fixture; documented limitation
     let mut parts = s.split('@');
     let local = parts.next().unwrap_or("");
@@ -298,7 +301,7 @@ fn is_email(s: &str) -> bool {
     !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
 }
 
-fn is_uuid(s: &str) -> bool {
+pub(crate) fn is_uuid(s: &str) -> bool {
     s.len() == 36
         && s.as_bytes().iter().enumerate().all(|(i, b)| {
             matches!(i, 8 | 13 | 18 | 23) && *b == b'-'
@@ -614,7 +617,7 @@ fn validate_node(
     }
 }
 
-fn join_path(base: &str, key: &str) -> String {
+pub(crate) fn join_path(base: &str, key: &str) -> String {
     if base.is_empty() {
         key.to_string()
     } else {
@@ -763,7 +766,7 @@ fn is_uuid_bytes(b: &[u8]) -> bool {
 /// Unsupported constructs fail closed (no match) rather than panicking on
 /// untrusted input. Compilation is lazy per unique pattern (bounded by build
 /// validation which only emits supported constructs).
-fn simple_pattern_match(pattern: &str, s: &str) -> bool {
+pub(crate) fn simple_pattern_match(pattern: &str, s: &str) -> bool {
     use std::cell::RefCell;
     thread_local! {
         static CACHE: RefCell<std::collections::HashMap<String, Option<regex::Regex>>> =
