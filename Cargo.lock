@@ -838,6 +838,7 @@ name = "q-bench-support"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "libc",
  "q-bridge",
  "q-engine",
  "q-engine-quickjs",

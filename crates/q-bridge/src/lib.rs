@@ -88,6 +88,11 @@ pub struct BridgeCounters {
     pub materialized_bytes: AtomicU64,
     pub expired_accesses: AtomicU64,
     pub live_slots: AtomicU64,
+    /// M25-002-C benchmark instrumentation only: cumulative nanoseconds spent
+    /// inside `access`/`cached_query`. Compiled exclusively under the
+    /// `bench-instrumentation` feature; production builds carry no timing.
+    #[cfg(feature = "bench-instrumentation")]
+    pub access_time_ns: AtomicU64,
 }
 
 impl BridgeCounters {
@@ -98,6 +103,8 @@ impl BridgeCounters {
             materialized_bytes: self.materialized_bytes.load(Ordering::Relaxed),
             expired_accesses: self.expired_accesses.load(Ordering::Relaxed),
             live_slots: self.live_slots.load(Ordering::Relaxed),
+            #[cfg(feature = "bench-instrumentation")]
+            access_time_ns: self.access_time_ns.load(Ordering::Relaxed),
         }
     }
 }
@@ -109,6 +116,8 @@ pub struct CountersSnapshot {
     pub materialized_bytes: u64,
     pub expired_accesses: u64,
     pub live_slots: u64,
+    #[cfg(feature = "bench-instrumentation")]
+    pub access_time_ns: u64,
 }
 
 /// A bounded slab owned by one worker. The RefCell is only an implementation
@@ -283,6 +292,24 @@ impl RequestStore {
         cost_bytes: u64,
         f: impl FnOnce(&RequestMeta) -> T,
     ) -> Result<T, BridgeError> {
+        #[cfg(feature = "bench-instrumentation")]
+        let timer = std::time::Instant::now();
+        let out = self.access_inner(handle, cost_fields, cost_bytes, f);
+        #[cfg(feature = "bench-instrumentation")]
+        self.counters.access_time_ns.fetch_add(
+            timer.elapsed().as_nanos().min(u64::MAX as u128) as u64,
+            Ordering::Relaxed,
+        );
+        out
+    }
+
+    fn access_inner<T>(
+        &self,
+        handle: RequestHandle,
+        cost_fields: u64,
+        cost_bytes: u64,
+        f: impl FnOnce(&RequestMeta) -> T,
+    ) -> Result<T, BridgeError> {
         self.counters.host_calls.fetch_add(1, Ordering::Relaxed);
         if handle.worker_id != self.worker_id {
             // M24-003-D: cross-worker handles get a dedicated deterministic
@@ -315,6 +342,22 @@ impl RequestStore {
     /// Return cached query JSON, computing it once while slot remains active.
     /// Cache is slot-local and cleared before generation reuse.
     pub fn cached_query(
+        &self,
+        handle: RequestHandle,
+        build: impl FnOnce(&RequestMeta) -> String,
+    ) -> Result<String, BridgeError> {
+        #[cfg(feature = "bench-instrumentation")]
+        let timer = std::time::Instant::now();
+        let out = self.cached_query_inner(handle, build);
+        #[cfg(feature = "bench-instrumentation")]
+        self.counters.access_time_ns.fetch_add(
+            timer.elapsed().as_nanos().min(u64::MAX as u128) as u64,
+            Ordering::Relaxed,
+        );
+        out
+    }
+
+    fn cached_query_inner(
         &self,
         handle: RequestHandle,
         build: impl FnOnce(&RequestMeta) -> String,
@@ -383,6 +426,40 @@ impl RequestStore {
 
     pub fn live_slots(&self) -> usize {
         self.counters.live_slots.load(Ordering::Relaxed) as usize
+    }
+}
+
+#[cfg(all(test, feature = "bench-instrumentation"))]
+mod bench_timing_tests {
+    use super::*;
+
+    #[test]
+    fn access_and_cached_query_accumulate_timing() {
+        let store = RequestStore::new();
+        let handle = store.insert(RequestMeta::default());
+        let before = store.snapshot().access_time_ns;
+        let _ = store.access(handle, 0, 0, |_| ());
+        let mid = store.snapshot().access_time_ns;
+        assert!(mid >= before, "access must not decrease timing");
+        let _ = store.cached_query(handle, |_| "a=1".to_string());
+        let after = store.snapshot().access_time_ns;
+        assert!(after >= mid, "cached_query must not decrease timing");
+    }
+
+    #[test]
+    fn denied_access_is_still_timed() {
+        let store = RequestStore::new();
+        let foreign = RequestStore::new();
+        let handle = foreign.insert(RequestMeta::default());
+        let before = store.snapshot().access_time_ns;
+        assert_eq!(
+            store.access(handle, 0, 0, |_| ()),
+            Err(BridgeError::ForeignWorker)
+        );
+        assert!(
+            store.snapshot().access_time_ns >= before,
+            "denials are timed too, so totals match host_calls"
+        );
     }
 }
 

@@ -79,6 +79,30 @@ __attribute__((destructor)) static void alloc_tracer_fini(void) {
     emit_profile();
 }
 
+/* M25-002-C: process-wide cumulative counter snapshot for the codec benchmark.
+ * ABI contract with crates/q-bench-support codec_bench: six packed uint64
+ * fields in this exact order. Resolve with dlsym(RTLD_DEFAULT, ...); absent
+ * symbol means the tracer is not preloaded and allocation evidence is
+ * unavailable (never zero-filled). */
+struct velqu_alloc_counters {
+    uint64_t malloc_calls;
+    uint64_t calloc_calls;
+    uint64_t realloc_calls;
+    uint64_t free_calls;
+    uint64_t allocated_bytes;
+    uint64_t reallocated_bytes;
+};
+
+void velqu_alloc_snapshot(struct velqu_alloc_counters *out) {
+    if (out == NULL) return;
+    __atomic_store_n(&out->malloc_calls, __atomic_load_n(&malloc_calls, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+    __atomic_store_n(&out->calloc_calls, __atomic_load_n(&calloc_calls, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+    __atomic_store_n(&out->realloc_calls, __atomic_load_n(&realloc_calls, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+    __atomic_store_n(&out->free_calls, __atomic_load_n(&free_calls, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+    __atomic_store_n(&out->allocated_bytes, __atomic_load_n(&allocated_bytes, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+    __atomic_store_n(&out->reallocated_bytes, __atomic_load_n(&reallocated_bytes, __ATOMIC_RELAXED), __ATOMIC_RELAXED);
+}
+
 void *malloc(size_t size) {
     void *ptr = __libc_malloc(size);
     if (!shutting_down) {

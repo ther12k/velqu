@@ -16,6 +16,9 @@ path = "src/bin/metrics_overhead.rs"
 name = "q-codec-bench"
 path = "src/bin/codec_bench/main.rs"
 
+[features]
+bench-instrumentation = ["q-engine-quickjs/bench-instrumentation"]
+
 [dependencies]
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
@@ -26,3 +29,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }
 sha2 = { workspace = true }
+libc = "0.2"

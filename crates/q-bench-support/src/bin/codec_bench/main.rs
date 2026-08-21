@@ -1,6 +1,6 @@
-//! M25-002-A/B codec strategy benchmark: compares three JSON input→handler→
+//! M25-002-A/B/C codec strategy benchmark: compares three JSON input→handler→
 //! output strategies across the frozen payload matrix inside a controlled host
-//! process (no network).
+//! process (no network), with per-sample CPU, allocation, and bridge evidence.
 //!
 //! Candidates (input direction):
 //!   quickjs-json     — bounded bytes enter the engine; the handler parses via
@@ -23,8 +23,12 @@
 //!     fully validate inputs; that asymmetry IS the strategy question.
 //!   - generated-schema shares generic-rust's serde_json parse and JS
 //!     boundary, so the measured delta isolates validation/projection only.
-//!   - No CPU/allocation capture here (M25-002-C); no strategy is selected
-//!     here (M25-002-D).
+//!   - M25-002-C instrumentation: CPU is getrusage(RUSAGE_SELF) deltas (the
+//!     host denies perf counters; no hardware-counter claim is made);
+//!     allocation is LD_PRELOAD allocator-event/requested-byte deltas (not
+//!     live heap); bridge time is q-bridge `bench-instrumentation` timing of
+//!     RequestStore access only, so engine_us remains the full bridge/JS
+//!     round trip. No strategy is selected here (M25-002-D).
 //!
 //! Outputs under --out-dir: codec.jsonl (one row per timed sample),
 //! codec-summary.json, and evidence.json (sha256 of the binary, the generated
@@ -57,8 +61,84 @@ __velquRegister("codec.pass_body", pass_body);
 
 const WARMUP: usize = 200;
 const GENERATED_MODULE_PATH: &str = "crates/q-bench-support/src/bin/codec_bench/generated.rs";
-const COMMAND: &str = "./target/release/q-codec-bench --out-dir benchmarks/raw/codec --iters 2000";
-const PACKET: &str = "M25-002-B";
+const COMMAND: &str = "LD_PRELOAD=target/alloc-tracer.so VELQU_ALLOC_PROFILE=benchmarks/raw/codec-c/codec.alloc.json /usr/bin/time -v -o benchmarks/raw/codec-c/codec.process.time.txt target/m25-002-c-bench/release/q-codec-bench --out-dir benchmarks/raw/codec-c --iters 2000";
+const PACKET: &str = "M25-002-C";
+
+/// M25-002-C allocator-event snapshot ABI (scripts/alloc-tracer.c).
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct AllocCounters {
+    malloc_calls: u64,
+    calloc_calls: u64,
+    realloc_calls: u64,
+    free_calls: u64,
+    allocated_bytes: u64,
+    reallocated_bytes: u64,
+}
+
+impl AllocCounters {
+    fn delta(from: AllocCounters, to: AllocCounters) -> AllocCounters {
+        AllocCounters {
+            malloc_calls: to.malloc_calls.saturating_sub(from.malloc_calls),
+            calloc_calls: to.calloc_calls.saturating_sub(from.calloc_calls),
+            realloc_calls: to.realloc_calls.saturating_sub(from.realloc_calls),
+            free_calls: to.free_calls.saturating_sub(from.free_calls),
+            allocated_bytes: to.allocated_bytes.saturating_sub(from.allocated_bytes),
+            reallocated_bytes: to.reallocated_bytes.saturating_sub(from.reallocated_bytes),
+        }
+    }
+    fn call_count(&self) -> u64 {
+        self.malloc_calls + self.calloc_calls + self.realloc_calls + self.free_calls
+    }
+}
+
+/// Resolve the tracer's snapshot symbol from the preloaded global scope.
+/// None means the tracer is absent: allocation evidence is then recorded as
+/// unavailable, never silently zero.
+fn alloc_snapshot_fn() -> Option<unsafe extern "C" fn(*mut AllocCounters)> {
+    unsafe {
+        let sym = libc::dlsym(libc::RTLD_DEFAULT, c"velqu_alloc_snapshot".as_ptr());
+        if sym.is_null() {
+            None
+        } else {
+            Some(std::mem::transmute::<
+                *mut core::ffi::c_void,
+                unsafe extern "C" fn(*mut AllocCounters),
+            >(sym))
+        }
+    }
+}
+
+/// getrusage(RUSAGE_SELF) CPU time in microseconds: (user, system).
+fn cpu_time_us() -> (u64, u64) {
+    unsafe {
+        let mut ru: libc::rusage = std::mem::zeroed();
+        libc::getrusage(libc::RUSAGE_SELF, &mut ru);
+        let user = (ru.ru_utime.tv_sec as u64) * 1_000_000 + ru.ru_utime.tv_usec as u64;
+        let sys = (ru.ru_stime.tv_sec as u64) * 1_000_000 + ru.ru_stime.tv_usec as u64;
+        (user, sys)
+    }
+}
+
+/// One fully instrumented strategy execution. Stage boundaries:
+///   codec_us  — host-side parse + validate/project (0 for quickjs-json,
+///               whose parse happens inside the engine)
+///   engine_us — engine.invoke through outcome receipt (worker queue, JS
+///               execution, conversion, and native bridge round trip)
+///   total_us  — the whole sample, including instrumentation reads
+struct Sample {
+    total_us: f64,
+    codec_us: f64,
+    engine_us: f64,
+    cpu_user_us: u64,
+    cpu_system_us: u64,
+    bridge_access_ns: u64,
+    bridge_host_calls: u64,
+    bridge_materialized_fields: u64,
+    bridge_materialized_bytes: u64,
+    alloc: Option<AllocCounters>,
+    outcome: Option<Outcome>,
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum Cand {
@@ -97,6 +177,20 @@ fn sha256_hex(data: &[u8]) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
+/// mean/p50/p95/p99 over one metric's per-sample values (sorted in place;
+/// same nearest-rank percentile rule the B report used).
+fn metric_stats(values: &mut [f64]) -> Value {
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let p = |q: f64| values[((q * (values.len() - 1) as f64).round()) as usize];
+    json!({
+        "n": values.len(),
+        "mean": values.iter().sum::<f64>() / values.len() as f64,
+        "p50": p(0.50),
+        "p95": p(0.95),
+        "p99": p(0.99),
+    })
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if let Some(pos) = args.iter().position(|a| a == "--emit-generated") {
@@ -121,7 +215,7 @@ fn main() {
     let _ = std::fs::create_dir_all(&out_dir);
 
     let run_id = format!(
-        "m25-002-b-{}",
+        "m25-002-c-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -156,6 +250,12 @@ fn main() {
         .expect("bundle loads");
 
     let corpus = schemas::corpus();
+    let alloc_fn = alloc_snapshot_fn();
+    let allocator_status = if alloc_fn.is_some() {
+        "captured"
+    } else {
+        "unavailable (run under LD_PRELOAD=target/alloc-tracer.so)"
+    };
     let mut raw_file = std::fs::File::create(format!("{out_dir}/codec.jsonl")).expect("raw out");
     let mut summary_cases: Vec<Value> = Vec::new();
 
@@ -179,15 +279,16 @@ fn main() {
             let id_base = (schema_idx * 100 + cand_idx) as u64 * 1_000_000;
             let expected = expected_output(schema, *cand, &body_bytes);
             // correctness pass (untimed rows are never recorded)
-            let (_, outcome) = invoke(
+            let probe = invoke(
                 rt.handle(),
                 &mut engine,
                 schema,
                 *cand,
                 &body_bytes,
                 id_base,
+                alloc_fn,
             );
-            if !outcome_ok(&outcome, &expected) {
+            if !outcome_ok(&probe.outcome, &expected) {
                 summary_cases.push(json!({
                     "case": schema.name,
                     "candidate": cand.name(),
@@ -204,25 +305,33 @@ fn main() {
                     *cand,
                     &body_bytes,
                     id_base + 1 + w as u64,
+                    alloc_fn,
                 );
             }
-            let mut durations: Vec<f64> = Vec::with_capacity(iters);
+            let mut total_us: Vec<f64> = Vec::with_capacity(iters);
+            let mut codec_us: Vec<f64> = Vec::with_capacity(iters);
+            let mut engine_us: Vec<f64> = Vec::with_capacity(iters);
+            let mut cpu_us: Vec<f64> = Vec::with_capacity(iters);
+            let mut bridge_us: Vec<f64> = Vec::with_capacity(iters);
+            let mut alloc_bytes: Vec<f64> = Vec::with_capacity(iters);
+            let mut alloc_calls: Vec<f64> = Vec::with_capacity(iters);
             let mut correct = 0usize;
             let mut last_out_bytes = 0u64;
             for i in 0..iters {
-                let (us, outcome) = invoke(
+                let s = invoke(
                     rt.handle(),
                     &mut engine,
                     schema,
                     *cand,
                     &body_bytes,
                     id_base + 100_000 + i as u64,
+                    alloc_fn,
                 );
-                let ok = outcome_ok(&outcome, &expected);
+                let ok = outcome_ok(&s.outcome, &expected);
                 if ok {
                     correct += 1;
                 }
-                let out_bytes = outcome_out_bytes(&outcome);
+                let out_bytes = outcome_out_bytes(&s.outcome);
                 last_out_bytes = out_bytes;
                 let _ = writeln!(
                     raw_file,
@@ -232,35 +341,60 @@ fn main() {
                         "case": schema.name,
                         "candidate": cand.name(),
                         "i": i,
-                        "us": us,
                         "ok": ok,
                         "inBytes": in_bytes,
                         "outBytes": out_bytes,
+                        "us": s.total_us,
+                        "totalUs": s.total_us,
+                        "codecUs": s.codec_us,
+                        "engineUs": s.engine_us,
+                        "cpuUserUs": s.cpu_user_us,
+                        "cpuSystemUs": s.cpu_system_us,
+                        "cpuUs": s.cpu_user_us + s.cpu_system_us,
+                        "bridgeAccessUs": s.bridge_access_ns as f64 / 1000.0,
+                        "bridgeHostCalls": s.bridge_host_calls,
+                        "bridgeMaterializedFields": s.bridge_materialized_fields,
+                        "bridgeMaterializedBytes": s.bridge_materialized_bytes,
+                        "allocMallocCalls": s.alloc.map(|a| a.malloc_calls),
+                        "allocCallocCalls": s.alloc.map(|a| a.calloc_calls),
+                        "allocReallocCalls": s.alloc.map(|a| a.realloc_calls),
+                        "allocFreeCalls": s.alloc.map(|a| a.free_calls),
+                        "allocAllocatedBytes": s.alloc.map(|a| a.allocated_bytes),
+                        "allocReallocatedBytes": s.alloc.map(|a| a.reallocated_bytes),
                     })
                 );
-                durations.push(us);
+                total_us.push(s.total_us);
+                codec_us.push(s.codec_us);
+                engine_us.push(s.engine_us);
+                cpu_us.push((s.cpu_user_us + s.cpu_system_us) as f64);
+                bridge_us.push(s.bridge_access_ns as f64 / 1000.0);
+                alloc_bytes.push(s.alloc.map(|a| a.allocated_bytes).unwrap_or(0) as f64);
+                alloc_calls.push(s.alloc.map(|a| a.call_count()).unwrap_or(0) as f64);
             }
-            durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let p = |q: f64| durations[((q * (durations.len() - 1) as f64).round()) as usize];
             let all_ok = correct == iters && last_out_bytes > 0;
             summary_cases.push(json!({
                 "case": schema.name,
                 "candidate": cand.name(),
                 "status": if all_ok { "OK" } else { "INVALID" },
-                "samples": durations.len(),
+                "samples": total_us.len(),
                 "correct": correct,
-                "mean_us": durations.iter().sum::<f64>() / durations.len() as f64,
-                "p50_us": p(0.50),
-                "p95_us": p(0.95),
-                "p99_us": p(0.99),
                 "inBytes": in_bytes,
                 "outBytes": last_out_bytes,
+                "metrics": {
+                    "totalUs": metric_stats(&mut total_us),
+                    "codecUs": metric_stats(&mut codec_us),
+                    "engineUs": metric_stats(&mut engine_us),
+                    "cpuUs": metric_stats(&mut cpu_us),
+                    "bridgeAccessUs": metric_stats(&mut bridge_us),
+                    "allocAllocatedBytes": metric_stats(&mut alloc_bytes),
+                    "allocCalls": metric_stats(&mut alloc_calls),
+                },
             }));
         }
     }
 
     let summary = json!({
-        "format": "velqu-codec-bench-v1",
+        "format": "velqu-codec-bench-v2",
         "runId": run_id,
         "engine": "quickjs-ng/0.15.1",
         "iters": iters,
@@ -268,12 +402,18 @@ fn main() {
         "packet": PACKET,
         "corpusCases": corpus.iter().map(|s| s.name).collect::<Vec<_>>(),
         "generatedModule": GENERATED_MODULE_PATH,
+        "instrumentation": {
+            "cpu": "getrusage(RUSAGE_SELF) deltas per sample; perf_event_paranoid=4 denies hardware counters on this host",
+            "bridgeTiming": if cfg!(feature = "bench-instrumentation") { "enabled (q-bridge access timing compiled in)" } else { "absent (bench-instrumentation feature off; bridgeAccessUs rows are 0)" },
+            "allocator": allocator_status,
+            "allocatorMetric": "allocator events and requested bytes, not live heap",
+        },
         "prototype": "generated-schema is a fused decode/validate projection over the serde_json parse; the direct byte scanner/decoder is M25-003/M25-004 work and is NOT measured here",
         "fairness": [
             "quickjs-json performs no schema validation; host candidates fully validate inputs (that asymmetry is the strategy question)",
             "generated-schema shares generic-rust's serde_json parse and QuickJS boundary; the delta isolates validation/projection only",
             "response pairing mirrors current production defaults (engine stringify for quickjs-json, native traversal for host candidates)",
-            "no CPU/allocation capture in this packet (M25-002-C); no strategy selection (M25-002-D)",
+            "cpuUs includes all threads (QuickJS worker + tokio) via RUSAGE_SELF; no strategy selection (M25-002-D)",
         ],
         "cases": summary_cases,
     });
@@ -283,23 +423,39 @@ fn main() {
     )
     .expect("summary out");
 
-    let exe_hash = std::fs::read("/proc/self/exe")
+    let exe_path =
+        std::env::current_exe().unwrap_or_else(|_| "target/release/q-codec-bench".into());
+    let exe_hash = std::fs::read(&exe_path)
         .map(|b| sha256_hex(&b))
         .unwrap_or_default();
     let module_hash = sha256_hex(include_str!("generated.rs").as_bytes());
     let raw_hash = sha256_hex(&std::fs::read(format!("{out_dir}/codec.jsonl")).expect("raw read"));
     let sum_hash =
         sha256_hex(&std::fs::read(format!("{out_dir}/codec-summary.json")).expect("summary read"));
+    let mut evidence_files = vec![
+        json!({ "path": "benchmarks/raw/codec-c/codec.jsonl", "sha256": raw_hash }),
+        json!({ "path": "benchmarks/raw/codec-c/codec-summary.json", "sha256": sum_hash }),
+    ];
+    // Final process-wide allocator profile (written by the tracer at exit, so
+    // it cannot be hashed here); record its path relative to the repo when
+    // possible so committed evidence carries no absolute worktree prefix.
+    if let Ok(profile) = std::env::var("VELQU_ALLOC_PROFILE") {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        let path = std::path::Path::new(&profile)
+            .strip_prefix(&cwd)
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or(profile);
+        evidence_files.push(json!({ "path": path, "sha256": "written-at-tracer-exit" }));
+    }
     let evidence = json!({
-        "format": "velqu-codec-evidence-v1",
+        "format": "velqu-codec-evidence-v2",
         "runId": run_id,
         "command": COMMAND,
+        "exePath": exe_path,
         "binary": { "path": "target/release/q-codec-bench", "sha256": exe_hash },
         "generatedModule": { "path": GENERATED_MODULE_PATH, "sha256": module_hash },
-        "files": [
-            { "path": "benchmarks/raw/codec/codec.jsonl", "sha256": raw_hash },
-            { "path": "benchmarks/raw/codec/codec-summary.json", "sha256": sum_hash },
-        ],
+        "allocatorStatus": allocator_status,
+        "files": evidence_files,
     });
     std::fs::write(format!("{out_dir}/evidence.json"), format!("{evidence}\n"))
         .expect("evidence out");
@@ -308,9 +464,6 @@ fn main() {
     engine.shutdown();
 }
 
-/// One timed strategy execution. The timed region covers the host-side parse
-/// and validation/projection for the host candidates (plus the invoke→outcome
-/// round trip); for quickjs-json the parse happens inside the engine.
 #[allow(clippy::too_many_arguments)]
 fn invoke(
     rt_handle: &tokio::runtime::Handle,
@@ -319,8 +472,21 @@ fn invoke(
     cand: Cand,
     body_bytes: &bytes::Bytes,
     id: u64,
-) -> (f64, Option<Outcome>) {
+    alloc_fn: Option<unsafe extern "C" fn(*mut AllocCounters)>,
+) -> Sample {
+    let take_alloc = move || {
+        alloc_fn.map(|f| {
+            let mut c = AllocCounters::default();
+            unsafe { f(&mut c) };
+            c
+        })
+    };
     let t0 = Instant::now();
+    let (cpu0_user, cpu0_sys) = cpu_time_us();
+    let alloc0 = take_alloc();
+    let bridge0 = engine.bridge_snapshot();
+
+    let t_codec = Instant::now();
     let mut validated: Option<Value> = None;
     match cand {
         Cand::QuickJsJson => {}
@@ -338,6 +504,8 @@ fn invoke(
             validated = Some(v);
         }
     }
+    let codec_us = t_codec.elapsed().as_secs_f64() * 1e6;
+
     let spec = InvocationSpec {
         id,
         request_id: format!("codec-bench-{id}"),
@@ -367,14 +535,40 @@ fn invoke(
         response_strategy: cand.strategy(),
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
+    let t_engine = Instant::now();
     let (tx, rx) = tokio::sync::oneshot::channel();
     engine.invoke(spec, tx);
     let outcome = rt_handle
         .block_on(async { tokio::time::timeout(std::time::Duration::from_millis(1500), rx).await })
         .ok()
         .and_then(|r| r.ok());
-    let d = t0.elapsed().as_secs_f64() * 1e6;
-    (d, outcome)
+    let engine_us = t_engine.elapsed().as_secs_f64() * 1e6;
+
+    let bridge1 = engine.bridge_snapshot();
+    let alloc1 = take_alloc();
+    let (cpu1_user, cpu1_sys) = cpu_time_us();
+    Sample {
+        total_us: t0.elapsed().as_secs_f64() * 1e6,
+        codec_us,
+        engine_us,
+        cpu_user_us: cpu1_user.saturating_sub(cpu0_user),
+        cpu_system_us: cpu1_sys.saturating_sub(cpu0_sys),
+        #[cfg(feature = "bench-instrumentation")]
+        bridge_access_ns: bridge1
+            .access_time_ns
+            .saturating_sub(bridge0.access_time_ns),
+        #[cfg(not(feature = "bench-instrumentation"))]
+        bridge_access_ns: 0,
+        bridge_host_calls: bridge1.host_calls.saturating_sub(bridge0.host_calls),
+        bridge_materialized_fields: bridge1
+            .materialized_fields
+            .saturating_sub(bridge0.materialized_fields),
+        bridge_materialized_bytes: bridge1
+            .materialized_bytes
+            .saturating_sub(bridge0.materialized_bytes),
+        alloc: alloc0.zip(alloc1).map(|(a, b)| AllocCounters::delta(a, b)),
+        outcome,
+    }
 }
 
 fn expected_output(schema: &schemas::BenchSchema, cand: Cand, body_bytes: &bytes::Bytes) -> Value {

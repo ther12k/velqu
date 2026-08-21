@@ -4,7 +4,7 @@ parent_task: M25-002
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-002-C)
+
+Status: **PASS**. Per-sample CPU (getrusage), allocation-event/requested-byte
+deltas (LD_PRELOAD tracer snapshots), native bridge access timing
+(feature-gated), stage splits (codec/engine/total), and metric-specific
+p50/p95/p99 tails were added to the frozen ten-case benchmark. No production
+codec, strategy, or fallback behavior changed; default workspace builds carry
+no instrumentation code.
+
+### Changed files
+
+- `crates/q-bridge/Cargo.toml`, `crates/q-bridge/src/lib.rs` —
+  `bench-instrumentation` feature: `access_time_ns` counter + snapshot field,
+  `access`/`cached_query` wrappers timed around the unchanged inner logic,
+  two feature-gated timing tests (default build unchanged: 11 tests).
+- `crates/q-engine-quickjs/Cargo.toml` — feature propagation.
+- `crates/q-bench-support/Cargo.toml` — feature propagation + `libc`.
+- `crates/q-bench-support/src/bin/codec_bench/main.rs` — `Sample` capture
+  (total/codec/engine wall, CPU user/system, bridge counters and access time,
+  allocator deltas via `dlsym`), v2 raw rows (24 fields, zero null allocator
+  values), per-metric summary stats, M25-002-C run id/metadata, current-exe
+  evidence, process-profile reference.
+- `scripts/alloc-tracer.c` — exported `velqu_alloc_snapshot` ABI (six packed
+  u64s) alongside the unchanged exit profile.
+- `scripts/validate-benchmark-evidence.py` — strict codec-c validation:
+  2,000 rows per cell, all rows correct and fully populated, summary metric
+  completeness, evidence hashes, tracer exit profile, process time capture.
+- `benchmarks/raw/codec-c/{codec.jsonl,codec-summary.json,evidence.json,
+  codec.alloc.json,codec.process.time.txt}` — run `m25-002-c-1787293512`,
+  60,000 rows, 30/30 cells OK.
+- `docs/reports/m25-002-c-cpu-allocation-bridge-tails.md` — full metric
+  tables, instrumentation semantics/limits, process totals, observations,
+  artifact hashes.
+- `docs/codex-spark-beta/STATUS.md`,
+  `docs/codex-spark-beta/indexes/TASK_INDEX.md` — M25-002-C PASS.
+
+### Tests and evidence
+
+- `cargo test -p q-bridge` — 11 passed (default, no timing code).
+- `cargo test -p q-bridge --features bench-instrumentation` — 13 passed
+  (adds `access_and_cached_query_accumulate_timing`,
+  `denied_access_is_still_timed`).
+- `cargo test -p q-bench-support` — 6 codec + 1 existing test passed.
+- Canonical instrumented run — 30 cells × 2,000 samples, all correct,
+  allocator captured, bridge timing enabled; validated by
+  `scripts/validate-benchmark-evidence.py` (codec-c checks clean).
+- Remaining targeted commands (`q-engine-quickjs`, `q-http`, `q-bridge`,
+  `q-schema-runtime`, `velqu-runtime`, `bun test`, `typecheck`) run at commit
+  time; results in the PR body.
+
+M25-002-B evidence under `benchmarks/raw/codec/` and its report are
+deliberately untouched; the canonical root `benchmarks/manifest.json` was not
+regenerated.
+
+Commit: `dd8c041`.
