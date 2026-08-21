@@ -4,7 +4,7 @@ parent_task: M25-003
 milestone: M25
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -129,3 +129,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M25-003-V merged in PR #730 at commit
+  `f0f70ef3b57db3c9bcb53b54041f8c0ba7685708`; issue #136 is closed. The evidence
+  package is based on clean parent HEAD `821de3e` before this commit.
+- Parent acceptance matrix: `M25-003-V` maps all four guardrails to source and
+  named tests:
+  1. Exact declared envelopes: `crates/q-schema-runtime/src/decoder.rs`
+     (`FieldErrorCode`, `FieldError::typed`), `crates/q-runtime/src/problems.rs`
+     (`problems::body("validation", ...)`), `crates/q-runtime/src/serve.rs`.
+  2. No duplicate parse pass: `DecoderProgram::decode_params_ranges`,
+     `DecoderProgram::decode_headers`, `DecoderProgram::decode_query_pairs`.
+  3. Treaty and OpenAPI types agree: Schema IR v2 builders in `@velqu/schema`,
+     `packages/compiler/src/emit.ts`, `packages/treaty/`.
+  4. Decoder programs bounded and fuzzable: `fuzz_validator.rs` (20,000 fuzz runs),
+     `decoder.rs` unit tests.
+- Source-backed implementation records:
+  - `M25-003-A` (PR #726, #132 closed): direct decoder programs (`DecoderProgram`,
+    `DecoderTable`) keyed by SchemaId in `q-schema-runtime` and `q-runtime`.
+  - `M25-003-B` (PR #727, #133 closed): byte-range slicing without String allocations,
+    case-insensitive header decoding.
+  - `M25-003-C` (PR #728, #134 closed): typed RFC 9457 problem codes (`FieldErrorCode`).
+  - `M25-003-D` (PR #729, #135 closed): scalar, array, nullable, optional coercion
+    preservation and differential checks.
+- Exact verification: `cargo test -p q-schema-runtime` (38 unit + 3 fuzz pass);
+  `cargo test -p velqu-runtime` (15 pass); `cargo test -p q-engine-quickjs`
+  (1 + 96 pass); `cargo test -p q-http` (4 pass); `cargo test -p q-bridge` (11 pass);
+  `bun test` (69 passed, 0 failed, 296 expect calls); `bun run typecheck` clean;
+  `cargo fmt --check` clean; `cargo clippy --workspace --all-targets -- -D warnings`
+  clean; `scripts/validate-okf` (176 links, 0 errors).
+- Full `./scripts/verify` completed all Rust, typecheck, proof-build, and TypeScript
+  stages. Its final benchmark check reports only the known isolated-worktree hash
+  mismatches for `qRuntimeRelease` and `proofPack` against `benchmarks/manifest.json`.
+  The canonical root manifest and historical raw benchmarks were preserved.
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M25-003 PASS; the
+  beta checklist and task index mark this Z packet PASS. The generated Spark
+  queues now expose M25-004-A (#138) as the next dependency-ready packet.
+- Remaining scope: `M25-GATE` remains TODO and future M25 packets (M25-004+)
+  remain TODO until implemented and evidenced.
+
+Commit: `7bba2af`.
