@@ -4,7 +4,7 @@ parent_task: M25-001
 milestone: M25
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -115,3 +115,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M25-001-V merged in PR #718 at commit
+  `8efb6e27a45f171c20c956b299b7ebe8e7233bf1`; issue #124 is closed. The
+  evidence package is based on clean parent HEAD `e7df2dd` before this commit.
+- Parent acceptance matrix: `M25-001-V` maps all four guardrails to source and
+  named tests: equivalent runtime/public projections, deterministic canonical
+  form, explicit unsupported/fallback behavior, and nested semantic diff.
+- Source-backed implementation records: M25-001-A, B, C, and D are PASS and
+  identify the Rust runtime, TypeScript schema contract, compiler extraction and
+  emission, q-pack version/manifest checks, golden corpus, canonical corpus,
+  compatibility matrix, ADR-0022, ADR-0023, and
+  `docs/specs/unsupported-transformations.md`.
+- Golden and compatibility evidence: `conformance/schema/golden/`,
+  `conformance/schema/golden/canonical/`, and
+  `conformance/schema/golden/COMPATIBILITY.md`.
+- Exact verification: `cargo test -p q-engine-quickjs` (1 unit + 96
+  integration passed); `cargo test -p q-schema-runtime` (28 library + 2 fuzz
+  passed); `bun test` (66 passed, 0 failed, 233 expect calls); `bun run
+  typecheck` clean; `cargo fmt --check` clean; `cargo clippy --workspace
+  --all-targets -- -D warnings` clean; `scripts/validate-okf` (176 links, 0
+  errors).
+- Full `./scripts/verify` completed all Rust, typecheck, proof-build, and
+  TypeScript stages. Its final benchmark-evidence check reported only the
+  known isolated-worktree `qRuntimeRelease` and `proofPack` hash mismatches
+  against `benchmarks/manifest.json`; the manifest was not changed, raw
+  benchmark evidence was not rewritten, and no performance claim is made.
+- Index and checksum boundary: root `REVIEW_INDEX.json` and
+  `EVIDENCE_INDEX.json` remain M24 release-bound templates with
+  `BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD`; `scripts/release-packet` owns their
+  clean-HEAD binding. No release index or benchmark manifest was modified in
+  this packet.
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M25-001 PASS; the
+  beta checklist and task index mark this Z packet PASS. The generated Spark
+  queues now expose M25-002-A (#126) as the next dependency-ready packet.
+- Remaining scope: `M25-GATE` remains TODO and no later M25 packet is claimed
+  complete.
+- Working tree was clean before this evidence-only change.
