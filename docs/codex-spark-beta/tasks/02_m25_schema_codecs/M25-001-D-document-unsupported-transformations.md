@@ -4,7 +4,7 @@ parent_task: M25-001
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-001-D)
+
+Status: **PASS**. Unsupported transformations documented normatively in
+`docs/specs/unsupported-transformations.md`: transformation classes (codec-
+deferred vs never-representable), per-layer failure identities (builder throw,
+source-located CompileError, PackError::Rejected, typed field problems
+`unsupported`/`fallback`/`invalid-schema`), the closed fallback reason
+registry with ownership, the forward codec mapping onto M25-002..M25-007,
+and the handler/transform-name relationship.
+
+### Changed files
+
+- `docs/specs/unsupported-transformations.md` — new normative spec.
+- `docs/specs/pack-format-v1.md` — stale example `schemaIrVersion: 1` → 2
+  (left behind by M25-001-A).
+- `packages/compiler/src/extract.ts` — fallback/unsupported-builder hints now
+  reference the spec path.
+- `conformance/schema/schema.conformance.test.ts` — documentation-drift sync
+  tests (3): the spec must contain the closed reason registry rows, the
+  runtime failure codes, and the pack-format example must carry schema IR v2.
+- `conformance/schema/golden/COMPATIBILITY.md` — matrix row now points at the
+  spec.
+
+### Evidence
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-engine-quickjs` | 1 + 96 passed |
+| `cargo test -p q-schema-runtime` | 28 lib + 2 fuzz passed |
+| `bun test` (full) | 66 passed |
+| `bun run typecheck` | clean |
+| `cargo fmt --check` / `clippy -D warnings` | clean |
+| `./scripts/validate-okf` | 0 errors |
+
+Test names: "spec exists and documents the closed fallback reason registry",
+"spec documents the runtime failure codes the validator emits",
+"pack format spec example carries schema IR v2" (documentation-drift guards).
+
+### Notes
+
+- Documentation packet: no runtime behavior changed beyond diagnostic hint
+  strings; the sync tests keep code and spec honest against each other.

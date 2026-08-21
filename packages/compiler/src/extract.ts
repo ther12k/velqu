@@ -294,7 +294,7 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
         throw new CompileError(
           `s.fallback reason '${reason}' is not in the closed vocabulary`,
           nodeLoc(args[0], file),
-          "reasons: unsupported-transform | unrepresentable | measured | explicit",
+          "reasons: unsupported-transform | unrepresentable | measured | explicit (docs/specs/unsupported-transformations.md)",
         );
       }
       // field order matches the Rust SchemaIr declaration so canonical hashes agree
@@ -304,7 +304,7 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
       throw new CompileError(
         `unsupported schema builder '${callee}'`,
         nodeLoc(node, file),
-        "Schema IR v2 subset only (docs/specs/pack-format-v1.md)",
+        "Schema IR v2 subset only — unsupported classes and their failure modes: docs/specs/unsupported-transformations.md",
       );
   }
 }
