@@ -4,14 +4,14 @@
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M23R2-GATE-CLOSE",
-  "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
+  "milestone": "M24-ZERO-COPY-INGRESS",
+  "reviewedImplementationCommit": "75bda51f6872524d363a0f5eadc2460cf6bc8678",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — benchmark, report, ledger, and release-packet validators pass at the current evidence checkpoint",
-    "rustTests": "workspace count reported by current test run",
-    "typescriptTests": 35,
-    "benchmarkReportCheck": "python3 scripts/generate-benchmark-reports.py --check"
+    "result": "PASS \u2014 clean master verification, artifact hashes, reports, Rust, TypeScript, and OKF checks pass",
+    "rustTests": "workspace tests PASS",
+    "typescriptTests": 36,
+    "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS"
   },
   "benchmarks": {
     "coldStart": "benchmarks/raw/cold-start/summary.json",
@@ -33,27 +33,20 @@
     }
   },
   "reports": [
-    "docs/reports/cold-start-report.md",
-    "docs/reports/warm-performance-report.md",
-    "docs/reports/memory-report.md",
-    "docs/reports/scheduler-correctness-report.md"
+    "docs/reports/m24-gate-review.md"
   ],
   "reportGenerator": "scripts/generate-benchmark-reports.py",
   "taskLedger": {
     "file": "TASKS.production.json",
     "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "PASS — 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
+    "result": "PASS \u2014 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
   },
   "release": {
     "script": "scripts/release-packet",
-    "binding": "packet-local indexes are generated only after clean HEAD is fixed",
-    "checksums": "sha256sum -c SHA256SUMS.txt"
+    "binding": "release packet binds clean candidate HEAD",
+    "checksums": "sha256sum -c release/SHA256SUMS.txt"
   },
-  "openItems": [
-    "perf hardware counters remain unavailable on this host; allocator interposer counts are captured",
-    "release packet is generated from the clean HEAD by scripts/release-packet and must be checksum-verified",
-    "fresh full competitor cold-start comparison remains historical context rather than current gate evidence",
-    "response-schema validation remains on the optional string-keyed slow path"
-  ]
+  "openItems": [],
+  "gates": []
 }

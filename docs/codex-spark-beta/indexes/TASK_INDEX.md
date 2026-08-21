@@ -78,8 +78,8 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M24-001-B](../tasks/01_m24_zero_copy_ingress/M24-001-B-specify-body-ownership-queue-admission-disconnect-cancellation-and-request-slot.md) | P0 | implement | PASS | M24-001-A | Specify body ownership, queue admission, disconnect cancellation, and request-slot lifecycle |
 | [M24-001-C](../tasks/01_m24_zero_copy_ingress/M24-001-C-define-no-copy-and-bounded-copy-boundaries.md) | P0 | implement | PASS | M24-001-B | Define no-copy and bounded-copy boundaries |
 | [M24-001-D](../tasks/01_m24_zero_copy_ingress/M24-001-D-define-overload-responses-and-metrics.md) | P0 | implement | PASS | M24-001-C | Define overload responses and metrics |
-| [M24-001-V](../tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md) | P0 | verify | TODO | M24-001-A, M24-001-B, M24-001-C, M24-001-D | Verify Freeze ingress ownership and backpressure design |
-| [M24-001-Z](../tasks/01_m24_zero_copy_ingress/M24-001-Z-package-evidence-for-freeze-ingress-ownership-and-backpressure-design.md) | P0 | evidence | TODO | M24-001-V | Package evidence for Freeze ingress ownership and backpressure design |
+| [M24-001-V](../tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md) | P0 | verify | PASS | M24-001-A, M24-001-B, M24-001-C, M24-001-D | Verify Freeze ingress ownership and backpressure design |
+| [M24-001-Z](../tasks/01_m24_zero_copy_ingress/M24-001-Z-package-evidence-for-freeze-ingress-ownership-and-backpressure-design.md) | P0 | evidence | PASS | M24-001-V | Package evidence for Freeze ingress ownership and backpressure design |
 | [M24-002-A](../tasks/01_m24_zero_copy_ingress/M24-002-A-keep-method-uri-headermap-and-body-stream-in-native-forms.md) | P0 | implement | PASS | M24-001-Z | Keep Method, Uri, HeaderMap, and body stream in native forms |
 | [M24-002-B](../tasks/01_m24_zero_copy_ingress/M24-002-B-match-routeid-using-method-path-before-creating-request-metadata.md) | P0 | implement | PASS | M24-002-A | Match RouteId using method/path before creating request metadata |
 | [M24-002-C](../tasks/01_m24_zero_copy_ingress/M24-002-C-read-fieldneeds-from-routeplan.md) | P0 | implement | PASS | M24-002-B | Read FieldNeeds from RoutePlan |
@@ -128,13 +128,13 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M24-009-D](../tasks/01_m24_zero_copy_ingress/M24-009-D-measure-instrumentation-overhead.md) | P1 | implement | PASS | M24-009-C | Measure instrumentation overhead |
 | [M24-009-V](../tasks/01_m24_zero_copy_ingress/M24-009-V-verify-add-ingress-and-bridge-observability.md) | P1 | verify | PASS | M24-009-A, M24-009-B, M24-009-C, M24-009-D | Verify Add ingress and bridge observability |
 | [M24-009-Z](../tasks/01_m24_zero_copy_ingress/M24-009-Z-package-evidence-for-add-ingress-and-bridge-observability.md) | P1 | evidence | PASS | M24-009-V | Package evidence for Add ingress and bridge observability |
-| [M24-010-A](../tasks/01_m24_zero_copy_ingress/M24-010-A-fuzz-paths-queries-headers-cookies-bodies-handles-and-cancellation-orderings.md) | P0 | implement | TODO | M24-004-Z, M24-005-Z, M24-006-Z, M24-007-Z, M24-008-Z | Fuzz paths, queries, headers, cookies, bodies, handles, and cancellation orderings |
-| [M24-010-B](../tasks/01_m24_zero_copy_ingress/M24-010-B-differentially-compare-legacy-reference-decoding-where-applicable.md) | P0 | implement | TODO | M24-010-A | Differentially compare legacy/reference decoding where applicable |
-| [M24-010-C](../tasks/01_m24_zero_copy_ingress/M24-010-C-run-property-tests-for-slot-lifecycle.md) | P0 | implement | TODO | M24-010-B | Run property tests for slot lifecycle |
-| [M24-010-D](../tasks/01_m24_zero_copy_ingress/M24-010-D-capture-and-minimize-failures.md) | P0 | implement | TODO | M24-010-C | Capture and minimize failures |
-| [M24-010-V](../tasks/01_m24_zero_copy_ingress/M24-010-V-verify-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | verify | TODO | M24-010-A, M24-010-B, M24-010-C, M24-010-D | Verify Complete ingress bridge fuzzing and conformance |
-| [M24-010-Z](../tasks/01_m24_zero_copy_ingress/M24-010-Z-package-evidence-for-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | evidence | TODO | M24-010-V | Package evidence for Complete ingress bridge fuzzing and conformance |
-| [M24-GATE](../gates/M24-GATE.md) | P0 | gate | TODO | M24-001-Z, M24-002-Z, M24-003-Z, M24-004-Z, M24-005-Z, M24-006-Z, M24-007-Z, M24-008-Z, M24-009-Z, M24-010-Z | M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge exit gate |
+| [M24-010-A](../tasks/01_m24_zero_copy_ingress/M24-010-A-fuzz-paths-queries-headers-cookies-bodies-handles-and-cancellation-orderings.md) | P0 | implement | PASS | M24-004-Z, M24-005-Z, M24-006-Z, M24-007-Z, M24-008-Z | Fuzz paths, queries, headers, cookies, bodies, handles, and cancellation orderings |
+| [M24-010-B](../tasks/01_m24_zero_copy_ingress/M24-010-B-differentially-compare-legacy-reference-decoding-where-applicable.md) | P0 | implement | PASS | M24-010-A | Differentially compare legacy/reference decoding where applicable |
+| [M24-010-C](../tasks/01_m24_zero_copy_ingress/M24-010-C-run-property-tests-for-slot-lifecycle.md) | P0 | implement | PASS | M24-010-B | Run property tests for slot lifecycle |
+| [M24-010-D](../tasks/01_m24_zero_copy_ingress/M24-010-D-capture-and-minimize-failures.md) | P0 | implement | PASS | M24-010-C | Capture and minimize failures |
+| [M24-010-V](../tasks/01_m24_zero_copy_ingress/M24-010-V-verify-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | verify | PASS | M24-010-A, M24-010-B, M24-010-C, M24-010-D | Verify Complete ingress bridge fuzzing and conformance |
+| [M24-010-Z](../tasks/01_m24_zero_copy_ingress/M24-010-Z-package-evidence-for-complete-ingress-bridge-fuzzing-and-conformance.md) | P0 | evidence | PASS | M24-010-V | Package evidence for Complete ingress bridge fuzzing and conformance |
+| [M24-GATE](../gates/M24-GATE.md) | P0 | gate | PASS | M24-001-Z, M24-002-Z, M24-003-Z, M24-004-Z, M24-005-Z, M24-006-Z, M24-007-Z, M24-008-Z, M24-009-Z, M24-010-Z | M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge exit gate |
 
 ## M25 — Schema-Specialized Validation and JSON Codecs
 

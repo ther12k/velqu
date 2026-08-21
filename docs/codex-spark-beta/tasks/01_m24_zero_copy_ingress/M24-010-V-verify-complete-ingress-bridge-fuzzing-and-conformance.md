@@ -4,7 +4,7 @@ parent_task: M24-010
 milestone: M24
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -122,6 +122,21 @@ cargo clippy --workspace --all-targets -- -D warnings
 - No multi-worker dispatch.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+Acceptance matrix:
+
+- Routing precedes materialization: runtime `routing_precedes_body_materialization` and native route tests PASS.
+- Unread fields stay cold: engine `lazy_ctx_touches_nothing` PASS.
+- Worker-local generation-safe slab: q-bridge forged triples, stale corpus, and 4,096-round lifecycle property PASS.
+- Bounded bodies/queues/disconnects: runtime body limit, queue saturation, client abort, timeout, quarantine, and shutdown tests PASS.
+- Differential decoding: q-http reference corpus PASS.
+- Minimized regression corpus: `crates/q-http/tests/regression_corpus.rs` PASS.
+- Bun conformance: 36 pass, 0 fail; `bun run typecheck` PASS.
+- Rust package suites, format, clippy, and `./scripts/verify`: PASS.
+- Sanitizer-compatible output not claimed; no sanitizer toolchain run in environment.
+- No QPack format, multi-worker dispatch, schema codec, or benchmark manifest changes.
 
 ## Out of scope
 

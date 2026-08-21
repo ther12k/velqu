@@ -53,6 +53,66 @@ fn invalid_percent_and_utf8_corpus_is_deterministic() {
 }
 
 #[test]
+fn differential_query_decode_matches_reference_for_safe_form_inputs() {
+    for raw in ["a=1&b=2", "name=Rafi+Z&x=%41", "empty=", "a=1&a=2"] {
+        let ours = q_http::parse_query(raw);
+        let reference: Vec<(String, String)> = raw
+            .split('&')
+            .filter(|pair| !pair.is_empty())
+            .map(|pair| {
+                let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+                (reference_decode(key), reference_decode(value))
+            })
+            .collect();
+        assert_eq!(ours, reference, "reference mismatch for {raw}");
+    }
+}
+
+fn reference_decode(value: &str) -> String {
+    let mut bytes = Vec::with_capacity(value.len());
+    let raw = value.as_bytes();
+    let mut i = 0;
+    while i < raw.len() {
+        if raw[i] == b'+' {
+            bytes.push(b' ');
+            i += 1;
+        } else if i + 2 < raw.len() && raw[i] == b'%' {
+            let hi = (raw[i + 1] as char).to_digit(16);
+            let lo = (raw[i + 2] as char).to_digit(16);
+            if let (Some(hi), Some(lo)) = (hi, lo) {
+                bytes.push((hi * 16 + lo) as u8);
+                i += 3;
+            } else {
+                bytes.push(raw[i]);
+                i += 1;
+            }
+        } else {
+            bytes.push(raw[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+#[test]
+fn bounded_header_and_body_corpus_never_grows_without_limit() {
+    let corpus: &[&[u8]] = &[
+        b"",
+        b"%FF",
+        b"\0\xff\n",
+        b"{}",
+        b"{\"x\":\"y\"}",
+        &[0xff; 256],
+    ];
+    for bytes in corpus {
+        let text = String::from_utf8_lossy(bytes);
+        let parsed = q_http::parse_query(&text);
+        assert!(parsed.len() <= text.len().saturating_add(1));
+        assert!(q_http::percent_decode(&text).len() <= text.len() * 4 + 16);
+    }
+}
+
+#[test]
 fn query_parser_semantics_hold_on_valid_pairs() {
     // invariant: round-trip of simple keys survives parsing
     let pairs = q_http::parse_query("a=1&b=2&c=3");

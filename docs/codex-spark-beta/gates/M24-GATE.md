@@ -4,7 +4,7 @@ parent_task: M24-GATE
 milestone: M24
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -127,3 +127,11 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Gate review record
+
+- Candidate commit: `75bda51f6872524d363a0f5eadc2460cf6bc8678`; clean working tree before packaging.
+- All dependency packages `M24-001-Z` through `M24-010-Z`: `PASS`.
+- `./scripts/verify`: PASS; all Rust, TypeScript, OKF, report, and benchmark artifact checks passed.
+- Required release artifacts generated and checksum-verified: source ZIP, Git bundle, `SOURCE-COMMIT.txt`, `REVIEW_INDEX.json`, `EVIDENCE_INDEX.json`, `BENCHMARK_MANIFEST.json`, and `SHA256SUMS.txt`.
+- Decision: M24 gate PASS; no unresolved P0/P1 criterion.

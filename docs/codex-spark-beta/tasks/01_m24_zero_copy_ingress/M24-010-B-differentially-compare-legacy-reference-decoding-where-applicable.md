@@ -4,7 +4,7 @@ parent_task: M24-010
 milestone: M24
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -114,6 +114,19 @@ bun run typecheck
 - No multi-worker dispatch.
 
 At minimum, the handoff must identify the exact changed files, test names, command results, and commit hash.
+
+## Evidence
+
+- Added `differential_query_decode_matches_reference_for_safe_form_inputs` with independent form-decoding reference implementation.
+- Corpus covers simple pairs, plus-to-space, percent escapes, empty values, and repeated keys; malformed/invalid UTF-8 semantics remain covered by existing explicit corpus.
+- `cargo test -p q-http --test fuzz_parsers`: PASS.
+- `cargo test -p q-pack`: PASS.
+- `cargo test -p q-engine-quickjs`: PASS.
+- `cargo test -p q-bridge`: PASS.
+- `cargo test -p q-schema-runtime`: PASS.
+- `cargo test -p velqu-runtime`: PASS.
+- `cargo clippy --workspace --all-targets -- -D warnings`: PASS.
+- No decoder or QPack format change; no unsupported benchmark claim added.
 
 ## Out of scope
 

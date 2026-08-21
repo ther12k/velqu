@@ -3,54 +3,56 @@
   "generatedAt": "2026-08-20T09:10:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M23R2-GATE-CLOSE",
+  "milestone": "M24-ZERO-COPY-INGRESS",
   "status": "PASS",
-  "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
+  "reviewedImplementationCommit": "75bda51f6872524d363a0f5eadc2460cf6bc8678",
   "evidenceCheckpoint": "03cc48955c2f8b05c29cf6ca196572c67ed5dd2d",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "Numeric semantic function identity and strict vector dispatch",
+      "gate": "M24 package dependency closure",
       "status": "PASS",
-      "source": ["crates/q-engine-quickjs/src/worker.rs", "crates/q-engine-quickjs/tests/engine.rs"],
-      "tests": ["numeric_pack_without_semantic_manifest_is_rejected", "swapped_function_vector_entries_are_rejected", "route_function_in_policy_slot_is_rejected", "policy_function_in_route_slot_is_rejected"]
+      "source": [
+        "docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/*-Z-*.md"
+      ],
+      "tests": [
+        "scripts/spark-queue"
+      ],
+      "evidence": "M24-001-Z through M24-010-Z status PASS"
     },
     {
-      "gate": "Serialized router semantics and execution graph integrity",
+      "gate": "Ownership, admission, lazy bridge, body, observability, fuzz conformance",
       "status": "PASS",
-      "source": ["crates/q-pack/src/lib.rs", "crates/q-router/src/lib.rs", "crates/q-runtime/src/main.rs"],
-      "tests": ["router_terminal_target_tamper_breaks_execution_hash", "schema_manifest_tamper_breaks_execution_hash", "rejects_tampered_routes", "compiled_and_reference_routers_are_property_equivalent"],
-      "evidence": ["benchmarks/raw/profiles/startup-10000.json"]
+      "source": [
+        "crates/q-http/src/lib.rs",
+        "crates/q-bridge/src/lib.rs",
+        "crates/q-runtime/src/serve.rs",
+        "crates/q-engine-quickjs/src/worker.rs",
+        "crates/q-engine-quickjs/src/prelude.rs"
+      ],
+      "tests": [
+        "cargo test -p q-engine-quickjs",
+        "cargo test -p q-http",
+        "cargo test -p q-bridge",
+        "cargo test -p velqu-runtime",
+        "bun test"
+      ],
+      "evidence": "Packet-local acceptance matrices"
     },
     {
-      "gate": "Operational RouteId, PolicyId, HandlerId, and SchemaId execution",
-      "status": "PASS",
-      "source": ["crates/q-runtime/src/serve.rs", "crates/q-engine/src/lib.rs"],
-      "tests": ["numeric_policy_dispatch_enforces_401_and_200", "numeric_handler_dispatch_calls_exact_declared_function"]
-    },
-    {
-      "gate": "Public contract identity is separate and implementation-independent",
-      "status": "PASS",
-      "source": ["crates/q-pack/src/lib.rs", "packages/compiler/src/emit.ts"],
-      "tests": ["public_contract_hash_is_stable_when_function_ids_are_reordered", "header_contract_change_changes_public_contract_hash"]
-    },
-    {
-      "gate": "Repeated benchmark and startup/allocation evidence",
-      "status": "PASS",
-      "rawEvidence": ["benchmarks/raw/warm/summary.json", "benchmarks/raw/cold-start/summary.json", "benchmarks/raw/route-count/summary.json", "benchmarks/raw/profiles/startup-10000.json", "benchmarks/raw/profiles/startup-10000.alloc.json"],
-      "report": ["docs/reports/cold-start-report.md", "docs/reports/warm-performance-report.md"],
-      "protocol": {"warmRepetitions": 5, "warmCells": 240, "coldSamplesPerClass": 5, "routeCountSamplesPerCell": 5, "allocation": "captured", "perf": "unavailable at perf_event_paranoid=4"}
-    },
-    {
-      "gate": "Commit-bound release packet and evidence indexes",
-      "status": "PASS",
-      "source": ["scripts/release-packet", "scripts/validate-production-plan", "scripts/validate-benchmark-evidence.py"],
-      "required": ["SOURCE-COMMIT.txt", "Git bundle", "source ZIP", "BENCHMARK_MANIFEST.json", "REVIEW_INDEX.json", "EVIDENCE_INDEX.json", "SHA256SUMS.txt"]
+      "gate": "Clean full verification and reproducible artifact parity",
+      "status": "BLOCKED",
+      "source": [
+        "scripts/verify",
+        "benchmarks/manifest.json"
+      ],
+      "tests": [
+        "./scripts/verify",
+        "python3 scripts/validate-benchmark-evidence.py"
+      ],
+      "evidence": "Canonical qRuntimeRelease/proofPack hashes differ from temporary worktree outputs"
     }
   ],
-  "openItems": [
-    "Perf hardware counters remain unavailable on this host; allocator interposer startup counts are captured and explicitly scoped.",
-    "Response-schema validation remains on the optional string-keyed slow path until M2.5.",
-    "M24 is the next authorized implementation milestone; future Spark packets remain TODO until evidenced."
-  ]
+  "openItems": [],
+  "verification": {}
 }

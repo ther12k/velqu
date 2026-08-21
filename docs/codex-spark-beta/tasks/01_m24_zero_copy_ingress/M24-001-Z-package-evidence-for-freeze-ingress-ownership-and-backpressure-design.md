@@ -4,7 +4,7 @@ parent_task: M24-001
 milestone: M24
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M24.md
 commit_required: true
 ---
@@ -128,3 +128,11 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Parent verification merged in PR #703, merge commit `14cd45904608be88f742ec72b3fdfa5c91cf3346`; issue #64 closed.
+- ADR-0021 INV-1..INV-4 and T1..T12 matrix recorded in M24-001-V.
+- Targeted Rust suites, Bun conformance (36/36), typecheck, fmt, Clippy, and OKF validation passed.
+- `./scripts/verify` completed all functional stages; benchmark validator reports temporary-worktree `qRuntimeRelease`/proof-pack hash mismatch against canonical manifest. Manifest unchanged and no performance claim made.
+- M24-GATE remains TODO.
