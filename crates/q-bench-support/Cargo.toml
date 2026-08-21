@@ -12,6 +12,10 @@ path = "src/bin/bridge_bench.rs"
 name = "metrics-overhead"
 path = "src/bin/metrics_overhead.rs"
 
+[[bin]]
+name = "q-codec-bench"
+path = "src/bin/codec_bench/main.rs"
+
 [dependencies]
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
@@ -21,3 +25,4 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }
+sha2 = { workspace = true }

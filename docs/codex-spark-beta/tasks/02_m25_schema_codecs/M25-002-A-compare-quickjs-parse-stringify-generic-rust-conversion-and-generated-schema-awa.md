@@ -4,7 +4,7 @@ parent_task: M25-002
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,66 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-002-A)
+
+Status: **PASS**. Three-way codec strategy comparison implemented as a new
+reproducible benchmark (`q-codec-bench`) with committed raw evidence, a
+generated schema-aware projection prototype, and differential correctness
+proofs. No production strategy, `ResponseStrategy`, RoutePlan metadata, or
+compiler selection changed.
+
+### Changed files
+
+- `crates/q-bench-support/src/bin/codec_bench/main.rs` — benchmark binary:
+  three candidates (`quickjs-json`, `generic-rust`, `generated-schema`),
+  correctness-asserted timed cells, JSONL/summary/evidence output with
+  sha256 hashes, `--emit-generated` regeneration mode.
+- `crates/q-bench-support/src/bin/codec_bench/schemas.rs` — frozen Schema IR
+  v2 corpus (small_user, nested_order, records100) + invalid-mutation
+  fixtures (test-only).
+- `crates/q-bench-support/src/bin/codec_bench/generator.rs` — Rust source
+  generator emitting fused decode/validate projections from the corpus;
+  `schema_supported` fail-closed guard (subset: plain strings, integer,
+  number, boolean, array, object, optional/default, nullable,
+  fallback-with-inner).
+- `crates/q-bench-support/src/bin/codec_bench/generated.rs` — frozen generator
+  output (locked by test).
+- `crates/q-bench-support/Cargo.toml` — `q-codec-bench` bin + `sha2`.
+- `benchmarks/raw/codec/{codec.jsonl,codec-summary.json,evidence.json}` —
+  18,000 raw rows, 9 OK cells (2000/2000 correct each), artifact hashes.
+- `docs/reports/m25-002-a-strategy-comparison.md` — strategy report with
+  fairness limits and artifact hashes.
+- `benchmarks/harness/run-all.ts` — codec benchmark joined the canonical
+  `benchmark:all` suite; manifest gains `codecSummary`/`codecEvidence`
+  references (canonical `benchmarks/manifest.json` itself NOT regenerated in
+  this packet — refresh happens with B/C/D evidence per ADR-0012 discipline).
+
+### Tests (exact names)
+
+`generated_source_is_current`, `corpus_is_supported_by_generated_decoder`,
+`generated_supports_matches_generator_guard`,
+`unsupported_schemas_fail_closed_in_supports`,
+`differential_decode_matches_generic_validator` (valid fixtures + 12 invalid
+mutations, error-for-error parity with `q_schema_runtime::validate`),
+`fallback_without_inner_stays_unavailable`.
+
+### Evidence
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p q-bench-support` | 6 codec tests + 1 existing test passed |
+| `./target/release/q-codec-bench --out-dir benchmarks/raw/codec --iters 2000` | 9/9 cells OK, 18,000 samples, run `m25-002-a-1787288528` |
+| `cargo fmt --check` / `cargo clippy -p q-bench-support --all-targets -- -D warnings` | clean |
+
+Headline (p50 μs, i5-13420H): generated projection beats generic validation
+−28% (small_user), −8% (nested_order), −2% (records100); quickjs-json fastest
+on records100 (+5% for generated) while doing no validation. No single
+strategy wins across shapes — measured evidence only, selection is M25-002-D.
+
+### Scope boundaries honored
+
+- Direct byte scanner/decoder (no serde tree) is M25-003/M25-004 — not built.
+- CPU/allocation capture is M25-002-C; strategy selection M25-002-D.
+- Benchmark manifest, raw samples of existing suites, and release indexes
+  untouched; no performance claim beyond the scope limits in the report.

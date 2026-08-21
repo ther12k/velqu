@@ -54,6 +54,10 @@ async function main() {
   // 2. Bridge benchmark
   await run("Bridge Microbenchmark", ["./target/release/q-bridge-bench", "--out-dir", "benchmarks/raw/bridge", "--iters", "2000"]);
 
+  // 2b. Codec strategy benchmark (M25-002): quickjs-json vs generic-rust vs
+  // generated schema-aware projection (prototype; direct byte scanning is M25-004)
+  await run("Codec Strategy Benchmark", ["./target/release/q-codec-bench", "--out-dir", "benchmarks/raw/codec", "--iters", "2000"]);
+
   // 3. Cold-start benchmark
   await run("Cold-Start Suite", ["bun", "benchmarks/harness/cold-start.ts", "--samples=60"]);
 
@@ -100,6 +104,8 @@ async function main() {
       routeCountSummary: "benchmarks/raw/route-count/summary.json",
       warmSummary: "benchmarks/raw/warm/summary.json",
       bridgeSummary: "benchmarks/raw/bridge/bridge-summary.json",
+      codecSummary: "benchmarks/raw/codec/codec-summary.json",
+      codecEvidence: "benchmarks/raw/codec/evidence.json",
       typeScaleResults: "benchmarks/type-scale/results.json",
       startupProfile: "benchmarks/raw/profiles/startup-10000.json",
     },
