@@ -658,7 +658,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-017-D — Security contact](tasks/08_public_beta/BETA-017-D-security-contact.md)
 - [x] [BETA-017-E — Supported beta platforms](tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md)
 - [x] [BETA-017-F — Reverse-proxy-first statement](tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md)
-- [ ] [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md)
+- [x] [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md)
 - [ ] [BETA-017-V — Verify Resolve beta owner decisions](tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md)
 - [ ] [BETA-017-Z — Package evidence for Resolve beta owner decisions](tasks/08_public_beta/BETA-017-Z-package-evidence-for-resolve-beta-owner-decisions.md)
 - [ ] [BETA-GATE — Public Beta Readiness and Release exit gate](gates/BETA-GATE.md)

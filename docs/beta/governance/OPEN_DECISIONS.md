@@ -22,7 +22,7 @@ The agent may prepare options but may not invent authority.
 | OD-BETA-005 | Supported beta platforms; working default Linux x86_64 glibc | Packaging/docs | Accepted (2026-08-21) |
 | OD-BETA-006 | Reverse-proxy-first versus direct TLS promise | Deployment docs | Accepted (2026-08-21) |
 | OD-BETA-007 | Official first-party Postgres package versus reference capability | Package list | Open |
-| OD-BETA-008 | Public benchmark wording and comparison table | Beta announcement | Open |
+| OD-BETA-008 | Public benchmark wording and comparison table | Beta announcement | Accepted (2026-08-21) |
 | OD-BETA-009 | Support channel and response expectations | Beta docs | Open |
 
 Every accepted decision records date, decider, alternatives, consequences, and superseded text.
@@ -312,3 +312,52 @@ Required by gate: Deployment docs
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-008 marked decided)
 - `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md` (completion record)
+
+## OD-BETA-008 Decision Record
+
+```text
+Decision ID: OD-BETA-008
+Title: Public benchmark wording and comparison table
+Status: accepted
+Date: 2026-08-21
+Decider: Owner (ther12k)
+Required by gate: Beta announcement
+```
+
+### Context
+
+- Beta publication needs benchmark wording that stays within measured evidence and the beta checklist's prohibition on universal or cloud-cold-start claims.
+- Current gate evidence is Velqu-only (cold, warm, route-count, startup profile); cross-framework comparisons exist only as historical M0–M2 runs.
+
+### Options considered
+
+- Publish only current scoped Velqu evidence; label all comparator tables historical: accepted; matches retained evidence and avoids overclaiming.
+- Publish matched cross-framework comparisons as current: rejected; no fresh repeated comparator run exists under the beta evidence standard.
+- Avoid publishing any numbers: rejected; scoped, traceable numbers are useful and permitted by the evidence standard.
+
+### Decision
+
+- Public benchmark wording follows `docs/beta/governance/BENCHMARK_WORDING.md`: claims must cite the run, raw-evidence path, host class, release builds, loopback HTTP/1.1, frozen fixtures, repetitions, and percentiles.
+- Historical comparator figures may be shown only when explicitly labeled historical and not current gate evidence.
+- Universal, cloud/scale-to-zero, production, SLA, and unscoped multiplier claims are prohibited; losses and failed budgets remain honestly reported.
+
+### Consequences
+
+- Announcements can cite current Velqu-only percentiles and protocol facts without implying cross-framework superiority.
+- Any future public comparison table requires a fresh matched repeated run under the benchmark standard before being labeled current.
+- Existing narrative reports now scope or label historical claims instead of presenting unscoped multipliers.
+
+### Security/operations implications
+
+- Benchmark wording makes no reliability, support, or production-readiness commitment.
+- Claims remain bound to retained raw evidence; selective reporting is prohibited.
+- Beta remains non-SLA, trusted-code-only, and not production-ready GA.
+
+### Documentation and task updates
+
+- `docs/beta/governance/BENCHMARK_WORDING.md`
+- `docs/reports/final-report.md` (claims scoped/labeled historical)
+- `docs/reports/release-gate-report.md` (claims scoped/labeled historical)
+- `docs/beta/governance/OPEN_DECISIONS.md` (this record)
+- `docs/open-decisions.md` (OD-009 marked decided)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md` (completion record)
