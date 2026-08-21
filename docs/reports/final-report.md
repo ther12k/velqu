@@ -24,11 +24,16 @@ started (master prompt §16).
 
 ## Architecture verdict: pass / conditional pass / fail
 
-**PASS** — the product thesis is supported by matched, reproducible evidence:
-a statically compiled TypeScript contract on Rust + QuickJS delivers 30–34×
-faster complete cold starts (C3/C4 p95) and ~13× lower idle RSS than a
-matched Elysia 2 AOT application, while preserving Treaty-quality end-to-end
-types and route governance.
+**PASS** — the product thesis is supported by matched, reproducible evidence
+from the M0–M2 gate runs on this host (historical comparator evidence, not the
+current beta gate run): a statically compiled TypeScript contract on
+Rust + QuickJS delivered C3/C4 cold-start p95 of 4.4/5.0 ms versus 152.0/149.9
+ms for the matched Elysia 2 AOT fixture (1,680 fresh-process samples; table
+below), and 6.2 MiB idle RSS p50 versus 83 MiB, while preserving
+Treaty-quality end-to-end types and route governance. Public wording for these
+numbers follows `docs/beta/governance/BENCHMARK_WORDING.md`; the current beta
+gate cold evidence is Velqu-only
+(`benchmarks/raw/cold-start/summary.json`).
 
 ## Requirements completed
 
@@ -93,7 +98,8 @@ source-mapped stderr diagnostics. All via the ACTUAL release binary.
 
 ## Cold-start evidence
 
-1680 fresh-process samples, 0 failures. p50/p95 (ms):
+Historical M0–M2 comparator evidence (not the current beta gate run): 1,680
+fresh-process samples, 0 failures. p50/p95 (ms):
 
 | Class | velqu | raw-rust | raw-bun | elysia2 AOT |
 |---|---|---|---|---|
