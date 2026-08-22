@@ -192,7 +192,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-009-B](../tasks/02_m25_schema_codecs/M25-009-B-compare-generated-output-with-standards-reference-json-behavior.md) | P0 | implement | PASS | M25-009-A | Compare generated output with standards/reference JSON behavior |
 | [M25-009-C](../tasks/02_m25_schema_codecs/M25-009-C-run-malformed-and-boundary-values.md) | P0 | implement | PASS | M25-009-B | Run malformed and boundary values |
 | [M25-009-D](../tasks/02_m25_schema_codecs/M25-009-D-minimize-failures-into-permanent-fixtures.md) | P0 | implement | PASS | M25-009-C | Minimize failures into permanent fixtures |
-| [M25-009-V](../tasks/02_m25_schema_codecs/M25-009-V-verify-add-codec-fuzzing-and-differential-tests.md) | P0 | verify | TODO | M25-009-A, M25-009-B, M25-009-C, M25-009-D | Verify Add codec fuzzing and differential tests |
+| [M25-009-V](../tasks/02_m25_schema_codecs/M25-009-V-verify-add-codec-fuzzing-and-differential-tests.md) | P0 | verify | PASS | M25-009-A, M25-009-B, M25-009-C, M25-009-D | Verify Add codec fuzzing and differential tests |
 | [M25-009-Z](../tasks/02_m25_schema_codecs/M25-009-Z-package-evidence-for-add-codec-fuzzing-and-differential-tests.md) | P0 | evidence | TODO | M25-009-V | Package evidence for Add codec fuzzing and differential tests |
 | [M25-010-A](../tasks/02_m25_schema_codecs/M25-010-A-run-c2-plus-medium-large-json-workloads.md) | P1 | implement | TODO | M25-002-Z, M25-009-Z | Run C2 plus medium/large JSON workloads |
 | [M25-010-B](../tasks/02_m25_schema_codecs/M25-010-B-measure-generated-code-pack-size.md) | P1 | implement | TODO | M25-010-A | Measure generated code/pack size |
