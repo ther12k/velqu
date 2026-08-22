@@ -520,8 +520,15 @@ export function tsTypeOfIr(ir: Record<string, unknown>): string {
     case "file":
       return "Uint8Array";
     case "problem": {
+      // M25-006-C: explicit s.problem responses are the full RFC 9457
+      // envelope on the wire (M25-006-A) — the declared literals narrow
       const detail = ir.detail as Record<string, unknown> | undefined;
-      const fields = [`title: string`, `status: number`];
+      const fields = [
+        ir.typeUri !== undefined ? `type: "${ir.typeUri}"` : "type: string",
+        `title: "${ir.title}"`,
+        `status: ${ir.status}`,
+        "instance: string",
+      ];
       if (detail) fields.push(`detail?: ${tsTypeOfIr(detail)}`);
       return `{ ${fields.join("; ")} }`;
     }
@@ -566,7 +573,7 @@ export function contractDts(app: ExtractedApp, contractHash: string): string {
   ];
   for (const r of app.routes) {
     const respTs = Object.entries(r.responses).map(([status, decl]) => {
-      if (decl.problem) return problemTypeOf(status);
+      if (decl.problem) return problemTypeOf(decl.problem, status);
       if (decl.ir) return tsTypeOfIr(decl.ir);
       return "Record<string, unknown>";
     }).map((t, i) => `  ${Object.keys(r.responses)[i]}: ${t}`);
@@ -586,9 +593,74 @@ export function contractDts(app: ExtractedApp, contractHash: string): string {
   return lines.join("\n");
 }
 
-function problemTypeOf(status: string): string {
-  if (status === "422") return `{ errors: { path: string; code: string; message: string }[]; title: string }`;
-  return `{ title: string }`;
+/**
+ * Exact runtime problem envelope per registry id (M25-006-C). The URIs and
+ * titles are the frozen URNs from the pack-format spec (mirroring the
+ * q-runtime registry); the status literal is the DECLARED response status,
+ * so Treaty error narrowing is exact: `if (r.error.status === 401)` types
+ * `r.error.problem` as the full unauthorized envelope.
+ */
+export const PROBLEM_REGISTRY: Record<string, { typeUri: string; title: string }> = {
+  validation: { typeUri: "https://velqu.dev/problems/validation", title: "Validation failed" },
+  unauthorized: { typeUri: "https://velqu.dev/problems/unauthorized", title: "Unauthorized" },
+  "not-found": { typeUri: "https://velqu.dev/problems/not-found", title: "Not Found" },
+  method: { typeUri: "https://velqu.dev/problems/method", title: "Method Not Allowed" },
+  body: { typeUri: "https://velqu.dev/problems/body", title: "Unsupported body" },
+  limit: { typeUri: "https://velqu.dev/problems/limit", title: "Payload too large" },
+  timeout: { typeUri: "https://velqu.dev/problems/timeout", title: "Handler deadline exceeded" },
+  overload: { typeUri: "https://velqu.dev/problems/overload", title: "Overloaded" },
+  internal: { typeUri: "https://velqu.dev/problems/internal", title: "Internal Server Error" },
+};
+
+function problemTypeOf(problemId: string, status: string): string {
+  const entry = PROBLEM_REGISTRY[problemId] ?? PROBLEM_REGISTRY.internal;
+  const members = [
+    `type: "${entry.typeUri}"`,
+    `title: "${entry.title}"`,
+    `status: ${status}`,
+    "instance: string",
+    "detail?: string",
+  ];
+  if (problemId === "validation") {
+    members.push("errors?: { path: string; code: string; message: string }[]");
+  }
+  return `{ ${members.join("; ")} }`;
+}
+
+/**
+ * JSON-Schema form of the same envelope (M25-006-C guardrail: OpenAPI
+ * problem schemas match runtime). Required members mirror the runtime
+ * builder exactly; enum-constrained type/title/status make generated
+ * clients narrow identically to Treaty.
+ */
+function problemSchemaFor(problemId: string, status: string): Record<string, unknown> {
+  const entry = PROBLEM_REGISTRY[problemId] ?? PROBLEM_REGISTRY.internal;
+  const properties: Record<string, unknown> = {
+    type: { type: "string", enum: [entry.typeUri] },
+    title: { type: "string", enum: [entry.title] },
+    status: { type: "integer", enum: [Number(status)] },
+    instance: { type: "string" },
+    detail: { type: "string" },
+  };
+  if (problemId === "validation") {
+    properties.errors = {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["path", "code", "message"],
+        properties: {
+          path: { type: "string" },
+          code: { type: "string" },
+          message: { type: "string" },
+        },
+      },
+    };
+  }
+  return {
+    type: "object",
+    required: ["type", "title", "status", "instance"],
+    properties,
+  };
 }
 
 export function openapiFor(app: ExtractedApp): Record<string, unknown> {
@@ -666,7 +738,9 @@ export function openapiFor(app: ExtractedApp): Record<string, unknown> {
             content:
               decl.ir && !decl.problem
                 ? { "application/json": { schema: irToSchema(decl.ir, `${r.id}.resp${status}`) } }
-                : undefined,
+                : decl.problem
+                  ? { "application/json": { schema: problemSchemaFor(decl.problem, status) } }
+                  : undefined,
           },
         ]),
       ),

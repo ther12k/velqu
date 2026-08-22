@@ -307,3 +307,62 @@ describe("strategy selection (M25-002-D: evidence-driven codec selection)", () =
     expect(rep1.strategies).toEqual(rep2.strategies);
   });
 });
+
+describe("problem contracts (M25-006-C: policy errors flow into Treaty unions)", () => {
+  test("policy 401 and 404 problems emit exact envelopes in contract.d.ts", async () => {
+    const out = `${TMP}/probcon`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "examples/proof", outDir: out });
+    const dts = readFileSync(`${out}/contract.d.ts`, "utf8");
+
+    // policy-provided 401 on users.get: exact literals, status narrows
+    const resp = dts.slice(dts.indexOf('"users.get"'));
+    expect(resp).toContain('401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string }');
+  });
+
+  test("declared 404 emits the exact not-found envelope (d.ts + OpenAPI)", async () => {
+    const out = `${TMP}/probapp`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/problem-app.ts", outDir: out });
+    const dts = readFileSync(`${out}/contract.d.ts`, "utf8");
+    expect(dts).toContain('404: { type: "https://velqu.dev/problems/not-found"; title: "Not Found"; status: 404; instance: string; detail?: string }');
+
+    const openapi = JSON.parse(readFileSync(`${out}/openapi.json`, "utf8"));
+    const gone404 = openapi.paths["/gone"].get.responses["404"];
+    expect(gone404.description).toBe("problem: not-found");
+    const schema = gone404.content["application/json"].schema;
+    expect(schema.required).toEqual(["type", "title", "status", "instance"]);
+    expect(schema.properties.type.enum).toEqual(["https://velqu.dev/problems/not-found"]);
+    expect(schema.properties.title.enum).toEqual(["Not Found"]);
+    expect(schema.properties.status.enum).toEqual([404]);
+  });
+
+  test("policy 401 OpenAPI schema matches the runtime envelope", async () => {
+    const out = `${TMP}/probcon`;
+    const openapi = JSON.parse(readFileSync(`${out}/openapi.json`, "utf8"));
+    const usersGet401 = openapi.paths["/users/{id}"].get.responses["401"];
+    expect(usersGet401.description).toBe("problem: unauthorized");
+    const schema = usersGet401.content["application/json"].schema;
+    expect(schema.required).toEqual(["type", "title", "status", "instance"]);
+    expect(schema.properties.type.enum).toEqual(["https://velqu.dev/problems/unauthorized"]);
+    expect(schema.properties.title.enum).toEqual(["Unauthorized"]);
+    expect(schema.properties.status.enum).toEqual([401]);
+  });
+
+  test("PROBLEM_REGISTRY mirrors the runtime registry ids", async () => {
+    const { PROBLEM_REGISTRY } = await import("@velqu/compiler");
+    expect(Object.keys(PROBLEM_REGISTRY).sort()).toEqual(
+      [
+        "validation",
+        "unauthorized",
+        "not-found",
+        "method",
+        "body",
+        "limit",
+        "timeout",
+        "overload",
+        "internal",
+      ].sort(),
+    );
+  });
+});

@@ -4,7 +4,7 @@ parent_task: M25-006
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -113,3 +113,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-006-C)
+
+Status: **PASS**. Policy-provided errors flow into Treaty unions with exact
+narrowing, and OpenAPI problem schemas match the runtime envelope:
+
+- `packages/compiler/src/emit.ts`: a new exported `PROBLEM_REGISTRY`
+  mirrors the runtime's frozen URNs (ids asserted by conformance).
+  `problemTypeOf(problemId, status)` now emits the EXACT runtime envelope
+  per registry id — frozen type-URI and title literals, the DECLARED
+  response status as a literal, optional `detail`, and the typed optional
+  `errors` member for validation — replacing the `{ title: string }`
+  placeholder in `contract.d.ts`. Explicit `s.problem(...)` response IRs
+  type as the full envelope too (declared literals via `tsTypeOfIr`).
+- `openapiFor`: problem responses now carry a JSON Schema of the same
+  envelope — required `[type, title, status, instance]`, enum-constrained
+  type/title/status — instead of `content: undefined`.
+- Evidence (guardrail "error status narrowing is exact"): the Treaty
+  conformance type now narrows `if (r.error.status === 401)` to
+  `problem: { type: "https://velqu.dev/problems/unauthorized"; ...;
+  status: 401; ... }`, asserted against the LIVE runtime 401 body
+  (type/title/status/instance values checked at runtime-local HTTP).
+- Evidence (guardrail "OpenAPI problem schemas match runtime"): compiler
+  conformance asserts the d.ts literals and the OpenAPI schema enums/
+  required members for the policy 401 (proof app) and a declared 404
+  (`problem-app` fixture).
+
+### Tests and evidence
+
+- `problem contracts (M25-006-C)` compiler suite (4 tests): exact d.ts
+  envelopes (policy 401 + declared 404 fixture), OpenAPI schema parity,
+  `PROBLEM_REGISTRY` id parity with the runtime registry.
+- `treaty.conformance.test.ts`: `ProofPublishedApi` corrected to the real
+  published contract (users.get 200+401; the previously aspirational
+  404/422 entries removed) with the exact unauthorized envelope; test 5
+  now narrows on `status === 401` and asserts the typed problem members
+  against the live 401 response.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 22 integration passed.
+- `bun test` — 73 passed, 0 failed, 313 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Redaction tests were delivered in M25-006-B; content-type/instance
+behavior is M25-006-D.
+
+Commit: `0e6b5e7`.
