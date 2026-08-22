@@ -4,7 +4,7 @@ parent_task: M25-007
 milestone: M25
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,63 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-007-V)
+
+Status: **PASS**. Every parent M25-007 acceptance guardrail maps to source
+and passing tests; all verification commands were run fresh on this branch
+(no code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Fallback never activates silently.**
+   - `q_pack` verify: a js plan strategy without a reason from the closed
+     `FALLBACK_REASONS` vocabulary rejects at pack load; an
+     out-of-vocabulary reason rejects; a native plan carrying a reason
+     rejects (`rejects_silent_fallback_and_invalid_reasons`).
+   - Raw envelopes without the `raw-response` capability are controlled
+     500s with the violation logged
+     (`raw_response_and_full_request_escape_hatches`).
+   - Compiler: explicit developer-forced js responses push an `explicit`
+     fallback descriptor like every other fallback.
+2. **Raw Response bypass behavior is documented.**
+   - `docs/specs/unsupported-transformations.md` §5 — status contract,
+     header precedence, AS-IS body, the schema-exclusivity rule (pack
+     verify rejects a raw route with a declared response schema), and the
+     full-request materialization bounds.
+3. **No contract claim is generated when adapter lacks required
+   projection.**
+   - The raw-response/schema exclusivity at pack verify; the route
+     manifest (M25-007-D) exposes the real codec choices so no tool claims
+     a native codec where the generic path runs (manifest + CLI inspect
+     snapshot test).
+4. **Fallback routes pass conformance.**
+   - `fallback_paths_are_bounded_and_deadline_aware` — busy handlers on
+     js-validation, raw-response, and full-request routes each settle 504
+     at the deadline; the engine keeps serving (no quarantine); oversize
+     fallback bodies reject 413 before the engine.
+   - `js_fallback_body_routes_raw_json_to_handler`,
+     `quickjs_stringify_fallback_stays_json_equivalent_to_encoder`,
+     `deeply_nested_body_fails_boundedly` — fallback semantics parity.
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 24 integration passed.
+- `cargo test -p q-pack` — 41 + 2 passed.
+- `bun test` — 75 passed, 0 failed, 340 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (identical on every packet branch this session).
+
+Inspect snapshots (required parent evidence): the M25-007-D compiler
+conformance test's live CLI snapshot plus the manifest assertions.
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `a0f421f`.
