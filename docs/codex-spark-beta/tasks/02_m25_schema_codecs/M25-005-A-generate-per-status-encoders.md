@@ -4,7 +4,7 @@ parent_task: M25-005
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,79 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-005-A)
+
+Status: **PASS**. Generated per-status response encoders fuse output
+validation and JSON serialization into one traversal:
+
+- `crates/q-schema-runtime/src/encoder.rs` (new): `EncoderProgram` compiles
+  a representable object SchemaIr into a direct encoder; `encode` walks the
+  handler value ONCE, producing typed field errors exactly where the
+  reference validator produces them and emitting canonical JSON bytes in
+  declared property order (defaults inserted, integer-under-Number
+  normalized to float form). Leaf bytes delegate to `serde_json::to_writer`
+  so escaping/number formatting can never drift from the reference
+  serialization. `EncoderTable` is dense by SchemaId, mirroring
+  `DecoderTable`. Schemas that are not directly encodable (nested object
+  properties, unions, transforms, files, problems, fallback-without-inner,
+  non-object top levels) compile to `None` — the runtime keeps the
+  reference validate-then-serialize path for those routes instead of
+  failing closed.
+- `crates/q-runtime/src/serve.rs` + `main.rs`: `encoder_table` and a
+  per-route `response_schema_ids` map (status → SchemaId, resolved once at
+  startup) in `ServeState`. For `BodyOut::Json` on a declared response
+  schema with a program, the response block encodes once and the mapping
+  stage writes those bytes — the previous validate pass + Value clone +
+  second serialization pass collapse into one traversal. Encoder typed
+  errors map to the same controlled 500 `contract.violation.response`
+  (detail logged, redacted from the response).
+- Guardrails: undeclared status/body stays a contract violation (the
+  declared-status gate is unchanged; the existing
+  `response_schema_violation_is_a_controlled_500` test now exercises the
+  encoder path since its flat schema compiles); output is byte-equal to
+  the reference normalized serialization (golden corpus); one traversal
+  for generated paths (no intermediate Value, no second serialize); no
+  user JS executes during conversion — encode is native host code after
+  engine settlement, and recursion is depth-bounded by
+  `MAX_VALIDATE_DEPTH` (constraint 11).
+
+### Tests and evidence
+
+- `encoder_matches_reference_serialization_on_golden_corpus` — golden
+  corpus (scalars, formats email/uuid, pattern, bounds, optional
+  present/absent/default/null, nullable, arrays incl. nested, literals,
+  enums, unicode/escapes, integer-under-Number normalization, out-of-order
+  handler keys): encoder bytes == `serde_json::to_vec` of the reference
+  validator output, case by case.
+- `encoder_rejects_mismatches_with_reference_parity` — response mismatch
+  matrix (unknown key, missing required, wrong types, bound violations,
+  format/pattern/literal/enum misses, empty array, non-object): identical
+  typed code+path pairs versus the reference validator.
+- `encoder_depth_is_bounded` — mapping deadline evidence: schema+value
+  nested past `MAX_VALIDATE_DEPTH` reject with the typed `depth` problem,
+  parity with the reference bound; no unbounded stack work.
+- `unrepresentable_schemas_compile_to_none` — nested object, union,
+  transform, file, fallback-without-inner, non-object top level compile to
+  `None` (fallback-with-inner stays encodable).
+- `encoder_table_is_dense_by_schema_id` — dense SchemaId indexing.
+- `runtime_conformance::native_response_encoder_emits_declared_order` —
+  live HTTP: valid handler response arrives byte-exact in declared
+  (byte-sorted) property order; the mismatch twin returns a controlled 500
+  through the same encoder path with the contract violation logged
+  internally and redacted from the wire.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 50 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 19 integration passed.
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+No performance claim is made in this packet (measurement belongs to the
+M25-002 instrumented harness; benchmark manifest preserved unchanged).
+
+Commit: `38e2731`.

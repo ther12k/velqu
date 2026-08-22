@@ -2017,6 +2017,201 @@ globalThis.__velquFunctions = [bad_shape];
     );
 }
 
+/// M25-005-A: a representable declared response schema on a native-strategy
+/// route encodes through the generated one-traversal encoder. The handler
+/// returns keys OUT of declared order; the wire bytes come back in the
+/// schema's declared (byte-sorted) order, JSON-equal to the handler value —
+/// and the mismatch sibling case (schema violation) stays a controlled 500
+/// through the same encoder path.
+#[test]
+fn native_response_encoder_emits_declared_order() {
+    let bundle = r#"
+async function ordered_shape(ctx) {
+    // insertion order deliberately differs from the declared schema order
+    return { zeta: "z", alpha: 7, mid: [1, 2] };
+}
+async function bad_shape2(ctx) { return { nope: true }; }
+globalThis.__velquFunctionManifest = [["ordered.shape", 0, ordered_shape], ["bad.shape2", 0, bad_shape2]];
+globalThis.__velquFunctions = [ordered_shape, bad_shape2];
+"#;
+    let dir = temp_dir("respenc");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "ordered.shape".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "bad.shape2".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("ordered.shape".to_string(), "ordered.shape".to_string()),
+        ("bad.shape2".to_string(), "bad.shape2".to_string()),
+    ]);
+    let route = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route].clone();
+    let plan = |handler_id: u32| RoutePlanDecl {
+        route_id: handler_id,
+        handler_id,
+        policy_id: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
+        header_name_ids: vec![],
+        query_name_ids: vec![],
+        cookie_name_ids: vec![],
+        default_status: 200,
+        allowed_statuses: vec![200],
+        field_needs: FieldNeeds::default(),
+        response_strategy: Strategy::Native,
+        deadline_ms: 5000,
+    };
+    let responses = |schema: &str| {
+        std::collections::BTreeMap::from([(
+            "200".to_string(),
+            q_pack::ResponseDecl {
+                schema: Some(schema.to_string()),
+                strategy: q_pack::Strategy::Native,
+                problem: None,
+            },
+        )])
+    };
+    let mut good = base.clone();
+    good.id = "ordered.shape".into();
+    good.handler = "ordered.shape".into();
+    good.policy = None;
+    good.params = None;
+    good.query = None;
+    good.body = None;
+    good.headers = None;
+    good.security.clear();
+    good.path = "/ordered".into();
+    good.path_segments = vec![PathSegment {
+        kind: SegKind::Static,
+        value: "ordered".into(),
+    }];
+    good.responses = responses("sch:ordered.200");
+    good.plan = Some(plan(0));
+    let mut bad = base.clone();
+    bad.id = "bad.shape2".into();
+    bad.handler = "bad.shape2".into();
+    bad.policy = None;
+    bad.params = None;
+    bad.query = None;
+    bad.body = None;
+    bad.headers = None;
+    bad.security.clear();
+    bad.responses = responses("sch:ordered.200");
+    bad.plan = Some(plan(1));
+    // paths must be unique per route; give the bad twin its own segment
+    bad.path = "/ordered-bad".into();
+    bad.path_segments = vec![PathSegment {
+        kind: SegKind::Static,
+        value: "ordered-bad".into(),
+    }];
+    pack.routes = vec![good, bad];
+    pack.policies.clear();
+    pack.schemas.insert(
+        "sch:ordered.200".to_string(),
+        q_schema_runtime::SchemaIr::Object {
+            properties: std::collections::BTreeMap::from([
+                (
+                    "zeta".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "mid".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::Array {
+                        items: Box::new(q_schema_runtime::SchemaIr::Integer {
+                            minimum: None,
+                            maximum: None,
+                        }),
+                        min_items: None,
+                        max_items: None,
+                    }),
+                ),
+                (
+                    "alpha".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                ),
+            ]),
+            required: vec!["zeta".into(), "mid".into(), "alpha".into()],
+        },
+    );
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("respenc.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // valid response: wire bytes arrive in declared (byte-sorted) property
+    // order — the one-traversal encoder engaged, output JSON-equal to the
+    // handler's value
+    let r = http(port, "GET /ordered HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    assert_eq!(
+        r.text(),
+        "{\"alpha\":7,\"mid\":[1,2],\"zeta\":\"z\"}",
+        "encoder must emit declared property order"
+    );
+
+    // mismatch through the same encoder path stays a controlled 500
+    let r = http(port, "GET /ordered-bad HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 500, "body: {}", r.text());
+    assert!(!r.text().contains("nope"), "violation detail must not leak");
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("contract.violation.response"),
+        "internal log must carry the encoder contract violation: {err}"
+    );
+}
+
 #[test]
 fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
     let dir = temp_dir("bytecode");
