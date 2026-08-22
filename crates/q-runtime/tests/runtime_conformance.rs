@@ -468,6 +468,43 @@ fn fixture_pack() -> q_pack::QPack {
             r.validation_strategy = Strategy::Js;
             r
         },
+        {
+            // M25-004-D: a short route deadline must bound the pre-invocation
+            // body read. The route shares the fallback.echo RouteHandler —
+            // a client that sends headers and then stalls the body stream
+            // must get the 504 timeout problem at the deadline while the
+            // dropped read cancels the transfer.
+            let mut r = route(
+                "deadline.body",
+                "POST",
+                "/deadline-body",
+                seg(&[("s", "deadline-body")]),
+                "fallback.echo",
+                11,
+                None,
+                200,
+                vec![200],
+                FieldNeeds {
+                    params: false,
+                    query: false,
+                    headers: false,
+                    body: true,
+                },
+            );
+            r.body = Some(SourceBinding {
+                schema: Some("sch:fallback.body".into()),
+                coerce: None,
+                content_type: Some("application/json".into()),
+                limit_bytes: 65_536,
+            });
+            r.validation_strategy = Strategy::Js;
+            r.deadline_ms = 200;
+            if let Some(ref mut p) = r.plan {
+                p.deadline_ms = 200;
+                p.handler_id = 10;
+            }
+            r
+        },
     ];
 
     // timer schema reuse for cancel needs a wider maximum
@@ -1429,6 +1466,71 @@ fn deeply_nested_body_fails_boundedly() {
         Some(deep.as_bytes()),
     );
     assert_eq!(r.status, 422);
+
+    server.stop();
+}
+
+/// M25-004-D: the route deadline bounds the whole pipeline from route
+/// match, not just the handler. A client that sends POST headers declaring
+/// a body and then stalls the stream must receive the 504 `timeout`
+/// problem at the route deadline (200ms here) — the bounded read is
+/// cancelled instead of holding the request open — and a prompt body on
+/// the same route still reaches the handler under the anchored deadline.
+#[test]
+fn body_read_deadline_cancels_stalled_transfer() {
+    let dir = temp_dir("deadline-body");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    wait_tcp(port, Duration::from_secs(10));
+
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    // headers declare a 32-byte JSON body that never arrives
+    stream
+        .write_all(
+            b"POST /deadline-body HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\ncontent-length: 32\r\n\r\n",
+        )
+        .unwrap();
+    let started = Instant::now();
+    let mut buf = Vec::new();
+    // the connection closes once the deadline response is written (request
+    // body left unread); tolerate a client-side read timeout and parse
+    // whatever arrived, like the http() helper does
+    let _ = stream.read_to_end(&mut buf);
+    let elapsed = started.elapsed();
+    let r = parse_http(&buf);
+    assert_eq!(
+        r.status,
+        504,
+        "stalled body read must settle at the route deadline: {}",
+        r.text()
+    );
+    assert_eq!(r.json()["type"], "https://velqu.dev/problems/timeout");
+    // 200ms deadline — the response must arrive at the deadline, not at the
+    // 5s client read timeout or a transport-level abort
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "504 arrived after {:?}, deadline is 200ms",
+        elapsed
+    );
+
+    // control: a prompt body on the same route settles normally — the
+    // anchored deadline leaves the handler its full remaining budget
+    let r = http(
+        port,
+        "POST /deadline-body HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(br#"{"prompt":true}"#),
+    );
+    assert_eq!(
+        r.status,
+        200,
+        "prompt body must still reach the handler: {}",
+        r.text()
+    );
+    assert_eq!(r.json()["prompt"], true);
 
     server.stop();
 }

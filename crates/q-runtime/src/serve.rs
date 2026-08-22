@@ -310,6 +310,15 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .compiled_route(route_index)
                 .expect("matched route must exist in router");
 
+            // M25-004-D: the route deadline bounds the whole pipeline from
+            // route match — admission, bounded body read, decode, and
+            // handler. Anchoring here (instead of at engine invocation)
+            // charges pre-invocation work to the same budget, cancels a
+            // stalled body stream at the deadline, and propagates the same
+            // absolute deadline to the worker (constraint 11: deadlines
+            // are bounded).
+            let request_deadline = Instant::now() + Duration::from_millis(compiled.deadline_ms);
+
             // ---- M24-002-C: FieldNeeds from the verified RoutePlan gates
             // every materialization. QPack::verify has already proven the
             // flags exactly match the route's declared needs (schemas, body
@@ -477,19 +486,32 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         _ => {}
                     }
                 }
-                let raw = match collect_body_bounded(body, max_body).await {
-                    Ok(bytes) => {
+                // M25-004-D: the read races the anchored request deadline.
+                // On elapse the collect future is dropped mid-stream — the
+                // transfer is cancelled — and the same `timeout` problem the
+                // engine produces for handler deadlines settles the request.
+                let raw = match tokio::time::timeout_at(
+                    request_deadline.into(),
+                    collect_body_bounded(body, max_body),
+                )
+                .await
+                {
+                    Err(_elapsed) => {
+                        let body = problems::body("timeout", None, None, &[], &request_id);
+                        return (Ok(json_response(504, &body)), route_id, "deadline.body");
+                    }
+                    Ok(Ok(bytes)) => {
                         state
                             .metrics
                             .body_bytes
                             .fetch_add(bytes.len() as u64, Ordering::Relaxed);
                         bytes
                     }
-                    Err(HttpError::Limited { .. }) => {
+                    Ok(Err(HttpError::Limited { .. })) => {
                         let body = problems::body("limit", None, None, &[], &request_id);
                         return (Ok(json_response(413, &body)), route_id, "admission.body");
                     }
-                    Err(e) => return (Err(e), route_id, "admission.body"),
+                    Ok(Err(e)) => return (Err(e), route_id, "admission.body"),
                 };
                 let parsed: Value = match serde_json::from_slice(&raw) {
                     Ok(v) => v,
@@ -667,7 +689,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 allowed_statuses: compiled.allowed_statuses.clone(),
                 default_status: compiled.default_status,
                 response_strategy: compiled.response_strategy,
-                deadline: Instant::now() + Duration::from_millis(compiled.deadline_ms),
+                deadline: request_deadline,
             };
 
             let (tx, rx) = tokio::sync::oneshot::channel();

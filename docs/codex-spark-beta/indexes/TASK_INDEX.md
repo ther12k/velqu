@@ -161,7 +161,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-004-A](../tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md) | P0 | implement | PASS | M25-001-Z, M24-007-Z | Implement generated direct decode where supported |
 | [M25-004-B](../tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md) | P0 | implement | PASS | M25-004-A | Retain QuickJS/generic fallback for unsupported transformations |
 | [M25-004-C](../tasks/02_m25_schema_codecs/M25-004-C-enforce-depth-size-array-string-and-numeric-limits.md) | P0 | implement | PASS | M25-004-B | Enforce depth, size, array, string, and numeric limits |
-| [M25-004-D](../tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md) | P0 | implement | TODO | M25-004-C | Propagate cancellation and request deadlines |
+| [M25-004-D](../tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md) | P0 | implement | PASS | M25-004-C | Propagate cancellation and request deadlines |
 | [M25-004-V](../tasks/02_m25_schema_codecs/M25-004-V-verify-generate-json-body-decoders.md) | P0 | verify | TODO | M25-004-A, M25-004-B, M25-004-C, M25-004-D | Verify Generate JSON body decoders |
 | [M25-004-Z](../tasks/02_m25_schema_codecs/M25-004-Z-package-evidence-for-generate-json-body-decoders.md) | P0 | evidence | TODO | M25-004-V | Package evidence for Generate JSON body decoders |
 | [M25-005-A](../tasks/02_m25_schema_codecs/M25-005-A-generate-per-status-encoders.md) | P0 | implement | TODO | M25-001-Z, M25-002-Z | Generate per-status encoders |
