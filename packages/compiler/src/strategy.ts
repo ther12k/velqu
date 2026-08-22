@@ -189,7 +189,19 @@ export function selectRouteStrategies(route: RouteInfo): RouteStrategyDecision {
   const responseStrategies: Record<string, StrategyName> = {};
   for (const [status, resp] of Object.entries(route.responses)) {
     if (resp.strategy === "js") {
+      // M25-007-A: developer-forced engine path records its explicit
+      // reason like every other fallback — never silent
       responseStrategies[status] = "js";
+      const cost = estimateFallbackCost("explicit", "fallback");
+      fallbacks.push({
+        route: route.id,
+        location: `response.${status}`,
+        strategy: "js",
+        reason: "explicit",
+        estimatedOverheadUs: cost.overheadUs,
+        estimatedAllocBytes: cost.allocBytes,
+        description: cost.desc,
+      });
       continue;
     }
     const respFallback = findFallbackNode(resp.ir);

@@ -172,6 +172,16 @@ pub struct RoutePlanDecl {
     pub field_needs: FieldNeeds,
     #[serde(default)]
     pub response_strategy: Strategy,
+    /// M25-007-A: why validation takes the generic path — a value from the
+    /// closed FALLBACK_REASONS vocabulary. Present iff the route's
+    /// validation strategy is js; native plans carry none. Fallback never
+    /// activates silently: verify fails closed on drift.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_fallback_reason: Option<String>,
+    /// M25-007-A: why the plan's response strategy is the engine path.
+    /// Present iff `response_strategy` is js; native plans carry none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_fallback_reason: Option<String>,
     #[serde(default = "default_deadline")]
     pub deadline_ms: u64,
 }
@@ -1110,6 +1120,48 @@ impl QPack {
                     ));
                 }
 
+                // M25-007-A: fallback never activates silently — every js
+                // plan strategy must carry a reason from the closed
+                // FALLBACK_REASONS vocabulary, and a native plan must not
+                // carry one.
+                let check_reason = |axis: &str,
+                                    is_js: bool,
+                                    reason: &Option<String>|
+                 -> Result<(), String> {
+                    match (is_js, reason) {
+                        (true, Some(r)) if q_schema_runtime::is_valid_fallback_reason(r) => {
+                            Ok(())
+                        }
+                        (true, Some(r)) => Err(format!(
+                            "route {} plan.{} {} is not in the closed FALLBACK_REASONS vocabulary",
+                            route.id, axis, r
+                        )),
+                        (true, None) => Err(format!(
+                            "route {} plan.{} is the engine path without a fallback reason (silent fallback)",
+                            route.id, axis
+                        )),
+                        (false, Some(_)) => Err(format!(
+                            "route {} plan.{} is native but carries a fallback reason",
+                            route.id, axis
+                        )),
+                        (false, None) => Ok(()),
+                    }
+                };
+                if let Err(msg) = check_reason(
+                    "validation",
+                    route.validation_strategy == Strategy::Js,
+                    &plan.validation_fallback_reason,
+                ) {
+                    return reject(msg);
+                }
+                if let Err(msg) = check_reason(
+                    "response",
+                    plan.response_strategy == Strategy::Js,
+                    &plan.response_fallback_reason,
+                ) {
+                    return reject(msg);
+                }
+
                 // Exact FieldNeeds equivalence
                 let expected_field_needs = FieldNeeds {
                     params: route.params.is_some(),
@@ -1727,6 +1779,66 @@ mod tests {
         minimal_pack().verify().expect("valid pack");
     }
 
+    // M25-007-A: fallback never activates silently — a js plan strategy
+    // must carry a reason from the closed vocabulary, and a native plan
+    // must not carry one.
+    fn rehash(p: &mut QPack) {
+        use sha2::{Digest, Sha256};
+        p.integrity.bundle_sha256 = hex(&Sha256::digest(p.bundle.as_bytes()));
+        p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
+    }
+
+    #[test]
+    fn rejects_silent_fallback_and_invalid_reasons() {
+        // js response strategy without a reason
+        let mut p = numeric_pack();
+        if let Some(plan) = p.routes[0].plan.as_mut() {
+            plan.response_strategy = Strategy::Js;
+            plan.response_fallback_reason = None;
+        }
+        p.routes[0].responses.get_mut("200").unwrap().strategy = Strategy::Js;
+        rehash(&mut p);
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("without a fallback reason")),
+            "silent fallback must reject"
+        );
+
+        // js validation strategy with an out-of-vocabulary reason
+        let mut p = numeric_pack();
+        p.routes[0].validation_strategy = Strategy::Js;
+        if let Some(plan) = p.routes[0].plan.as_mut() {
+            plan.validation_fallback_reason = Some("because-i-said-so".into());
+        }
+        rehash(&mut p);
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("closed FALLBACK_REASONS vocabulary")),
+            "invalid reason must reject"
+        );
+
+        // native plan carrying a reason
+        let mut p = numeric_pack();
+        if let Some(plan) = p.routes[0].plan.as_mut() {
+            plan.response_strategy = Strategy::Native;
+            plan.response_fallback_reason = Some("explicit".into());
+        }
+        p.routes[0].responses.get_mut("200").unwrap().strategy = Strategy::Native;
+        rehash(&mut p);
+        assert!(
+            matches!(p.verify(), Err(PackError::Rejected(m)) if m.contains("native but carries a fallback reason")),
+            "native with reason must reject"
+        );
+
+        // a valid js strategy with a valid reason verifies
+        let mut p = numeric_pack();
+        if let Some(plan) = p.routes[0].plan.as_mut() {
+            plan.response_strategy = Strategy::Js;
+            plan.response_fallback_reason = Some("explicit".into());
+        }
+        p.routes[0].responses.get_mut("200").unwrap().strategy = Strategy::Js;
+        rehash(&mut p);
+        p.verify().expect("tagged fallback verifies");
+    }
+
     #[test]
     fn rejects_tampered_bundle() {
         let mut p = minimal_pack();
@@ -1885,6 +1997,8 @@ mod tests {
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.execution_mode = Some("numeric".into());
@@ -2030,6 +2144,8 @@ mod tests {
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
@@ -2092,6 +2208,8 @@ mod tests {
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
@@ -2121,6 +2239,8 @@ mod tests {
             allowed_statuses: vec![200, 418],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
@@ -2155,6 +2275,8 @@ mod tests {
                 body: false,
             },
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
@@ -2182,6 +2304,8 @@ mod tests {
             allowed_statuses: vec![200],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 1000, // differs from route.deadline_ms
         });
         p.integrity.routes_sha256 = hex(&Sha256::digest(p.routes_canonical_json().as_bytes()));
@@ -2247,6 +2371,8 @@ mod tests {
                 body: false,
             },
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         });
         p.contract_hash = p.public_contract_sha256()[..32].to_string();
