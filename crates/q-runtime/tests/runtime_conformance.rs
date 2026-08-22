@@ -2231,6 +2231,224 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
     );
 }
 
+/// M25-006-A: a DECLARED problem response (explicit Problem IR schema for
+/// the status) encodes through the generated problem program — declared
+/// title/type override the registry, the detail string crosses, and RFC
+/// 9457 extension members (custom fields attached by the handler) survive
+/// end-to-end. An UNDECLARED framework problem on the same pack keeps the
+/// generic registry envelope.
+#[test]
+fn declared_problem_response_encodes_with_custom_fields() {
+    let bundle = r#"
+async function cancel_order(ctx) {
+    return {
+        __problem: true,
+        problem: "validation",
+        status: 409,
+        detail: "order canceled by owner",
+        orderId: "ord_42",
+        retryable: true,
+    };
+}
+async function plain_boom(ctx) {
+    return { __problem: true, problem: "validation", status: 422, detail: "generic path" };
+}
+globalThis.__velquFunctionManifest = [["orders.cancel", 0, cancel_order], ["plain.boom", 0, plain_boom]];
+globalThis.__velquFunctions = [cancel_order, plain_boom];
+"#;
+    let dir = temp_dir("probenc");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "orders.cancel".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "plain.boom".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("orders.cancel".to_string(), "orders.cancel".to_string()),
+        ("plain.boom".to_string(), "plain.boom".to_string()),
+    ]);
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route_pos].clone();
+    let route =
+        |id: &str,
+         path: &str,
+         idx: u32,
+         handler_id: u32,
+         allowed: Vec<u16>,
+         responses: std::collections::BTreeMap<String, q_pack::ResponseDecl>| {
+            let mut r = base.clone();
+            r.id = id.into();
+            r.handler = id.into();
+            r.policy = None;
+            r.params = None;
+            r.query = None;
+            r.body = None;
+            r.headers = None;
+            r.security.clear();
+            r.path = path.into();
+            r.path_segments = vec![PathSegment {
+                kind: SegKind::Static,
+                value: path.trim_start_matches('/').into(),
+            }];
+            r.responses = responses;
+            r.plan = Some(RoutePlanDecl {
+                route_id: idx,
+                handler_id,
+                policy_id: None,
+                policy_handler_id: None,
+                params_schema_id: None,
+                query_schema_id: None,
+                headers_schema_id: None,
+                body_schema_id: None,
+                header_name_ids: vec![],
+                query_name_ids: vec![],
+                cookie_name_ids: vec![],
+                default_status: allowed[0],
+                allowed_statuses: allowed,
+                field_needs: FieldNeeds::default(),
+                response_strategy: Strategy::Native,
+                deadline_ms: 5000,
+            });
+            r
+        };
+    // declared problem IR for 409: custom type URI + title + detail shape
+    let declared: std::collections::BTreeMap<String, q_pack::ResponseDecl> =
+        std::collections::BTreeMap::from([(
+            "409".to_string(),
+            q_pack::ResponseDecl {
+                schema: Some("sch:orders.cancel.409".into()),
+                strategy: q_pack::Strategy::Native,
+                problem: None,
+            },
+        )]);
+    let routes = vec![
+        route("orders.cancel", "/orders-cancel", 0, 0, vec![409], declared),
+        route(
+            "plain.boom",
+            "/plain-boom",
+            1,
+            1,
+            vec![422],
+            std::collections::BTreeMap::from([(
+                "422".to_string(),
+                q_pack::ResponseDecl {
+                    schema: None,
+                    strategy: q_pack::Strategy::Native,
+                    problem: Some("validation".into()),
+                },
+            )]),
+        ),
+    ];
+    pack.routes = routes;
+    pack.policies.clear();
+    pack.schemas.insert(
+        "sch:orders.cancel.409".to_string(),
+        q_schema_runtime::SchemaIr::Problem {
+            type_uri: Some("https://example.com/problems/order-canceled".into()),
+            title: "Order canceled".into(),
+            status: 409,
+            detail: Some(Box::new(q_schema_runtime::SchemaIr::String {
+                min_length: Some(1),
+                max_length: Some(64),
+                pattern: None,
+                format: None,
+            })),
+        },
+    );
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("probenc.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // declared problem: generated program — declared title/type, detail,
+    // and BOTH custom extension members survive (sorted)
+    let r = http(port, "GET /orders-cancel HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 409, "body: {}", r.text());
+    let v = r.json();
+    assert_eq!(v["type"], "https://example.com/problems/order-canceled");
+    assert_eq!(v["title"], "Order canceled");
+    assert_eq!(v["status"], 409);
+    assert_eq!(v["detail"], "order canceled by owner");
+    assert_eq!(
+        v["orderId"],
+        "ord_42",
+        "custom field must survive: {}",
+        r.text()
+    );
+    assert_eq!(
+        v["retryable"],
+        true,
+        "custom field must survive: {}",
+        r.text()
+    );
+    assert!(v.get("instance").is_some());
+    let text = r.text();
+    let order: Vec<usize> = [
+        "\"type\"",
+        "\"title\"",
+        "\"status\"",
+        "\"instance\"",
+        "\"detail\"",
+        "\"orderId\"",
+        "\"retryable\"",
+    ]
+    .iter()
+    .map(|k| text.find(k).unwrap())
+    .collect();
+    assert!(
+        order.windows(2).all(|w| w[0] < w[1]),
+        "canonical order: {text}"
+    );
+
+    // undeclared problem: generic registry envelope, no custom fields
+    let r = http(port, "GET /plain-boom HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 422, "body: {}", r.text());
+    let v = r.json();
+    assert_eq!(v["type"], "https://velqu.dev/problems/validation");
+    assert_eq!(v["title"], "Validation failed");
+    assert_eq!(v["detail"], "generic path");
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property

@@ -157,6 +157,10 @@ pub struct ProblemOut {
     pub status: u16,
     pub detail: Option<String>,
     pub errors: Vec<FieldErrorOut>,
+    /// M25-006-A: RFC 9457 extension members carried from the handler's
+    /// problem object (own properties beyond the standard envelope), name-
+    /// sorted — custom problem fields survive end-to-end.
+    pub extensions: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]

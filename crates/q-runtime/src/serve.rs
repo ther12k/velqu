@@ -241,6 +241,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             Some(503),
             Some("engine quarantined"),
             &[],
+            &[],
             &request_id,
         );
         let mut resp = json_response(503, &body);
@@ -254,7 +255,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
     // polls the body stream.
     match state.router.resolve(method_str, path) {
         MatchResult::NotFound => {
-            let body = problems::body("not-found", None, None, &[], &request_id);
+            let body = problems::body("not-found", None, None, &[], &[], &request_id);
             (
                 Ok(json_response(404, &body)),
                 "(no-route)".into(),
@@ -262,7 +263,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             )
         }
         MatchResult::MethodNotAllowed { allow } => {
-            let body = problems::body("method", None, None, &[], &request_id);
+            let body = problems::body("method", None, None, &[], &[], &request_id);
             let mut resp = json_response(405, &body);
             resp.headers.push(("allow".into(), allow.join(", ")));
             (Ok(resp), "(method-not-allowed)".into(), "routing")
@@ -300,6 +301,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     "internal",
                     Some(503),
                     Some("engine quarantined"),
+                    &[],
                     &[],
                     &request_id,
                 );
@@ -367,6 +369,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             None,
                             Some("path parameter validation failed"),
                             &field_errors(&errors),
+                            &[],
                             &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.params");
@@ -407,6 +410,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             None,
                             Some("query validation failed"),
                             &field_errors(&errors),
+                            &[],
                             &request_id,
                         );
                         return (Ok(json_response(422, &body)), route_id, "validation.query");
@@ -428,6 +432,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             None,
                             Some("header validation failed"),
                             &field_errors(&errors),
+                            &[],
                             &request_id,
                         );
                         return (
@@ -464,6 +469,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         None,
                         Some("expected application/json body"),
                         &[],
+                        &[],
                         &request_id,
                     );
                     return (Ok(json_response(415, &body)), route_id, "admission.body");
@@ -476,7 +482,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         .and_then(|v| v.parse::<usize>().ok())
                     {
                         Some(length) if length > max_body => {
-                            let body = problems::body("limit", None, None, &[], &request_id);
+                            let body = problems::body("limit", None, None, &[], &[], &request_id);
                             return (Ok(json_response(413, &body)), route_id, "admission.body");
                         }
                         None => {
@@ -484,6 +490,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                 "body",
                                 None,
                                 Some("invalid content-length"),
+                                &[],
                                 &[],
                                 &request_id,
                             );
@@ -503,7 +510,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .await
                 {
                     Err(_elapsed) => {
-                        let body = problems::body("timeout", None, None, &[], &request_id);
+                        let body = problems::body("timeout", None, None, &[], &[], &request_id);
                         return (Ok(json_response(504, &body)), route_id, "deadline.body");
                     }
                     Ok(Ok(bytes)) => {
@@ -514,7 +521,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         bytes
                     }
                     Ok(Err(HttpError::Limited { .. })) => {
-                        let body = problems::body("limit", None, None, &[], &request_id);
+                        let body = problems::body("limit", None, None, &[], &[], &request_id);
                         return (Ok(json_response(413, &body)), route_id, "admission.body");
                     }
                     Ok(Err(e)) => return (Err(e), route_id, "admission.body"),
@@ -526,6 +533,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             "validation",
                             None,
                             Some("malformed JSON body"),
+                            &[],
                             &[],
                             &request_id,
                         );
@@ -548,6 +556,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                     None,
                                     Some("body validation failed"),
                                     &field_errors(&errors),
+                                    &[],
                                     &request_id,
                                 );
                                 return (
@@ -764,6 +773,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                                 None,
                                                 None,
                                                 &[],
+                                                &[],
                                                 &ctx.request_id,
                                             );
                                             let mapped = (
@@ -806,6 +816,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                             "internal",
                                             None,
                                             None,
+                                            &[],
                                             &[],
                                             &ctx.request_id,
                                         );
@@ -885,11 +896,86 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     (Ok(resp), route_id, "engine")
                 }
                 Outcome::Problem(p) => {
+                    // M25-006-A: a DECLARED problem response (explicit
+                    // s.problem schema for this status) encodes through
+                    // the generated program — frozen declared title/type
+                    // overrides, detail validated against the declared
+                    // shape, extension members carried through. Framework
+                    // problems keep the generic registry builder.
+                    let declared_program = state
+                        .response_schema_ids
+                        .get(route_index)
+                        .and_then(|m| m.get(&p.status))
+                        .and_then(|sid| state.encoder_table.problem(*sid));
+                    if let Some(program) = declared_program {
+                        let (reg_type, reg_title, _) = problems::registry(&p.problem_id);
+                        let mut buf = Vec::new();
+                        match program.encode(
+                            reg_type,
+                            reg_title,
+                            Some(p.status),
+                            p.detail.as_deref(),
+                            &p.errors
+                                .iter()
+                                .map(|e| q_schema_runtime::FieldError {
+                                    path: e.path.clone(),
+                                    code: e.code.clone(),
+                                    message: e.message.clone(),
+                                })
+                                .collect::<Vec<_>>(),
+                            &p.extensions,
+                            &ctx.request_id,
+                            &mut buf,
+                        ) {
+                            Ok(()) => {
+                                let resp = PlainResponse {
+                                    status: p.status,
+                                    headers: vec![(
+                                        "content-type".into(),
+                                        "application/json".into(),
+                                    )],
+                                    body: buf,
+                                    head_only: head,
+                                };
+                                return (Ok(resp), route_id, "engine.problem");
+                            }
+                            Err(errors) => {
+                                // declared detail shape violated: same
+                                // controlled contract failure as response
+                                // schema violations
+                                let detail = format!(
+                                    "route {} problem response failed its declared detail shape: {:?}",
+                                    route_id, errors
+                                );
+                                eprintln!(
+                                    "{}",
+                                    serde_json::json!({
+                                        "level":"error","event":"contract.violation.response",
+                                        "requestId": ctx.request_id, "routeId": route_id, "detail": detail,
+                                    })
+                                );
+                                let problem = problems::body(
+                                    "internal",
+                                    None,
+                                    None,
+                                    &[],
+                                    &[],
+                                    &ctx.request_id,
+                                );
+                                return (
+                                    Ok(json_response(500, &problem)),
+                                    route_id,
+                                    "engine.problem-validation",
+                                );
+                            }
+                        }
+                    }
                     let body = problems::body(
                         &p.problem_id,
                         Some(p.status),
                         p.detail.as_deref(),
                         &p.errors,
+                        &p.extensions,
                         &ctx.request_id,
                     );
                     (
@@ -899,11 +985,12 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     )
                 }
                 Outcome::Timeout => {
-                    let body = problems::body("timeout", None, None, &[], &ctx.request_id);
+                    let body = problems::body("timeout", None, None, &[], &[], &ctx.request_id);
                     (Ok(json_response(504, &body)), route_id, "engine.timeout")
                 }
                 Outcome::RequestCapacity => {
-                    let body = problems::body("overload", Some(503), None, &[], &ctx.request_id);
+                    let body =
+                        problems::body("overload", Some(503), None, &[], &[], &ctx.request_id);
                     let mut response = json_response(503, &body);
                     response.headers.push(("retry-after".into(), "1".into()));
                     (Ok(response), route_id, "engine.capacity")
@@ -918,7 +1005,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             "requestId": ctx.request_id, "routeId": route_id, "detail": detail,
                         })
                     );
-                    let body = problems::body("internal", None, None, &[], &ctx.request_id);
+                    let body = problems::body("internal", None, None, &[], &[], &ctx.request_id);
                     (Ok(json_response(500, &body)), route_id, "engine.contract")
                 }
                 Outcome::EngineFailure { detail, source } => {
@@ -931,7 +1018,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             "detail": detail, "source": source,
                         })
                     );
-                    let body = problems::body("internal", None, None, &[], &ctx.request_id);
+                    let body = problems::body("internal", None, None, &[], &[], &ctx.request_id);
                     (Ok(json_response(500, &body)), route_id, "engine.error")
                 }
             };
