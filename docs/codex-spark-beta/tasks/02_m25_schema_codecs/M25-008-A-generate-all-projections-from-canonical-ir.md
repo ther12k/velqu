@@ -4,7 +4,7 @@ parent_task: M25-008
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -117,3 +117,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-008-A)
+
+Status: **PASS**. All projections generate from the canonical Schema IR
+and the hand-written duplicate client interface is gone:
+
+- **Dead projection removed** (`packages/compiler/src/emit.ts` +
+  `index.ts`): `contractFor` — an unused function whose body carried
+  hand-written problem placeholders (`{ title: "string" }`) — is deleted
+  along with its import. The live projections are all IR-driven:
+  `contract.json` (raw IR JSON), `contract.d.ts` (`tsTypeOfIr` +
+  `problemTypeOf`), `openapi.json` (`irToSchema` + `problemSchemaFor`),
+  the pack's decoder/encoder programs, and the runtime validation.
+- **No hand-written duplicate interface** (guardrail):
+  `conformance/treaty/treaty.conformance.test.ts` now IMPORTS the
+  generated contract type (`Api` from `examples/proof/dist/contract`) as
+  `ProofPublishedApi` — the entire hand-written route-by-route interface
+  is deleted. A consumer needs only the generated file. Shape facts stay
+  pinned by two type-level `expectTypeOf` assertions (hello.get success
+  shape; users.get success + exact 401 unauthorized envelope) plus the
+  compiler conformance suite's d.ts content snapshots.
+
+### Tests and evidence
+
+- Treaty conformance — 3 passed with the generated-type import (source
+  parity: the suite still drives the live runtime through the compiled
+  pack using ONLY the generated type).
+- `bun test` — 75 passed, 0 failed, 340 expect calls.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-schema-runtime`
+  — 57 + 3; `cargo test -p velqu-runtime` — 24; `cargo test -p q-pack` —
+  41 + 2 — all passed.
+- `bun run typecheck` — clean (the generated d.ts typechecks as imported).
+- `cargo fmt --check` — clean. `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Parity checks across projections land in M25-008-B; compact contract
+metadata in M25-008-C; the Schema IR v2 semantic diff in M25-008-D.
+
+Commit: `7f093d7`.

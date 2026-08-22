@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
-import { bundleApp, buildPack, contractFor, contractDts, openapiFor, diffContracts } from "./emit";
+import { bundleApp, buildPack, contractDts, openapiFor, diffContracts } from "./emit";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 
 export { CompileError } from "./extract";
