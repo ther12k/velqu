@@ -21,10 +21,26 @@ use crate::{
     SchemaIr, MAX_VALIDATE_DEPTH,
 };
 
+/// One declared property, pre-resolved for the fixed-order read pass.
+#[derive(Debug, Clone, PartialEq)]
+struct PropertyEncoder {
+    name: String,
+    spec: FieldSpec,
+    /// Hoisted `Optional` default: emitted verbatim when the property is
+    /// absent (the reference validator inserts it unvalidated).
+    default: Option<Value>,
+}
+
 /// A compiled direct encoder program for one declared response schema.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncoderProgram {
-    properties: BTreeMap<String, FieldSpec>,
+    /// Fixed declared property order, byte-sorted at compile time
+    /// (M25-005-B): every response reads exactly these properties in
+    /// exactly this order, regardless of the handler value's key order.
+    properties: Vec<PropertyEncoder>,
+    /// Required names in schema declaration order — the missing-required
+    /// pass iterates this list so typed-error ordering matches the
+    /// reference validator exactly.
     required: Vec<String>,
 }
 
@@ -70,8 +86,27 @@ impl EncoderProgram {
             }
             specs.insert(key.clone(), spec);
         }
+        // fixed read order: properties arrive byte-sorted from the BTreeMap
+        // and are frozen into the program as a plain vector — no runtime
+        // map iteration, no per-property required-list scan
+        let fixed: Vec<PropertyEncoder> = specs
+            .into_iter()
+            .map(|(name, spec)| {
+                let default = match &spec {
+                    FieldSpec::Optional {
+                        default: Some(d), ..
+                    } => Some(d.clone()),
+                    _ => None,
+                };
+                PropertyEncoder {
+                    name,
+                    spec,
+                    default,
+                }
+            })
+            .collect();
         Some(EncoderProgram {
-            properties: specs,
+            properties: fixed,
             required: required.clone(),
         })
     }
@@ -110,7 +145,12 @@ impl EncoderProgram {
         };
         let mut errors = Vec::new();
         for key in obj.keys() {
-            if !self.properties.contains_key(key) {
+            // self.properties is byte-sorted — binary search, no map
+            if self
+                .properties
+                .binary_search_by(|probe| probe.name.as_str().cmp(key.as_str()))
+                .is_err()
+            {
                 errors.push(FieldError::typed(
                     &join_path(path, key),
                     FieldErrorCode::Additional,
@@ -131,20 +171,18 @@ impl EncoderProgram {
             return Err(errors);
         }
 
-        // Declared property order (byte-sorted, matching the reference
-        // validator's normalized output insertion order). Absent
-        // optional-without-default keys are omitted; absent
+        // The read pass walks the frozen declared order (byte-sorted,
+        // matching the reference validator's normalized output insertion
+        // order). Absent optional-without-default keys are omitted; absent
         // optional-with-default keys emit the default.
         out.push(b'{');
         let mut first = true;
-        for (key, spec) in &self.properties {
-            let (v, is_default) = match obj.get(key) {
+        for prop in &self.properties {
+            let (v, is_default) = match obj.get(prop.name.as_str()) {
                 Some(v) => (v, false),
-                None => match spec {
-                    FieldSpec::Optional {
-                        default: Some(d), ..
-                    } => (d, true),
-                    _ => continue,
+                None => match &prop.default {
+                    Some(d) => (d, true),
+                    None => continue,
                 },
             };
             if !first {
@@ -154,16 +192,16 @@ impl EncoderProgram {
             // leaf byte parity: delegate key and scalar writing to
             // serde_json itself so escaping/number formatting can never
             // drift from the reference serialization
-            let _ = serde_json::to_writer(&mut *out, key.as_str());
+            let _ = serde_json::to_writer(&mut *out, prop.name.as_str());
             out.push(b':');
-            let p = join_path(path, key);
+            let p = join_path(path, &prop.name);
             let walked = if is_default {
                 // defaults are schema-declared literals: emitted verbatim
                 // (reference inserts the default unvalidated)
                 let _ = serde_json::to_writer(&mut *out, v);
                 Ok(())
             } else {
-                encode_spec(spec, v, &p, depth + 1, out)
+                encode_spec(&prop.spec, v, &p, depth + 1, out)
             };
             if let Err(mut e) = walked {
                 errors.append(&mut e);
@@ -1009,6 +1047,96 @@ mod m25_005_a_tests {
 
         // non-object top level keeps the reference path (string responses)
         assert!(EncoderProgram::compile(&SchemaIr::Boolean).is_none());
+    }
+
+    /// M25-005-B: the read pass walks the FIXED declared order. With
+    /// multiple per-property failures the typed-error sequence follows the
+    /// declared (byte-sorted) property order, not the handler value's key
+    /// insertion order — deterministic output contracts.
+    #[test]
+    fn encoder_reads_properties_in_declared_fixed_order() {
+        let ir = obj(
+            vec![
+                (
+                    "beta",
+                    SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    },
+                ),
+                (
+                    "alpha",
+                    SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    },
+                ),
+                (
+                    "gamma",
+                    SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    },
+                ),
+            ],
+            vec!["beta", "alpha", "gamma"],
+        );
+        let program = EncoderProgram::compile(&ir).unwrap();
+
+        // value keys arrive REVERSED from declared order; every property
+        // fails its type check — errors must come back in declared order
+        let value = json!({"gamma": "bad", "beta": "bad", "alpha": "bad"});
+        let mut out = Vec::new();
+        let err = program.encode(&value, &mut out).unwrap_err();
+        let paths: Vec<&str> = err.iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(paths, vec!["alpha", "beta", "gamma"]);
+
+        // valid value with reversed key order encodes in declared order
+        let value = json!({"gamma": 3, "beta": 2, "alpha": 1});
+        let mut out = Vec::new();
+        program.encode(&value, &mut out).unwrap();
+        assert_eq!(out, b"{\"alpha\":1,\"beta\":2,\"gamma\":3}");
+    }
+
+    /// M25-005-B: compilation is deterministic — the same schema compiles
+    /// to an equal program and encodes identical bytes every time.
+    #[test]
+    fn encoder_program_is_deterministic_across_compiles() {
+        let ir = obj(
+            vec![
+                (
+                    "a",
+                    SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    },
+                ),
+                (
+                    "b",
+                    SchemaIr::Optional {
+                        inner: Box::new(SchemaIr::String {
+                            min_length: None,
+                            max_length: None,
+                            pattern: None,
+                            format: None,
+                        }),
+                        default: Some(json!("dflt")),
+                    },
+                ),
+            ],
+            vec!["a"],
+        );
+        let first = EncoderProgram::compile(&ir).unwrap();
+        let second = EncoderProgram::compile(&ir).unwrap();
+        assert_eq!(first, second, "compilation must be deterministic");
+
+        let value = json!({"a": 1});
+        let mut bytes_a = Vec::new();
+        let mut bytes_b = Vec::new();
+        first.encode(&value, &mut bytes_a).unwrap();
+        second.encode(&value, &mut bytes_b).unwrap();
+        assert_eq!(bytes_a, bytes_b);
+        assert_eq!(bytes_a, b"{\"a\":1,\"b\":\"dflt\"}");
     }
 
     /// The table is dense by SchemaId and mirrors the decoder table's

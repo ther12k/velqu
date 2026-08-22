@@ -165,7 +165,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-004-V](../tasks/02_m25_schema_codecs/M25-004-V-verify-generate-json-body-decoders.md) | P0 | verify | PASS | M25-004-A, M25-004-B, M25-004-C, M25-004-D | Verify Generate JSON body decoders |
 | [M25-004-Z](../tasks/02_m25_schema_codecs/M25-004-Z-package-evidence-for-generate-json-body-decoders.md) | P0 | evidence | PASS | M25-004-V | Package evidence for Generate JSON body decoders |
 | [M25-005-A](../tasks/02_m25_schema_codecs/M25-005-A-generate-per-status-encoders.md) | P0 | implement | PASS | M25-001-Z, M25-002-Z | Generate per-status encoders |
-| [M25-005-B](../tasks/02_m25_schema_codecs/M25-005-B-read-declared-properties-in-fixed-order.md) | P0 | implement | TODO | M25-005-A | Read declared properties in fixed order |
+| [M25-005-B](../tasks/02_m25_schema_codecs/M25-005-B-read-declared-properties-in-fixed-order.md) | P0 | implement | PASS | M25-005-A | Read declared properties in fixed order |
 | [M25-005-C](../tasks/02_m25_schema_codecs/M25-005-C-handle-optional-null-union-fields.md) | P0 | implement | TODO | M25-005-B | Handle optional/null/union fields |
 | [M25-005-D](../tasks/02_m25_schema_codecs/M25-005-D-keep-quickjs-stringify-or-generic-fallback-when-measured-better.md) | P0 | implement | TODO | M25-005-C | Keep QuickJS stringify or generic fallback when measured better |
 | [M25-005-V](../tasks/02_m25_schema_codecs/M25-005-V-verify-generate-status-specific-response-encoders.md) | P0 | verify | TODO | M25-005-A, M25-005-B, M25-005-C, M25-005-D | Verify Generate status-specific response encoders |
