@@ -108,6 +108,12 @@ pub struct ServeState {
     pub schema_vector: Vec<q_schema_runtime::SchemaIr>,
     /// Pre-compiled direct decoder programs keyed by SchemaId (M25-003-A).
     pub decoder_table: q_schema_runtime::DecoderTable,
+    /// Pre-compiled direct response encoders keyed by SchemaId (M25-005-A).
+    pub encoder_table: q_schema_runtime::EncoderTable,
+    /// Per-route declared response statuses with a schema, resolved to
+    /// dense SchemaIds once at startup (M25-005-A) — zero request-time
+    /// string lookups on the response path.
+    pub response_schema_ids: Vec<std::collections::BTreeMap<u16, u32>>,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
     pub invocation_clock: AtomicU64,
@@ -720,46 +726,96 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // Only the native strategy crosses as structured data; the
             // engine-stringified path (js strategy) is disclosed per-route
             // in the build report and skipped here.
+            //
+            // M25-005-A: when a generated encoder program exists for the
+            // declared status schema, validation and serialization fuse
+            // into ONE traversal that emits the response bytes directly.
+            // Schemas the direct encoder cannot represent keep the
+            // reference validate-then-serialize path below.
+            let mut encoded_response: Option<Vec<u8>> = None;
             if let Outcome::Response { status, body, .. } = &outcome {
                 if let Some(decl) = route.responses.get(&status.to_string()) {
                     if let Some(key) = &decl.schema {
-                        if let Some(ir) = state.pack.schemas.get(key) {
-                            let candidate = match body {
-                                BodyOut::Json(v) => Some(v.clone()),
-                                BodyOut::Text(t) => {
-                                    // string responses validate against string-kind IR
-                                    Some(serde_json::Value::String(t.clone()))
+                        if let BodyOut::Json(_) = body {
+                            if let Some(program) = state
+                                .response_schema_ids
+                                .get(route_index)
+                                .and_then(|m| m.get(status))
+                                .and_then(|sid| state.encoder_table.get(*sid))
+                            {
+                                if let BodyOut::Json(v) = body {
+                                    let mut buf = Vec::new();
+                                    match program.encode(v, &mut buf) {
+                                        Ok(()) => encoded_response = Some(buf),
+                                        Err(errors) => {
+                                            let detail = format!(
+                                                "route {} response failed its declared schema ({}): {:?}",
+                                                route.id, key, errors
+                                            );
+                                            eprintln!(
+                                                "{}",
+                                                serde_json::json!({
+                                                    "level":"error","event":"contract.violation.response",
+                                                    "requestId": ctx.request_id, "routeId": route.id, "detail": detail,
+                                                })
+                                            );
+                                            let problem = problems::body(
+                                                "internal",
+                                                None,
+                                                None,
+                                                &[],
+                                                &ctx.request_id,
+                                            );
+                                            let mapped = (
+                                                Ok(json_response(500, &problem)),
+                                                route_id.clone(),
+                                                "engine.response-validation",
+                                            );
+                                            return mapped;
+                                        }
+                                    }
                                 }
-                                _ => None,
-                            };
-                            if let Some(v) = candidate {
-                                if let Err(errors) =
-                                    q_schema_runtime::validate(ir, &v, Source::Body)
-                                {
-                                    let detail = format!(
-                                        "route {} response failed its declared schema ({}): {:?}",
-                                        route.id, key, errors
-                                    );
-                                    eprintln!(
-                                        "{}",
-                                        serde_json::json!({
-                                            "level":"error","event":"contract.violation.response",
-                                            "requestId": ctx.request_id, "routeId": route.id, "detail": detail,
-                                        })
-                                    );
-                                    let problem = problems::body(
-                                        "internal",
-                                        None,
-                                        None,
-                                        &[],
-                                        &ctx.request_id,
-                                    );
-                                    let mapped = (
-                                        Ok(json_response(500, &problem)),
-                                        route_id.clone(),
-                                        "engine.response-validation",
-                                    );
-                                    return mapped;
+                            }
+                        }
+                        if encoded_response.is_none() {
+                            if let Some(ir) = state.pack.schemas.get(key) {
+                                let candidate = match body {
+                                    BodyOut::Json(v) => Some(v.clone()),
+                                    BodyOut::Text(t) => {
+                                        // string responses validate against string-kind IR
+                                        Some(serde_json::Value::String(t.clone()))
+                                    }
+                                    _ => None,
+                                };
+                                if let Some(v) = candidate {
+                                    if let Err(errors) =
+                                        q_schema_runtime::validate(ir, &v, Source::Body)
+                                    {
+                                        let detail = format!(
+                                            "route {} response failed its declared schema ({}): {:?}",
+                                            route.id, key, errors
+                                        );
+                                        eprintln!(
+                                            "{}",
+                                            serde_json::json!({
+                                                "level":"error","event":"contract.violation.response",
+                                                "requestId": ctx.request_id, "routeId": route.id, "detail": detail,
+                                            })
+                                        );
+                                        let problem = problems::body(
+                                            "internal",
+                                            None,
+                                            None,
+                                            &[],
+                                            &ctx.request_id,
+                                        );
+                                        let mapped = (
+                                            Ok(json_response(500, &problem)),
+                                            route_id.clone(),
+                                            "engine.response-validation",
+                                        );
+                                        return mapped;
+                                    }
                                 }
                             }
                         }
@@ -781,9 +837,24 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             head_only: head,
                         },
                         BodyOut::Json(v) => {
-                            let mut resp = json_response(status, &v);
-                            resp.head_only = head;
-                            resp
+                            // M25-005-A: when the direct encoder produced
+                            // the validated bytes, write them without a
+                            // second serialization pass
+                            if let Some(bytes) = encoded_response.take() {
+                                PlainResponse {
+                                    status,
+                                    headers: vec![(
+                                        "content-type".into(),
+                                        "application/json".into(),
+                                    )],
+                                    body: bytes,
+                                    head_only: head,
+                                }
+                            } else {
+                                let mut resp = json_response(status, &v);
+                                resp.head_only = head;
+                                resp
+                            }
                         }
                         BodyOut::Text(t) => PlainResponse {
                             status,

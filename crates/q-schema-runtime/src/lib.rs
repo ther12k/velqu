@@ -13,6 +13,9 @@ pub const SCHEMA_IR_VERSION: u32 = 2;
 mod decoder;
 pub use decoder::{DecoderProgram, DecoderTable, FieldSpec, PropertyDecoder};
 
+mod encoder;
+pub use encoder::{EncoderProgram, EncoderTable};
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};

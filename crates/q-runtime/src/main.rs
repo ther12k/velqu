@@ -227,11 +227,38 @@ fn run(args: Args) -> i32 {
             .map(|s| s.ir.clone())
             .collect();
         let decoder_table = q_schema_runtime::DecoderTable::from_schemas(&schema_vector);
+        // M25-005-A: direct response encoders from the same dense schema
+        // vector, plus each route's declared response statuses resolved to
+        // SchemaIds once at startup (production startup performs zero
+        // compilation — both tables are precompiled programs keyed by id).
+        let encoder_table = q_schema_runtime::EncoderTable::from_schemas(&schema_vector);
+        let schema_id_by_key: std::collections::BTreeMap<&str, u32> = pack
+            .schema_manifest
+            .iter()
+            .map(|s| (s.key.as_str(), s.id))
+            .collect();
+        let response_schema_ids: Vec<std::collections::BTreeMap<u16, u32>> = pack
+            .routes
+            .iter()
+            .map(|route| {
+                route
+                    .responses
+                    .iter()
+                    .filter_map(|(status, decl)| {
+                        let sid = decl.schema.as_ref().and_then(|k| schema_id_by_key.get(k.as_str()))?;
+                        let status: u16 = status.parse().ok()?;
+                        Some((status, *sid))
+                    })
+                    .collect()
+            })
+            .collect();
         let state = Arc::new(serve::ServeState {
             pack: Arc::new(pack),
             router,
             schema_vector,
             decoder_table,
+            encoder_table,
+            response_schema_ids,
             engine: std::sync::Mutex::new(engine),
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
