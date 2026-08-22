@@ -77,6 +77,29 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   const openapi = openapiFor(app);
   const dts = contractDts(app, (pack as { contractHash: string }).contractHash);
 
+  // M25-008-C: compact PUBLISHED contract metadata — the minimal facts a
+  // client repository needs to pin and verify contract sync. No schema
+  // bodies, no IRs: route identity, declared statuses, security, and the
+  // contract hash. Clients import contract.d.ts for types and carry this
+  // file for runtime pinning; neither imports server implementation.
+  const contractMeta = {
+    formatVersion: 1,
+    appId: app.appId,
+    contractHash: (pack as { contractHash: string }).contractHash,
+    generatedAt: contract.generatedAt,
+    routes: Object.fromEntries(
+      app.routes.map((r) => [
+        r.id,
+        {
+          method: r.method,
+          path: r.path,
+          statuses: Object.keys(r.responses).sort(),
+          secured: r.policyId != null,
+        },
+      ]),
+    ),
+  };
+
   // route/schema/capability manifests
   // M25-007-D: the manifest carries the REAL per-route codec choices and
   // the bridge-crossing model — native routes cross once with pre-validated
@@ -175,6 +198,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     "capability-manifest.json": JSON.stringify(capabilityManifest, null, 2),
     "contract.json": JSON.stringify(contract, null, 2),
     "contract.d.ts": dts,
+    "contract.meta.json": JSON.stringify(contractMeta, null, 2),
     "openapi.json": JSON.stringify(openapi, null, 2),
     ...(writeLock ? { "contract.lock.json": JSON.stringify(lock, null, 2) } : {}),
     "build-report.json": JSON.stringify(buildReport, null, 2),
