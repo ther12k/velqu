@@ -4,7 +4,7 @@ parent_task: M25-005
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-005-C)
+
+Status: **PASS**. The direct encoder handles optional, nullable, and union
+fields with reference parity:
+
+- **Unions** (`crates/q-schema-runtime/src/encoder.rs`): union properties
+  now compile into the program when EVERY member is encodable (a union
+  carrying any unencodable member — nested object, transform, ... — keeps
+  the reference path, since a value could match only that member).
+  Encoding is first-match-wins in declared member order, mirroring the
+  reference validator: each attempt encodes into a SCRATCH buffer so a
+  failed member's partial bytes never reach the response; only the
+  winning member's bytes append. A no-match value produces the same typed
+  `union` problem (code, path, message) as the reference.
+- **Optional/Nullable**: the combination semantics are proven against the
+  reference validator — Optional absorbs null into its declared default
+  before Nullable ever sees it, Nullable<Optional> null resolves to bare
+  null, and nested Optional defaults collapse outermost-first on absence.
+  (The A-packet implementation already encoded these cases; C adds the
+  combination-matrix evidence.)
+
+### Tests and evidence
+
+- `unions_encode_via_first_matching_member_with_parity` — first member
+  matches (byte parity vs reference); first member fails mid-array after
+  partial `[1,` bytes and the second member wins (output contains ONLY
+  the winning bytes — scratch isolation); no member matches (typed
+  `union` error with reference parity).
+- `optional_null_combinations_match_reference` — six-case combination
+  matrix (Optional<Nullable> with null/absent/value,
+  Nullable<Optional> with null, nested Optional<Optional> with
+  absent/null), each byte-equal to the reference normalized output.
+- `unrepresentable_schemas_compile_to_none` updated — an all-encodable
+  union now compiles; a union with an unencodable member stays None.
+- `runtime_conformance::native_response_encoder_emits_declared_order`
+  extended with a required `uni: Union<Integer, String>` property — the
+  live HTTP response encodes the union member correctly inside the
+  declared-order bytes; the mismatch twin still 500s.
+- `cargo test -p q-schema-runtime` — 54 unit + 3 fuzz passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p velqu-runtime` — 19 integration passed.
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+No performance claim; benchmark manifest preserved unchanged.
+
+Commit: `872b59b`.
