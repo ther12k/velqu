@@ -125,6 +125,122 @@ describe("contract lock workflow (PR-006/SCHEMA-007)", () => {
     expect(contractDiff(out).length).toBe(0);
   });
 
+  test("semantic diff classifies IR v2 constraint changes (M25-008-D)", () => {
+    const baseRoute = {
+      path: "/items",
+      method: "POST",
+      body: {
+        kind: "object",
+        properties: {
+          name: { kind: "string" },
+          count: { kind: "integer", minimum: 0 },
+          tags: { kind: "array", items: { kind: "string" } },
+          grade: { kind: "enum", values: ["a", "b", "c"] },
+        },
+        required: ["name"],
+      },
+      responses: { "200": { kind: "object", properties: { ok: { kind: "boolean" } } } },
+    };
+    const lock = { routes: { "items.create": baseRoute } };
+    const variant = (body: unknown) => ({
+      routes: { "items.create": { ...baseRoute, body } },
+    });
+
+    // input maxLength added -> breaking (previously-valid input rejects)
+    const d1 = diffContracts(
+      variant({
+        ...(baseRoute.body as object),
+        properties: { ...(baseRoute.body as { properties: object }).properties, name: { kind: "string", maxLength: 8 } },
+      }),
+      lock,
+    );
+    expect(d1.some((d) => d.kind === "breaking" && d.change.includes("bounds tightened"))).toBe(true);
+
+    // input minimum lowered (0 → -5) -> compatible (accepts more)
+    const d2 = diffContracts(
+      variant({
+        ...(baseRoute.body as object),
+        properties: { ...(baseRoute.body as { properties: object }).properties, count: { kind: "integer", minimum: -5 } },
+      }),
+      lock,
+    );
+    expect(d2.some((d) => d.kind === "compatible" && d.change.includes("bounds loosened"))).toBe(true);
+
+    // pattern constraint added -> breaking on input
+    const d3 = diffContracts(
+      variant({
+        ...(baseRoute.body as object),
+        properties: { ...(baseRoute.body as { properties: object }).properties, name: { kind: "string", pattern: "^it_" } },
+      }),
+      lock,
+    );
+    expect(d3.some((d) => d.kind === "breaking" && d.change.includes("pattern constraint added"))).toBe(true);
+
+    // enum value removed on input -> breaking
+    const d4 = diffContracts(
+      variant({
+        ...(baseRoute.body as object),
+        properties: { ...(baseRoute.body as { properties: object }).properties, grade: { kind: "enum", values: ["a", "b"] } },
+      }),
+      lock,
+    );
+    expect(d4.some((d) => d.kind === "breaking" && d.change.includes("enum value(s) removed"))).toBe(true);
+
+    // minItems added on input array -> breaking
+    const d5 = diffContracts(
+      variant({
+        ...(baseRoute.body as object),
+        properties: { ...(baseRoute.body as { properties: object }).properties, tags: { kind: "array", items: { kind: "string" }, minItems: 1 } },
+      }),
+      lock,
+    );
+    expect(d5.some((d) => d.kind === "breaking" && d.change.includes("bounds tightened"))).toBe(true);
+
+    // response bounds tightened -> policy-sensitive (not breaking)
+    const respLock = {
+      routes: {
+        "items.create": {
+          ...baseRoute,
+          responses: { "200": { kind: "object", properties: { token: { kind: "string" } } } },
+        },
+      },
+    };
+    const d6 = diffContracts(
+      {
+        routes: {
+          "items.create": {
+            ...baseRoute,
+            responses: { "200": { kind: "object", properties: { token: { kind: "string", maxLength: 64 } } } },
+          },
+        },
+      },
+      respLock,
+    );
+    expect(d6.some((d) => d.kind === "policy-sensitive" && d.change.includes("bounds tightened"))).toBe(true);
+
+    // fallback reason change -> policy-sensitive (codec path change)
+    const fbLock = {
+      routes: {
+        "items.create": {
+          ...baseRoute,
+          body: { kind: "fallback", reason: "explicit", inner: baseRoute.body },
+        },
+      },
+    };
+    const d7 = diffContracts(
+      {
+        routes: {
+          "items.create": {
+            ...baseRoute,
+            body: { kind: "fallback", reason: "measured", inner: baseRoute.body },
+          },
+        },
+      },
+      fbLock,
+    );
+    expect(d7.some((d) => d.kind === "policy-sensitive" && d.change.includes("fallback reason changed"))).toBe(true);
+  });
+
   test("semantic diff detects schema structural changes accurately", () => {
     const lock = {
       routes: {

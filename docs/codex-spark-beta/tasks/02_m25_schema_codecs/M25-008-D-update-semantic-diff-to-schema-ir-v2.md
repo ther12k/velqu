@@ -4,7 +4,7 @@ parent_task: M25-008
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -113,3 +113,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-008-D)
+
+Status: **PASS**. The semantic diff covers Schema IR v2 constraint nodes
+with classified change kinds (guardrail: breaking changes classified
+correctly):
+
+- `packages/compiler/src/emit.ts` `diffSchemaTypes` extended:
+  - **Bounds** (`minLength`/`maxLength`, `minimum`/`maximum`,
+    `minItems`/`maxItems`): tightening (floor appears/rises, ceiling
+    appears/falls) is BREAKING on inputs (previously-accepted values now
+    reject) and POLICY-SENSITIVE on responses; loosening is COMPATIBLE.
+    Note a first-ever floor is tightening from −∞ — tested explicitly.
+  - **`pattern`/`format`**: added/changed is breaking on input,
+    policy-sensitive on response; removed is compatible.
+  - **enum**: value removal breaks inputs, widens responses (compatible).
+  - **literal**: value change is breaking.
+  - **union**: member removal (canonical member comparison) breaks
+    inputs, widens responses.
+  - **nullable/optional**: recursion into the inner shape.
+  - **fallback**: reason change is policy-sensitive (codec path change,
+    M25-007-A visibility); inner shape still diffs.
+- Existing structural diff behavior unchanged (route add/remove, path/
+  method changes, status changes, security changes, object property
+  changes) — the prior suite stays green.
+
+### Tests and evidence
+
+- `semantic diff classifies IR v2 constraint changes (M25-008-D)` —
+  seven classification cases: input maxLength tightening (breaking),
+  input minimum loosening 0 → −5 (compatible), pattern addition
+  (breaking), enum removal (breaking), array minItems addition
+  (breaking), response bounds tightening (policy-sensitive, NOT
+  breaking), fallback reason change (policy-sensitive).
+- Prior `semantic diff detects schema structural changes accurately`
+  suite — unchanged and green.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-schema-runtime`
+  — 57 + 3; `cargo test -p velqu-runtime` — 24; `cargo test -p q-pack` —
+  41 + 2 — all passed.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `b31d832`.
