@@ -4,7 +4,7 @@ parent_task: M25-008
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-008-C)
+
+Status: **PASS**. Compact contract metadata is published with every build:
+
+- `packages/compiler/src/index.ts`: the build now emits
+  `contract.meta.json` alongside the other artifacts — the minimal facts
+  a client repository needs to pin and verify contract sync: `formatVersion`,
+  `appId`, `contractHash` (same hash as contract.json/lock), `generatedAt`,
+  and per route `{ method, path, statuses, secured }`. No schema bodies,
+  no IRs (proof app: 1,459 bytes). Clients import `contract.d.ts` for
+  types and carry this file for runtime pinning; neither imports server
+  implementation (TRT-004 suite).
+- Parity coverage: `projection parity (M25-008-B)` gained a fifth test —
+  "compact contract metadata stays in sync and compact" — asserting hash
+  and appId agreement with contract.json, route set + statuses + security
+  agreement, the absence of schema bodies, and a 4 KiB compactness bound.
+
+### Tests and evidence
+
+- `projection parity > compact contract metadata stays in sync and
+  compact (M25-008-C)` — passed.
+- `bun test` — 80 passed, 0 failed, 474 expect calls.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-schema-runtime`
+  — 57 + 3; `cargo test -p velqu-runtime` — 24; `cargo test -p q-pack` —
+  41 + 2 — all passed.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `c54f1e9`.

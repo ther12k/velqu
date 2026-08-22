@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 
 const DIST = "examples/proof/dist";
 const contract = JSON.parse(readFileSync(`${DIST}/contract.json`, "utf8"));
+const meta = JSON.parse(readFileSync(`${DIST}/contract.meta.json`, "utf8"));
 const openapi = JSON.parse(readFileSync(`${DIST}/openapi.json`, "utf8"));
 const pack = JSON.parse(readFileSync(`${DIST}/app.qpack`, "utf8"));
 const dts = readFileSync(`${DIST}/contract.d.ts`, "utf8");
@@ -103,6 +104,27 @@ describe("projection parity (M25-008-B)", () => {
       expect(irFields(packSchemas[r.query?.schema ?? ""] ?? null)).toEqual(irFields(c.query));
       expect(irFields(packSchemas[r.body?.schema ?? ""] ?? null)).toEqual(irFields(c.body));
     }
+  });
+
+  test("compact contract metadata stays in sync and compact (M25-008-C)", () => {
+    // hash binds the metadata to the exact contract
+    expect(meta.contractHash).toBe(contract.contractHash);
+    expect(meta.appId).toBe(contract.appId);
+
+    // route set + statuses + security agree with the full contract
+    expect(Object.keys(meta.routes).sort()).toEqual(Object.keys(contract.routes).sort());
+    for (const [id, m] of Object.entries(meta.routes) as Array<[string, { method: string; path: string; statuses: string[]; secured: boolean }]>) {
+      const c = contract.routes[id];
+      expect(m.method.toUpperCase()).toBe(c.method.toUpperCase());
+      expect(m.path).toBe(c.path);
+      expect(m.statuses).toEqual(Object.keys(c.responses).sort());
+      expect(m.secured).toBe(c.security != null);
+    }
+
+    // compactness bound: no schema bodies, and the whole file stays tiny
+    const raw = readFileSync(`${DIST}/contract.meta.json`, "utf8");
+    expect(raw).not.toContain("properties");
+    expect(Buffer.byteLength(raw)).toBeLessThan(4096);
   });
 
   test("security agrees across contract, pack, and OpenAPI", () => {
