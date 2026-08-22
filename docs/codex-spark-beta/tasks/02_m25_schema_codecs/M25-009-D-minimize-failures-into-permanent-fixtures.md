@@ -4,7 +4,7 @@ parent_task: M25-009
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -119,3 +119,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-009-D)
+
+Status: **PASS**. Every M25-009 fuzz/corpus finding is minimized into a
+permanent, self-documenting fixture:
+
+- Findings registry (module doc of `codec_standards_corpus.rs`):
+  1. M25-009-A (round-trip fuzz, iteration 2): fallback-with-inner not
+     transparent in the encoder →
+     `fallback_with_inner_encodes_transparently`.
+  2. M25-009-C (malformed corpus): decoder leaked the last union
+     member's internal error on a total miss → NEW fixture
+     `union_miss_reports_canonical_code_everywhere`.
+- The new fixture pins the C finding end-to-end: both miss shapes (bool;
+  negative int that misses the integer member and is not a string)
+  produce the canonical `union` code with the reference message in
+  decoder, reference validator, AND encoder; first-match behavior on
+  hits stays asserted. The A fixture (byte parity + inner-bound
+  rejection) was already permanent from M25-009-B's corpus and replays in
+  `codec_regression_corpus_replays`.
+
+### Tests and evidence
+
+- `codec_standards_corpus` — 5 passed (corpus + both minimized fixtures).
+- `cargo test -p q-schema-runtime` — 58 unit + 4 fuzz + 5 standards —
+  all passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-pack` —
+  41 + 2; `cargo test -p velqu-runtime` — 24 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `13dc4e9`.
