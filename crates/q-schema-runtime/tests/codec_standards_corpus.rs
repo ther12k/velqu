@@ -198,3 +198,208 @@ fn codec_regression_corpus_replays() {
         );
     }
 }
+
+/// M25-009-C: malformed and boundary value corpus. Every malformed entry
+/// must produce a TYPED error (never a panic) with decoder/reference/encoder
+/// agreement; every boundary entry must be accepted everywhere with output
+/// parity.
+#[test]
+fn malformed_and_boundary_corpus() {
+    use q_schema_runtime::{validate, DecoderTable, Source};
+
+    let int_b = |min, max| SchemaIr::Integer {
+        minimum: min,
+        maximum: max,
+    };
+    let num_b = |min, max| SchemaIr::Number {
+        minimum: min,
+        maximum: max,
+    };
+    let str_b = |min, max, fmt| SchemaIr::String {
+        min_length: min,
+        max_length: max,
+        pattern: None,
+        format: fmt,
+    };
+    let arr_b = |min, max| SchemaIr::Array {
+        items: Box::new(int_b(None, None)),
+        min_items: min,
+        max_items: max,
+    };
+
+    let schema = obj(
+        vec![
+            ("i", int_b(Some(0), Some(100))),
+            ("n", num_b(Some(-2.5), Some(2.5))),
+            ("s", str_b(Some(1), Some(10), None)),
+            ("email", str_b(None, None, Some("email".into()))),
+            ("uuid", str_b(None, None, Some("uuid".into()))),
+            ("list", arr_b(Some(1), Some(3))),
+            (
+                "grade",
+                SchemaIr::Enum {
+                    values: vec![json!("a"), json!("b")],
+                },
+            ),
+            (
+                "u",
+                SchemaIr::Union {
+                    members: vec![Box::new(int_b(Some(0), None)), Box::new(free_string())],
+                },
+            ),
+        ],
+        vec!["i", "s"],
+    );
+
+    let malformed: Vec<(&str, Value)> = vec![
+        // wrong types at every declared position
+        ("i as string", json!({"i": "5", "s": "x"})),
+        ("i as float", json!({"i": 5.5, "s": "x"})),
+        ("i as bool", json!({"i": true, "s": "x"})),
+        ("i as array", json!({"i": [5], "s": "x"})),
+        ("i as null", json!({"i": null, "s": "x"})),
+        ("i beyond i64", json!({"i": u64::MAX, "s": "x"})),
+        ("n as string", json!({"i": 1, "s": "x", "n": "1.5"})),
+        ("n as bool", json!({"i": 1, "s": "x", "n": false})),
+        ("s as number", json!({"i": 1, "s": 9})),
+        ("s as array", json!({"i": 1, "s": ["x"]})),
+        (
+            "email malformed",
+            json!({"i": 1, "s": "x", "email": "not-an-email"}),
+        ),
+        (
+            "email empty local",
+            json!({"i": 1, "s": "x", "email": "@example.org"}),
+        ),
+        ("uuid malformed", json!({"i": 1, "s": "x", "uuid": "xyz"})),
+        (
+            "uuid truncated",
+            json!({"i": 1, "s": "x", "uuid": "123e4567-e89b-12d3-a456-4266141740"}),
+        ),
+        ("list as scalar", json!({"i": 1, "s": "x", "list": 3})),
+        (
+            "list wrong item type",
+            json!({"i": 1, "s": "x", "list": [1, "two"]}),
+        ),
+        (
+            "grade not a member",
+            json!({"i": 1, "s": "x", "grade": "c"}),
+        ),
+        (
+            "union matches no member",
+            json!({"i": 1, "s": "x", "u": true}),
+        ),
+        (
+            "union negative int misses first, non-string misses second",
+            json!({"i": 1, "s": "x", "u": -1}),
+        ),
+        ("whole value not an object", json!([1, 2])),
+        ("whole value scalar", json!("nope")),
+        // bound violations just past the line
+        ("i below min", json!({"i": -1, "s": "x"})),
+        ("i above max", json!({"i": 101, "s": "x"})),
+        ("n below min", json!({"i": 1, "s": "x", "n": -2.6})),
+        ("n above max", json!({"i": 1, "s": "x", "n": 2.500001})),
+        ("s empty violates minLength", json!({"i": 1, "s": ""})),
+        ("s over maxLength", json!({"i": 1, "s": "xxxxxxxxxxx"})),
+        (
+            "list empty violates minItems",
+            json!({"i": 1, "s": "x", "list": []}),
+        ),
+        (
+            "list over maxItems",
+            json!({"i": 1, "s": "x", "list": [1, 2, 3, 4]}),
+        ),
+        ("required s missing", json!({"i": 1})),
+        ("unknown key", json!({"i": 1, "s": "x", "extra": 1})),
+    ];
+
+    let decoder_table = DecoderTable::from_schemas(std::slice::from_ref(&schema));
+    let encoder_table = q_schema_runtime::EncoderTable::from_schemas(std::slice::from_ref(&schema));
+
+    for (label, value) in malformed {
+        // reference rejects with typed errors
+        let ref_err = validate(&schema, &value, Source::Body)
+            .unwrap_err_else(format!("malformed case must reject: {label}"));
+        // decoder agrees (typed, never a panic)
+        let dec = decoder_table
+            .decode_body_value(0, &value)
+            .unwrap_err_else(format!("decoder must reject: {label}"));
+        // encoder agrees
+        let program = encoder_table.get(0).unwrap();
+        let mut out = Vec::new();
+        let enc = program
+            .encode(&value, &mut out)
+            .unwrap_err_else(format!("encoder must reject: {label}"));
+        // error-code parity on the first error (path parity where the
+        // entry targets a single field)
+        assert_eq!(
+            dec[0].code, ref_err[0].code,
+            "decoder/reference code mismatch for {label}"
+        );
+        assert_eq!(
+            enc[0].code, ref_err[0].code,
+            "encoder/reference code mismatch for {label}"
+        );
+    }
+
+    // boundary values: every side accepts, outputs identical
+    let boundary: Vec<(&str, Value)> = vec![
+        ("exact min/max ints", json!({"i": 0, "s": "x"})),
+        ("exact max int", json!({"i": 100, "s": "x"})),
+        ("exact numeric bounds", json!({"i": 1, "s": "x", "n": -2.5})),
+        (
+            "exact numeric bound high",
+            json!({"i": 1, "s": "x", "n": 2.5}),
+        ),
+        ("exact string bounds", json!({"i": 1, "s": "x".repeat(10)})),
+        (
+            "exact list bounds",
+            json!({"i": 1, "s": "x", "list": [1, 2, 3]}),
+        ),
+        ("list single item", json!({"i": 1, "s": "x", "list": [7]})),
+        ("enum exact member", json!({"i": 1, "s": "x", "grade": "a"})),
+        (
+            "union first member boundary (0)",
+            json!({"i": 1, "s": "x", "u": 0}),
+        ),
+        ("valid email", json!({"i": 1, "s": "x", "email": "a@b.co"})),
+        (
+            "valid uuid",
+            json!({"i": 1, "s": "x", "uuid": "123e4567-e89b-12d3-a456-426614174000"}),
+        ),
+    ];
+    for (label, value) in boundary {
+        let reference = validate(&schema, &value, Source::Body)
+            .unwrap_or_else(|_| panic!("boundary case must accept: {label}"));
+        let decoded = decoder_table
+            .decode_body_value(0, &value)
+            .unwrap_or_else(|_| panic!("decoder must accept: {label}"));
+        assert_eq!(decoded, reference, "decoder drift at {label}");
+        let program = encoder_table.get(0).unwrap();
+        let mut out = Vec::new();
+        program
+            .encode(&value, &mut out)
+            .unwrap_or_else(|_| panic!("encoder must accept: {label}"));
+        assert_eq!(
+            out,
+            serde_json::to_vec(&reference).unwrap(),
+            "encoder byte drift at {label}"
+        );
+    }
+}
+
+/// unwrap_err with a message (for malformed entries that MUST reject).
+trait UnwrapErrElse {
+    type Out;
+    fn unwrap_err_else(self, msg: String) -> Self::Out;
+}
+impl<T: std::fmt::Debug, E> UnwrapErrElse for Result<T, E> {
+    type Out = E;
+    fn unwrap_err_else(self, msg: String) -> E {
+        match self {
+            Err(e) => e,
+            Ok(v) => panic!("{msg}: accepted {v:?}"),
+        }
+    }
+}

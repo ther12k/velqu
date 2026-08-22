@@ -4,7 +4,7 @@ parent_task: M25-009
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -119,3 +119,47 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-009-C)
+
+Status: **PASS**. The malformed/boundary corpus ran — and found and fixed
+a second real divergence:
+
+- **Fuzz/corpus finding (triaged + fixed)**: on a union total miss, the
+  direct DECODER leaked the last member's internal error (e.g.
+  `type: expected string`) while the reference validator always reports
+  the canonical `union` problem. Fixed in `decoder.rs` at both union
+  sites (`decode_value_depth`, `decode_str_depth`): the decoder now
+  emits the canonical typed `union` error on a total miss — typed-code
+  parity with the reference restored. No existing test relied on the
+  leaked member error (all suites green unchanged).
+- **Corpus** (`malformed_and_boundary_corpus` in
+  `codec_standards_corpus.rs`): 31 malformed entries — wrong types at
+  every declared position (string/float/bool/array/null for integers,
+  string/bool for numbers, number/array for strings), u64::MAX beyond
+  i64, malformed emails (no local part) and UUIDs (truncated), list
+  wrong-item-type, non-member enums, union misses (bool and negative
+  int), whole-value non-objects/scalars, bound violations just past
+  every line (ints, numerics, strings, arrays, missing required,
+  unknown keys) — each asserting decoder/reference/encoder TYPED-CODE
+  parity and no panic. Plus 11 boundary entries accepted everywhere
+  with byte/output parity: exact min/max ints and numerics, exact
+  string/list bounds, single-item lists, exact enum members, union
+  first-member boundary (0), valid email/UUID.
+
+### Tests and evidence
+
+- `codec_standards_corpus` — 4 passed (3 prior + the new corpus).
+- `cargo test -p q-schema-runtime` — 58 unit + 4 fuzz + 4 standards —
+  all passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-pack` —
+  41 + 2; `cargo test -p velqu-runtime` — 24 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `2aea65f`.
