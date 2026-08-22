@@ -528,15 +528,15 @@ impl FieldSpec {
                         Err(e) => last_err = e,
                     }
                 }
-                Err(if last_err.is_empty() {
-                    vec![FieldError::typed(
-                        path,
-                        FieldErrorCode::Union,
-                        format!("value matched none of {} union members", members.len()),
-                    )]
-                } else {
-                    last_err
-                })
+                // M25-009-C parity fix: the reference validator always
+                // reports the canonical `union` problem on a total miss —
+                // member-internal errors never leak (typed-code parity)
+                let _ = last_err;
+                Err(vec![FieldError::typed(
+                    path,
+                    FieldErrorCode::Union,
+                    format!("value matched none of {} union members", members.len()),
+                )])
             }
             FieldSpec::Fallback { reason, inner } => {
                 if !is_valid_fallback_reason(reason) {
@@ -875,15 +875,15 @@ impl FieldSpec {
                         Err(e) => last_err = e,
                     }
                 }
-                Err(if last_err.is_empty() {
-                    vec![FieldError::typed(
-                        path,
-                        FieldErrorCode::Union,
-                        format!("value matched none of {} union members", members.len()),
-                    )]
-                } else {
-                    last_err
-                })
+                // M25-009-C parity fix: the reference validator always
+                // reports the canonical `union` problem on a total miss —
+                // member-internal errors never leak (typed-code parity)
+                let _ = last_err;
+                Err(vec![FieldError::typed(
+                    path,
+                    FieldErrorCode::Union,
+                    format!("value matched none of {} union members", members.len()),
+                )])
             }
             FieldSpec::Fallback { reason, inner } => {
                 if !is_valid_fallback_reason(reason) {
