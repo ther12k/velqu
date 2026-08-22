@@ -39,7 +39,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M25-001 | P0 | PASS | M24-GATE | M25 | Define canonical Schema IR v2 |
 | M25-002 | P1 | PASS | M25-001 | M25 | Build reproducible decoder/encoder strategy benchmark |
 | M25-003 | P0 | PASS | M25-001, M24-GATE | M25 | Generate params/query/header decoders |
-| M25-004 | P0 | TODO | M25-001, M24-007 | M25 | Generate JSON body decoders |
+| M25-004 | P0 | PASS | M25-001, M24-007 | M25 | Generate JSON body decoders |
 | M25-005 | P0 | TODO | M25-001, M25-002 | M25 | Generate status-specific response encoders |
 | M25-006 | P0 | TODO | M25-001, M25-005 | M25 | Generate RFC 9457 problem encoders |
 | M25-007 | P1 | TODO | M25-003, M25-004, M25-005 | M25 | Implement explicit generic and Web fallback paths |
