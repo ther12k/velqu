@@ -34,6 +34,15 @@ fn fixture_pack() -> q_pack::QPack {
     };
     let mut schemas = BTreeMap::new();
     schemas.insert(
+        "sch:fallback.body".to_string(),
+        // M25-004-B: explicit fallback marker with NO inner shape — native
+        // decode fails closed; only the js strategy lets the raw body cross.
+        S::Fallback {
+            reason: "explicit".into(),
+            inner: None,
+        },
+    );
+    schemas.insert(
         "sch:hello.params".to_string(),
         S::Object {
             properties: BTreeMap::from([(
@@ -429,6 +438,36 @@ fn fixture_pack() -> q_pack::QPack {
             }
             r
         },
+        {
+            // M25-004-B: body schema is an explicit fallback marker WITHOUT
+            // inner — the compiler routes this to validationStrategy "js" and
+            // the runtime must hand the raw parsed JSON to the handler.
+            let mut r = route(
+                "fallback.echo",
+                "POST",
+                "/fallback",
+                seg(&[("s", "fallback")]),
+                "fallback.echo",
+                10,
+                None,
+                200,
+                vec![200],
+                FieldNeeds {
+                    params: false,
+                    query: false,
+                    headers: false,
+                    body: true,
+                },
+            );
+            r.body = Some(SourceBinding {
+                schema: Some("sch:fallback.body".into()),
+                coerce: None,
+                content_type: Some("application/json".into()),
+                limit_bytes: 65_536,
+            });
+            r.validation_strategy = Strategy::Js;
+            r
+        },
     ];
 
     // timer schema reuse for cancel needs a wider maximum
@@ -517,6 +556,11 @@ fn fixture_pack() -> q_pack::QPack {
         },
         FunctionDecl {
             id: 10,
+            key: "fallback.echo".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 11,
             key: "auth.session.check".into(),
             kind: FunctionKind::PolicyHandler,
         },
@@ -864,6 +908,11 @@ function poison_chain(ctx) {
   again();
   return { ok: true };
 }
+async function fallback_echo(ctx) {
+  // M25-004-B generic fallback: receives the RAW parsed body (no native
+  // validation) and echoes it back so the test can prove what crossed.
+  return ctx.body;
+}
 
 globalThis.__velquFunctionManifest = [
   ["health.live", 0, health_live],
@@ -876,6 +925,7 @@ globalThis.__velquFunctionManifest = [
   ["async.cancel", 0, async_cancel],
   ["throw.redacted", 0, throw_redacted],
   ["poison.chain", 0, poison_chain],
+  ["fallback.echo", 0, fallback_echo],
   ["auth.session.check", 1, auth_session]
 ];
 globalThis.__velquFunctions = globalThis.__velquFunctionManifest.map(function(e) { return e[2]; });
@@ -1305,6 +1355,49 @@ fn full_runtime_conformance() {
         !redacted_logs,
         "internal error detail goes to stderr, not stdout logs"
     );
+
+    server.stop();
+}
+
+/// M25-004-B: a body schema that is an explicit fallback marker WITHOUT inner
+/// keeps the QuickJS/generic path — the raw parsed JSON crosses to the handler
+/// (echoed back verbatim), never a fail-closed 422.
+#[test]
+fn js_fallback_body_routes_raw_json_to_handler() {
+    let dir = temp_dir("fallback-body");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    wait_tcp(port, Duration::from_secs(10));
+
+    // 1. Arbitrary JSON (schema-less under the fallback marker) crosses intact
+    let body = br#"{"anything":"goes","nested":[1,2,3]}"#;
+    let r = http(
+        port,
+        "POST /fallback HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(body),
+    );
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    assert_eq!(r.json()["anything"], "goes");
+    assert_eq!(r.json()["nested"][2], 3);
+
+    // 2. Even shape-mismatched values cross (no native validation ran)
+    let r = http(
+        port,
+        "POST /fallback HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(br#"[1,2,3]"#),
+    );
+    assert_eq!(r.status, 200, "array body must cross raw: {}", r.text());
+    assert_eq!(r.json().as_array().unwrap().len(), 3);
+
+    // 3. Malformed JSON still rejects 422 at admission (parse precedes strategy)
+    let r = http(
+        port,
+        "POST /fallback HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(b"{not json"),
+    );
+    assert_eq!(r.status, 422);
+    assert_eq!(r.json()["detail"], "malformed JSON body");
 
     server.stop();
 }

@@ -505,17 +505,29 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 };
                 if let Some(sid) = compiled.body_schema_id {
-                    match state.decoder_table.decode_body_value(sid.0, &parsed) {
-                        Ok(v) => body_value = Some(v),
-                        Err(errors) => {
-                            let body = problems::body(
-                                "validation",
-                                None,
-                                Some("body validation failed"),
-                                &field_errors(&errors),
-                                &request_id,
-                            );
-                            return (Ok(json_response(422, &body)), route_id, "validation.body");
+                    // M25-004-B: routes whose body schema carries unsupported
+                    // transformations compile to validationStrategy "js" — the
+                    // retained QuickJS/generic fallback. The parsed raw JSON
+                    // crosses unvalidated; the handler owns interpretation.
+                    if route.validation_strategy == q_pack::Strategy::Js {
+                        body_value = Some(parsed);
+                    } else {
+                        match state.decoder_table.decode_body_value(sid.0, &parsed) {
+                            Ok(v) => body_value = Some(v),
+                            Err(errors) => {
+                                let body = problems::body(
+                                    "validation",
+                                    None,
+                                    Some("body validation failed"),
+                                    &field_errors(&errors),
+                                    &request_id,
+                                );
+                                return (
+                                    Ok(json_response(422, &body)),
+                                    route_id,
+                                    "validation.body",
+                                );
+                            }
                         }
                     }
                 }
