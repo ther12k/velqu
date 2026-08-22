@@ -1,0 +1,66 @@
+{
+ "format": "velqu-size-evidence-v1",
+ "packet": "M25-010-B",
+ "proofArtifacts": {
+  "app.qpack": {
+   "bytes": 61582,
+   "sha256": "a0eecf4c099e59e12cac912f23ede2363f2655435940afd4c459f51c7f7db072"
+  },
+  "build-report.json": {
+   "bytes": 13306,
+   "sha256": "90c3791a2c9258ccb8cf8f0a2bb44a27cdf589bcb1247f0b27401e492d54d43d"
+  },
+  "build-report.md": {
+   "bytes": 1575,
+   "sha256": "661978257ed58d45454b7f523cadabdb6e93d45d6122cd5a9555df5d01256f54"
+  },
+  "capability-manifest.json": {
+   "bytes": 320,
+   "sha256": "11324e828e9e90038ae13b5c36cc5b702c49c66ab36b7fb7c90cce46e1be2b96"
+  },
+  "contract.d.ts": {
+   "bytes": 2018,
+   "sha256": "e9e43c33e9926821b4e3920b1f2098c8a99fdd1732e0cf03921c5d1a12dd7fd8"
+  },
+  "contract.json": {
+   "bytes": 5511,
+   "sha256": "f8423f7c28896943d10a2f188b81acf4c7d29f96f9c48bca1e9da0fca517a836"
+  },
+  "contract.lock.json": {
+   "bytes": 5488,
+   "sha256": "c39e2ec09e136ce849ba169693cb70dc39a7a84bcbd422564affe56734a7d3bc"
+  },
+  "contract.meta.json": {
+   "bytes": 1459,
+   "sha256": "d00cd6fae7680bfad904d3231e8ac36d69db1e41d373e4f050267a6b07b5bf98"
+  },
+  "openapi.json": {
+   "bytes": 9052,
+   "sha256": "a9cf153773e88c2cfda1855e36259195d598779ac9a08b1fce42a22f188ae340"
+  },
+  "route-manifest.json": {
+   "bytes": 5069,
+   "sha256": "63ab6c60c8450bd3f5aa740c5db2b4410720f39cdd34c5ad7dc1187791838832"
+  },
+  "schema-manifest.json": {
+   "bytes": 3351,
+   "sha256": "fc6055ca35599a7131e519ede0a8be7a9951ba55f0145ee7ee5e70be8f9e168a"
+  }
+ },
+ "proofPackTotalBytes": 108731,
+ "generatedCodecModule": {
+  "path": "crates/q-bench-support/src/bin/codec_bench/generated.rs",
+  "bytes": 60497,
+  "sha256": "630ff40ca49225738bdc6a6c934b686a5cfedeb3e5ac5a29ea9ef0f9a41ac146"
+ },
+ "binaries": {
+  "velqu-runtime": {
+   "bytes": 5145976,
+   "sha256": "3a28003fcd39c117c26560d76f520f7f9fe078c830230964553614f96a004461"
+  }
+ },
+ "environment": {
+  "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+  "remapPathPrefix": "RUSTFLAGS --remap-path-prefix=$PWD=/velqu-src"
+ }
+}

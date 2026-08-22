@@ -4,7 +4,7 @@ parent_task: M25-010
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -129,3 +129,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-010-B)
+
+Status: **PASS**. Generated code/pack size measured with raw evidence:
+
+- Raw evidence: `benchmarks/raw/sizes-m25-010-b/sizes.json` — byte sizes
+  + sha256 for every proof-app dist artifact (total 108,731 bytes;
+  app.qpack 61,582 bytes ≈ 6,842 bytes/route incl. schemas, router
+  tables, bundle), the C2 generated codec module (benchmark-only), and
+  the release binaries (velqu-runtime 5,145,976 bytes; raw-rust baseline
+  509 KB-class for comparison), environment (rustc version, remap flags)
+  recorded.
+- Report: `docs/reports/m25-010-b-size.md` — full artifact table,
+  per-route math, binary table, decision-matrix impact.
+- Key facts (honest): the generated codec programs add ZERO per-route
+  pack bytes (decoders/encoders compile at startup from the same schema
+  IR the pack already carries) and ZERO binary growth per route (route
+  count scales the pack, not the executable). The C2 generated module is
+  benchmark-only (production compiles from IR — no checked-in generated
+  sources). Sizes are toolchain-dependent: recorded, not normative.
+- Root benchmark manifest untouched (new versioned raw directory).
+
+### Tests and evidence
+
+- `cargo test -p q-schema-runtime` — 58 + 4 + 5; `cargo test -p
+  q-engine-quickjs` — 1 + 96; `cargo test -p velqu-runtime` — 24;
+  `cargo test -p q-pack` — 41 + 2 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+
+Commit: `c669397`.
