@@ -4,7 +4,7 @@ parent_task: M25-004
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-004-B)
+
+Status: **PASS**. The QuickJS/generic fallback for unsupported transformations
+is retained end-to-end: routes whose body schema carries a fallback marker
+without inner (or transform/file/problem nodes) compile to
+`validationStrategy: "js"` (M25-002-D), and the runtime now hands the parsed
+raw JSON to the handler instead of failing closed. The native decoder keeps
+typed fail-closed errors as defense in depth when invoked on the native path.
+
+### Changed files
+
+- `crates/q-runtime/src/serve.rs` — body admission checks
+  `route.validation_strategy == Strategy::Js` and bypasses native decode
+  (raw parsed JSON crosses to the handler); native path unchanged.
+- `crates/q-runtime/tests/runtime_conformance.rs` — new `fallback.echo` fixture
+  route (POST /fallback, body schema `Fallback { reason: "explicit", inner: None }`,
+  validationStrategy js, echo handler), function-manifest entry, and the
+  `js_fallback_body_routes_raw_json_to_handler` conformance test proving:
+  arbitrary JSON objects cross intact, non-object arrays cross raw, malformed
+  JSON still rejects 422 at admission.
+- `crates/q-schema-runtime/src/decoder.rs` — two defense-in-depth unit tests:
+  `native_path_fails_closed_on_fallback_without_inner_and_unsupported_nodes`
+  (fallback-without-inner → typed `fallback` error; transform → typed
+  `unsupported` error) and `fallback_with_inner_still_validates_inner_on_native_path`.
+- `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  — M25-004-B marked PASS.
+
+### Tests and evidence
+
+- `cargo test -p q-schema-runtime` — 43 unit tests + 3 fuzz tests passed.
+- `cargo test -p velqu-runtime` — 16 integration tests passed (new fallback test included).
+- `cargo test -p q-engine-quickjs` — 1 unit + 96 integration tests passed.
+- `cargo test -p q-http` — 4 tests passed.
+- `cargo test -p q-bridge` — 11 passed.
+- `bun test` — 69 passed, 0 failed, 296 expect calls.
+- `bun run typecheck` — clean.
+- `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+
+Commit: `16cdc5d`.

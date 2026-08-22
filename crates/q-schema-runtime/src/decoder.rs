@@ -1874,4 +1874,87 @@ mod tests {
         let ref_valid = crate::validate(&user_schema, &valid_body, Source::Body).unwrap();
         assert_eq!(res, ref_valid);
     }
+
+    #[test]
+    fn native_path_fails_closed_on_fallback_without_inner_and_unsupported_nodes() {
+        // M25-004-B defense in depth: when the native decoder IS invoked (route
+        // compiled with the native strategy), a fallback marker without inner
+        // and transform/file/problem nodes fail closed with typed errors.
+        // Only the compiler-selected js strategy bypasses native decode.
+
+        // A property whose spec is Fallback{inner:None}
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "payload".to_string(),
+                Box::new(SchemaIr::Fallback {
+                    reason: "explicit".into(),
+                    inner: None,
+                }),
+            )]),
+            required: vec!["payload".into()],
+        };
+        let prog = DecoderProgram::compile(&ir, Source::Body);
+        assert_eq!(
+            prog.decode_body_value(&json!({"payload": {"any": "shape"}})),
+            Err(vec![FieldError::typed(
+                "payload",
+                FieldErrorCode::Fallback,
+                "fallback (explicit) requires the generic codec path"
+            )])
+        );
+
+        // A transform property compiles to Unsupported and fails closed
+        let ir_t = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "count".to_string(),
+                Box::new(SchemaIr::Transform {
+                    input: Box::new(SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: None,
+                    }),
+                    output: Box::new(SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                    name: "parse-count".into(),
+                }),
+            )]),
+            required: vec!["count".into()],
+        };
+        let prog_t = DecoderProgram::compile(&ir_t, Source::Body);
+        assert_eq!(
+            prog_t.decode_body_value(&json!({"count": "42"})),
+            Err(vec![FieldError::typed(
+                "count",
+                FieldErrorCode::Unsupported,
+                "schema node requires a specialized codec"
+            )])
+        );
+    }
+
+    #[test]
+    fn fallback_with_inner_still_validates_inner_on_native_path() {
+        // With a best-effort inner shape, native validation stays active and
+        // the marker is transparent (no js bypass needed).
+        let ir = SchemaIr::Fallback {
+            reason: "unrepresentable".into(),
+            inner: Some(Box::new(SchemaIr::Object {
+                properties: BTreeMap::from([(
+                    "n".to_string(),
+                    Box::new(SchemaIr::Integer {
+                        minimum: Some(1),
+                        maximum: None,
+                    }),
+                )]),
+                required: vec!["n".into()],
+            })),
+        };
+        let prog = DecoderProgram::compile(&ir, Source::Body);
+        let out = prog.decode_body_value(&json!({"n": 5})).unwrap();
+        assert_eq!(out, json!({"n": 5}));
+        let err = prog.decode_body_value(&json!({"n": 0})).unwrap_err();
+        assert_eq!(err[0].code, "minimum");
+    }
 }
