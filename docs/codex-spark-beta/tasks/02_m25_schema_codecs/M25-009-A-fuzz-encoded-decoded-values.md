@@ -4,7 +4,7 @@ parent_task: M25-009
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -122,3 +122,52 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-009-A)
+
+Status: **PASS**. Round-trip fuzz over the generated codecs — and it found
+and fixed a real divergence:
+
+- **Fuzz finding (triaged + fixed)**: iteration 2 of the new round-trip
+  fuzz exposed that `FieldSpec::Fallback { inner: Some(_) }` compiled
+  into the encoder but `encode_spec` had no branch for it — the encoder
+  rejected with `unsupported` where the reference validator transparently
+  applies the inner shape. Fixed: fallback-with-inner is now transparent
+  in the encoder (recurses into the inner spec), mirroring the reference
+  exactly. Minimized into a permanent fixture:
+  `fallback_with_inner_encodes_transparently` (byte parity + inner-bound
+  rejection `maximum`).
+- **New fuzz** (`encoded_decoded_round_trip_matches_reference`, 20,000
+  iterations over three representable object schemas — mixed bounded
+  scalars/optional defaults, bounded arrays, nullable/union/enum/literal/
+  fallback-inner): for every (schema, value) pair with a half-biased
+  valid-value generator and half arbitrary JSON:
+  - the direct encoder accepts EXACTLY when the reference validator
+    accepts (no silent divergence in either direction);
+  - on acceptance, encoder bytes equal serde_json serialization of the
+    reference-normalized output AND parse back to that output;
+  - the direct body decoder re-accepts the encoded bytes (full
+    decode → encode → decode round-trip parity);
+  - corpus health assertions: >1,000 accepted and >1,000 rejected so the
+    corpus keeps exercising both sides.
+
+### Tests and evidence
+
+- `encoded_decoded_round_trip_matches_reference` — 4 total fuzz tests in
+  the suite, all passing.
+- `fallback_with_inner_encodes_transparently` — the minimized fixture.
+- `cargo test -p q-schema-runtime` — 58 unit + 4 fuzz passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p velqu-runtime`
+  — 24; `cargo test -p q-pack` — 41 + 2 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Reference-JSON comparison and malformed/boundary corpus expansion land in
+M25-009-B/C.
+
+Commit: `de1ff89`.

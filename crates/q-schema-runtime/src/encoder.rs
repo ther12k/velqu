@@ -509,11 +509,19 @@ fn encode_spec(
             )])
         }
         // compile() rejects these; reachable only through a programming error
-        FieldSpec::Fallback { .. } | FieldSpec::Unsupported { .. } => Err(vec![FieldError::typed(
-            path,
-            FieldErrorCode::Unsupported,
-            "schema node requires a specialized codec",
-        )]),
+        // fallback-with-inner is TRANSPARENT (the reference validator
+        // applies the inner shape; found by the M25-009-A round-trip fuzz)
+        FieldSpec::Fallback {
+            inner: Some(inner), ..
+        } => encode_spec(inner, value, path, depth + 1, out),
+        // fallback-without-inner never compiles; unreachable via compile()
+        FieldSpec::Fallback { inner: None, .. } | FieldSpec::Unsupported { .. } => {
+            Err(vec![FieldError::typed(
+                path,
+                FieldErrorCode::Unsupported,
+                "schema node requires a specialized codec",
+            )])
+        }
     }
 }
 
@@ -1204,6 +1212,39 @@ mod m25_005_a_tests {
         second.encode(&value, &mut bytes_b).unwrap();
         assert_eq!(bytes_a, bytes_b);
         assert_eq!(bytes_a, b"{\"a\":1,\"b\":\"dflt\"}");
+    }
+
+    /// M25-009-A fuzz finding, minimized: fallback-WITH-inner is
+    /// transparent — the compiled encoder must encode the inner shape
+    /// exactly like the reference validator, never an `unsupported` error.
+    #[test]
+    fn fallback_with_inner_encodes_transparently() {
+        let ir = obj(
+            vec![(
+                "fb",
+                SchemaIr::Fallback {
+                    reason: "explicit".into(),
+                    inner: Some(Box::new(SchemaIr::Integer {
+                        minimum: Some(0),
+                        maximum: Some(50),
+                    })),
+                },
+            )],
+            vec!["fb"],
+        );
+        let program = EncoderProgram::compile(&ir).unwrap();
+        let value = json!({ "fb": 21 });
+        let reference = validate(&ir, &value, Source::Body).unwrap();
+        let mut out = Vec::new();
+        program.encode(&value, &mut out).unwrap();
+        assert_eq!(out, serde_json::to_vec(&reference).unwrap());
+        assert_eq!(out, b"{\"fb\":21}");
+
+        // out-of-range inner value rejects with the inner bound code
+        let value = json!({ "fb": 99 });
+        let mut out = Vec::new();
+        let err = program.encode(&value, &mut out).unwrap_err();
+        assert_eq!(err[0].code, "maximum");
     }
 
     /// M25-005-C: unions encode first-match-wins with reference parity,
