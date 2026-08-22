@@ -4,7 +4,7 @@ parent_task: M25-007
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,47 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-007-D)
+
+Status: **PASS**. `velqu inspect` exposes per-route codec choice and the
+bridge-crossing model:
+
+- `packages/compiler/src/index.ts`: the route manifest now carries the
+  REAL per-route facts (previously `validationStrategy`/`responseStrategy`
+  were hardcoded "native" for every route — a latent bug): actual
+  strategies from the M25-002-D decisions, the M25-007-A fallback reasons,
+  the codec labels (`direct-decoder`/`generic-fallback` for validation,
+  `direct-encoder`/`engine-stringify` for response), and the
+  bridge-crossing model (`single-prevalidated` — one crossing with
+  pre-validated values — vs `lazy-per-field` crossings on fallback routes).
+- `packages/cli/src/index.ts`: `velqu inspect routes` renders the new
+  `codec=` and `bridge=` columns alongside the strategy reasons (e.g.
+  `val=js(unsupported-transform) ... codec=generic-fallback/direct-encoder
+  bridge=lazy-per-field`).
+- Inspect snapshot evidence: the compiler conformance test builds the
+  fallback fixture, asserts the manifest facts per route (fb.body
+  validation js + reason + generic codec + lazy bridge; fb.resp response
+  js + measured reason + engine-stringify; std.get native with direct
+  codecs and the single pre-validated crossing), and executes the actual
+  CLI (`velqu inspect routes`) asserting the rendered snapshot contains
+  every fact.
+
+### Tests and evidence
+
+- Compiler conformance "route manifest exposes codec choice and bridge
+  crossings (M25-007-D)" — manifest assertions + live CLI inspect
+  snapshot (inspect-snapshot evidence required by the parent).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 24 integration passed.
+- `cargo test -p q-pack` — 41 + 2 passed.
+- `bun test` — 75 passed, 0 failed, 340 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `bf6714b`.
