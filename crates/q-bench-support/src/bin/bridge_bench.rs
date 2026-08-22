@@ -449,6 +449,7 @@ fn run_case(
         allowed_statuses: vec![200, 201, 404],
         default_status: 200,
         response_strategy: case.strategy,
+        raw_response: false,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -493,6 +494,7 @@ fn run_case(
         allowed_statuses: vec![200, 201, 404],
         default_status: 200,
         response_strategy: case.strategy,
+        raw_response: false,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();

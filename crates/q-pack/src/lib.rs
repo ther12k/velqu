@@ -1336,8 +1336,23 @@ impl QPack {
             }
         }
         for cap in &self.capabilities {
-            if !["timer"].contains(&cap.as_str()) {
+            if !["timer", "raw-response", "full-request"].contains(&cap.as_str()) {
                 return reject(format!("unknown capability {} declared", cap));
+            }
+        }
+        for route in &self.routes {
+            // M25-007-B: a raw-response route's handler bypasses response
+            // validation by design — a declared response schema would be a
+            // contract claim the runtime never enforces, so it rejects.
+            if route.capabilities.iter().any(|c| c == "raw-response") {
+                for (status, decl) in &route.responses {
+                    if decl.schema.is_some() {
+                        return reject(format!(
+                            "route {} declares the raw-response capability but status {} carries a response schema (unenforceable contract claim)",
+                            route.id, status
+                        ));
+                    }
+                }
             }
         }
         Ok(())

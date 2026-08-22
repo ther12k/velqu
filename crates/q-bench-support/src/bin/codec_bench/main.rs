@@ -533,6 +533,7 @@ fn invoke(
         allowed_statuses: vec![200],
         default_status: 200,
         response_strategy: cand.strategy(),
+        raw_response: false,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let t_engine = Instant::now();

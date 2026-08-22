@@ -2637,6 +2637,196 @@ globalThis.__velquFunctions = [leaky, declared_ok];
     assert!(err.contains("secret-token-abc123"), "log preserves detail");
 }
 
+/// M25-007-B: the raw Response and full Request escape hatches. A
+/// `raw-response` capability route returns status/headers/body AS-IS
+/// (bypassing response validation by design); a route WITHOUT the
+/// capability returning a raw envelope fails closed as a contract
+/// violation. A `full-request` route's handler sees EVERY request header
+/// and all query pairs through the lazy request store.
+#[test]
+fn raw_response_and_full_request_escape_hatches() {
+    let bundle = r#"
+async function raw_handle(ctx) {
+    return {
+        __velquRaw: true,
+        status: 201,
+        headers: { "x-custom": "raw", "content-type": "text/plain" },
+        body: "raw body as-is",
+    };
+}
+async function raw_rogue(ctx) {
+    return { __velquRaw: true, status: 200, body: "should not cross" };
+}
+async function full_handle(ctx) {
+    const req = ctx.request;
+    return {
+        secret: req.headers["x-undeclared-secret"],
+        q: req.query["z"],
+        all: Object.keys(req.headers).length,
+    };
+}
+globalThis.__velquFunctionManifest = [["raw.handle", 0, raw_handle], ["raw.rogue", 0, raw_rogue], ["full.handle", 0, full_handle]];
+globalThis.__velquFunctions = [raw_handle, raw_rogue, full_handle];
+"#;
+    let dir = temp_dir("escape");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "raw.handle".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "raw.rogue".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 2,
+            key: "full.handle".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("raw.handle".to_string(), "raw.handle".to_string()),
+        ("raw.rogue".to_string(), "raw.rogue".to_string()),
+        ("full.handle".to_string(), "full.handle".to_string()),
+    ]);
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route_pos].clone();
+    let route = |id: &str, path: &str, idx: u32, handler_id: u32, caps: Vec<&str>| {
+        let mut r = base.clone();
+        r.id = id.into();
+        r.handler = id.into();
+        r.policy = None;
+        r.params = None;
+        r.query = None;
+        r.body = None;
+        r.headers = None;
+        r.security.clear();
+        r.path = path.into();
+        r.path_segments = vec![PathSegment {
+            kind: SegKind::Static,
+            value: path.trim_start_matches('/').into(),
+        }];
+        r.responses = std::collections::BTreeMap::from([
+            (
+                "200".to_string(),
+                q_pack::ResponseDecl {
+                    schema: None,
+                    strategy: q_pack::Strategy::Native,
+                    problem: None,
+                },
+            ),
+            (
+                "201".to_string(),
+                q_pack::ResponseDecl {
+                    schema: None,
+                    strategy: q_pack::Strategy::Native,
+                    problem: None,
+                },
+            ),
+        ]);
+        r.capabilities = caps.into_iter().map(String::from).collect();
+        r.plan = Some(RoutePlanDecl {
+            route_id: idx,
+            handler_id,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
+            default_status: 200,
+            allowed_statuses: vec![200, 201],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Native,
+            validation_fallback_reason: None,
+            response_fallback_reason: None,
+            deadline_ms: 5000,
+        });
+        r
+    };
+    pack.routes = vec![
+        route("raw.handle", "/raw", 0, 0, vec!["raw-response"]),
+        route("raw.rogue", "/raw-rogue", 1, 1, vec![]),
+        route("full.handle", "/full", 2, 2, vec!["full-request"]),
+    ];
+    pack.policies.clear();
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("escape.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // raw response: declared status, custom headers, body AS-IS
+    let r = http(port, "GET /raw HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 201, "body: {}", r.text());
+    assert_eq!(r.text(), "raw body as-is");
+    assert_eq!(r.header("x-custom"), Some("raw"));
+    assert_eq!(r.header("content-type"), Some("text/plain"));
+
+    // rogue raw return without the capability: controlled 500, nothing crosses
+    let r = http(port, "GET /raw-rogue HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 500, "body: {}", r.text());
+    assert!(!r.text().contains("should not cross"));
+
+    // full request: an UNDECLARED header and an UNDECLARED query pair both
+    // reach the handler through the lazy request store
+    let r = http(
+        port,
+        "GET /full?z=9 HTTP/1.1\r\nhost: t\r\nx-undeclared-secret: s3cret\r\n",
+        None,
+    );
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    assert_eq!(r.json()["secret"], "s3cret");
+    assert_eq!(r.json()["q"], "9");
+    assert!(
+        r.json()["all"].as_u64().unwrap() >= 2,
+        "full header set materialized"
+    );
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("raw-response capability"),
+        "rogue raw return must log the contract violation: {err}"
+    );
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property

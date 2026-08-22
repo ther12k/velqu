@@ -25,6 +25,14 @@ export interface FieldIssue {
   readonly message: string;
 }
 
+/** M25-007-B: raw Response escape value (see unsupported-transformations §5). */
+export interface RawResponseValue {
+  readonly __velquRaw: true;
+  readonly status: number;
+  readonly headers: Record<string, string>;
+  readonly body: unknown;
+}
+
 /** RFC 9457-compatible problem value (wire shape frozen in pack-format-v1). */
 export interface ProblemValue<S extends number = number> {
   readonly __problem: true;
@@ -46,6 +54,12 @@ export class Status<S extends number> {
   constructor(readonly status: S) {}
   value<T>(value: T): OkValue<S, T> {
     return { __ok: true, status: this.status, value };
+  }
+  /** M25-007-B: raw Response escape hatch — crosses status/headers/body
+   * AS-IS, bypassing declared response validation. Only routes declaring
+   * the `raw-response` capability may return it. */
+  raw(body: unknown, opts: { status?: S; headers?: Record<string, string> } = {}): RawResponseValue {
+    return { __velquRaw: true, status: opts.status ?? this.status, headers: opts.headers ?? {}, body };
   }
   problem(
     problem: ProblemId,

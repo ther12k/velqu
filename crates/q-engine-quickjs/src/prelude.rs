@@ -46,6 +46,7 @@ globalThis.__velquMakeReq = function (slot, gen) {
   Object.defineProperty(req, "headers", { enumerable: true, get() { return (headers ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers"))); } });
   Object.defineProperty(req, "params", { enumerable: true, get() { return (params ??= globalThis.__velquMakeLazyParams(slot, gen)); } });
   Object.defineProperty(req, "query", { enumerable: true, get() { return (query ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "query"))); } });
+  Object.defineProperty(req, "text", { enumerable: true, value: () => globalThis.__velquReqBodyText(slot, gen) });
   return req;
 };
 
@@ -101,6 +102,10 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
   };
   if (pre.routePlan != null) c.routePlan = pre.routePlan;
   if (!requestless) {
+    // M25-007-B: the full request handle — whole-field header/query/param
+    // access through the store (declared set unless the route declared
+    // the full-request capability, which materializes everything)
+    lazy("request", () => globalThis.__velquMakeReq(slot, gen));
     if (pre.params != null) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
     if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
     if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => globalThis.__velquMakeLazyHeaders(slot, gen));

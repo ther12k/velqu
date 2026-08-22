@@ -37,6 +37,7 @@ fn spec(id: u64, handler: &str, allowed: &[u16], deadline_ms: u64) -> Invocation
         allowed_statuses: allowed.to_vec(),
         default_status: 200,
         response_strategy: ResponseStrategy::Js,
+        raw_response: false,
         deadline: Instant::now() + Duration::from_millis(deadline_ms),
     }
 }

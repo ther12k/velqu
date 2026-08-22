@@ -4,7 +4,7 @@ parent_task: M25-007
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,58 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-007-B)
+
+Status: **PASS**. Both escape hatches are explicit, capability-gated, and
+documented:
+
+- **Raw Response** (`raw-response` capability): a handler may return a
+  tagged raw envelope (`status(n).raw(body, { headers })` in `@velqu/core`,
+  or `{__velquRaw: true, status, headers, body}` by hand). The engine maps
+  it to the new `Outcome::RawResponse` — the DECLARED-STATUS contract
+  still applies (undeclared status = contract violation), the handler's
+  headers WIN over defaults, and the body crosses AS-IS (string → text,
+  bytes → bytes, object → per-strategy). The host skips declared
+  response-schema validation and the generated encoders for raw outcomes
+  (documented bypass). Returning a raw envelope WITHOUT the capability is
+  a controlled 500 with the violation logged — never silent. Pack
+  verification rejects a `raw-response` route that also declares a
+  response schema (no contract claim the runtime cannot enforce).
+- **Full Request** (`full-request` capability): the route materializes
+  EVERY request header and ALL query pairs into the lazy request store
+  (bounded by the transport admission limits, same as FULL_HEADERS) and
+  owns a request slot by declaration. `ctx.request` is now wired in the
+  prelude as the full request handle (whole-field headers/params/query +
+  `text()`); whole-field query access serves the stored pairs (previously
+  a stub returning `{}`). Lazy per-field context access stays
+  declared-only.
+- Capability vocabulary: `q-pack` verify accepts
+  `timer | raw-response | full-request`; anything else rejects at load.
+- Documentation: `docs/specs/unsupported-transformations.md` §5
+  "Raw Response / full Request escape hatches" — semantics, bounds, and
+  the no-silent-activation guarantee (guardrail: raw bypass behavior is
+  documented).
+
+### Tests and evidence
+
+- `runtime_conformance::raw_response_and_full_request_escape_hatches` —
+  live HTTP: the raw route returns 201 with custom `x-custom` /
+  `content-type` headers and the body byte-as-is; the rogue raw return
+  (no capability) 500s with nothing crossing and the violation logged; a
+  `full-request` handler sees an UNDECLARED header and an UNDECLARED
+  query pair through `ctx.request` (whole header set materialized).
+- `cargo test -p q-pack` — 41 + 2 passed (vocabulary + schema-exclusivity
+  enforced at verify).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 23 integration passed.
+- `bun test` — 74 passed, 0 failed, 319 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `fdae24c`.
