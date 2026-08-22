@@ -47,8 +47,14 @@ export class Status<S extends number> {
   value<T>(value: T): OkValue<S, T> {
     return { __ok: true, status: this.status, value };
   }
-  problem(problem: ProblemId, opts: { detail?: string; errors?: readonly FieldIssue[] } = {}): ProblemValue<S> {
-    return { __problem: true, problem, status: this.status, ...opts };
+  problem(
+    problem: ProblemId,
+    opts: { detail?: string; errors?: readonly FieldIssue[]; fields?: Readonly<Record<string, unknown>> } = {},
+  ): ProblemValue<S> {
+    // M25-006-A: RFC 9457 extension members — `fields` spreads onto the
+    // problem object so custom members survive end-to-end.
+    const { fields, ...rest } = opts;
+    return { __problem: true, problem, status: this.status, ...rest, ...(fields ?? {}) };
   }
 }
 

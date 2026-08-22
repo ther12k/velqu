@@ -521,20 +521,41 @@ fn encode_spec(
 #[derive(Debug, Clone, Default)]
 pub struct EncoderTable {
     programs: Vec<Option<EncoderProgram>>,
+    problems: Vec<Option<ProblemProgram>>,
 }
 
 impl EncoderTable {
     /// Compile a table of direct encoders from a slice of SchemaIr
     /// definitions (same dense SchemaId ordering as the decoder table).
     pub fn from_schemas(schemas: &[SchemaIr]) -> Self {
-        let programs = schemas.iter().map(EncoderProgram::compile).collect();
-        EncoderTable { programs }
+        let programs = schemas
+            .iter()
+            .map(|ir| match ir {
+                SchemaIr::Problem { .. } => None,
+                _ => EncoderProgram::compile(ir),
+            })
+            .collect();
+        let problems = schemas
+            .iter()
+            .map(|ir| match ir {
+                SchemaIr::Problem { .. } => ProblemProgram::compile(ir),
+                _ => None,
+            })
+            .collect();
+        EncoderTable { programs, problems }
     }
 
     /// Access the compiled encoder program for a schema id. `None` means
     /// the schema is not directly encodable — keep the reference path.
     pub fn get(&self, schema_id: u32) -> Option<&EncoderProgram> {
         self.programs
+            .get(schema_id as usize)
+            .and_then(|o| o.as_ref())
+    }
+
+    /// Access the compiled problem encoder for a schema id (M25-006-A).
+    pub fn problem(&self, schema_id: u32) -> Option<&ProblemProgram> {
+        self.problems
             .get(schema_id as usize)
             .and_then(|o| o.as_ref())
     }
@@ -1446,5 +1467,324 @@ mod m25_005_a_tests {
         assert!(table.get(1).is_none(), "fallback-without-inner is not");
         assert!(table.get(2).is_none(), "non-object top level is not");
         assert!(table.get(999).is_none(), "unknown id is not");
+    }
+}
+
+/// A compiled direct encoder for one declared RFC 9457 problem response
+/// (M25-006-A). Freezes the declared status and the detail member's shape;
+/// emits the canonical envelope — `type`, `title`, `status`, `instance`,
+/// optional `detail` and `errors`, then sorted extension members —
+/// byte-equal to the runtime's generic problem builder for the same data.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProblemProgram {
+    type_uri: Option<String>,
+    title: Option<String>,
+    status: u16,
+    detail: Option<FieldSpec>,
+}
+
+impl ProblemProgram {
+    /// Compile a Problem IR node. `None` when the declared detail shape is
+    /// not directly encodable (the generic builder covers the route).
+    pub fn compile(ir: &SchemaIr) -> Option<Self> {
+        let SchemaIr::Problem {
+            type_uri,
+            title,
+            status,
+            detail,
+        } = ir
+        else {
+            return None;
+        };
+        let spec = detail.as_ref().map(|b| FieldSpec::compile(b));
+        if let Some(s) = &spec {
+            if !encodable(s) {
+                return None;
+            }
+        }
+        Some(ProblemProgram {
+            type_uri: type_uri.clone(),
+            title: Some(title.clone()),
+            status: *status,
+            detail: spec,
+        })
+    }
+
+    /// The frozen declared status (exact narrowing evidence source).
+    pub fn declared_status(&self) -> u16 {
+        self.status
+    }
+
+    /// Declared type URI override, when the IR carries one.
+    pub fn declared_type_uri(&self) -> Option<&str> {
+        self.type_uri.as_deref()
+    }
+
+    /// Declared title override, when the IR carries one.
+    pub fn declared_title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+
+    /// Emit the canonical problem envelope in one pass. `type_uri`/`title`
+    /// come from the runtime registry unless the IR froze overrides. The
+    /// detail member validates against the declared shape (typed field
+    /// errors on mismatch); `errors` serialize as-is; extension members
+    /// append after the standard envelope in sorted key order.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode(
+        &self,
+        registry_type_uri: &str,
+        registry_title: &str,
+        status_override: Option<u16>,
+        detail: Option<&str>,
+        errors: &[FieldError],
+        extensions: &[(String, Value)],
+        instance: &str,
+        out: &mut Vec<u8>,
+    ) -> Result<(), Vec<FieldError>> {
+        let type_uri = self.type_uri.as_deref().unwrap_or(registry_type_uri);
+        let title = self.title.as_deref().unwrap_or(registry_title);
+        let status = status_override.unwrap_or(self.status);
+        out.push(b'{');
+        let _ = serde_json::to_writer(&mut *out, "type");
+        out.push(b':');
+        let _ = serde_json::to_writer(&mut *out, type_uri);
+        out.extend_from_slice(b",\"title\":");
+        let _ = serde_json::to_writer(&mut *out, title);
+        out.extend_from_slice(b",\"status\":");
+        let _ = serde_json::to_writer(&mut *out, &status);
+        out.extend_from_slice(b",\"instance\":");
+        let _ = serde_json::to_writer(&mut *out, instance);
+        if let Some(d) = detail {
+            if let Some(spec) = &self.detail {
+                // declared detail shape: validate (string semantics) and
+                // emit the original string — a string under a string-kind
+                // shape normalizes to itself
+                let normalized = spec.decode_str(d, "detail", true)?;
+                out.extend_from_slice(b",\"detail\":");
+                let _ = serde_json::to_writer(&mut *out, &normalized);
+            } else {
+                out.extend_from_slice(b",\"detail\":");
+                let _ = serde_json::to_writer(&mut *out, d);
+            }
+        }
+        if !errors.is_empty() {
+            out.extend_from_slice(b",\"errors\":[");
+            for (i, e) in errors.iter().enumerate() {
+                if i > 0 {
+                    out.push(b',');
+                }
+                out.push(b'{');
+                let _ = serde_json::to_writer(&mut *out, "path");
+                out.push(b':');
+                let _ = serde_json::to_writer(&mut *out, &e.path);
+                out.extend_from_slice(b",\"code\":");
+                let _ = serde_json::to_writer(&mut *out, &e.code);
+                out.extend_from_slice(b",\"message\":");
+                let _ = serde_json::to_writer(&mut *out, &e.message);
+                out.push(b'}');
+            }
+            out.push(b']');
+        }
+        for (k, v) in extensions {
+            out.push(b',');
+            let _ = serde_json::to_writer(&mut *out, k.as_str());
+            out.push(b':');
+            let _ = serde_json::to_writer(&mut *out, v);
+        }
+        out.push(b'}');
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod m25_006_a_tests {
+    use super::*;
+
+    fn problem_ir(
+        type_uri: Option<&str>,
+        title: &str,
+        status: u16,
+        detail: Option<SchemaIr>,
+    ) -> SchemaIr {
+        SchemaIr::Problem {
+            type_uri: type_uri.map(String::from),
+            title: title.into(),
+            status,
+            detail: detail.map(Box::new),
+        }
+    }
+
+    /// The generated problem encoder emits the canonical envelope —
+    /// byte-equal to the runtime's generic builder for the same data —
+    /// with declared title/type overrides and sorted extension members.
+    #[test]
+    fn problem_encoder_emits_canonical_envelope_with_extensions() {
+        let ir = problem_ir(
+            Some("https://example.com/problems/order-canceled"),
+            "Order canceled",
+            409,
+            Some(SchemaIr::String {
+                min_length: Some(1),
+                max_length: Some(64),
+                pattern: None,
+                format: None,
+            }),
+        );
+        let program = ProblemProgram::compile(&ir).unwrap();
+        assert_eq!(program.declared_status(), 409);
+        assert_eq!(
+            program.declared_type_uri(),
+            Some("https://example.com/problems/order-canceled")
+        );
+
+        let errors = vec![FieldError::typed(
+            "items",
+            FieldErrorCode::MinItems,
+            "must have at least 1 items",
+        )];
+        // extension members arrive name-sorted (engine sorts)
+        let extensions = vec![
+            ("orderId".to_string(), serde_json::json!("ord_42")),
+            ("retryable".to_string(), serde_json::json!(true)),
+        ];
+        let mut out = Vec::new();
+        program
+            .encode(
+                "https://velqu.dev/problems/validation",
+                "Validation failed",
+                None,
+                Some("order canceled by owner"),
+                &errors,
+                &extensions,
+                "/orders/ord_42",
+                &mut out,
+            )
+            .unwrap();
+        let expected = serde_json::json!({
+            "type": "https://example.com/problems/order-canceled",
+            "title": "Order canceled",
+            "status": 409,
+            "instance": "/orders/ord_42",
+            "detail": "order canceled by owner",
+            "errors": [{ "path": "items", "code": "minItems", "message": "must have at least 1 items" }],
+            "orderId": "ord_42",
+            "retryable": true,
+        });
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&out).unwrap(),
+            expected
+        );
+        // canonical member order: type, title, status, instance, detail,
+        // errors, then extensions
+        let text = String::from_utf8(out).unwrap();
+        let order: Vec<usize> = [
+            "\"type\"",
+            "\"title\"",
+            "\"status\"",
+            "\"instance\"",
+            "\"detail\"",
+            "\"errors\"",
+            "\"orderId\"",
+            "\"retryable\"",
+        ]
+        .iter()
+        .map(|k| text.find(k).unwrap())
+        .collect();
+        assert!(
+            order.windows(2).all(|w| w[0] < w[1]),
+            "member order: {text}"
+        );
+
+        // the declared title always wins (required in the IR); the
+        // registry supplies the type URI when the IR declares none
+        let plain = problem_ir(None, "Conflict", 409, None);
+        let program = ProblemProgram::compile(&plain).unwrap();
+        let mut out = Vec::new();
+        program
+            .encode(
+                "https://velqu.dev/problems/validation",
+                "Validation failed",
+                Some(422),
+                None,
+                &[],
+                &[],
+                "/x",
+                &mut out,
+            )
+            .unwrap();
+        assert_eq!(
+            out,
+            b"{\"type\":\"https://velqu.dev/problems/validation\",\"title\":\"Conflict\",\"status\":422,\"instance\":\"/x\"}"
+        );
+    }
+
+    /// Declared detail shapes validate: a detail violating the declared
+    /// bound rejects with a typed field error instead of crossing.
+    #[test]
+    fn problem_encoder_validates_declared_detail_shape() {
+        let ir = problem_ir(
+            None,
+            "Conflict",
+            409,
+            Some(SchemaIr::String {
+                min_length: None,
+                max_length: Some(8),
+                pattern: None,
+                format: None,
+            }),
+        );
+        let program = ProblemProgram::compile(&ir).unwrap();
+        let mut out = Vec::new();
+        let err = program
+            .encode(
+                "t",
+                "title",
+                None,
+                Some("far too long detail"),
+                &[],
+                &[],
+                "/x",
+                &mut out,
+            )
+            .unwrap_err();
+        assert_eq!(err[0].code, "maxLength");
+        assert_eq!(err[0].path, "detail");
+
+        // unrepresentable detail shapes compile to None (generic builder)
+        let nested = problem_ir(
+            None,
+            "Conflict",
+            409,
+            Some(SchemaIr::Object {
+                properties: BTreeMap::new(),
+                required: vec![],
+            }),
+        );
+        assert!(ProblemProgram::compile(&nested).is_none());
+    }
+
+    /// The table routes Problem IR nodes to problem programs and object
+    /// IR nodes to encoder programs — never both.
+    #[test]
+    fn encoder_table_separates_problem_and_object_programs() {
+        let schemas = vec![
+            problem_ir(None, "Conflict", 409, None),
+            SchemaIr::Object {
+                properties: BTreeMap::from([(
+                    "a".to_string(),
+                    Box::new(SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                )]),
+                required: vec![],
+            },
+        ];
+        let table = EncoderTable::from_schemas(&schemas);
+        assert!(table.problem(0).is_some());
+        assert!(table.get(0).is_none());
+        assert!(table.problem(1).is_none());
+        assert!(table.get(1).is_some());
     }
 }

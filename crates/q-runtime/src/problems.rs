@@ -36,12 +36,15 @@ pub fn registry(problem_id: &str) -> (&'static str, &'static str, u16) {
     }
 }
 
-/// Build a problem body. `errors` carries field-level validation failures.
+/// Build a problem body. `errors` carries field-level validation failures;
+/// `extensions` carries RFC 9457 extension members (M25-006-A: custom
+/// problem fields survive end-to-end; callers pass them name-sorted).
 pub fn body(
     problem_id: &str,
     status_override: Option<u16>,
     detail: Option<&str>,
     errors: &[q_engine::FieldErrorOut],
+    extensions: &[(String, Value)],
     instance: &str,
 ) -> Value {
     let (type_uri, title, status) = registry(problem_id);
@@ -56,6 +59,9 @@ pub fn body(
     }
     if !errors.is_empty() {
         v["errors"] = serde_json::to_value(errors).unwrap_or(Value::Null);
+    }
+    for (k, val) in extensions {
+        v[k.as_str()] = val.clone();
     }
     v
 }

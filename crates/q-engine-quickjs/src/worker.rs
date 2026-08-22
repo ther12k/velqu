@@ -1996,11 +1996,31 @@ fn problem_from_object(obj: &Object<'_>) -> Outcome {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+    // M25-006-A: RFC 9457 extension members — every own property beyond
+    // the standard envelope crosses (non-JSON values like functions are
+    // skipped, never failing the whole problem), name-sorted for
+    // deterministic output.
+    let mut extensions: Vec<(String, serde_json::Value)> = Vec::new();
+    for key in obj.keys::<String>().flatten() {
+        if matches!(
+            key.as_str(),
+            "__problem" | "problem" | "status" | "detail" | "errors"
+        ) {
+            continue;
+        }
+        if let Ok(val) = obj.get::<_, rquickjs::Value>(key.as_str()) {
+            if let Ok(json) = crate::convert::any_js_to_json(&val) {
+                extensions.push((key, json));
+            }
+        }
+    }
+    extensions.sort_by(|a, b| a.0.cmp(&b.0));
     Outcome::Problem(ProblemOut {
         problem_id,
         status,
         detail,
         errors,
+        extensions,
     })
 }
 
