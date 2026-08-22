@@ -6,7 +6,7 @@ import { bundleApp, buildPack, contractFor, contractDts, openapiFor, diffContrac
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 
 export { CompileError } from "./extract";
-export { diffContracts, type DiffEntry } from "./emit";
+export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
 export {
   evaluateAppStrategies,
   selectRouteStrategies,

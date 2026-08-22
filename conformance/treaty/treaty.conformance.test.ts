@@ -13,11 +13,17 @@ import type { RouteContract } from "@velqu/contract";
 import { readFileSync } from "node:fs";
 
 // ---------------------------------------------------------------- published Api type
+// M25-006-C: problem responses carry the exact runtime envelope — frozen
+// type URI + title literals, the declared status literal — so Treaty error
+// narrowing is exact after `if (r.error.status === N)`.
 export type ProofPublishedApi = {
   "health.live": RouteContract<"/health/live", "GET", Record<string, never>, Record<string, never>, undefined, { 200: { status: string } }>;
-  "hello.get": RouteContract<"/hello/:name", "GET", { name: string }, Record<string, never>, undefined, { 200: { message: string }; 422: { errors: unknown[] } }>;
-  "users.create": RouteContract<"/users", "POST", Record<string, never>, Record<string, never>, { name: string; email: string }, { 201: { id: string; name: string; email: string }; 422: { errors: unknown[] } }>;
-  "users.get": RouteContract<"/users/:id", "GET", { id: string }, Record<string, never>, undefined, { 200: { id: string; name: string; email: string }; 401: { title: string }; 404: { title: string } }>;
+  "hello.get": RouteContract<"/hello/:name", "GET", { name: string }, Record<string, never>, undefined, { 200: { message: string } }>;
+  "users.create": RouteContract<"/users", "POST", Record<string, never>, Record<string, never>, { name: string; email: string }, { 201: { id: string; name: string; email: string } }>;
+  "users.get": RouteContract<"/users/:id", "GET", { id: string }, Record<string, never>, undefined, {
+    200: { id: string; name: string; email: string };
+    401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string };
+  }>;
   "async.timer": RouteContract<"/async", "GET", Record<string, never>, { ms?: number }, undefined, { 200: { waited: number } }>;
 };
 
@@ -69,10 +75,16 @@ describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
       expect(created.error).toBeNull();
       expect(created.data?.id).toBe("usr_1");
 
-      // 5. users.get without auth → 401
+      // 5. users.get without auth → 401. The policy-provided error flows
+      // into the Treaty union: narrowing on status types the problem as
+      // the exact unauthorized envelope (M25-006-C)
       const unauth = await rt.api["users.get"]({ id: "usr_1" }).get();
       expect(unauth.data).toBeNull();
-      expect(unauth.error?.status).toBe(401);
+      if (unauth.error?.status !== 401) throw new Error("expected 401");
+      expect(unauth.error.problem.type).toBe("https://velqu.dev/problems/unauthorized");
+      expect(unauth.error.problem.title).toBe("Unauthorized");
+      expect(unauth.error.problem.status).toBe(401);
+      expect(typeof unauth.error.problem.instance).toBe("string");
 
       // 6. users.get with auth → 200
       const authed = await rt.api["users.get"]({ id: "usr_1" }).get({
