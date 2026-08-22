@@ -4,7 +4,7 @@ parent_task: M25-006
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -126,3 +126,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-006-V)
+
+Status: **PASS**. Every parent M25-006 acceptance guardrail maps to source
+and passing tests; all verification commands were run fresh on this branch
+(no code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Custom problem fields survive end-to-end.**
+   - `problem_from_object` (worker.rs) reads extension members into
+     `ProblemOut.extensions`; both the generated `ProblemProgram` and the
+     generic `problems::body` emit them sorted.
+   - `declared_problem_response_encodes_with_custom_fields` — live HTTP:
+     `orderId` and `retryable` cross on the declared 409; TS surface
+     `problem({ fields })` spreads them.
+2. **Unexpected errors never expose secrets/stacks in production.**
+   - `internal_problem_detail_and_extensions_are_redacted` — internal-
+     problem detail + extension stripped from the wire, preserved in the
+     `problem.redacted` log; thrown exceptions stay redacted
+     (`Outcome::EngineFailure`, bun security conformance).
+3. **Error status narrowing is exact.**
+   - `problemTypeOf` emits frozen type/title literals + the declared
+     status literal in `contract.d.ts`; Treaty narrowing test asserts
+     `r.error.problem` typed as the unauthorized envelope after
+     `status === 401` and checks the live 401 body values.
+   - Status key lookup means the generated encoder only engages for the
+     status the route declared for that problem.
+4. **OpenAPI problem schemas match runtime.**
+   - Compiler tests: `application/problem+json` content schemas with
+     required `[type, title, status, instance]` and enum-constrained
+     type/title/status for the policy 401 and a declared 404 fixture;
+     `PROBLEM_REGISTRY` id parity with the runtime registry.
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 22 integration passed.
+- `bun test` — 73 passed, 0 failed, 313 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (identical on every packet branch this session).
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `48f9c10`.
