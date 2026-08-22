@@ -4,7 +4,7 @@ parent_task: M25-009
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -128,3 +128,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-009-V)
+
+Status: **PASS**. Both parent acceptance guardrails map to source and
+passing evidence; all verification commands ran fresh on this branch (no
+code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **No panic, hang, unbounded output, or semantic mismatch.**
+   - `encoded_decoded_round_trip_matches_reference` — 20,000-iteration
+     round-trip fuzz over the decoder + encoder with corpus-health
+     bounds; accept/reject agreement with the reference in both
+     directions; byte and parse parity on acceptance; full decode →
+     encode → decode round-trip.
+   - `malformed_and_boundary_corpus` — 31 malformed entries (typed-code
+     parity, no panic) + 11 boundary entries (accept + byte parity).
+   - The pre-existing fuzz (validator determinism, decoder determinism,
+     source coercion split) stays green.
+   - Bounded output: the standards corpus asserts exact byte strings
+     (hand-written), and every suite runs in bounded time (the full
+     q-schema-runtime suite finishes in well under a second).
+2. **All fuzz findings are triaged.**
+   - M25-009-A finding (encoder fallback-with-inner): fixed + minimized
+     fixture `fallback_with_inner_encodes_transparently`.
+   - M25-009-C finding (decoder union-error leak): fixed + minimized
+     fixture `union_miss_reports_canonical_code_everywhere`.
+   - Findings registry documented in the corpus module header; both
+     fixtures replay in `codec_regression_corpus_replays`.
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-schema-runtime` — 58 unit + 4 fuzz + 5 standards —
+  all passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-pack` —
+  41 + 2; `cargo test -p velqu-runtime` — 24 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (identical on every packet branch this session).
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `7ed3e51`.
