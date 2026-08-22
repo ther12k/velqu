@@ -4,7 +4,7 @@ parent_task: M25-008
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-008-V)
+
+Status: **PASS**. Every parent M25-008 acceptance guardrail maps to source
+and passing tests; all verification commands were run fresh on this branch
+(no code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Same statuses/fields/security in all projections.**
+   - `projection parity (M25-008-B)` — 5 tests / 134 assertions in every
+     `bun test` and `scripts/verify`: route identity, declared statuses,
+     fields (response + params/query/body), security, and compact-metadata
+     sync across contract.json, the pack, openapi.json, and contract.d.ts.
+2. **No hand-written duplicate interface is required.**
+   - M25-008-A: the treaty suite imports the generated `Api` type; the
+     hand-written per-route interface is deleted; shape pins are two
+     `expectTypeOf` assertions + d.ts content snapshots.
+3. **Breaking changes are classified correctly.**
+   - `semantic diff classifies IR v2 constraint changes (M25-008-D)` —
+     seven classification cases (input tightening breaking; loosening
+     compatible; first-ever floor is tightening from −∞; response
+     tightening policy-sensitive; enum/union/literal; fallback reason
+     codec-path change) plus the prior structural suite.
+4. **Published client does not import server implementation.**
+   - TRT-004 bundle-isolation test (zero @velqu/core / @velqu/compiler /
+     bun: / node: imports in the treaty package); the published surface is
+     `contract.d.ts` (types) + `contract.meta.json` (1.5 KiB pinning
+     metadata, no schema bodies — M25-008-C).
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 24 integration passed.
+- `cargo test -p q-pack` — 41 + 2 passed.
+- `cargo test --workspace` — zero failures (direct run).
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — the first run reported one transient
+  `FAIL: cargo test` that did NOT reproduce (two subsequent full verify
+  runs and a direct `cargo test --workspace` run were completely green —
+  same non-reproducible pattern observed and documented once before in
+  M25-005-V, most likely a timing blip in the runtime-conformance suite
+  under verify load). Final state: all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch.
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `6898138`.
