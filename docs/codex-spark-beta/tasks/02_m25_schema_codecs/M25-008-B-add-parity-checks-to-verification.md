@@ -4,7 +4,7 @@ parent_task: M25-008
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -113,3 +113,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-008-B)
+
+Status: **PASS**. Parity checks run inside verification (`bun test`, which
+`scripts/verify` executes):
+
+- New conformance suite `conformance/compiler/projection-parity.test.ts`
+  (4 tests, 93 assertions) cross-checks the built proof-app artifacts —
+  contract.json, the compiled pack, openapi.json, and the generated
+  contract.d.ts — all derived from the one canonical Schema IR:
+  1. **Route identity**: contract route ids ↔ pack route ids ↔ OpenAPI
+     operationIds; method/path agreement per route.
+  2. **Declared statuses**: per route, the response status sets in
+     contract.json, the pack, OpenAPI, and the generated d.ts members are
+     identical.
+  3. **Fields**: for every response schema (and params/query/body), the
+     IR property names agree across contract.json, the pack's registered
+     schema, and OpenAPI's object schemas.
+  4. **Security**: a route is secured (or not) consistently in
+     contract.json (policy id), the pack (security requirements), and
+     OpenAPI (security requirements).
+- The checks pass against the current tree — after M25-008-A every
+  projection is IR-driven, so no drift exists today; the suite's value is
+  permanent regression protection inside `./scripts/verify`.
+
+### Tests and evidence
+
+- `projection parity (M25-008-B)` — 4 passed, 93 expect calls (runs in
+  every `bun test` and therefore every `scripts/verify`).
+- `bun test` — 79 passed, 0 failed, 433 expect calls.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-schema-runtime`
+  — 57 + 3; `cargo test -p velqu-runtime` — 24; `cargo test -p q-pack` —
+  41 + 2 — all passed.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `01e20ef`.
