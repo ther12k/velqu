@@ -268,6 +268,11 @@ pub enum Source {
     Body,
 }
 
+/// M25-004-C: bounded decode/validate nesting (constraint 11: stacks are
+/// bounded). Both the reference validator and the direct decoder programs
+/// reject deeper schema-driven recursion with a typed `depth` problem.
+pub const MAX_VALIDATE_DEPTH: usize = 64;
+
 /// Typed field-error codes (M25-003-C): the closed vocabulary every decoder
 /// program emits. Wire strings are stable (RFC 9457 problem `errors[].code`);
 /// the enum guarantees decoder problems never carry an undeclared code.
@@ -290,6 +295,8 @@ pub enum FieldErrorCode {
     Fallback,
     InvalidSchema,
     Unsupported,
+    /// M25-004-C: bounded decode nesting (constraint 11). Wire code "depth".
+    Depth,
 }
 
 impl FieldErrorCode {
@@ -311,6 +318,7 @@ impl FieldErrorCode {
         FieldErrorCode::Fallback,
         FieldErrorCode::InvalidSchema,
         FieldErrorCode::Unsupported,
+        FieldErrorCode::Depth,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -332,6 +340,7 @@ impl FieldErrorCode {
             FieldErrorCode::Fallback => "fallback",
             FieldErrorCode::InvalidSchema => "invalid-schema",
             FieldErrorCode::Unsupported => "unsupported",
+            FieldErrorCode::Depth => "depth",
         }
     }
 
@@ -404,8 +413,8 @@ pub(crate) fn is_uuid(s: &str) -> bool {
 /// Returns the (possibly coerced / default-applied) value.
 pub fn validate(ir: &SchemaIr, value: &Value, source: Source) -> ValidationResult {
     match source {
-        Source::Body => validate_node(ir, value, "", false),
-        Source::Path | Source::Query => validate_node(ir, value, "", true),
+        Source::Body => validate_node(ir, value, "", false, 0),
+        Source::Path | Source::Query => validate_node(ir, value, "", true, 0),
     }
 }
 
@@ -414,19 +423,27 @@ fn validate_node(
     value: &Value,
     path: &str,
     coerce_strings: bool,
+    depth: usize,
 ) -> ValidationResult {
+    if depth > MAX_VALIDATE_DEPTH {
+        return Err(vec![FieldError::typed(
+            path,
+            FieldErrorCode::Depth,
+            format!("maximum nesting depth {} exceeded", MAX_VALIDATE_DEPTH),
+        )]);
+    }
     match ir {
         SchemaIr::Optional { inner, default } => {
             if value.is_null() {
                 return Ok(default.clone().unwrap_or(Value::Null));
             }
-            validate_node(inner, value, path, coerce_strings)
+            validate_node(inner, value, path, coerce_strings, depth + 1)
         }
         SchemaIr::Nullable { inner } => {
             if value.is_null() {
                 return Ok(Value::Null);
             }
-            validate_node(inner, value, path, coerce_strings)
+            validate_node(inner, value, path, coerce_strings, depth + 1)
         }
         SchemaIr::Transform { .. } | SchemaIr::File { .. } | SchemaIr::Problem { .. } => {
             Err(vec![FieldError::new(
@@ -446,7 +463,7 @@ fn validate_node(
             match inner {
                 // explicit fallback with a best-effort shape: native validation
                 // applies the inner schema (the marker itself is transparent)
-                Some(inner) => validate_node(inner, value, path, coerce_strings),
+                Some(inner) => validate_node(inner, value, path, coerce_strings, depth + 1),
                 // no shape declared: the generic path must execute; until
                 // M25-004-B wires it, this fails closed as a typed error
                 None => Err(vec![FieldError::new(
@@ -459,7 +476,7 @@ fn validate_node(
         SchemaIr::Union { members } => {
             let mut _last = Vec::new();
             for m in members {
-                match validate_node(m, value, path, coerce_strings) {
+                match validate_node(m, value, path, coerce_strings, depth + 1) {
                     Ok(v) => return Ok(v),
                     Err(e) => _last = e,
                 }
@@ -645,7 +662,7 @@ fn validate_node(
             let mut out = Vec::with_capacity(arr.len());
             for (i, item) in arr.iter().enumerate() {
                 let p = format!("{}[{}]", path, i);
-                out.push(validate_node(items, item, &p, coerce_strings)?);
+                out.push(validate_node(items, item, &p, coerce_strings, depth + 1)?);
             }
             Ok(Value::Array(out))
         }
@@ -685,7 +702,7 @@ fn validate_node(
             for (key, ir) in properties {
                 if let Some(v) = obj.get(key) {
                     let p = join_path(path, key);
-                    match validate_node(ir, v, &p, coerce_strings) {
+                    match validate_node(ir, v, &p, coerce_strings, depth + 1) {
                         Ok(nv) => {
                             out.insert(key.clone(), nv);
                         }
@@ -759,9 +776,9 @@ pub fn validate_query(ir: &SchemaIr, query: &[(String, String)]) -> ValidationRe
                 filtered.insert(key.clone(), v.clone());
             }
         }
-        validate_node(ir, &Value::Object(filtered), "", true)
+        validate_node(ir, &Value::Object(filtered), "", true, 0)
     } else {
-        validate_node(ir, &Value::Object(raw), "", true)
+        validate_node(ir, &Value::Object(raw), "", true, 0)
     }
 }
 
@@ -779,9 +796,9 @@ pub fn validate_params(ir: &SchemaIr, params: &[(String, String)]) -> Validation
                 filtered.insert(key.clone(), v.clone());
             }
         }
-        validate_node(ir, &Value::Object(filtered), "", true)
+        validate_node(ir, &Value::Object(filtered), "", true, 0)
     } else {
-        validate_node(ir, &Value::Object(raw), "", true)
+        validate_node(ir, &Value::Object(raw), "", true, 0)
     }
 }
 

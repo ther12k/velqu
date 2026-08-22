@@ -272,6 +272,8 @@ describe("Unsupported transformations documentation (M25-001-D)", () => {
     expect(spec).toContain("`unsupported`");
     expect(spec).toContain("`fallback`");
     expect(spec).toContain("`invalid-schema`");
+    // M25-004-C: bounded decode nesting also has a typed code
+    expect(spec).toContain("`depth`");
     // and the never-representable classes
     expect(spec).toContain("Executable callbacks");
     expect(spec).toContain("no silent downgrade");

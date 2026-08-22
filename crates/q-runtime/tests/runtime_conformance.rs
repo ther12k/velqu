@@ -1402,6 +1402,37 @@ fn js_fallback_body_routes_raw_json_to_handler() {
     server.stop();
 }
 
+/// M25-004-C: deeply nested inputs fail boundedly. Parse-level nesting is
+/// capped by serde_json's recursion limit (128) — anything deeper rejects 422
+/// at admission on every body route, including the js-fallback route.
+#[test]
+fn deeply_nested_body_fails_boundedly() {
+    let dir = temp_dir("deep-body");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    wait_tcp(port, Duration::from_secs(10));
+
+    let deep = format!("{}1{}", "[".repeat(200), "]".repeat(200));
+    let r = http(
+        port,
+        "POST /fallback HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(deep.as_bytes()),
+    );
+    assert_eq!(r.status, 422, "body: {}", r.text());
+    assert_eq!(r.json()["detail"], "malformed JSON body");
+    assert_eq!(r.json()["type"], "https://velqu.dev/problems/validation");
+
+    let r = http(
+        port,
+        "POST /users HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(deep.as_bytes()),
+    );
+    assert_eq!(r.status, 422);
+
+    server.stop();
+}
+
 #[test]
 fn tampered_pack_fails_before_ready() {
     let dir = temp_dir("tamper");
