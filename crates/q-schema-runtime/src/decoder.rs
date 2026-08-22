@@ -11,7 +11,7 @@ use serde_json::{Map, Number, Value};
 
 use crate::{
     is_email, is_uuid, is_uuid_bytes, is_valid_fallback_reason, join_path, simple_pattern_match,
-    FieldError, FieldErrorCode, SchemaIr, Source, ValidationResult,
+    FieldError, FieldErrorCode, SchemaIr, Source, ValidationResult, MAX_VALIDATE_DEPTH,
 };
 
 /// A compiled field-level specification for direct decoding.
@@ -257,6 +257,25 @@ impl FieldSpec {
         path: &str,
         coerce_strings: bool,
     ) -> Result<Value, Vec<FieldError>> {
+        self.decode_str_depth(raw_str, path, coerce_strings, 0)
+    }
+
+    /// M25-004-C: depth-threaded decode — recursion is bounded by
+    /// `MAX_VALIDATE_DEPTH` with a typed `depth` problem.
+    fn decode_str_depth(
+        &self,
+        raw_str: &str,
+        path: &str,
+        coerce_strings: bool,
+        depth: usize,
+    ) -> Result<Value, Vec<FieldError>> {
+        if depth > MAX_VALIDATE_DEPTH {
+            return Err(vec![FieldError::typed(
+                path,
+                FieldErrorCode::Depth,
+                format!("maximum nesting depth {} exceeded", MAX_VALIDATE_DEPTH),
+            )]);
+        }
         match self {
             FieldSpec::String {
                 min_length,
@@ -451,14 +470,14 @@ impl FieldSpec {
                 if raw_str.is_empty() || raw_str == "null" {
                     Ok(default.clone().unwrap_or(Value::Null))
                 } else {
-                    inner.decode_str(raw_str, path, coerce_strings)
+                    inner.decode_str_depth(raw_str, path, coerce_strings, depth + 1)
                 }
             }
             FieldSpec::Nullable { inner } => {
                 if raw_str == "null" {
                     Ok(Value::Null)
                 } else {
-                    inner.decode_str(raw_str, path, coerce_strings)
+                    inner.decode_str_depth(raw_str, path, coerce_strings, depth + 1)
                 }
             }
             FieldSpec::Array {
@@ -492,14 +511,19 @@ impl FieldSpec {
                 let mut out = Vec::with_capacity(parts.len());
                 for (i, part) in parts.iter().enumerate() {
                     let item_path = format!("{}[{}]", path, i);
-                    out.push(items.decode_str(part, &item_path, coerce_strings)?);
+                    out.push(items.decode_str_depth(
+                        part,
+                        &item_path,
+                        coerce_strings,
+                        depth + 1,
+                    )?);
                 }
                 Ok(Value::Array(out))
             }
             FieldSpec::Union { members } => {
                 let mut last_err = Vec::new();
                 for m in members {
-                    match m.decode_str(raw_str, path, coerce_strings) {
+                    match m.decode_str_depth(raw_str, path, coerce_strings, depth + 1) {
                         Ok(v) => return Ok(v),
                         Err(e) => last_err = e,
                     }
@@ -523,7 +547,7 @@ impl FieldSpec {
                     )]);
                 }
                 match inner {
-                    Some(inner) => inner.decode_str(raw_str, path, coerce_strings),
+                    Some(inner) => inner.decode_str_depth(raw_str, path, coerce_strings, depth + 1),
                     None => Err(vec![FieldError::typed(
                         path,
                         FieldErrorCode::Fallback,
@@ -548,6 +572,25 @@ impl FieldSpec {
         path: &str,
         coerce_strings: bool,
     ) -> Result<Value, Vec<FieldError>> {
+        self.decode_value_depth(value, path, coerce_strings, 0)
+    }
+
+    /// M25-004-C: depth-threaded decode — recursion is bounded by
+    /// `MAX_VALIDATE_DEPTH` with a typed `depth` problem.
+    fn decode_value_depth(
+        &self,
+        value: &Value,
+        path: &str,
+        coerce_strings: bool,
+        depth: usize,
+    ) -> Result<Value, Vec<FieldError>> {
+        if depth > MAX_VALIDATE_DEPTH {
+            return Err(vec![FieldError::typed(
+                path,
+                FieldErrorCode::Depth,
+                format!("maximum nesting depth {} exceeded", MAX_VALIDATE_DEPTH),
+            )]);
+        }
         match self {
             FieldSpec::String {
                 min_length,
@@ -769,14 +812,14 @@ impl FieldSpec {
                 if value.is_null() {
                     Ok(default.clone().unwrap_or(Value::Null))
                 } else {
-                    inner.decode_value(value, path, coerce_strings)
+                    inner.decode_value_depth(value, path, coerce_strings, depth + 1)
                 }
             }
             FieldSpec::Nullable { inner } => {
                 if value.is_null() {
                     Ok(Value::Null)
                 } else {
-                    inner.decode_value(value, path, coerce_strings)
+                    inner.decode_value_depth(value, path, coerce_strings, depth + 1)
                 }
             }
             FieldSpec::Array {
@@ -815,14 +858,19 @@ impl FieldSpec {
                 let mut out = Vec::with_capacity(arr.len());
                 for (i, item) in arr.iter().enumerate() {
                     let item_path = format!("{}[{}]", path, i);
-                    out.push(items.decode_value(item, &item_path, coerce_strings)?);
+                    out.push(items.decode_value_depth(
+                        item,
+                        &item_path,
+                        coerce_strings,
+                        depth + 1,
+                    )?);
                 }
                 Ok(Value::Array(out))
             }
             FieldSpec::Union { members } => {
                 let mut last_err = Vec::new();
                 for m in members {
-                    match m.decode_value(value, path, coerce_strings) {
+                    match m.decode_value_depth(value, path, coerce_strings, depth + 1) {
                         Ok(v) => return Ok(v),
                         Err(e) => last_err = e,
                     }
@@ -846,7 +894,7 @@ impl FieldSpec {
                     )]);
                 }
                 match inner {
-                    Some(inner) => inner.decode_value(value, path, coerce_strings),
+                    Some(inner) => inner.decode_value_depth(value, path, coerce_strings, depth + 1),
                     None => Err(vec![FieldError::typed(
                         path,
                         FieldErrorCode::Fallback,
@@ -1956,5 +2004,143 @@ mod tests {
         assert_eq!(out, json!({"n": 5}));
         let err = prog.decode_body_value(&json!({"n": 0})).unwrap_err();
         assert_eq!(err[0].code, "minimum");
+    }
+
+    /// Fold `levels` nested array schemas around an integer leaf.
+    fn nested_array_schema(levels: usize) -> SchemaIr {
+        let mut ir = SchemaIr::Integer {
+            minimum: None,
+            maximum: None,
+        };
+        for _ in 0..levels {
+            ir = SchemaIr::Array {
+                items: Box::new(ir),
+                min_items: None,
+                max_items: None,
+            };
+        }
+        ir
+    }
+
+    fn nested_array_value(levels: usize) -> Value {
+        let mut v = json!(7);
+        for _ in 0..levels {
+            v = Value::Array(vec![v]);
+        }
+        v
+    }
+
+    /// Body schemas must be objects; nest the array chain under `deep`.
+    fn deep_body_schema(levels: usize) -> SchemaIr {
+        SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "deep".to_string(),
+                Box::new(nested_array_schema(levels)),
+            )]),
+            required: vec!["deep".into()],
+        }
+    }
+
+    #[test]
+    fn decode_depth_bounded_with_typed_depth_problem() {
+        // A schema nested past MAX_VALIDATE_DEPTH rejects with a typed
+        // `depth` problem instead of unbounded recursion (constraint 11).
+        let over = deep_body_schema(MAX_VALIDATE_DEPTH + 6);
+        let prog = DecoderProgram::compile(&over, Source::Body);
+        let input = json!({ "deep": nested_array_value(MAX_VALIDATE_DEPTH + 6) });
+        let err = prog.decode_body_value(&input).unwrap_err();
+        assert_eq!(err[0].code, "depth");
+        assert!(err[0].message.contains("maximum nesting depth"));
+
+        // Differential parity: the reference validator enforces the same
+        // bound with the same typed problem on the over-limit schema.
+        let ref_err = crate::validate(&over, &input, Source::Body).unwrap_err();
+        assert_eq!(ref_err[0].code, "depth");
+        assert_eq!(ref_err[0].message, err[0].message);
+
+        // Comfortably within the bound both paths succeed identically.
+        let within = deep_body_schema(MAX_VALIDATE_DEPTH - 6);
+        let prog = DecoderProgram::compile(&within, Source::Body);
+        let input = json!({ "deep": nested_array_value(MAX_VALIDATE_DEPTH - 6) });
+        let direct = prog.decode_body_value(&input).unwrap();
+        let reference = crate::validate(&within, &input, Source::Body).unwrap();
+        assert_eq!(direct, reference);
+
+        // The decoder at its own exact bound still decodes.
+        let at_bound = deep_body_schema(MAX_VALIDATE_DEPTH);
+        let prog = DecoderProgram::compile(&at_bound, Source::Body);
+        let input = json!({ "deep": nested_array_value(MAX_VALIDATE_DEPTH) });
+        assert!(prog.decode_body_value(&input).is_ok());
+    }
+
+    #[test]
+    fn scalar_limits_enforced_at_exact_boundaries() {
+        // maxLength: at-bound passes, +1 fails
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "s".to_string(),
+                Box::new(SchemaIr::String {
+                    min_length: Some(2),
+                    max_length: Some(4),
+                    pattern: None,
+                    format: None,
+                }),
+            )]),
+            required: vec!["s".into()],
+        };
+        let prog = DecoderProgram::compile(&ir, Source::Body);
+        assert!(prog.decode_body_value(&json!({"s": "ab"})).is_ok());
+        assert!(prog.decode_body_value(&json!({"s": "abcd"})).is_ok());
+        let err = prog.decode_body_value(&json!({"s": "abcde"})).unwrap_err();
+        assert_eq!(err[0].code, "maxLength");
+
+        // minItems/maxItems: at-bound passes, over fails
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "a".to_string(),
+                Box::new(SchemaIr::Array {
+                    items: Box::new(SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                    min_items: Some(1),
+                    max_items: Some(3),
+                }),
+            )]),
+            required: vec!["a".into()],
+        };
+        let prog = DecoderProgram::compile(&ir, Source::Body);
+        assert!(prog.decode_body_value(&json!({"a": [1]})).is_ok());
+        assert!(prog.decode_body_value(&json!({"a": [1,2,3]})).is_ok());
+        let err = prog.decode_body_value(&json!({"a": []})).unwrap_err();
+        assert_eq!(err[0].code, "minItems");
+        let err = prog
+            .decode_body_value(&json!({"a": [1,2,3,4]}))
+            .unwrap_err();
+        assert_eq!(err[0].code, "maxItems");
+
+        // numeric bounds: at-bound passes, over fails; non-finite rejects
+        let ir = SchemaIr::Object {
+            properties: BTreeMap::from([(
+                "n".to_string(),
+                Box::new(SchemaIr::Number {
+                    minimum: Some(-1.5),
+                    maximum: Some(10.5),
+                }),
+            )]),
+            required: vec!["n".into()],
+        };
+        let prog = DecoderProgram::compile(&ir, Source::Body);
+        assert!(prog.decode_body_value(&json!({"n": -1.5})).is_ok());
+        assert!(prog.decode_body_value(&json!({"n": 10.5})).is_ok());
+        let err = prog.decode_body_value(&json!({"n": 10.51})).unwrap_err();
+        assert_eq!(err[0].code, "maximum");
+        // JSON cannot carry non-finite numbers; a coerced query string can
+        let spec = FieldSpec::compile(&SchemaIr::Number {
+            minimum: None,
+            maximum: None,
+        });
+        let err = spec.decode_str("inf", "n", true).unwrap_err();
+        assert_eq!(err[0].code, "type");
     }
 }

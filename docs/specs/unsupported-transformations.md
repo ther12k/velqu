@@ -33,6 +33,7 @@ sees one vocabulary end to end.
 | Compiler extraction (`extract.ts`) | Same bounds violations, non-literal arguments, unknown builder names | `CompileError` with `{file, line, column}` and an actionable hint (e.g. the closed reason list) |
 | Pack load (`q-pack::verify`) | `schemaIrVersion` mismatch; declared `features` ≠ derived; fallback reason outside the vocabulary | `PackError::Rejected` — startup never reaches ready |
 | Runtime validation (`q-schema-runtime`) | Value meets a `transform`/`file`/`problem` node; fallback marker without `inner`; unknown fallback reason | Field problems: code `unsupported`, `fallback`, or `invalid-schema` (RFC 9457 problem, 422 — never a 500) |
+| Runtime validation (`q-schema-runtime`) | Schema-driven recursion deeper than `MAX_VALIDATE_DEPTH` (both the reference validator and the direct decoder programs, M25-004-C) | Field problem: code `depth` (RFC 9457 problem, 422) — stacks stay bounded per constraint 11 |
 
 ## 3. The explicit fallback marker
 

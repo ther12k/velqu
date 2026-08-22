@@ -4,7 +4,7 @@ parent_task: M25-004
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -122,3 +122,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-004-C)
+
+Status: **PASS**. Depth, size, array, string, and numeric limits are enforced
+boundedly on every decode path:
+
+- **Depth**: `MAX_VALIDATE_DEPTH = 64` guards both the reference validator
+  (`validate_node`) and the direct decoder programs (`decode_value_depth`,
+  `decode_str_depth`) with a new typed `depth` field problem; both paths agree
+  (differential parity test). Parse-level nesting is separately capped by
+  serde_json's recursion limit (proven by the 200-deep HTTP test).
+- **Size**: body bytes stay bounded by route `limit_bytes` admission (413,
+  pre-existing) — unchanged.
+- **Array**: `minItems`/`maxItems` boundary tests at exact bound and off-by-one.
+- **String**: `minLength`/`maxLength` boundary tests at exact bound and off-by-one.
+- **Numeric**: `minimum`/`maximum` boundary tests; non-finite rejects typed.
+
+### Changed files
+
+- `crates/q-schema-runtime/src/lib.rs` — `MAX_VALIDATE_DEPTH` constant,
+  `FieldErrorCode::Depth` variant (closed vocabulary grows by one documented
+  code), depth threading through `validate_node`.
+- `crates/q-schema-runtime/src/decoder.rs` — depth-threaded
+  `decode_value_depth`/`decode_str_depth` (public signatures unchanged);
+  tests `decode_depth_bounded_with_typed_depth_problem` (over-limit typed
+  error with reference-validator parity, within-limit output parity,
+  exact-bound decode) and `scalar_limits_enforced_at_exact_boundaries`
+  (string/array/numeric boundaries and non-finite rejection).
+- `crates/q-runtime/tests/runtime_conformance.rs` —
+  `deeply_nested_body_fails_boundedly`: 200-deep nested array POST rejects
+  422 with the exact declared problem envelope on both native and js-fallback
+  body routes.
+- `docs/specs/unsupported-transformations.md` — §2 table documents the
+  `depth` code and its bound.
+- `conformance/schema/schema.conformance.test.ts` — spec-code test asserts
+  `depth` is documented.
+- `docs/codex-spark-beta/STATUS.md`, `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+  — M25-004-C marked PASS.
+
+### Tests and evidence
+
+- `cargo test -p q-schema-runtime` — 45 unit tests + 3 fuzz tests passed.
+- `cargo test -p velqu-runtime` — 17 integration tests passed (new deep-nesting test included).
+- `cargo test -p q-engine-quickjs` — 1 unit + 96 integration tests passed.
+- `cargo test -p q-http` — 4 tests passed.
+- `cargo test -p q-bridge` — 11 passed.
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean.
+- `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+
+Commit: `6a91b77`.
