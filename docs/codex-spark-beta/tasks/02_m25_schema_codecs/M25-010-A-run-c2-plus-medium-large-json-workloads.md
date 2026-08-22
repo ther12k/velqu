@@ -4,7 +4,7 @@ parent_task: M25-010
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -127,3 +127,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-010-A)
+
+Status: **PASS**. C2 plus medium/large JSON workloads ran fresh on the
+current tree (post-M25-003..009 codecs), with raw samples retained:
+
+- Raw evidence: `benchmarks/raw/codec-m25-010-a/` — codec.jsonl (2,000
+  samples per candidate per case after 200 warmup), codec-summary.json,
+  evidence.json (sha256 of the freshly built binary + generated module;
+  the harness-generated `command` field carries the stale codec-c
+  template string — disclosed in the report, generated files not
+  hand-edited).
+- Report: `docs/reports/m25-010-a-codec-workloads.md` — environment,
+  actual invocation, the full 10-case matrix (small JSON, nested order,
+  arrays 100/1,000, padded 256B/1KB/16KB/64KB, optional/null, problem
+  shape), C2 codec-stage timings, findings, decision matrix.
+- Findings (honest): C2 materially improves records1000 (+16.6% total
+  p50 vs generic) and pad_256 (+25.4%); within ±3% on the other eight
+  (both host candidates share the serde_json parse + QuickJS boundary —
+  documented limitation). Native vs engine: 3.2x faster at 16KB and 6.2x
+  at 64KB; quickjs-json wins records100 by 7% (the one parity shape).
+  Decision matrix supports the M25-002-D native default + measured
+  fallback; strategy remains inspectable (M25-007-D).
+- Scope lines honored: no binary QPack encoding, no capability API
+  expansion, no ORM. Root benchmark manifest untouched (raw evidence
+  added under a new versioned directory; historical evidence preserved).
+
+### Tests and evidence
+
+- `cargo test -p q-schema-runtime` — 58 + 4 fuzz + 5 standards passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+
+Commit: `ce74aff`.
