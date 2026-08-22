@@ -4,7 +4,7 @@ parent_task: M25-005
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-005-D)
+
+Status: **PASS**. The QuickJS stringify fallback and the generic reference
+path stay retained and correct next to the generated encoder:
+
+- The selection mechanism already exists end-to-end from M25-002-D:
+  `s.fallback("measured", ...)` on a response schema selects the js
+  strategy with the measured-cost estimate recorded in
+  `build-report.json` (compiler conformance covers it: "explicit fallback
+  nodes select js strategy and record estimated overhead" asserts the
+  `measured` reason at `response.200`). No default flipped — current
+  M25-002 evidence selects native for every representable shape, and no
+  new measurement justifies changing it.
+- The generic reference validate-then-serialize path remains for native
+  routes whose response schema the direct encoder cannot represent
+  (M25-005-A compile-to-None behavior, unchanged).
+- New runtime evidence `quickjs_stringify_fallback_stays_json_equivalent_
+  to_encoder`: twin routes share one declared response schema; the native
+  twin encodes through the generated program (declared property order
+  bytes), the js twin stringifies in the engine (handler insertion order
+  bytes, host validation skipped per the disclosed fallback). Both return
+  200 and the bodies are JSON-equal — the retained fallback stays
+  selectable (e.g. via the `measured` marker) with zero correctness
+  drift. QPack::verify enforces plan/declared strategy agreement (the js
+  twin carries `ResponseDecl.strategy: Js`).
+
+### Tests and evidence
+
+- `runtime_conformance::quickjs_stringify_fallback_stays_json_equivalent_
+  to_encoder` — twin-route retention proof (see above).
+- Golden corpus / response mismatch / mapping deadline evidence:
+  unchanged from M25-005-A/B/C and still green (`cargo test -p
+  q-schema-runtime` — 54 unit + 3 fuzz).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p velqu-runtime` — 20 integration passed (new twin test).
+- `bun test` — 69 passed, 0 failed, 297 expect calls (compiler strategy
+  tests incl. the `measured` fallback assertions).
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+No performance claim; benchmark manifest preserved unchanged.
+
+Commit: `f4efd70`.

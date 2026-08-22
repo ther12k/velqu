@@ -2231,6 +2231,173 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
     );
 }
 
+/// M25-005-D: the QuickJS stringify fallback stays retained and correct
+/// next to the direct encoder. Twin routes share one declared schema; the
+/// native route encodes through the generated program (declared property
+/// order), the js route stringifies in the engine (handler insertion
+/// order, host validation skipped per the disclosed fallback). Both
+/// responses are 200 and JSON-equal — the fallback remains selectable
+/// (e.g. via the `measured` fallback marker) without correctness drift.
+#[test]
+fn quickjs_stringify_fallback_stays_json_equivalent_to_encoder() {
+    let bundle = r#"
+async function twin_shape(ctx) {
+    // handler key order deliberately differs from the declared order
+    return { zeta: "z", alpha: 7 };
+}
+globalThis.__velquFunctionManifest = [["twin.native", 0, twin_shape]];
+globalThis.__velquFunctions = [twin_shape];
+"#;
+    let dir = temp_dir("respenc-d");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![FunctionDecl {
+        id: 0,
+        key: "twin.native".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("twin.native".to_string(), "twin.native".to_string()),
+        ("twin.js".to_string(), "twin.js".to_string()),
+    ]);
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route_pos].clone();
+    let plan = |strategy: Strategy| RoutePlanDecl {
+        route_id: 0,
+        handler_id: 0,
+        policy_id: None,
+        policy_handler_id: None,
+        params_schema_id: None,
+        query_schema_id: None,
+        headers_schema_id: None,
+        body_schema_id: None,
+        header_name_ids: vec![],
+        query_name_ids: vec![],
+        cookie_name_ids: vec![],
+        default_status: 200,
+        allowed_statuses: vec![200],
+        field_needs: FieldNeeds::default(),
+        response_strategy: strategy,
+        deadline_ms: 5000,
+    };
+    let twin = |id: &str, path: &str, strategy: Strategy| {
+        let mut r = base.clone();
+        r.id = id.into();
+        r.handler = "twin.native".into();
+        r.policy = None;
+        r.params = None;
+        r.query = None;
+        r.body = None;
+        r.headers = None;
+        r.security.clear();
+        r.path = path.into();
+        r.path_segments = vec![PathSegment {
+            kind: SegKind::Static,
+            value: path.trim_start_matches('/').into(),
+        }];
+        r.responses = std::collections::BTreeMap::from([(
+            "200".to_string(),
+            q_pack::ResponseDecl {
+                schema: Some("sch:twin.200".to_string()),
+                strategy: match strategy {
+                    Strategy::Js => q_pack::Strategy::Js,
+                    _ => q_pack::Strategy::Native,
+                },
+                problem: None,
+            },
+        )]);
+        r.plan = Some(plan(strategy));
+        r
+    };
+    // native route at index 0, js route at index 1 — plan.route_id must
+    // match the route index, so patch the js plan's ids after building
+    let native = twin("twin.native", "/twin-native", Strategy::Native);
+    let mut js = twin("twin.js", "/twin-js", Strategy::Js);
+    if let Some(ref mut p) = js.plan {
+        p.route_id = 1;
+    }
+    pack.routes = vec![native, js];
+    pack.policies.clear();
+    pack.schemas.insert(
+        "sch:twin.200".to_string(),
+        q_schema_runtime::SchemaIr::Object {
+            properties: std::collections::BTreeMap::from([
+                (
+                    "zeta".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::String {
+                        min_length: None,
+                        max_length: None,
+                        pattern: None,
+                        format: None,
+                    }),
+                ),
+                (
+                    "alpha".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::Integer {
+                        minimum: None,
+                        maximum: None,
+                    }),
+                ),
+            ]),
+            required: vec!["zeta".into(), "alpha".into()],
+        },
+    );
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("respenc-d.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // native twin: one-traversal encoder, declared property order
+    let native_resp = http(port, "GET /twin-native HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(native_resp.status, 200, "body: {}", native_resp.text());
+    assert_eq!(native_resp.text(), "{\"alpha\":7,\"zeta\":\"z\"}");
+
+    // js twin: QuickJS stringify fallback retained — handler insertion
+    // order crosses unvalidated (disclosed per-route in the build report)
+    let js_resp = http(port, "GET /twin-js HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(js_resp.status, 200, "body: {}", js_resp.text());
+    assert_eq!(js_resp.text(), "{\"zeta\":\"z\",\"alpha\":7}");
+
+    // JSON-equivalence of the retained fallback and the generated encoder
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&native_resp.body).unwrap(),
+        serde_json::from_slice::<serde_json::Value>(&js_resp.body).unwrap(),
+        "js fallback and native encoder must stay JSON-equal"
+    );
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
 #[test]
 fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
     let dir = temp_dir("bytecode");
