@@ -56,6 +56,7 @@ __velquRegister("promise.int", promise_int);
         allowed_statuses: vec![200],
         default_status: 200,
         response_strategy: ResponseStrategy::Js,
+        raw_response: false,
         deadline: Instant::now() + Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();

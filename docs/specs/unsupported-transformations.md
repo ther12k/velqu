@@ -81,3 +81,38 @@ strategy, the same name binds the generated decoder/encoder to the route
 binding. Until then the declaration is inert at runtime (typed `unsupported`
 on the validation path) but fully live in every projection (types, OpenAPI,
 Treaty, contract lock, semantic diff).
+
+## 5. Raw Response / full Request escape hatches (M25-007-B)
+
+Two route-level capabilities escape the declared-projection pipeline
+without hiding the cost. Both are explicit declarations, verified at pack
+load against the closed capability vocabulary, and visible in the pack
+(`capabilities` per route).
+
+### `raw-response`
+
+A handler on a `raw-response` route may return a tagged raw envelope
+(`status(n).raw(body, { headers })` in `@velqu/core`, or
+`{ __velquRaw: true, status, headers, body }` by hand). Semantics:
+
+- **Status** must still be one of the route's declared statuses — the
+  engine rejects anything else as a contract violation.
+- **Headers and body cross AS-IS**; the host skips declared
+  response-schema validation and the generated encoders entirely. This is
+  the documented bypass: a raw route's wire output is exactly what the
+  handler produced.
+- Because the runtime never validates a raw route's responses, a
+  `raw-response` route must NOT declare a response schema — pack
+  verification rejects the combination (no contract claim the runtime
+  cannot enforce).
+- Returning a raw envelope on a route WITHOUT the capability is a
+  contract violation (500, logged) — the bypass never activates silently.
+
+### `full-request`
+
+A `full-request` route materializes EVERY request header into the lazy
+request store (bounded by the transport admission limits — max header
+count/bytes — exactly like the `FULL_HEADERS` sentinel), and whole-field
+query access serves all pairs. Lazy per-field access on the context stays
+declared-only; `ctx.request.headers` / `ctx.request.query` see the full
+sets. The cost is explicit in the route declaration.

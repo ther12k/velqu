@@ -128,6 +128,10 @@ pub struct InvocationSpec {
     pub default_status: u16,
     /// Response serialization strategy for this route.
     pub response_strategy: ResponseStrategy,
+    /// M25-007-B: the route declared the `raw-response` capability —
+    /// handlers may return tagged raw envelopes; without it a raw return
+    /// is a contract violation (fallback never activates silently).
+    pub raw_response: bool,
     pub deadline: Instant,
 }
 
@@ -173,6 +177,16 @@ pub struct FieldErrorOut {
 #[derive(Debug, Clone)]
 pub enum Outcome {
     Response {
+        status: u16,
+        body: BodyOut,
+        headers: Vec<(String, String)>,
+    },
+    /// M25-007-B: the raw Response escape hatch. A handler on a
+    /// `raw-response` capability route returned a tagged raw envelope —
+    /// status/headers/body cross AS-IS and the host skips declared
+    /// response-schema validation and the generated encoders (documented
+    /// bypass; the declared-status contract still applied in the engine).
+    RawResponse {
         status: u16,
         body: BodyOut,
         headers: Vec<(String, String)>,

@@ -1861,6 +1861,55 @@ fn value_to_outcome<'js>(
         };
     }
     if let Some(obj) = value.as_object() {
+        // M25-007-B: the raw Response escape hatch. Tagged envelopes are
+        // ONLY honored on routes that declared the `raw-response`
+        // capability; anywhere else a raw return is a contract violation
+        // (fallback never activates silently).
+        let is_raw: bool = obj.get("__velquRaw").unwrap_or(false);
+        if is_raw {
+            if !spec.raw_response {
+                return Outcome::ContractViolation(format!(
+                    "route {} returned a raw Response envelope without the raw-response capability",
+                    spec.route_id
+                ));
+            }
+            let status: u16 = obj
+                .get::<_, Option<rquickjs::Coerced<f64>>>("status")
+                .ok()
+                .flatten()
+                .map(|c| c.0 as u16)
+                .unwrap_or(spec.default_status);
+            if !spec.allowed_statuses.contains(&status) {
+                return Outcome::ContractViolation(format!(
+                    "route {} returned undeclared status {status} (declared: {:?})",
+                    spec.route_id, spec.allowed_statuses
+                ));
+            }
+            let headers = obj
+                .get::<_, Option<Object>>("headers")
+                .ok()
+                .flatten()
+                .map(|h| {
+                    h.keys::<String>()
+                        .filter_map(|k| {
+                            k.ok().and_then(|k| {
+                                let v: rquickjs::Coerced<String> = h.get(k.as_str()).ok()?;
+                                Some((k, v.0))
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let body = match obj.get::<_, Option<rquickjs::Value>>("body") {
+                Ok(Some(b)) => body_from_value(ctx, spec.response_strategy, &b, stringify_fn),
+                _ => BodyOut::Empty,
+            };
+            return Outcome::RawResponse {
+                status,
+                body,
+                headers,
+            };
+        }
         let is_problem: bool = obj.get("__problem").unwrap_or(false);
         if is_problem {
             return problem_from_object(obj);
@@ -2155,7 +2204,14 @@ fn install_natives(
                                     (spec.name.clone(), Json::String(value.to_string()))
                                 }))
                             }
-                            "query" => serde_json::Map::new(),
+                            // M25-007-B: whole-field query access serves the
+                            // stored pairs (declared routes store all pairs;
+                            // materialization discipline lives at access time)
+                            "query" => serde_json::Map::from_iter(
+                                m.query
+                                    .iter()
+                                    .map(|(k, v)| (k.clone(), Json::String(v.clone()))),
+                            ),
                             "headers" => serde_json::Map::from_iter(
                                 m.headers
                                     .iter()

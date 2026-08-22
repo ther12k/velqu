@@ -337,7 +337,8 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .as_ref()
                 .map(|p| p.field_needs)
                 .unwrap_or_default();
-            let query_pairs = if needs.query {
+            let full_request = route.capabilities.iter().any(|c| c == "full-request");
+            let query_pairs = if needs.query || full_request {
                 parse_query(uri.query().unwrap_or(""))
             } else {
                 Vec::new()
@@ -596,13 +597,18 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 // declares (security/policy + headers binding) are copied —
                 // never the full HeaderMap. Lookup is by name on the native
                 // map (first value, same semantics as materialize_headers).
-                headers: if needs.headers {
+                // M25-007-B: the full-request escape hatch materializes
+                // every request header into the store (same bounded
+                // transport admission limits as FULL_HEADERS)
+                headers: if needs.headers || full_request {
                     let table = &state.pack.header_name_table;
                     compiled
                         .plan
                         .as_ref()
                         .map(|plan| {
-                            if plan.header_name_ids.contains(&q_pack::FULL_HEADERS_ID) {
+                            if full_request
+                                || plan.header_name_ids.contains(&q_pack::FULL_HEADERS_ID)
+                            {
                                 // M24-005-D: the EXPLICIT escape hatch — copy
                                 // every header. Cost: bounded by the transport
                                 // header admission limits (max_headers count /
@@ -649,7 +655,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 && !needs.body
                 && route.policy.is_none()
                 && compiled.policy_id.is_none()
-                && compiled.policy_handler_id.is_none();
+                && compiled.policy_handler_id.is_none()
+                // M25-007-B: the full-request escape hatch owns a request
+                // slot by declaration — its handler reads the store
+                && !route.capabilities.iter().any(|c| c == "full-request");
             let request = if requestless {
                 None
             } else {
@@ -688,6 +697,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 String::new()
             };
 
+            let raw_response = route.capabilities.iter().any(|c| c == "raw-response");
             let spec = InvocationSpec {
                 id: invocation_id,
                 request_id: ctx.request_id.clone(),
@@ -716,6 +726,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 allowed_statuses: compiled.allowed_statuses.clone(),
                 default_status: compiled.default_status,
                 response_strategy: compiled.response_strategy,
+                raw_response,
                 deadline: request_deadline,
             };
 
@@ -906,6 +917,63 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     };
                     resp.headers.extend(headers);
                     (Ok(resp), route_id, "engine")
+                }
+                Outcome::RawResponse {
+                    status,
+                    body,
+                    headers,
+                } => {
+                    // M25-007-B: the raw escape hatch — status/headers/body
+                    // cross AS-IS; declared-schema validation and the
+                    // generated encoders are skipped by design (the
+                    // declared-status contract was already enforced in
+                    // the engine). Documented in
+                    // docs/specs/unsupported-transformations.md §5.
+                    let mut resp = match body {
+                        BodyOut::JsonText(text) => PlainResponse {
+                            status,
+                            headers: vec![("content-type".into(), "application/json".into())],
+                            body: text.into_bytes(),
+                            head_only: head,
+                        },
+                        BodyOut::Json(v) => {
+                            let mut r = json_response(status, &v);
+                            r.head_only = head;
+                            r
+                        }
+                        BodyOut::Text(t) => PlainResponse {
+                            status,
+                            headers: vec![(
+                                "content-type".into(),
+                                "text/plain; charset=utf-8".into(),
+                            )],
+                            body: t.into_bytes(),
+                            head_only: head,
+                        },
+                        BodyOut::Bytes(b) => PlainResponse {
+                            status,
+                            headers: vec![(
+                                "content-type".into(),
+                                "application/octet-stream".into(),
+                            )],
+                            body: b,
+                            head_only: head,
+                        },
+                        BodyOut::Empty => PlainResponse {
+                            status,
+                            headers: vec![],
+                            body: Vec::new(),
+                            head_only: head,
+                        },
+                    };
+                    // raw semantics: the handler's headers win — an
+                    // explicitly supplied name replaces the default
+                    for (k, v) in headers {
+                        resp.headers
+                            .retain(|(existing, _)| !existing.eq_ignore_ascii_case(k.as_str()));
+                        resp.headers.push((k, v));
+                    }
+                    (Ok(resp), route_id, "engine.raw")
                 }
                 Outcome::Problem(p) => {
                     // M25-006-B: problems settling as the framework's
