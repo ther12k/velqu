@@ -172,7 +172,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-006-Z — Package evidence for Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-Z-package-evidence-for-generate-rfc-9457-problem-encoders.md)
 - [x] [M25-007-A — Tag fallback reason in RoutePlan](tasks/02_m25_schema_codecs/M25-007-A-tag-fallback-reason-in-routeplan.md)
 - [x] [M25-007-B — Support raw Response/full Request escape hatches](tasks/02_m25_schema_codecs/M25-007-B-support-raw-response-full-request-escape-hatches.md)
-- [ ] [M25-007-C — Keep fallback bounded and deadline-aware](tasks/02_m25_schema_codecs/M25-007-C-keep-fallback-bounded-and-deadline-aware.md)
+- [x] [M25-007-C — Keep fallback bounded and deadline-aware](tasks/02_m25_schema_codecs/M25-007-C-keep-fallback-bounded-and-deadline-aware.md)
 - [ ] [M25-007-D — Expose bridge crossings and codec choice in `velqu inspect`](tasks/02_m25_schema_codecs/M25-007-D-expose-bridge-crossings-and-codec-choice-in-velqu-inspect.md)
 - [ ] [M25-007-V — Verify Implement explicit generic and Web fallback paths](tasks/02_m25_schema_codecs/M25-007-V-verify-implement-explicit-generic-and-web-fallback-paths.md)
 - [ ] [M25-007-Z — Package evidence for Implement explicit generic and Web fallback paths](tasks/02_m25_schema_codecs/M25-007-Z-package-evidence-for-implement-explicit-generic-and-web-fallback-paths.md)

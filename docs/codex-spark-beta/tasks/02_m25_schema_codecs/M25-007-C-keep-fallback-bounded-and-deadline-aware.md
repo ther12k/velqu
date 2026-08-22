@@ -4,7 +4,7 @@ parent_task: M25-007
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-007-C)
+
+Status: **PASS**. Every fallback path is bounded and deadline-aware, with
+live evidence:
+
+- Bounds already in force (unchanged, now evidenced for the fallback
+  paths): body admission by `limit_bytes` (413 before the engine),
+  serde_json recursion cap, `MAX_VALIDATE_DEPTH` typed bound, transport
+  header admission limits, JS heap limits, and the M25-004-D anchored
+  request deadline that bounds admission + read + decode + handler.
+- New evidence `runtime_conformance::fallback_paths_are_bounded_and_
+  deadline_aware` — one pack, a busy (`while (true) {}`) handler served on
+  three fallback routes plus a healthy probe:
+  1. js-validation fallback route (raw-body crossing): busy handler
+     settles 504 at the 200ms route deadline (< 2s wall clock).
+  2. raw-response escape route: the deadline applies BEFORE any raw
+     mapping — 504 at the deadline.
+  3. full-request escape route: identical deadline ownership — 504.
+  4. Interrupt deadline kills are NOT quarantine: the engine keeps
+     serving (probe 200 immediately after the three kills).
+  5. Fallback admission bound: a 70,000-byte body on the js-fallback
+     route rejects 413 before the engine is ever entered (the busy
+     handler never runs).
+
+### Tests and evidence
+
+- `runtime_conformance::fallback_paths_are_bounded_and_deadline_aware`
+  (live HTTP; see the five points above).
+- Existing bound evidence stays green: deeply-nested 422 on the
+  js-fallback route (M25-004-C), body/header 413/431 admission tests,
+  engine poison/quarantine tests, M25-004-D stalled-body deadline test.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 24 integration passed.
+- `cargo test -p q-pack` — 41 + 2 passed.
+- `bun test` — 74 passed, 0 failed, 319 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `3787e75`.

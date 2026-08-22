@@ -2827,6 +2827,257 @@ globalThis.__velquFunctions = [raw_handle, raw_rogue, full_handle];
     );
 }
 
+/// M25-007-C: every fallback path stays bounded and deadline-aware. A
+/// busy handler on a js-validation route, a raw-response route, and a
+/// full-request route each settles 504 at the route deadline (the engine
+/// interrupt kills the execution — no quarantine, the engine keeps
+/// serving), and the js-fallback body admission still rejects oversize
+/// payloads with 413 before the engine is ever entered.
+#[test]
+fn fallback_paths_are_bounded_and_deadline_aware() {
+    let bundle = r#"
+function spin_forever(ctx) {
+  while (true) {}
+}
+async function ok_probe(ctx) {
+  return { alive: true };
+}
+globalThis.__velquFunctionManifest = [["spin.forever", 0, spin_forever], ["ok.probe", 0, ok_probe]];
+globalThis.__velquFunctions = [spin_forever, ok_probe];
+"#;
+    let dir = temp_dir("bounded");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "spin.forever".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "ok.probe".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("spin.forever".to_string(), "spin.forever".to_string()),
+        ("ok.probe".to_string(), "ok.probe".to_string()),
+    ]);
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route_pos].clone();
+    let route = |id: &str,
+                 method: &str,
+                 path: &str,
+                 idx: u32,
+                 caps: Vec<&str>,
+                 needs_body: bool,
+                 js_validation: bool| {
+        let mut r = base.clone();
+        r.id = id.into();
+        r.method = method.into();
+        r.handler = "spin.forever".into();
+        r.policy = None;
+        r.params = None;
+        r.query = None;
+        r.headers = None;
+        r.security.clear();
+        r.path = path.into();
+        r.path_segments = vec![PathSegment {
+            kind: SegKind::Static,
+            value: path.trim_start_matches('/').into(),
+        }];
+        r.capabilities = caps.into_iter().map(String::from).collect();
+        if needs_body {
+            r.body = Some(SourceBinding {
+                schema: Some("sch:fallback.body".into()),
+                coerce: None,
+                content_type: Some("application/json".into()),
+                limit_bytes: 65_536,
+            });
+        } else {
+            r.body = None;
+        }
+        if js_validation {
+            r.validation_strategy = Strategy::Js;
+        }
+        r.responses = std::collections::BTreeMap::from([(
+            "200".to_string(),
+            q_pack::ResponseDecl {
+                schema: None,
+                strategy: q_pack::Strategy::Native,
+                problem: None,
+            },
+        )]);
+        r.plan = Some(RoutePlanDecl {
+            route_id: idx,
+            handler_id: 0,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: if needs_body { Some(2) } else { None },
+            header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
+            default_status: 200,
+            allowed_statuses: vec![200],
+            field_needs: FieldNeeds {
+                params: false,
+                query: false,
+                headers: false,
+                body: needs_body,
+            },
+            response_strategy: Strategy::Native,
+            validation_fallback_reason: if js_validation {
+                Some("explicit".into())
+            } else {
+                None
+            },
+            response_fallback_reason: None,
+            deadline_ms: 200,
+        });
+        r.deadline_ms = 200;
+        r
+    };
+    // body schema id: finalize_numeric assigns dense ids over the sorted
+    // schema map — patch after finalize below instead of guessing here
+    let mut routes = vec![
+        route("slow.fb", "POST", "/slow-fb", 0, vec![], true, true),
+        route(
+            "slow.raw",
+            "GET",
+            "/slow-raw",
+            1,
+            vec!["raw-response"],
+            false,
+            false,
+        ),
+        route(
+            "slow.full",
+            "GET",
+            "/slow-full",
+            2,
+            vec!["full-request"],
+            false,
+            false,
+        ),
+    ];
+    let probe = {
+        let mut r = routes[0].clone();
+        r.id = "ok.probe".into();
+        r.handler = "ok.probe".into();
+        r.method = "GET".into();
+        r.path = "/ok-probe".into();
+        r.path_segments = vec![PathSegment {
+            kind: SegKind::Static,
+            value: "ok-probe".into(),
+        }];
+        r.capabilities = vec![];
+        r.body = None;
+        r.validation_strategy = Strategy::Native;
+        if let Some(ref mut p) = r.plan {
+            p.route_id = 3;
+            p.handler_id = 1;
+            p.body_schema_id = None;
+            p.field_needs.body = false;
+            p.validation_fallback_reason = None;
+        }
+        r
+    };
+    routes.push(probe);
+    pack.routes = routes;
+    pack.policies.clear();
+    finalize_numeric(&mut pack);
+    // bind the js-fallback body schema id through the manifest
+    let fb_sid = pack
+        .schema_manifest
+        .iter()
+        .find(|s| s.key == "sch:fallback.body")
+        .map(|s| s.id)
+        .unwrap();
+    for r in pack.routes.iter_mut() {
+        if r.id == "slow.fb" {
+            if let Some(ref mut p) = r.plan {
+                p.body_schema_id = Some(fb_sid);
+            }
+        }
+    }
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("bounded.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // js-validation fallback route: busy handler dies at the 200ms deadline
+    let t0 = Instant::now();
+    let r = http(
+        port,
+        "POST /slow-fb HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(br#"{"any":"thing"}"#),
+    );
+    assert_eq!(r.status, 504, "body: {}", r.text());
+    assert!(
+        t0.elapsed() < Duration::from_secs(2),
+        "js fallback must settle at the deadline, took {:?}",
+        t0.elapsed()
+    );
+
+    // raw-response route: the deadline applies BEFORE any raw mapping
+    let r = http(port, "GET /slow-raw HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 504, "body: {}", r.text());
+
+    // full-request route: same deadline ownership
+    let r = http(port, "GET /slow-full HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 504, "body: {}", r.text());
+
+    // interrupt kills are NOT quarantine: the engine keeps serving
+    let r = http(port, "GET /ok-probe HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "engine must stay healthy: {}", r.text());
+    assert_eq!(r.json()["alive"], true);
+
+    // size bound on the fallback admission: oversize body rejects 413
+    // before the engine is ever entered (the busy handler never runs)
+    let big = vec![b'x'; 70_000];
+    let r = http(
+        port,
+        "POST /slow-fb HTTP/1.1\r\nhost: t\r\ncontent-type: application/json\r\n",
+        Some(&big),
+    );
+    assert_eq!(r.status, 413, "body: {}", r.text());
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property
