@@ -188,7 +188,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-008-D](../tasks/02_m25_schema_codecs/M25-008-D-update-semantic-diff-to-schema-ir-v2.md) | P0 | implement | PASS | M25-008-C | Update semantic diff to Schema IR v2 |
 | [M25-008-V](../tasks/02_m25_schema_codecs/M25-008-V-verify-unify-treaty-openapi-lock-and-runtime-schema-projection.md) | P0 | verify | PASS | M25-008-A, M25-008-B, M25-008-C, M25-008-D | Verify Unify Treaty, OpenAPI, lock, and runtime schema projection |
 | [M25-008-Z](../tasks/02_m25_schema_codecs/M25-008-Z-package-evidence-for-unify-treaty-openapi-lock-and-runtime-schema-projection.md) | P0 | evidence | PASS | M25-008-V | Package evidence for Unify Treaty, OpenAPI, lock, and runtime schema projection |
-| [M25-009-A](../tasks/02_m25_schema_codecs/M25-009-A-fuzz-encoded-decoded-values.md) | P0 | implement | TODO | M25-003-Z, M25-004-Z, M25-005-Z, M25-006-Z | Fuzz encoded/decoded values |
+| [M25-009-A](../tasks/02_m25_schema_codecs/M25-009-A-fuzz-encoded-decoded-values.md) | P0 | implement | PASS | M25-003-Z, M25-004-Z, M25-005-Z, M25-006-Z | Fuzz encoded/decoded values |
 | [M25-009-B](../tasks/02_m25_schema_codecs/M25-009-B-compare-generated-output-with-standards-reference-json-behavior.md) | P0 | implement | TODO | M25-009-A | Compare generated output with standards/reference JSON behavior |
 | [M25-009-C](../tasks/02_m25_schema_codecs/M25-009-C-run-malformed-and-boundary-values.md) | P0 | implement | TODO | M25-009-B | Run malformed and boundary values |
 | [M25-009-D](../tasks/02_m25_schema_codecs/M25-009-D-minimize-failures-into-permanent-fixtures.md) | P0 | implement | TODO | M25-009-C | Minimize failures into permanent fixtures |
