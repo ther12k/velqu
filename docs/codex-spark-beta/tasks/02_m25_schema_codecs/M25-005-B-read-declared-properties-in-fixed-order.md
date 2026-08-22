@@ -4,7 +4,7 @@ parent_task: M25-005
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -113,3 +113,49 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-005-B)
+
+Status: **PASS**. The encoder program now reads declared properties in a
+compile-time-FIXED order, with determinism evidence:
+
+- `crates/q-schema-runtime/src/encoder.rs`: `EncoderProgram` stores the
+  property table as a frozen `Vec<PropertyEncoder>` (byte-sorted at
+  compile) — every response reads exactly these properties in exactly
+  this order regardless of the handler value's key insertion order. Each
+  `PropertyEncoder` carries its `Optional` default hoisted at compile
+  time (no per-response match on the spec shape) and unknown-key
+  detection binary-searches the sorted vector (no runtime map
+  iteration). The missing-required pass keeps iterating the schema's
+  declaration-order required list so typed-error ordering matches the
+  reference validator exactly.
+- Behavior is preserved bit-for-bit: all M25-005-A tests (golden corpus,
+  mismatch parity, depth bound, compile-to-None, dense table) and the
+  runtime HTTP test (`native_response_encoder_emits_declared_order`)
+  pass unchanged.
+
+### Tests and evidence
+
+- `encoder_reads_properties_in_declared_fixed_order` — a value whose
+  keys arrive reversed with every property failing produces the typed
+  error sequence in DECLARED order (alpha, beta, gamma), not value
+  order; a valid reversed-key value encodes to declared-order bytes.
+- `encoder_program_is_deterministic_across_compiles` — the same schema
+  compiles to an equal program and identical bytes on every encode
+  (including hoisted-default emission).
+- Golden corpus / response mismatch / depth-bound evidence: unchanged
+  from M25-005-A and still green (52 unit + 3 fuzz in q-schema-runtime).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p velqu-runtime` — 19 integration passed.
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+No performance claim is made in this packet; benchmark manifest
+preserved unchanged.
+
+Commit: `540396f`.
