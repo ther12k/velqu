@@ -244,7 +244,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             &[],
             &request_id,
         );
-        let mut resp = json_response(503, &body);
+        let mut resp = problem_response(503, &body);
         resp.head_only = method_str == "HEAD";
         return (Ok(resp), "(readiness)".into(), "native");
     }
@@ -257,14 +257,14 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         MatchResult::NotFound => {
             let body = problems::body("not-found", None, None, &[], &[], &request_id);
             (
-                Ok(json_response(404, &body)),
+                Ok(problem_response(404, &body)),
                 "(no-route)".into(),
                 "routing",
             )
         }
         MatchResult::MethodNotAllowed { allow } => {
             let body = problems::body("method", None, None, &[], &[], &request_id);
-            let mut resp = json_response(405, &body);
+            let mut resp = problem_response(405, &body);
             resp.headers.push(("allow".into(), allow.join(", ")));
             (Ok(resp), "(method-not-allowed)".into(), "routing")
         }
@@ -305,7 +305,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     &[],
                     &request_id,
                 );
-                let mut resp = json_response(503, &body);
+                let mut resp = problem_response(503, &body);
                 resp.head_only = head;
                 resp.headers.push(("retry-after".into(), "1".into()));
                 return (Ok(resp), route_id, "quarantined");
@@ -372,7 +372,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             &[],
                             &request_id,
                         );
-                        return (Ok(json_response(422, &body)), route_id, "validation.params");
+                        return (
+                            Ok(problem_response(422, &body)),
+                            route_id,
+                            "validation.params",
+                        );
                     }
                 }
             }
@@ -413,7 +417,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             &[],
                             &request_id,
                         );
-                        return (Ok(json_response(422, &body)), route_id, "validation.query");
+                        return (
+                            Ok(problem_response(422, &body)),
+                            route_id,
+                            "validation.query",
+                        );
                     }
                 }
             }
@@ -436,7 +444,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             &request_id,
                         );
                         return (
-                            Ok(json_response(422, &body)),
+                            Ok(problem_response(422, &body)),
                             route_id,
                             "validation.headers",
                         );
@@ -472,7 +480,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         &[],
                         &request_id,
                     );
-                    return (Ok(json_response(415, &body)), route_id, "admission.body");
+                    return (Ok(problem_response(415, &body)), route_id, "admission.body");
                 }
                 let max_body = binding.limit_bytes as usize;
                 if let Some(content_length) = headers.get("content-length") {
@@ -483,7 +491,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     {
                         Some(length) if length > max_body => {
                             let body = problems::body("limit", None, None, &[], &[], &request_id);
-                            return (Ok(json_response(413, &body)), route_id, "admission.body");
+                            return (Ok(problem_response(413, &body)), route_id, "admission.body");
                         }
                         None => {
                             let body = problems::body(
@@ -494,7 +502,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                 &[],
                                 &request_id,
                             );
-                            return (Ok(json_response(400, &body)), route_id, "admission.body");
+                            return (Ok(problem_response(400, &body)), route_id, "admission.body");
                         }
                         _ => {}
                     }
@@ -511,7 +519,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 {
                     Err(_elapsed) => {
                         let body = problems::body("timeout", None, None, &[], &[], &request_id);
-                        return (Ok(json_response(504, &body)), route_id, "deadline.body");
+                        return (Ok(problem_response(504, &body)), route_id, "deadline.body");
                     }
                     Ok(Ok(bytes)) => {
                         state
@@ -522,7 +530,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                     Ok(Err(HttpError::Limited { .. })) => {
                         let body = problems::body("limit", None, None, &[], &[], &request_id);
-                        return (Ok(json_response(413, &body)), route_id, "admission.body");
+                        return (Ok(problem_response(413, &body)), route_id, "admission.body");
                     }
                     Ok(Err(e)) => return (Err(e), route_id, "admission.body"),
                 };
@@ -537,7 +545,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             &[],
                             &request_id,
                         );
-                        return (Ok(json_response(422, &body)), route_id, "validation.body");
+                        return (
+                            Ok(problem_response(422, &body)),
+                            route_id,
+                            "validation.body",
+                        );
                     }
                 };
                 if let Some(sid) = compiled.body_schema_id {
@@ -560,7 +572,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                     &request_id,
                                 );
                                 return (
-                                    Ok(json_response(422, &body)),
+                                    Ok(problem_response(422, &body)),
                                     route_id,
                                     "validation.body",
                                 );
@@ -777,7 +789,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                                 &ctx.request_id,
                                             );
                                             let mapped = (
-                                                Ok(json_response(500, &problem)),
+                                                Ok(problem_response(500, &problem)),
                                                 route_id.clone(),
                                                 "engine.response-validation",
                                             );
@@ -821,7 +833,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                             &ctx.request_id,
                                         );
                                         let mapped = (
-                                            Ok(json_response(500, &problem)),
+                                            Ok(problem_response(500, &problem)),
                                             route_id.clone(),
                                             "engine.response-validation",
                                         );
@@ -959,7 +971,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                     status: p.status,
                                     headers: vec![(
                                         "content-type".into(),
-                                        "application/json".into(),
+                                        "application/problem+json".into(),
                                     )],
                                     body: buf,
                                     head_only: head,
@@ -990,7 +1002,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                     &ctx.request_id,
                                 );
                                 return (
-                                    Ok(json_response(500, &problem)),
+                                    Ok(problem_response(500, &problem)),
                                     route_id,
                                     "engine.problem-validation",
                                 );
@@ -1006,19 +1018,19 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         &ctx.request_id,
                     );
                     (
-                        Ok(json_response(p.status, &body)),
+                        Ok(problem_response(p.status, &body)),
                         route_id,
                         "engine.problem",
                     )
                 }
                 Outcome::Timeout => {
                     let body = problems::body("timeout", None, None, &[], &[], &ctx.request_id);
-                    (Ok(json_response(504, &body)), route_id, "engine.timeout")
+                    (Ok(problem_response(504, &body)), route_id, "engine.timeout")
                 }
                 Outcome::RequestCapacity => {
                     let body =
                         problems::body("overload", Some(503), None, &[], &[], &ctx.request_id);
-                    let mut response = json_response(503, &body);
+                    let mut response = problem_response(503, &body);
                     response.headers.push(("retry-after".into(), "1".into()));
                     (Ok(response), route_id, "engine.capacity")
                 }
@@ -1033,7 +1045,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         })
                     );
                     let body = problems::body("internal", None, None, &[], &[], &ctx.request_id);
-                    (Ok(json_response(500, &body)), route_id, "engine.contract")
+                    (
+                        Ok(problem_response(500, &body)),
+                        route_id,
+                        "engine.contract",
+                    )
                 }
                 Outcome::EngineFailure { detail, source } => {
                     // internal detail NEVER crosses to the client (RUN-007)
@@ -1046,7 +1062,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         })
                     );
                     let body = problems::body("internal", None, None, &[], &[], &ctx.request_id);
-                    (Ok(json_response(500, &body)), route_id, "engine.error")
+                    (Ok(problem_response(500, &body)), route_id, "engine.error")
                 }
             };
             mapped
@@ -1100,4 +1116,16 @@ fn json_response(status: u16, body: &Value) -> PlainResponse {
         body: serde_json::to_vec(body).unwrap_or_default(),
         head_only: false,
     }
+}
+
+/// M25-006-D: RFC 9457 problem responses carry
+/// `Content-Type: application/problem+json` (§3), distinguishing them from
+/// success bodies. `instance` keeps its frozen semantics: the request
+/// occurrence identifier (`req-<start_ms>-<n>`).
+fn problem_response(status: u16, body: &Value) -> PlainResponse {
+    let mut resp = json_response(status, body);
+    resp.headers.clear();
+    resp.headers
+        .push(("content-type".into(), "application/problem+json".into()));
+    resp
 }

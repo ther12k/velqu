@@ -173,7 +173,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-006-A](../tasks/02_m25_schema_codecs/M25-006-A-generate-problem-type-status-title-detail-custom-field-encoders.md) | P0 | implement | PASS | M25-001-Z, M25-005-Z | Generate problem type/status/title/detail/custom-field encoders |
 | [M25-006-B](../tasks/02_m25_schema_codecs/M25-006-B-redact-unexpected-failures.md) | P0 | implement | PASS | M25-006-A | Redact unexpected failures |
 | [M25-006-C](../tasks/02_m25_schema_codecs/M25-006-C-ensure-policy-provided-errors-flow-into-treaty-unions.md) | P0 | implement | PASS | M25-006-B | Ensure policy-provided errors flow into Treaty unions |
-| [M25-006-D](../tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md) | P0 | implement | TODO | M25-006-C | Include content type and instance behavior |
+| [M25-006-D](../tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md) | P0 | implement | PASS | M25-006-C | Include content type and instance behavior |
 | [M25-006-V](../tasks/02_m25_schema_codecs/M25-006-V-verify-generate-rfc-9457-problem-encoders.md) | P0 | verify | TODO | M25-006-A, M25-006-B, M25-006-C, M25-006-D | Verify Generate RFC 9457 problem encoders |
 | [M25-006-Z](../tasks/02_m25_schema_codecs/M25-006-Z-package-evidence-for-generate-rfc-9457-problem-encoders.md) | P0 | evidence | TODO | M25-006-V | Package evidence for Generate RFC 9457 problem encoders |
 | [M25-007-A](../tasks/02_m25_schema_codecs/M25-007-A-tag-fallback-reason-in-routeplan.md) | P1 | implement | TODO | M25-003-Z, M25-004-Z, M25-005-Z | Tag fallback reason in RoutePlan |

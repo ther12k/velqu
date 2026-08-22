@@ -330,7 +330,7 @@ describe("problem contracts (M25-006-C: policy errors flow into Treaty unions)",
     const openapi = JSON.parse(readFileSync(`${out}/openapi.json`, "utf8"));
     const gone404 = openapi.paths["/gone"].get.responses["404"];
     expect(gone404.description).toBe("problem: not-found");
-    const schema = gone404.content["application/json"].schema;
+    const schema = gone404.content["application/problem+json"].schema;
     expect(schema.required).toEqual(["type", "title", "status", "instance"]);
     expect(schema.properties.type.enum).toEqual(["https://velqu.dev/problems/not-found"]);
     expect(schema.properties.title.enum).toEqual(["Not Found"]);
@@ -342,7 +342,7 @@ describe("problem contracts (M25-006-C: policy errors flow into Treaty unions)",
     const openapi = JSON.parse(readFileSync(`${out}/openapi.json`, "utf8"));
     const usersGet401 = openapi.paths["/users/{id}"].get.responses["401"];
     expect(usersGet401.description).toBe("problem: unauthorized");
-    const schema = usersGet401.content["application/json"].schema;
+    const schema = usersGet401.content["application/problem+json"].schema;
     expect(schema.required).toEqual(["type", "title", "status", "instance"]);
     expect(schema.properties.type.enum).toEqual(["https://velqu.dev/problems/unauthorized"]);
     expect(schema.properties.title.enum).toEqual(["Unauthorized"]);

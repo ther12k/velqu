@@ -167,7 +167,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-006-A — Generate problem type/status/title/detail/custom-field encoders](tasks/02_m25_schema_codecs/M25-006-A-generate-problem-type-status-title-detail-custom-field-encoders.md)
 - [x] [M25-006-B — Redact unexpected failures](tasks/02_m25_schema_codecs/M25-006-B-redact-unexpected-failures.md)
 - [x] [M25-006-C — Ensure policy-provided errors flow into Treaty unions](tasks/02_m25_schema_codecs/M25-006-C-ensure-policy-provided-errors-flow-into-treaty-unions.md)
-- [ ] [M25-006-D — Include content type and instance behavior](tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md)
+- [x] [M25-006-D — Include content type and instance behavior](tasks/02_m25_schema_codecs/M25-006-D-include-content-type-and-instance-behavior.md)
 - [ ] [M25-006-V — Verify Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-V-verify-generate-rfc-9457-problem-encoders.md)
 - [ ] [M25-006-Z — Package evidence for Generate RFC 9457 problem encoders](tasks/02_m25_schema_codecs/M25-006-Z-package-evidence-for-generate-rfc-9457-problem-encoders.md)
 - [ ] [M25-007-A — Tag fallback reason in RoutePlan](tasks/02_m25_schema_codecs/M25-007-A-tag-fallback-reason-in-routeplan.md)

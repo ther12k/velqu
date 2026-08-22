@@ -739,7 +739,7 @@ export function openapiFor(app: ExtractedApp): Record<string, unknown> {
               decl.ir && !decl.problem
                 ? { "application/json": { schema: irToSchema(decl.ir, `${r.id}.resp${status}`) } }
                 : decl.problem
-                  ? { "application/json": { schema: problemSchemaFor(decl.problem, status) } }
+                  ? { "application/problem+json": { schema: problemSchemaFor(decl.problem, status) } }
                   : undefined,
           },
         ]),
