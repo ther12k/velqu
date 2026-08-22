@@ -4,7 +4,7 @@ parent_task: M25-009
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -119,3 +119,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-009-B)
+
+Status: **PASS**. Generated codec output is compared against STANDARD JSON
+behavior through hand-written expected bytes (independent of serde_json
+construction), plus a minimized regression corpus:
+
+- New suite `crates/q-schema-runtime/tests/codec_standards_corpus.rs`
+  (3 tests):
+  1. `encoder_output_matches_standard_json_bytes` — encoder bytes equal
+     hand-written RFC 8259 expectations across string escaping (quote,
+     backslash, the two-character control escapes `
+`/`	`,
+     ``/`` for the rest of the control range, non-ASCII
+     UTF-8 passthrough ☺ƒ, forward slash NOT escaped), number formatting
+     (2.5, integral-float `3.0` staying float form, `0.0`, i64
+     MIN/MAX), member ordering, empty containers, and nested arrays —
+     each case also re-parsed by a standards-conformant parser and
+     compared semantically.
+  2. `problem_encoder_matches_standard_envelope` — the RFC 9457 envelope
+     in canonical member order against a hand-written envelope string
+     (type, title, status, instance, detail, extension last).
+  3. `codec_regression_corpus_replays` — the minimized M25-009-A finding
+     (fallback-with-inner transparency: encodes `{"fb":21}`, rejects 99
+     with the inner `maximum` code) plus exact-boundary replays for
+     minLength/maxLength (2..4 accepted at bounds; 1 and 5 rejected).
+- Fuzz summaries (required evidence): the M25-009-A round-trip fuzz
+  (20,000 iterations, >1,000 accepted / >1,000 rejected corpus-health
+  bounds) remains green alongside the new corpus.
+
+### Tests and evidence
+
+- `codec_standards_corpus` — 3 passed.
+- `cargo test -p q-schema-runtime` — 58 unit + 4 fuzz + 3 standards —
+  all passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-pack` —
+  41 + 2; `cargo test -p velqu-runtime` — 24 — all passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Malformed-input corpus expansion lands in M25-009-C.
+
+Commit: `ab2a8c3`.
