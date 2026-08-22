@@ -4,7 +4,7 @@ parent_task: M25-004
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -123,3 +123,70 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-004-D)
+
+Status: **PASS**. The route deadline now bounds the entire request pipeline
+from route match, and cancellation propagates through the pre-invocation body
+read:
+
+- **Anchored deadline**: `request_deadline` is computed once when the
+  `CompiledRoute` resolves — before admission, the bounded body read, and
+  decode — instead of being re-anchored at engine invocation. Pre-invocation
+  work is charged to the same budget (constraint 11).
+- **Bounded read with cancellation**: the body collect races the anchored
+  deadline via `tokio::time::timeout_at`. On elapse the collect future is
+  dropped mid-stream — the stalled transfer is cancelled — and the request
+  settles with the same RFC 9457 `timeout` problem (504) the engine produces
+  for handler deadlines (stage `deadline.body`). A client that sends headers
+  and stalls the body can no longer hold the request past its deadline.
+- **Deadline propagation to the worker**: `InvocationSpec.deadline` carries
+  the anchored absolute deadline; the worker's existing absolute-deadline
+  comparisons (`Instant::now() >= budget.deadline`, `deadline <= now`
+  sweeps) settle an already-expired budget as `Timeout` without running the
+  handler. Post-invocation client-disconnect cancellation remains owned by
+  the M24-003-C `CancelOnDrop` guard (unchanged).
+
+### Changed files
+
+- `crates/q-runtime/src/serve.rs` — deadline anchor at route match;
+  `timeout_at`-bounded `collect_body_bounded` with the 504 `timeout` problem
+  and `deadline.body` stage; `InvocationSpec.deadline` now receives the
+  anchored deadline.
+- `crates/q-runtime/tests/runtime_conformance.rs` — fixture route
+  `deadline.body` (POST /deadline-body, 200 ms deadline, body-bound,
+  reuses the `fallback.echo` RouteHandler through `plan.handler_id = 10`)
+  and test `body_read_deadline_cancels_stalled_transfer`: a client that
+  declares a 32-byte body and sends nothing receives 504
+  `https://velqu.dev/problems/timeout` in under 2 s (deadline is 200 ms,
+  client read timeout 5 s — the only path that can produce this is the new
+  deadline-bound read), and a prompt body on the same route still reaches
+  the handler (200 echo) under the anchored deadline.
+- `docs/codex-spark-beta/STATUS.md`,
+  `docs/codex-spark-beta/indexes/TASK_INDEX.md` — M25-004-D marked PASS.
+
+### Tests and evidence
+
+- `cargo test -p q-engine-quickjs` — 1 unit + 96 integration passed.
+- `cargo test -p q-http` — 4 + 6 + 1 passed.
+- `cargo test -p q-bridge` — 11 passed.
+- `cargo test -p q-schema-runtime` — 45 unit + 3 fuzz passed (unchanged;
+  decode semantics untouched by this packet).
+- `cargo test -p velqu-runtime` — 18 integration tests passed (new
+  `body_read_deadline_cancels_stalled_transfer` included).
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean.
+- `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (release binary embeds checkout-absolute OUT_DIR paths; known,
+  pre-existing, identical to every packet branch).
+
+Fuzz/differential and depth/size boundary evidence is unchanged from
+M25-004-B/C (no decode-semantics change in this packet); CPU/allocation
+results are out of scope — the change adds one deadline comparison on the
+request path and no allocation.
+
+Commit: `75a2f8b`.

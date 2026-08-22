@@ -155,7 +155,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-004-A — Implement generated direct decode where supported](tasks/02_m25_schema_codecs/M25-004-A-implement-generated-direct-decode-where-supported.md)
 - [x] [M25-004-B — Retain QuickJS/generic fallback for unsupported transformations](tasks/02_m25_schema_codecs/M25-004-B-retain-quickjs-generic-fallback-for-unsupported-transformations.md)
 - [x] [M25-004-C — Enforce depth, size, array, string, and numeric limits](tasks/02_m25_schema_codecs/M25-004-C-enforce-depth-size-array-string-and-numeric-limits.md)
-- [ ] [M25-004-D — Propagate cancellation and request deadlines](tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md)
+- [x] [M25-004-D — Propagate cancellation and request deadlines](tasks/02_m25_schema_codecs/M25-004-D-propagate-cancellation-and-request-deadlines.md)
 - [ ] [M25-004-V — Verify Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-V-verify-generate-json-body-decoders.md)
 - [ ] [M25-004-Z — Package evidence for Generate JSON body decoders](tasks/02_m25_schema_codecs/M25-004-Z-package-evidence-for-generate-json-body-decoders.md)
 - [ ] [M25-005-A — Generate per-status encoders](tasks/02_m25_schema_codecs/M25-005-A-generate-per-status-encoders.md)
