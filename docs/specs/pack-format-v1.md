@@ -132,12 +132,15 @@ per IR (`integer` parses base-10; failure = validation problem, never a 500).
   "body":         { "type": "https://velqu.dev/problems/body",         "title": "Unsupported body",        "status": 415 },
   "limit":        { "type": "https://velqu.dev/problems/limit",        "title": "Payload too large",       "status": 413 },
   "timeout":      { "type": "https://velqu.dev/problems/timeout",      "title": "Handler deadline",        "status": 504 },
+  "overload":     { "type": "https://velqu.dev/problems/overload",     "title": "Overloaded",              "status": 503 },
   "internal":     { "type": "https://velqu.dev/problems/internal",     "title": "Internal Server Error",   "status": 500 }
 }
 ```
 
 Bodies always include `type`, `title`, `status`, and optionally `detail`,
-`errors: [{path, code, message}]`, `instance` (request ID).
+`errors: [{path, code, message}]`, `instance` (request ID). Problem
+responses carry `Content-Type: application/problem+json` (RFC 9457 §3);
+success bodies stay `application/json`.
 
 ## Bundle protocol
 

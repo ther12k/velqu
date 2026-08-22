@@ -1434,6 +1434,7 @@ fn js_fallback_body_routes_raw_json_to_handler() {
         Some(b"{not json"),
     );
     assert_eq!(r.status, 422);
+    assert_eq!(r.header("content-type"), Some("application/problem+json"));
     assert_eq!(r.json()["detail"], "malformed JSON body");
 
     server.stop();
@@ -2210,6 +2211,7 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
     // handler's value
     let r = http(port, "GET /ordered HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 200, "body: {}", r.text());
+    assert_eq!(r.header("content-type"), Some("application/json"));
     assert_eq!(
         r.text(),
         "{\"alpha\":7,\"mid\":[1,2],\"uni\":\"text\",\"zeta\":\"z\"}",
@@ -2400,7 +2402,15 @@ globalThis.__velquFunctions = [cancel_order, plain_boom];
     // and BOTH custom extension members survive (sorted)
     let r = http(port, "GET /orders-cancel HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 409, "body: {}", r.text());
+    // M25-006-D: problem responses carry application/problem+json
+    assert_eq!(r.header("content-type"), Some("application/problem+json"));
     let v = r.json();
+    // instance keeps its frozen semantics: the request occurrence id
+    assert!(
+        v["instance"].as_str().unwrap_or("").starts_with("req-"),
+        "instance must be the request occurrence id: {}",
+        r.text()
+    );
     assert_eq!(v["type"], "https://example.com/problems/order-canceled");
     assert_eq!(v["title"], "Order canceled");
     assert_eq!(v["status"], 409);
@@ -2439,6 +2449,7 @@ globalThis.__velquFunctions = [cancel_order, plain_boom];
     // undeclared problem: generic registry envelope, no custom fields
     let r = http(port, "GET /plain-boom HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 422, "body: {}", r.text());
+    assert_eq!(r.header("content-type"), Some("application/problem+json"));
     let v = r.json();
     assert_eq!(v["type"], "https://velqu.dev/problems/validation");
     assert_eq!(v["title"], "Validation failed");

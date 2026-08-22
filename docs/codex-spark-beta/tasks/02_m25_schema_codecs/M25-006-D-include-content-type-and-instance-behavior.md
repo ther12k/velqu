@@ -4,7 +4,7 @@ parent_task: M25-006
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -108,3 +108,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-006-D)
+
+Status: **PASS**. Problem responses now carry RFC 9457's problem media
+type, and `instance` semantics are pinned by tests:
+
+- `crates/q-runtime/src/serve.rs`: new `problem_response` helper — every
+  problem emission (admission 400/413/415, validation 422 params/query/
+  headers/body, deadline 504, not-found/method, quarantine/readiness 503,
+  capacity 503, contract violations 500, engine failures 500, and BOTH
+  `Outcome::Problem` paths incl. the generated encoder) now sends
+  `Content-Type: application/problem+json`. Success responses keep
+  `application/json` (asserted).
+- `instance` keeps its frozen semantics — the request occurrence
+  identifier `req-<start_ms>-<n>` — now asserted at runtime
+  (`declared_problem_response_encodes_with_custom_fields` checks the
+  `req-` prefix on the wire). No semantic change; the wire stays frozen
+  per pack-format-v1.
+- `packages/compiler/src/emit.ts`: OpenAPI problem responses now advertise
+  the `application/problem+json` content key (guardrail: OpenAPI problem
+  schemas match runtime); compiler tests updated to the same key.
+- `docs/specs/pack-format-v1.md`: registry table gains the missing
+  `overload` row; the problem-body paragraph now documents the
+  `application/problem+json` content type and the `instance` semantics.
+
+### Tests and evidence
+
+- `runtime_conformance::declared_problem_response_encodes_with_custom_fields`
+  — extended: declared 409 and generic 422 both assert
+  `content-type: application/problem+json`; the declared problem's
+  `instance` asserts the `req-` occurrence-id prefix.
+- `js_fallback_body_routes_raw_json_to_handler` — extended: admission 422
+  (malformed JSON) also asserts the problem media type.
+- `native_response_encoder_emits_declared_order` — extended: the 200
+  success response still carries `application/json`.
+- Compiler conformance: OpenAPI problem schemas read from the
+  `application/problem+json` content key (both the 401 policy case and
+  the 404 fixture).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 22 integration passed.
+- `bun test` — 73 passed, 0 failed, 313 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Commit: `2116474`.
