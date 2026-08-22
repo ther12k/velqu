@@ -169,7 +169,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-005-C](../tasks/02_m25_schema_codecs/M25-005-C-handle-optional-null-union-fields.md) | P0 | implement | PASS | M25-005-B | Handle optional/null/union fields |
 | [M25-005-D](../tasks/02_m25_schema_codecs/M25-005-D-keep-quickjs-stringify-or-generic-fallback-when-measured-better.md) | P0 | implement | PASS | M25-005-C | Keep QuickJS stringify or generic fallback when measured better |
 | [M25-005-V](../tasks/02_m25_schema_codecs/M25-005-V-verify-generate-status-specific-response-encoders.md) | P0 | verify | PASS | M25-005-A, M25-005-B, M25-005-C, M25-005-D | Verify Generate status-specific response encoders |
-| [M25-005-Z](../tasks/02_m25_schema_codecs/M25-005-Z-package-evidence-for-generate-status-specific-response-encoders.md) | P0 | evidence | TODO | M25-005-V | Package evidence for Generate status-specific response encoders |
+| [M25-005-Z](../tasks/02_m25_schema_codecs/M25-005-Z-package-evidence-for-generate-status-specific-response-encoders.md) | P0 | evidence | PASS | M25-005-V | Package evidence for Generate status-specific response encoders |
 | [M25-006-A](../tasks/02_m25_schema_codecs/M25-006-A-generate-problem-type-status-title-detail-custom-field-encoders.md) | P0 | implement | TODO | M25-001-Z, M25-005-Z | Generate problem type/status/title/detail/custom-field encoders |
 | [M25-006-B](../tasks/02_m25_schema_codecs/M25-006-B-redact-unexpected-failures.md) | P0 | implement | TODO | M25-006-A | Redact unexpected failures |
 | [M25-006-C](../tasks/02_m25_schema_codecs/M25-006-C-ensure-policy-provided-errors-flow-into-treaty-unions.md) | P0 | implement | TODO | M25-006-B | Ensure policy-provided errors flow into Treaty unions |
