@@ -13,19 +13,23 @@ import type { RouteContract } from "@velqu/contract";
 import { readFileSync } from "node:fs";
 
 // ---------------------------------------------------------------- published Api type
-// M25-006-C: problem responses carry the exact runtime envelope — frozen
-// type URI + title literals, the declared status literal — so Treaty error
-// narrowing is exact after `if (r.error.status === N)`.
-export type ProofPublishedApi = {
-  "health.live": RouteContract<"/health/live", "GET", Record<string, never>, Record<string, never>, undefined, { 200: { status: string } }>;
-  "hello.get": RouteContract<"/hello/:name", "GET", { name: string }, Record<string, never>, undefined, { 200: { message: string } }>;
-  "users.create": RouteContract<"/users", "POST", Record<string, never>, Record<string, never>, { name: string; email: string }, { 201: { id: string; name: string; email: string } }>;
-  "users.get": RouteContract<"/users/:id", "GET", { id: string }, Record<string, never>, undefined, {
-    200: { id: string; name: string; email: string };
-    401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string };
-  }>;
-  "async.timer": RouteContract<"/async", "GET", Record<string, never>, { ms?: number }, undefined, { 200: { waited: number } }>;
-};
+// M25-008-A: the client type IS the generated contract — no hand-written
+// duplicate interface is required. The compiler emits contract.d.ts from
+// the canonical Schema IR; this import proves a consumer needs nothing
+// else. Shape facts are pinned by the type-level assertions below plus
+// the compiler conformance suite's d.ts snapshots.
+import type { Api as GeneratedProofApi } from "../../examples/proof/dist/contract";
+export type ProofPublishedApi = GeneratedProofApi;
+
+// Type-level pins (snapshot of the generated projection for the proof
+// app): exact route shapes a consumer narrows on.
+expectTypeOf<ProofPublishedApi["hello.get"]["responses"]>().toEqualTypeOf<{
+  200: { message: string };
+}>();
+expectTypeOf<ProofPublishedApi["users.get"]["responses"]>().toEqualTypeOf<{
+  200: { id: string; name: string; email: string };
+  401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string };
+}>();
 
 const proofContract = {
   "health.live": { path: "/health/live", method: "GET" },
