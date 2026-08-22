@@ -2449,6 +2449,167 @@ globalThis.__velquFunctions = [cancel_order, plain_boom];
     let _ = child.wait();
 }
 
+/// M25-006-B: a problem settling as the framework's `internal` problem is
+/// an unexpected failure — its detail and extension members NEVER cross to
+/// the client (they may carry exception text, stacks, or secrets); they are
+/// preserved in the internal log only. A declared registry problem on the
+/// same pack keeps its detail by design.
+#[test]
+fn internal_problem_detail_and_extensions_are_redacted() {
+    let bundle = r#"
+async function leaky(ctx) {
+    return {
+        __problem: true,
+        problem: "internal",
+        status: 500,
+        detail: "secret-token-abc123 at async boom (app.js:1:1)",
+        apiKey: "sk-live-999",
+    };
+}
+async function declared_ok(ctx) {
+    return { __problem: true, problem: "validation", status: 422, detail: "field x required" };
+}
+globalThis.__velquFunctionManifest = [["leaky.handle", 0, leaky], ["declared.ok", 0, declared_ok]];
+globalThis.__velquFunctions = [leaky, declared_ok];
+"#;
+    let dir = temp_dir("probredact");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![
+        FunctionDecl {
+            id: 0,
+            key: "leaky.handle".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+        FunctionDecl {
+            id: 1,
+            key: "declared.ok".into(),
+            kind: FunctionKind::RouteHandler,
+        },
+    ];
+    pack.handler_table = std::collections::BTreeMap::from([
+        ("leaky.handle".to_string(), "leaky.handle".to_string()),
+        ("declared.ok".to_string(), "declared.ok".to_string()),
+    ]);
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "users.get")
+        .unwrap();
+    let base = pack.routes[route_pos].clone();
+    let route = |id: &str, path: &str, idx: u32, handler_id: u32, status: u16| {
+        let mut r = base.clone();
+        r.id = id.into();
+        r.handler = id.into();
+        r.policy = None;
+        r.params = None;
+        r.query = None;
+        r.body = None;
+        r.headers = None;
+        r.security.clear();
+        r.path = path.into();
+        r.path_segments = vec![PathSegment {
+            kind: SegKind::Static,
+            value: path.trim_start_matches('/').into(),
+        }];
+        r.responses = std::collections::BTreeMap::from([(
+            status.to_string(),
+            q_pack::ResponseDecl {
+                schema: None,
+                strategy: q_pack::Strategy::Native,
+                problem: None,
+            },
+        )]);
+        r.plan = Some(RoutePlanDecl {
+            route_id: idx,
+            handler_id,
+            policy_id: None,
+            policy_handler_id: None,
+            params_schema_id: None,
+            query_schema_id: None,
+            headers_schema_id: None,
+            body_schema_id: None,
+            header_name_ids: vec![],
+            query_name_ids: vec![],
+            cookie_name_ids: vec![],
+            default_status: status,
+            allowed_statuses: vec![status],
+            field_needs: FieldNeeds::default(),
+            response_strategy: Strategy::Native,
+            deadline_ms: 5000,
+        });
+        r
+    };
+    pack.routes = vec![
+        route("leaky.handle", "/leaky", 0, 0, 500),
+        route("declared.ok", "/declared-ok", 1, 1, 422),
+    ];
+    pack.policies.clear();
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("probredact.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // internal problem: detail and the apiKey extension member are
+    // stripped from the wire entirely
+    let r = http(port, "GET /leaky HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 500, "body: {}", r.text());
+    let v = r.json();
+    assert_eq!(v["type"], "https://velqu.dev/problems/internal");
+    assert!(
+        v.get("detail").is_none(),
+        "internal detail must not cross: {}",
+        r.text()
+    );
+    assert!(
+        v.get("apiKey").is_none(),
+        "extension member must not cross: {}",
+        r.text()
+    );
+    assert!(!r.text().contains("secret-token-abc123"));
+    assert!(!r.text().contains("sk-live-999"));
+    assert!(!r.text().contains("app.js"));
+
+    // declared registry problem on the same pack keeps its detail
+    let r = http(port, "GET /declared-ok HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 422, "body: {}", r.text());
+    assert_eq!(r.json()["detail"], "field x required");
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let out = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("problem.redacted"),
+        "internal log must record the redacted payload: {err}"
+    );
+    assert!(err.contains("secret-token-abc123"), "log preserves detail");
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property

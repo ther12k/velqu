@@ -896,6 +896,33 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     (Ok(resp), route_id, "engine")
                 }
                 Outcome::Problem(p) => {
+                    // M25-006-B: problems settling as the framework's
+                    // `internal` problem are UNEXPECTED failures — their
+                    // detail and extension members may carry exception
+                    // text, stacks, or secrets, so they never cross to the
+                    // client; they are preserved in the internal log only.
+                    // Declared registry problems (validation, not-found,
+                    // ...) keep their detail by design.
+                    let is_internal = problems::registry(&p.problem_id).0
+                        == "https://velqu.dev/problems/internal";
+                    let p = if is_internal && (p.detail.is_some() || !p.extensions.is_empty()) {
+                        eprintln!(
+                            "{}",
+                            serde_json::json!({
+                                "level":"error","event":"problem.redacted",
+                                "requestId": ctx.request_id, "routeId": route_id,
+                                "problemId": p.problem_id, "status": p.status,
+                                "detail": p.detail, "extensions": p.extensions,
+                            })
+                        );
+                        q_engine::ProblemOut {
+                            detail: None,
+                            extensions: Vec::new(),
+                            ..p
+                        }
+                    } else {
+                        p
+                    };
                     // M25-006-A: a DECLARED problem response (explicit
                     // s.problem schema for this status) encodes through
                     // the generated program — frozen declared title/type

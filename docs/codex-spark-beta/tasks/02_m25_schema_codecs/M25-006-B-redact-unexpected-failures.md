@@ -4,7 +4,7 @@ parent_task: M25-006
 milestone: M25
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -108,3 +108,50 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-006-B)
+
+Status: **PASS**. Unexpected failures never expose secrets or stacks:
+
+- `crates/q-runtime/src/serve.rs` (`Outcome::Problem` arm): problems
+  settling as the framework's `internal` problem (including unknown
+  `custom:` ids that the registry resolves to internal) are treated as
+  UNEXPECTED failures — their `detail` and RFC 9457 extension members may
+  carry exception text, stacks, or secrets, so they are stripped from the
+  wire BEFORE either the generated problem encoder (M25-006-A) or the
+  generic builder runs, and preserved only in the internal
+  `problem.redacted` log. Declared registry problems (validation,
+  not-found, ...) keep their detail by design; thrown exceptions were
+  already redacted through `Outcome::EngineFailure` (RUN-007, unchanged).
+- Evidence: `runtime_conformance::internal_problem_detail_and_extensions_
+  are_redacted` — a handler-settled internal problem carrying a
+  stack-like secret detail and an `apiKey` extension member produces a 500
+  whose body has NO detail member, NO extension member, and none of the
+  secret substrings; the internal log records the full redacted payload
+  via `problem.redacted`; a declared `validation` problem on the same
+  pack keeps its detail.
+
+### Tests and evidence
+
+- `runtime_conformance::internal_problem_detail_and_extensions_are_redacted`
+  (problem fixture + redaction assertions, live HTTP).
+- Existing redaction coverage stays green: bun security conformance
+  "unexpected errors are redacted from responses" (thrown exceptions),
+  `throw.redacted` fixture, `response_schema_violation_is_a_controlled_500`
+  (violation detail never leaks).
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 22 integration passed (new redaction
+  test).
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch
+  (known, pre-existing on every packet branch).
+
+Treaty narrowing tests belong to M25-006-C; content-type/instance
+behavior to M25-006-D.
+
+Commit: `c41f611`.
