@@ -967,8 +967,150 @@ function diffSchemaTypes(
       }
     }
   } else if (prev.kind === "array" && cur.kind === "array") {
+    // M25-008-D: IR v2 scalar constraints participate in the diff
+    diffBounds(routeId, section, prev, cur, "minItems", "maxItems", out, isInput);
     if (prev.items && cur.items) {
       diffSchemaTypes(routeId, `${section}[]`, prev.items as Record<string, unknown>, cur.items as Record<string, unknown>, out, isInput);
     }
+  } else if (prev.kind === "string" && cur.kind === "string") {
+    diffBounds(routeId, section, prev, cur, "minLength", "maxLength", out, isInput);
+    diffAdded(routeId, section, prev, cur, "pattern", out, isInput);
+    diffAdded(routeId, section, prev, cur, "format", out, isInput);
+  } else if (
+    (prev.kind === "integer" || prev.kind === "number") &&
+    (cur.kind === "integer" || cur.kind === "number")
+  ) {
+    diffBounds(routeId, section, prev, cur, "minimum", "maximum", out, isInput);
+  } else if (prev.kind === "enum" && cur.kind === "enum") {
+    const removed = ((prev.values as unknown[]) ?? []).filter(
+      (v) => !((cur.values as unknown[]) ?? []).includes(v),
+    );
+    if (removed.length > 0) {
+      out.push({
+        routeId,
+        kind: isInput ? "breaking" : "compatible",
+        change: `${section}: enum value(s) removed [${removed.map((v) => JSON.stringify(v)).join(", ")}]`,
+      });
+    }
+  } else if (prev.kind === "literal" && cur.kind === "literal") {
+    if (JSON.stringify(prev.value) !== JSON.stringify(cur.value)) {
+      out.push({
+        routeId,
+        kind: "breaking",
+        change: `${section}: literal changed ${JSON.stringify(prev.value)} → ${JSON.stringify(cur.value)}`,
+      });
+    }
+  } else if (prev.kind === "union" && cur.kind === "union") {
+    const curMembers = (cur.members as Record<string, unknown>[]).map((m) =>
+      JSON.stringify(canonicalIr(m)),
+    );
+    const removed = (prev.members as Record<string, unknown>[]).filter(
+      (m) => !curMembers.includes(JSON.stringify(canonicalIr(m))),
+    );
+    if (removed.length > 0) {
+      out.push({
+        routeId,
+        kind: isInput ? "breaking" : "compatible",
+        change: `${section}: ${removed.length} union member(s) removed`,
+      });
+    }
+  } else if (prev.kind === "nullable" && cur.kind === "nullable") {
+    diffSchemaTypes(routeId, section, prev.inner as Record<string, unknown>, cur.inner as Record<string, unknown>, out, isInput);
+  } else if (prev.kind === "optional" && cur.kind === "optional") {
+    diffSchemaTypes(routeId, section, prev.inner as Record<string, unknown>, cur.inner as Record<string, unknown>, out, isInput);
+  } else if (prev.kind === "fallback" && cur.kind === "fallback") {
+    if (prev.reason !== cur.reason) {
+      out.push({
+        routeId,
+        kind: "policy-sensitive",
+        change: `${section}: fallback reason changed ${prev.reason} → ${cur.reason} (codec path change)`,
+      });
+    }
+    if (prev.inner && cur.inner) {
+      diffSchemaTypes(routeId, section, prev.inner as Record<string, unknown>, cur.inner as Record<string, unknown>, out, isInput);
+    }
   }
+}
+
+/** M25-008-D: numeric-ish bounds (min/max, lengths, item counts). */
+function diffBounds(
+  routeId: string,
+  section: string,
+  prev: Record<string, unknown>,
+  cur: Record<string, unknown>,
+  minKey: string,
+  maxKey: string,
+  out: DiffEntry[],
+  isInput: boolean,
+) {
+  const prevMin = prev[minKey] as number | undefined;
+  const curMin = cur[minKey] as number | undefined;
+  const prevMax = prev[maxKey] as number | undefined;
+  const curMax = cur[maxKey] as number | undefined;
+
+  // tightening: a floor appears or rises, a ceiling appears or falls —
+  // previously-accepted input now rejects (breaking); responses narrow
+  // (policy-sensitive: clients may receive narrower data than typed)
+  const minTightened = curMin !== undefined && (prevMin === undefined || curMin > prevMin);
+  const maxTightened = curMax !== undefined && (prevMax === undefined || curMax < prevMax);
+  if (minTightened || maxTightened) {
+    out.push({
+      routeId,
+      kind: isInput ? "breaking" : "policy-sensitive",
+      change: `${section}: bounds tightened (${minKey}: ${prevMin ?? "—"} → ${curMin ?? "—"}, ${maxKey}: ${prevMax ?? "—"} → ${curMax ?? "—"})`,
+    });
+  }
+
+  // loosening: a floor falls/disappears or a ceiling rises/disappears —
+  // input accepts more (compatible); responses may carry wider data
+  const minLoosened = prevMin !== undefined && (curMin === undefined || curMin < prevMin);
+  const maxLoosened = prevMax !== undefined && (curMax === undefined || curMax > prevMax);
+  if (minLoosened || maxLoosened) {
+    out.push({
+      routeId,
+      kind: "compatible",
+      change: `${section}: bounds loosened (${minKey}: ${prevMin ?? "—"} → ${curMin ?? "—"}, ${maxKey}: ${prevMax ?? "—"} → ${curMax ?? "—"})`,
+    });
+  }
+}
+
+/** M25-008-D: a scalar constraint member appearing/changing/vanishing. */
+function diffAdded(
+  routeId: string,
+  section: string,
+  prev: Record<string, unknown>,
+  cur: Record<string, unknown>,
+  key: string,
+  out: DiffEntry[],
+  isInput: boolean,
+) {
+  if (prev[key] === undefined && cur[key] !== undefined) {
+    out.push({
+      routeId,
+      kind: isInput ? "breaking" : "policy-sensitive",
+      change: `${section}: ${key} constraint added (${JSON.stringify(cur[key])})`,
+    });
+  } else if (prev[key] !== undefined && cur[key] === undefined) {
+    out.push({
+      routeId,
+      kind: "compatible",
+      change: `${section}: ${key} constraint removed`,
+    });
+  } else if (prev[key] !== cur[key]) {
+    out.push({
+      routeId,
+      kind: isInput ? "breaking" : "policy-sensitive",
+      change: `${section}: ${key} changed ${JSON.stringify(prev[key])} → ${JSON.stringify(cur[key])}`,
+    });
+  }
+}
+
+/** Canonical member form for union comparison (sorted keys). */
+function canonicalIr(ir: Record<string, unknown>): Record<string, unknown> {
+  return Object.keys(ir)
+    .sort()
+    .reduce<Record<string, unknown>>((acc, k) => {
+      acc[k] = ir[k];
+      return acc;
+    }, {});
 }
