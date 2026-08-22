@@ -141,6 +141,8 @@ fn fixture_pack() -> q_pack::QPack {
             allowed_statuses: statuses,
             field_needs: needs,
             response_strategy: Strategy::Js,
+            validation_fallback_reason: None,
+            response_fallback_reason: Some("explicit".into()),
             deadline_ms: 5000,
         };
         RouteEntry {
@@ -466,6 +468,9 @@ fn fixture_pack() -> q_pack::QPack {
                 limit_bytes: 65_536,
             });
             r.validation_strategy = Strategy::Js;
+            if let Some(ref mut p) = r.plan {
+                p.validation_fallback_reason = Some("explicit".into());
+            }
             r
         },
         {
@@ -502,6 +507,7 @@ fn fixture_pack() -> q_pack::QPack {
             if let Some(ref mut p) = r.plan {
                 p.deadline_ms = 200;
                 p.handler_id = 10;
+                p.validation_fallback_reason = Some("explicit".into());
             }
             r
         },
@@ -1670,6 +1676,8 @@ fn source_mapped_exception_identifies_original_location() {
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
         response_strategy: Strategy::Js,
+        validation_fallback_reason: None,
+        response_fallback_reason: Some("explicit".into()),
         deadline_ms: 5000,
     });
     pack.routes = vec![route];
@@ -1936,6 +1944,8 @@ globalThis.__velquFunctions = [bad_shape];
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
         response_strategy: Strategy::Native,
+        validation_fallback_reason: None,
+        response_fallback_reason: None,
         deadline_ms: 5000,
     });
     r.responses = {
@@ -2078,6 +2088,8 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
         response_strategy: Strategy::Native,
+        validation_fallback_reason: None,
+        response_fallback_reason: None,
         deadline_ms: 5000,
     };
     let responses = |schema: &str| {
@@ -2321,6 +2333,8 @@ globalThis.__velquFunctions = [cancel_order, plain_boom];
                 allowed_statuses: allowed,
                 field_needs: FieldNeeds::default(),
                 response_strategy: Strategy::Native,
+                validation_fallback_reason: None,
+                response_fallback_reason: None,
                 deadline_ms: 5000,
             });
             r
@@ -2547,6 +2561,8 @@ globalThis.__velquFunctions = [leaky, declared_ok];
             allowed_statuses: vec![status],
             field_needs: FieldNeeds::default(),
             response_strategy: Strategy::Native,
+            validation_fallback_reason: None,
+            response_fallback_reason: None,
             deadline_ms: 5000,
         });
         r
@@ -2672,6 +2688,11 @@ globalThis.__velquFunctions = [twin_shape];
         allowed_statuses: vec![200],
         field_needs: FieldNeeds::default(),
         response_strategy: strategy,
+        validation_fallback_reason: None,
+        response_fallback_reason: match strategy {
+            Strategy::Js => Some("explicit".into()),
+            _ => None,
+        },
         deadline_ms: 5000,
     };
     let twin = |id: &str, path: &str, strategy: Strategy| {

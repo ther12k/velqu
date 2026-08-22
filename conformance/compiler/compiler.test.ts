@@ -294,6 +294,31 @@ describe("strategy selection (M25-002-D: evidence-driven codec selection)", () =
     expect(stdRoute.plan.responseStrategy).toBe("native");
   });
 
+  test("fallback reasons are tagged in the RoutePlan (M25-007-A)", async () => {
+    const out = `${TMP}/strat-tags`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/fallback-app.ts", outDir: out });
+    const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
+
+    const byId = (id: string) => pack.routes.find((r: { id: string }) => r.id === id);
+
+    // js validation carries its reason from the closed vocabulary
+    const fbBody = byId("fb.body");
+    expect(fbBody.plan.validationFallbackReason).toBe("unsupported-transform");
+    expect(fbBody.plan.responseFallbackReason).toBeUndefined();
+
+    // js response strategy carries its reason (measured marker)
+    const fbResp = byId("fb.resp");
+    expect(fbResp.plan.responseFallbackReason).toBe("measured");
+    expect(fbResp.plan.validationFallbackReason).toBeUndefined();
+
+    // native routes carry no tags (fallback never activates silently,
+    // native never pretends to be fallback)
+    const std = byId("std.get");
+    expect(std.plan.validationFallbackReason).toBeUndefined();
+    expect(std.plan.responseFallbackReason).toBeUndefined();
+  });
+
   test("strategy decisions are deterministic across repeated builds", async () => {
     const out1 = `${TMP}/strat-det1`;
     const out2 = `${TMP}/strat-det2`;

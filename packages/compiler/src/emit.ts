@@ -359,6 +359,21 @@ export function buildPack(
         body: r.bodyIr != null,
       },
       responseStrategy,
+      // M25-007-A: fallback reasons travel with the plan — the runtime
+      // rejects a js strategy without a reason from the closed vocabulary
+      // (fallback never activates silently)
+      ...(decision.validationStrategy === "js"
+        ? {
+            validationFallbackReason:
+              decision.fallbacks.find((f) => ["body", "query", "params"].includes(f.location))?.reason ?? "explicit",
+          }
+        : {}),
+      ...(responseStrategy === "js"
+        ? {
+            responseFallbackReason:
+              decision.fallbacks.find((f) => f.location.startsWith("response."))?.reason ?? "explicit",
+          }
+        : {}),
       deadlineMs: 5000,
     };
 

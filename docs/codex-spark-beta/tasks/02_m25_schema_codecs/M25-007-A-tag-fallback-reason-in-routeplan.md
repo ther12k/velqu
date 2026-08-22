@@ -4,7 +4,7 @@ parent_task: M25-007
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -114,3 +114,52 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-007-A)
+
+Status: **PASS**. Fallback reasons travel with the RoutePlan and can never
+be silent:
+
+- `crates/q-pack` `RoutePlanDecl` gains `validation_fallback_reason` and
+  `response_fallback_reason` (serde-optional, so old packs load
+  unchanged). `QPack::verify` enforces: a js plan strategy must carry a
+  reason from the closed `FALLBACK_REASONS` vocabulary
+  (`unsupported-transform | unrepresentable | measured | explicit`), an
+  out-of-vocabulary reason rejects, and a native plan carrying a reason
+  rejects — fallback never activates silently, and native never pretends
+  to be fallback (fail-closed at pack load, before serving).
+- `packages/compiler/src/emit.ts` fills both tags from the M25-002-D
+  strategy decisions (keys omitted for native routes so the canonical
+  routes hash is unchanged for native-only packs); explicit
+  developer-forced js responses now push an `explicit` fallback
+  descriptor in the build report like every other fallback path.
+- Runtime fixtures carry reasons on their js-strategy routes
+  (`explicit`), exercising the verify rules on every pack the
+  conformance suite loads.
+
+### Tests and evidence
+
+- `q_pack::tests::rejects_silent_fallback_and_invalid_reasons` — js
+  without a reason rejects ("silent fallback"); out-of-vocabulary reason
+  rejects; native with a reason rejects; a properly tagged js strategy
+  verifies (integrity recomputed per mutation).
+- Compiler conformance "fallback reasons are tagged in the RoutePlan
+  (M25-007-A)" — fb.body carries validation reason
+  `unsupported-transform`, fb.resp carries response reason `measured`,
+  std.get carries neither.
+- `cargo test -p q-pack` — 41 + 2 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 57 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 22 integration passed.
+- `bun test` — 74 passed, 0 failed, 319 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree `qRuntimeRelease`/`proofPack` manifest hash mismatch.
+  (One intermediate verify run failed on ENOSPC — the disk filled from 48
+  stale merged M24 worktrees; those worktrees were removed (66 GB freed,
+  branches retained) and the full verify re-ran clean apart from the
+  known mismatch. No test or benchmark artifact was weakened.)
+
+Commit: `09d036c`.
