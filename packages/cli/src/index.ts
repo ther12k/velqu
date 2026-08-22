@@ -48,9 +48,12 @@ async function main() {
       if (what === "routes") {
         for (const r of manifest) {
           const val = r.validationStrategy ?? "native";
-          const resp = r.responses ? (r.responses["200"]?.strategy ?? Object.values(r.responses as Record<string, { strategy?: string }>)[0]?.strategy ?? "native") : "native";
+          const resp = r.responseStrategy ?? "native";
+          // M25-007-D: codec choice and bridge-crossing model per route
+          const valReason = r.validationFallbackReason ? `(${r.validationFallbackReason})` : "";
+          const respReason = r.responseFallbackReason ? `(${r.responseFallbackReason})` : "";
           console.log(
-            `${r.method.padEnd(6)} ${r.path.padEnd(22)} ${r.id.padEnd(16)} val=${val} resp=${resp} stage=${r.nativeStage} policy=${r.policy ?? "—"} caps=[${r.capabilities}]`,
+            `${r.method.padEnd(6)} ${r.path.padEnd(22)} ${r.id.padEnd(16)} val=${val}${valReason} resp=${resp}${respReason} codec=${r.validationCodec}/${r.responseCodec} bridge=${r.bridge ?? "single-prevalidated"} stage=${r.nativeStage} policy=${r.policy ?? "—"} caps=[${r.capabilities}]`,
           );
         }
         console.log(`— ${manifest.length} routes`);

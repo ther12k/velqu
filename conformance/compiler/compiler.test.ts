@@ -319,6 +319,55 @@ describe("strategy selection (M25-002-D: evidence-driven codec selection)", () =
     expect(std.plan.responseFallbackReason).toBeUndefined();
   });
 
+  test("route manifest exposes codec choice and bridge crossings (M25-007-D)", async () => {
+    const out = `${TMP}/inspect-codecs`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "conformance/compiler/fixtures/fallback-app.ts", outDir: out });
+    const manifest = JSON.parse(readFileSync(`${out}/route-manifest.json`, "utf8"));
+    const byId = (id: string) => manifest.find((r: { id: string }) => r.id === id);
+
+    // fallback routes: real strategies (not hardcoded native), reasons,
+    // generic codecs, and the lazy bridge model
+    const fbBody = byId("fb.body");
+    expect(fbBody.validationStrategy).toBe("js");
+    expect(fbBody.validationFallbackReason).toBe("unsupported-transform");
+    expect(fbBody.validationCodec).toBe("generic-fallback");
+    expect(fbBody.bridge).toBe("lazy-per-field");
+
+    const fbResp = byId("fb.resp");
+    expect(fbResp.responseStrategy).toBe("js");
+    expect(fbResp.responseFallbackReason).toBe("measured");
+    expect(fbResp.responseCodec).toBe("engine-stringify");
+    expect(fbResp.bridge).toBe("lazy-per-field");
+
+    // native route: direct codecs, single pre-validated crossing, no reasons
+    const std = byId("std.get");
+    expect(std.validationStrategy).toBe("native");
+    expect(std.validationFallbackReason).toBeNull();
+    expect(std.validationCodec).toBe("direct-decoder");
+    expect(std.responseCodec).toBe("direct-encoder");
+    expect(std.bridge).toBe("single-prevalidated");
+
+    // inspect snapshot: the CLI renders the same facts per route
+    const proc = Bun.spawnSync([
+      "bun",
+      "packages/cli/src/index.ts",
+      "inspect",
+      "routes",
+      "--dist",
+      out,
+    ]);
+    const text = new TextDecoder().decode(proc.stdout);
+    expect(text).toContain("std.get");
+    expect(text).toContain("val=native resp=native codec=direct-decoder/direct-encoder bridge=single-prevalidated");
+    expect(text).toContain("fb.body");
+    expect(text).toContain("val=js(unsupported-transform)");
+    expect(text).toContain("bridge=lazy-per-field");
+    expect(text).toContain("fb.resp");
+    expect(text).toContain("resp=js(measured)");
+    expect(text).toContain("codec=direct-decoder/engine-stringify");
+  });
+
   test("strategy decisions are deterministic across repeated builds", async () => {
     const out1 = `${TMP}/strat-det1`;
     const out2 = `${TMP}/strat-det2`;

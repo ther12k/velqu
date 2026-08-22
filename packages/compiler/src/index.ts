@@ -78,18 +78,46 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   const dts = contractDts(app, (pack as { contractHash: string }).contractHash);
 
   // route/schema/capability manifests
-  const routeManifest = app.routes.map((r) => ({
-    id: r.id,
-    method: r.method,
-    path: r.path,
-    moduleId: r.moduleId,
-    policy: r.policyId,
-    capabilities: r.capabilities,
-    nativeStage: r.liveness ? "native-liveness" : "engine",
-    validationStrategy: "native",
-    responseStrategy: "native",
-    sourceFile: r.sourceFile,
-  }));
+  // M25-007-D: the manifest carries the REAL per-route codec choices and
+  // the bridge-crossing model — native routes cross once with pre-validated
+  // values; fallback routes cross lazily per field access. Fallback
+  // reasons come from the same decisions that tagged the RoutePlan.
+  const routeManifest = app.routes.map((r) => {
+    const decision = selectRouteStrategies(r);
+    const validationFallbackReason =
+      decision.validationStrategy === "js"
+        ? (decision.fallbacks.find((f) => ["body", "query", "params"].includes(f.location))?.reason ?? "explicit")
+        : null;
+    const responseFallbackReason =
+      decision.primaryResponseStrategy === "js"
+        ? (decision.fallbacks.find((f) => f.location.startsWith("response."))?.reason ?? "explicit")
+        : null;
+    return {
+      id: r.id,
+      method: r.method,
+      path: r.path,
+      moduleId: r.moduleId,
+      policy: r.policyId,
+      capabilities: r.capabilities,
+      nativeStage: r.liveness ? "native-liveness" : "engine",
+      validationStrategy: decision.validationStrategy,
+      validationFallbackReason,
+      responseStrategy: decision.primaryResponseStrategy,
+      responseFallbackReason,
+      // codec choice: direct decoder/encoder programs vs the generic path
+      validationCodec:
+        decision.validationStrategy === "js" ? "generic-fallback" : "direct-decoder",
+      responseCodec:
+        decision.primaryResponseStrategy === "js" ? "engine-stringify" : "direct-encoder",
+      // bridge crossings: 1 pre-validated crossing (native) vs lazy
+      // per-field crossings (fallback) — visible cost, never hidden
+      bridge:
+        decision.validationStrategy === "js" || decision.primaryResponseStrategy === "js"
+          ? "lazy-per-field"
+          : "single-prevalidated",
+      sourceFile: r.sourceFile,
+    };
+  });
   const schemaManifest = {
     schemaIrVersion: 1,
     schemas: Object.fromEntries(
