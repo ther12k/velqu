@@ -2027,8 +2027,10 @@ globalThis.__velquFunctions = [bad_shape];
 fn native_response_encoder_emits_declared_order() {
     let bundle = r#"
 async function ordered_shape(ctx) {
-    // insertion order deliberately differs from the declared schema order
-    return { zeta: "z", alpha: 7, mid: [1, 2] };
+    // insertion order deliberately differs from the declared schema order;
+    // uni exercises the M25-005-C union encoder (first member misses, the
+    // string member matches)
+    return { zeta: "z", alpha: 7, mid: [1, 2], uni: "text" };
 }
 async function bad_shape2(ctx) { return { nope: true }; }
 globalThis.__velquFunctionManifest = [["ordered.shape", 0, ordered_shape], ["bad.shape2", 0, bad_shape2]];
@@ -2153,8 +2155,25 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
                         maximum: None,
                     }),
                 ),
+                (
+                    "uni".to_string(),
+                    Box::new(q_schema_runtime::SchemaIr::Union {
+                        members: vec![
+                            Box::new(q_schema_runtime::SchemaIr::Integer {
+                                minimum: None,
+                                maximum: None,
+                            }),
+                            Box::new(q_schema_runtime::SchemaIr::String {
+                                min_length: None,
+                                max_length: None,
+                                pattern: None,
+                                format: None,
+                            }),
+                        ],
+                    }),
+                ),
             ]),
-            required: vec!["zeta".into(), "mid".into(), "alpha".into()],
+            required: vec!["zeta".into(), "mid".into(), "alpha".into(), "uni".into()],
         },
     );
     finalize_numeric(&mut pack);
@@ -2193,7 +2212,7 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
     assert_eq!(r.status, 200, "body: {}", r.text());
     assert_eq!(
         r.text(),
-        "{\"alpha\":7,\"mid\":[1,2],\"zeta\":\"z\"}",
+        "{\"alpha\":7,\"mid\":[1,2],\"uni\":\"text\",\"zeta\":\"z\"}",
         "encoder must emit declared property order"
     );
 

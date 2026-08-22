@@ -61,7 +61,9 @@ fn encodable(spec: &FieldSpec) -> bool {
             inner: Some(inner), ..
         } => encodable(inner),
         FieldSpec::Fallback { inner: None, .. } | FieldSpec::Unsupported { .. } => false,
-        FieldSpec::Union { .. } => false,
+        // M25-005-C: unions encode via scratch-buffer retry; every member
+        // must be encodable or the whole program keeps the reference path
+        FieldSpec::Union { members } => !members.is_empty() && members.iter().all(encodable),
     }
 }
 
@@ -488,14 +490,30 @@ fn encode_spec(
                 Err(errors)
             }
         }
-        // compile() rejects these; reachable only through a programming error
-        FieldSpec::Fallback { .. } | FieldSpec::Unsupported { .. } | FieldSpec::Union { .. } => {
+        FieldSpec::Union { members } => {
+            // M25-005-C: first-match-wins, mirroring the reference
+            // validator's member order. Each attempt encodes into a
+            // scratch buffer so a failed member's partial bytes never
+            // reach the response; only the winning member's bytes append.
+            for member in members {
+                let mut scratch = Vec::new();
+                if encode_spec(member, value, path, depth + 1, &mut scratch).is_ok() {
+                    out.extend_from_slice(&scratch);
+                    return Ok(());
+                }
+            }
             Err(vec![FieldError::typed(
                 path,
-                FieldErrorCode::Unsupported,
-                "schema node requires a specialized codec",
+                FieldErrorCode::Union,
+                format!("value matched none of {} union members", members.len()),
             )])
         }
+        // compile() rejects these; reachable only through a programming error
+        FieldSpec::Fallback { .. } | FieldSpec::Unsupported { .. } => Err(vec![FieldError::typed(
+            path,
+            FieldErrorCode::Unsupported,
+            "schema node requires a specialized codec",
+        )]),
     }
 }
 
@@ -980,7 +998,35 @@ mod m25_005_a_tests {
             )],
             vec!["u"],
         );
-        assert!(EncoderProgram::compile(&union_member).is_none());
+        // M25-005-C: all-encodable unions compile
+        assert!(EncoderProgram::compile(&union_member).is_some());
+        // ...but a union carrying an unencodable member keeps the
+        // reference path (a value could match ONLY that member)
+        let union_unencodable = obj(
+            vec![(
+                "u",
+                SchemaIr::Union {
+                    members: vec![
+                        Box::new(SchemaIr::Integer {
+                            minimum: None,
+                            maximum: None,
+                        }),
+                        Box::new(obj(
+                            vec![(
+                                "x",
+                                SchemaIr::Integer {
+                                    minimum: None,
+                                    maximum: None,
+                                },
+                            )],
+                            vec!["x"],
+                        )),
+                    ],
+                },
+            )],
+            vec!["u"],
+        );
+        assert!(EncoderProgram::compile(&union_unencodable).is_none());
 
         let transform = obj(
             vec![(
@@ -1137,6 +1183,240 @@ mod m25_005_a_tests {
         second.encode(&value, &mut bytes_b).unwrap();
         assert_eq!(bytes_a, bytes_b);
         assert_eq!(bytes_a, b"{\"a\":1,\"b\":\"dflt\"}");
+    }
+
+    /// M25-005-C: unions encode first-match-wins with reference parity,
+    /// and a failed member's partial bytes never reach the output.
+    #[test]
+    fn unions_encode_via_first_matching_member_with_parity() {
+        let string_spec = SchemaIr::String {
+            min_length: None,
+            max_length: None,
+            pattern: None,
+            format: None,
+        };
+        let ir = obj(
+            vec![(
+                "u",
+                SchemaIr::Union {
+                    members: vec![
+                        // first member matches arrays of integers and can
+                        // emit partial bytes before a later item fails —
+                        // the scratch buffer must discard them
+                        Box::new(SchemaIr::Array {
+                            items: Box::new(SchemaIr::Integer {
+                                minimum: None,
+                                maximum: None,
+                            }),
+                            min_items: None,
+                            max_items: None,
+                        }),
+                        Box::new(string_spec.clone()),
+                    ],
+                },
+            )],
+            vec!["u"],
+        );
+        let program = EncoderProgram::compile(&ir).unwrap();
+
+        // first member matches
+        let value = json!({"u": [1, 2]});
+        let reference = validate(&ir, &value, Source::Body).unwrap();
+        let mut out = Vec::new();
+        program.encode(&value, &mut out).unwrap();
+        assert_eq!(out, serde_json::to_vec(&reference).unwrap());
+
+        // first member fails mid-array (partial `[1,` written) -> the
+        // second member (mixed int/string array) matches the whole value;
+        // output must contain ONLY the winning bytes
+        let ir_mixed = obj(
+            vec![(
+                "u",
+                SchemaIr::Union {
+                    members: vec![
+                        Box::new(SchemaIr::Array {
+                            items: Box::new(SchemaIr::Integer {
+                                minimum: None,
+                                maximum: None,
+                            }),
+                            min_items: None,
+                            max_items: None,
+                        }),
+                        Box::new(SchemaIr::Array {
+                            items: Box::new(SchemaIr::Union {
+                                members: vec![
+                                    Box::new(SchemaIr::Integer {
+                                        minimum: None,
+                                        maximum: None,
+                                    }),
+                                    Box::new(SchemaIr::String {
+                                        min_length: None,
+                                        max_length: None,
+                                        pattern: None,
+                                        format: None,
+                                    }),
+                                ],
+                            }),
+                            min_items: None,
+                            max_items: None,
+                        }),
+                    ],
+                },
+            )],
+            vec!["u"],
+        );
+        let program_mixed = EncoderProgram::compile(&ir_mixed).unwrap();
+        let value = json!({"u": [1, "x"]});
+        let reference = validate(&ir_mixed, &value, Source::Body).unwrap();
+        let mut out = Vec::new();
+        program_mixed.encode(&value, &mut out).unwrap();
+        assert_eq!(out, serde_json::to_vec(&reference).unwrap());
+        // the winning member's bytes are the mixed array, NOT the
+        // partially-written integer-only prefix duplicated
+        assert_eq!(out, b"{\"u\":[1,\"x\"]}");
+
+        // no member matches: typed union error, same code+path as the
+        // reference validator
+        let value = json!({"u": true});
+        let mut out = Vec::new();
+        let err = program.encode(&value, &mut out).unwrap_err();
+        let ref_err = validate(&ir, &value, Source::Body).unwrap_err();
+        assert_eq!(err[0].code, ref_err[0].code);
+        assert_eq!(err[0].code, "union");
+        assert_eq!(err[0].path, ref_err[0].path);
+    }
+
+    /// M25-005-C: optional/null combinations normalize exactly like the
+    /// reference validator (optional absorbs null into its default before
+    /// nullable ever sees it; nested optional defaults apply on absence).
+    #[test]
+    fn optional_null_combinations_match_reference() {
+        let int = SchemaIr::Integer {
+            minimum: None,
+            maximum: None,
+        };
+        let str_spec = SchemaIr::String {
+            min_length: None,
+            max_length: None,
+            pattern: None,
+            format: None,
+        };
+        let cases: Vec<(SchemaIr, Value)> = vec![
+            // Optional<Nullable<Integer>> with default: null resolves to
+            // the DEFAULT (reference Optional branch), never to bare null
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Optional {
+                            inner: Box::new(SchemaIr::Nullable {
+                                inner: Box::new(int.clone()),
+                            }),
+                            default: Some(json!(9)),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({"v": null}),
+            ),
+            // same shape, absent key -> default
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Optional {
+                            inner: Box::new(SchemaIr::Nullable {
+                                inner: Box::new(int.clone()),
+                            }),
+                            default: Some(json!(9)),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({}),
+            ),
+            // same shape, present value
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Optional {
+                            inner: Box::new(SchemaIr::Nullable {
+                                inner: Box::new(int.clone()),
+                            }),
+                            default: Some(json!(9)),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({"v": 4}),
+            ),
+            // Nullable<Optional<Integer>> with default: null -> null (the
+            // nullable branch sees the null first)
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Nullable {
+                            inner: Box::new(SchemaIr::Optional {
+                                inner: Box::new(int.clone()),
+                                default: Some(json!(9)),
+                            }),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({"v": null}),
+            ),
+            // Optional<Optional<String>> nested defaults collapse to the
+            // outer default on absence
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Optional {
+                            inner: Box::new(SchemaIr::Optional {
+                                inner: Box::new(str_spec.clone()),
+                                default: Some(json!("inner")),
+                            }),
+                            default: Some(json!("outer")),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({}),
+            ),
+            // null under Optional<Optional<String>> resolves outer default
+            (
+                obj(
+                    vec![(
+                        "v",
+                        SchemaIr::Optional {
+                            inner: Box::new(SchemaIr::Optional {
+                                inner: Box::new(str_spec.clone()),
+                                default: Some(json!("inner")),
+                            }),
+                            default: Some(json!("outer")),
+                        },
+                    )],
+                    vec![],
+                ),
+                json!({"v": null}),
+            ),
+        ];
+        for (ir, value) in cases {
+            let reference = validate(&ir, &value, Source::Body)
+                .unwrap_or_else(|e| panic!("case must be valid: {:?} ({:?})", value, e));
+            let program = EncoderProgram::compile(&ir).unwrap();
+            let mut out = Vec::new();
+            program.encode(&value, &mut out).unwrap();
+            assert_eq!(
+                out,
+                serde_json::to_vec(&reference).unwrap(),
+                "combination parity failed for {:?}",
+                value
+            );
+        }
     }
 
     /// The table is dense by SchemaId and mirrors the decoder table's
