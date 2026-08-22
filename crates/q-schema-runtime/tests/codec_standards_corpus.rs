@@ -2,6 +2,15 @@
 //! behavior — hand-written expected bytes (RFC 8259 semantics, independent
 //! of serde_json construction), plus a minimized regression corpus replay
 //! for every fuzz finding so far.
+//!
+//! M25-009-D — minimized fuzz-findings registry (each finding → its
+//! permanent fixture):
+//! 1. M25-009-A (round-trip fuzz, iteration 2): fallback-WITH-inner was
+//!    not transparent in the encoder (`unsupported` instead of the inner
+//!    shape) → `fallback_with_inner_encodes_transparently` below.
+//! 2. M25-009-C (malformed corpus): the decoder leaked the last union
+//!    member's internal error on a total miss instead of the canonical
+//!    `union` problem → `union_miss_reports_canonical_code_everywhere`.
 
 use q_schema_runtime::{EncoderProgram, ProblemProgram, SchemaIr};
 use serde_json::{json, Value};
@@ -402,4 +411,60 @@ impl<T: std::fmt::Debug, E> UnwrapErrElse for Result<T, E> {
             Ok(v) => panic!("{msg}: accepted {v:?}"),
         }
     }
+}
+
+/// M25-009-C finding, minimized (M25-009-D): on a union total miss every
+/// codec reports the CANONICAL typed `union` problem — decoder, reference
+/// validator, and encoder agree on the code; member-internal errors never
+/// leak.
+#[test]
+fn union_miss_reports_canonical_code_everywhere() {
+    use q_schema_runtime::{validate, DecoderTable, EncoderTable, Source};
+
+    let ir = obj(
+        vec![(
+            "u",
+            SchemaIr::Union {
+                members: vec![
+                    Box::new(SchemaIr::Integer {
+                        minimum: Some(0),
+                        maximum: None,
+                    }),
+                    Box::new(free_string()),
+                ],
+            },
+        )],
+        vec!["u"],
+    );
+    let decoder_table = DecoderTable::from_schemas(std::slice::from_ref(&ir));
+    let encoder_table = EncoderTable::from_schemas(std::slice::from_ref(&ir));
+
+    // misses through both member kinds: bool misses both; a negative int
+    // misses the integer member and is not a string
+    for miss in [json!({ "u": true }), json!({ "u": -1 })] {
+        let reference = validate(&ir, &miss, Source::Body).unwrap_err();
+        assert_eq!(reference[0].code, "union");
+        assert_eq!(
+            reference[0].message,
+            "value matched none of 2 union members"
+        );
+
+        let decoded = decoder_table.decode_body_value(0, &miss).unwrap_err();
+        assert_eq!(
+            decoded[0].code, "union",
+            "decoder must not leak member errors"
+        );
+        assert_eq!(decoded[0].path, reference[0].path);
+
+        let program = encoder_table.get(0).unwrap();
+        let mut out = Vec::new();
+        let encoded = program.encode(&miss, &mut out).unwrap_err();
+        assert_eq!(encoded[0].code, "union");
+    }
+
+    // first-match still wins on hits (integers take member one)
+    let hit = json!({ "u": 7 });
+    decoder_table
+        .decode_body_value(0, &hit)
+        .unwrap_or_else(|e| panic!("hit must decode: {e:?}"));
 }
