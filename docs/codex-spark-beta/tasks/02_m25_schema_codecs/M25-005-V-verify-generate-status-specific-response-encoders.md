@@ -4,7 +4,7 @@ parent_task: M25-005
 milestone: M25
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -132,3 +132,72 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-005-V)
+
+Status: **PASS**. Every parent M25-005 acceptance guardrail maps to source
+and passing tests; all verification commands were run fresh on this branch
+(no code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Undeclared status/body remains a contract violation.**
+   - Source: `crates/q-runtime/src/serve.rs` declared-status response gate
+     (unchanged); encoder typed errors route to the same controlled 500
+     `contract.violation.response` (logged internally, redacted from the
+     wire).
+   - `runtime_conformance::response_schema_violation_is_a_controlled_500`
+     (now exercising the encoder path — its flat schema compiles).
+   - `runtime_conformance::native_response_encoder_emits_declared_order`
+     — mismatch twin returns 500 with the violation logged.
+2. **Output is JSON-equivalent to reference serialization.**
+   - `encoder_matches_reference_serialization_on_golden_corpus` — byte
+     equality against `serde_json::to_vec` of the reference normalized
+     output across the golden corpus.
+   - `optional_null_combinations_match_reference` and
+     `unions_encode_via_first_matching_member_with_parity` — combination
+     and union parity.
+   - `runtime_conformance::quickjs_stringify_fallback_stays_json_equivalent_
+     to_encoder` — live HTTP JSON-equality between the retained js
+     fallback and the generated encoder.
+3. **One traversal for generated paths.**
+   - Source: `EncoderProgram::encode` walks the handler value once and
+     emits bytes directly; the serve wiring replaces the previous
+     validate pass + Value clone + second serialization.
+   - `encoder_reads_properties_in_declared_fixed_order` and
+     `encoder_program_is_deterministic_across_compiles` — the frozen
+     property order and deterministic bytes.
+4. **No user JS escapes deadline ownership during conversion.**
+   - Source: encoding is native host code executed after engine
+     settlement — no JS runs during conversion; recursion is bounded by
+     `MAX_VALIDATE_DEPTH`.
+   - `encoder_depth_is_bounded` (typed `depth` parity with the reference
+     bound); M25-004-D `body_read_deadline_cancels_stalled_transfer` and
+     the engine deadline tests remain green.
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-schema-runtime` — 54 unit + 3 fuzz passed.
+- `cargo test -p velqu-runtime` — 20 integration passed.
+- `cargo test --workspace` — zero failures (two consecutive runs).
+- `bun test` — 69 passed, 0 failed, 297 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors.
+- `./scripts/verify` — first run reported one transient
+  `FAIL: cargo test` that did not reproduce: two subsequent full verify
+  runs and two direct `cargo test --workspace` runs were completely
+  green (zero failed tests across every crate). Final state: all stages
+  pass except the documented isolated-worktree `qRuntimeRelease`/
+  `proofPack` manifest hash mismatch (identical on every packet branch
+  this session).
+
+CPU/allocation evidence is not re-measured here: the encode path is
+native host code; no new performance claim is made and the benchmark
+manifest is preserved unchanged.
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `c9f05f1`.
