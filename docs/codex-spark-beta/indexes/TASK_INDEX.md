@@ -211,7 +211,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-001-C](../tasks/03_m26_qpack_v2/M26-001-C-separate-integrity-from-authenticity.md) | P0 | implement | PASS | M26-001-B | Separate integrity from authenticity |
 | [M26-001-D](../tasks/03_m26_qpack_v2/M26-001-D-define-debug-source-sidecar-policy.md) | P0 | implement | PASS | M26-001-C | Define debug/source sidecar policy |
 | [M26-001-V](../tasks/03_m26_qpack_v2/M26-001-V-verify-accept-qpack-v2-format-and-compatibility-adr.md) | P0 | verify | PASS | M26-001-A, M26-001-B, M26-001-C, M26-001-D | Verify Accept QPack v2 format and compatibility ADR |
-| [M26-001-Z](../tasks/03_m26_qpack_v2/M26-001-Z-package-evidence-for-accept-qpack-v2-format-and-compatibility-adr.md) | P0 | evidence | TODO | M26-001-V | Package evidence for Accept QPack v2 format and compatibility ADR |
+| [M26-001-Z](../tasks/03_m26_qpack_v2/M26-001-Z-package-evidence-for-accept-qpack-v2-format-and-compatibility-adr.md) | P0 | evidence | PASS | M26-001-V | Package evidence for Accept QPack v2 format and compatibility ADR |
 | [M26-002-A](../tasks/03_m26_qpack_v2/M26-002-A-include-runtime-abi-quickjs-ng-version-build-hash-rquickjs-version-bytecode-form.md) | P0 | implement | TODO | M26-001-Z | Include runtime ABI, QuickJS-NG version/build hash, rquickjs version, bytecode format, target triple, pointer width, endianness, and capability hash |
 | [M26-002-B](../tasks/03_m26_qpack_v2/M26-002-B-fail-closed-on-mismatch.md) | P0 | implement | TODO | M26-002-A | Fail closed on mismatch |
 | [M26-002-C](../tasks/03_m26_qpack_v2/M26-002-C-provide-explicit-source-rebuild-path.md) | P0 | implement | TODO | M26-002-B | Provide explicit source rebuild path |

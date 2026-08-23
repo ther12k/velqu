@@ -47,7 +47,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M25-009 | P0 | PASS | M25-003, M25-004, M25-005, M25-006 | M25 | Add codec fuzzing and differential tests |
 | M25-010 | P1 | PASS | M25-002, M25-009 | M25 | Close codec performance and cold-start evidence |
 | M25-GATE | P0 | PASS | M25-001, M25-002, M25-003, M25-004, M25-005, M25-006, M25-007, M25-008, M25-009, M25-010 | M25 | M2.5 — Schema-Specialized Input and JSON Output Pipeline exit gate |
-| M26-001 | P0 | TODO | M25-GATE | M26 | Accept QPack v2 format and compatibility ADR |
+| M26-001 | P0 | PASS | M25-GATE | M26 | Accept QPack v2 format and compatibility ADR |
 | M26-002 | P0 | TODO | M26-001 | M26 | Define strict runtime and bytecode fingerprint |
 | M26-003 | P0 | TODO | M26-001, G0-GATE, M25-GATE | M26 | Encode compiled router, RoutePlans, schemas, policies, and functions as sections |
 | M26-004 | P0 | TODO | M26-002, M26-003 | M26 | Embed raw QuickJS bytecode without base64 |
