@@ -4,7 +4,7 @@ parent_task: M26-003
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -123,3 +123,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-003-C)
+
+Status: **PASS**. File-level offsets and bounds checks enforce every
+spec §2/§3 rule BEFORE any section content is interpreted:
+
+- `qpack2::reader`: `parse_header` (magic exact, version, header_size
+  == 64, total_size == actual length, both reserved fields zero) and
+  `parse_directory` (unique ids, offsets past header+directory,
+  8-aligned, len > 0, disjoint ranges, within the file, per-entry
+  reserved zero, unknown flag bits reject). `validate` adds the catalog
+  rules — unknown section ids reject even when flagged optional (spec §5
+  no-skip rule), all required ids must be present (spec §6) — and
+  verifies every section's content sha256 at read time (integrity only,
+  ADR-0026). `build_file` is the aligned writer with computed hashes.
+- Bounds and index validation reject malformed packs: `every_directory_rule_violation_rejects`
+  drives each rule to its rejection (magic, header_size, total_size,
+  reserved, offset-overlap, misalignment, zero length, past-end, duplicate
+  id, stale content hash, unknown id, missing required id).
+- `header_directory_mutation_never_panics` — 4,000 single-bit mutations
+  over the header+directory: no panic, bounded work; ≥3,300 reject
+  (survivors are flips inside offset/len fields landing on legal values
+  or the one legal flag bit — documented; section bodies are covered by
+  the M26-003-B fuzz plus the content-hash check).
+- `header_and_directory_round_trip` — built file validates; offsets
+  8-aligned; ids exactly the required catalog.
+
+### Tests and evidence
+
+- `cargo test -p q-pack` — 63 + 2 passed (3 new reader tests).
+- `cargo test -p q-router` — 15; `cargo test -p q-engine-quickjs` —
+  1 + 97; `cargo test -p velqu-runtime` — 26 — all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (pack bytes changed in
+  M26-002-A; canonical proofPack refresh flagged there).
+
+Commit: `0ae49b5`.
