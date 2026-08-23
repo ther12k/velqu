@@ -3081,6 +3081,83 @@ globalThis.__velquFunctions = [spin_forever, ok_probe];
     let _ = child.wait();
 }
 
+/// M26-002-C: the explicit source-rebuild path. A pack whose embedded
+/// bytecode targets a different machine rejects on normal startup (the
+/// message names --no-bytecode and the rebuild remedy); the SAME pack
+/// serves from the verified source bundle under `--no-bytecode`.
+#[test]
+fn no_bytecode_flag_recovers_cross_target_packs_from_source() {
+    // build the standard fixture pack and embed host-matching bytecode
+    let dir = temp_dir("srcpath");
+    let pack_path = write_pack(&dir);
+    // velqu-bytecode is a separate workspace bin: resolve it from the
+    // test executable's target dir (target/debug/deps -> target/debug)
+    let bin = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.to_path_buf())))
+        .map(|p| p.join("velqu-bytecode"))
+        .expect("locate target dir");
+    let bc_path = dir.join("app-bc.qpack");
+    let out = Command::new(bin)
+        .args([
+            "embed",
+            "--pack",
+            pack_path.to_str().unwrap(),
+            "--out",
+            bc_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("embed bytecode");
+    assert!(
+        out.status.success(),
+        "embed failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // flip the bytecode target to a foreign arch (bytecode data hash is
+    // untouched — only the target fingerprint lies)
+    let raw: Value = serde_json::from_slice(&std::fs::read(&bc_path).unwrap()).unwrap();
+    let mut foreign = raw.clone();
+    foreign["bundleBytecode"]["target"]["arch"] = json!("bogus-arch");
+    let foreign_path = dir.join("app-foreign.qpack");
+    std::fs::write(&foreign_path, serde_json::to_vec(&foreign).unwrap()).unwrap();
+
+    let port = free_port();
+
+    // normal startup: cross-target rejection names both recovery paths
+    let out = Command::new(env!("CARGO_BIN_EXE_velqu-runtime"))
+        .arg("--pack")
+        .arg(&foreign_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .output()
+        .expect("spawn runtime");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.status.success(), "cross-target pack must not start");
+    assert!(stderr.contains("cross-target pack rejected"), "{stderr}");
+    assert!(stderr.contains("--no-bytecode"), "{stderr}");
+    assert!(stderr.contains("rebuild the pack"), "{stderr}");
+
+    // the explicit source path: the SAME pack serves from source
+    let port2 = free_port();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_velqu-runtime"))
+        .arg("--pack")
+        .arg(&foreign_path)
+        .arg("--port")
+        .arg(port2.to_string())
+        .arg("--no-bytecode")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port2, Duration::from_secs(10));
+    let r = http(port2, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "source path must serve: {}", r.text());
+    assert_eq!(r.text(), "{\"status\":\"ok\"}");
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property

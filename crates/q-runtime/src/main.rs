@@ -43,6 +43,11 @@ struct Args {
     /// Sample successful completion logs every N requests; 0 disables sampling.
     #[arg(long, default_value_t = 0)]
     log_sample: u64,
+    /// M26-002-C: the explicit source-rebuild path — ignore embedded
+    /// bytecode and evaluate the verified SOURCE bundle (sanctioned
+    /// recovery for cross-target bytecode; rebuild the pack otherwise).
+    #[arg(long)]
+    no_bytecode: bool,
 }
 
 #[allow(clippy::needless_return)]
@@ -58,7 +63,12 @@ fn run(args: Args) -> i32 {
 
     // ---- stage: pack.load (verify integrity/versions before ANYTHING else)
     let t = Instant::now();
-    let pack = match QPack::load_and_verify(&args.pack) {
+    let policy = if args.no_bytecode {
+        q_pack::BytecodePolicy::Skip
+    } else {
+        q_pack::BytecodePolicy::Enforce
+    };
+    let pack = match QPack::load_and_verify_with(&args.pack, policy) {
         Ok(p) => p,
         Err(e) => {
             eprintln!(
@@ -140,10 +150,13 @@ fn run(args: Args) -> i32 {
 
         let t = Instant::now();
         // ADR-0017: if the pack carries verified bytecode, skip source eval
-        let bytecode_decoded: Option<Vec<u8>> = pack
-            .bundle_bytecode
-            .as_ref()
-            .and_then(|bc| q_pack::base64_decode(&bc.data));
+        let bytecode_decoded: Option<Vec<u8>> = if args.no_bytecode {
+            None
+        } else {
+            pack.bundle_bytecode
+                .as_ref()
+                .and_then(|bc| q_pack::base64_decode(&bc.data))
+        };
         let load_plan = if !pack.functions.is_empty() {
             q_engine::EngineLoadPlan::Numeric {
                 functions: pack.functions.clone(),

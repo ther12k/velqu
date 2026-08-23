@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-002-C)
+
+Status: **PASS**. The explicit source-rebuild path exists end to end:
+
+- **q-pack**: `BytecodePolicy::{Enforce, Skip}` —
+  `load_and_verify_with(path, Skip)` verifies the pack with the embedded
+  bytecode IGNORED (`verify_without_bytecode`: bytecode nulled, its
+  integrity slot unused; every OTHER fingerprint dimension — ABI,
+  engine, rquickjs, build hash, integrity, cross-target-free — still
+  enforced). The cross-target rejection message now names BOTH recovery
+  paths: rebuild the pack for this target, or start with `--no-bytecode`
+  to run from source.
+- **Runtime**: new `--no-bytecode` flag — loads with `Skip` policy and
+  never hands bytecode to the engine (the verified source bundle
+  evaluates; ADR-0017's bytecode fast path simply doesn't engage).
+- **Evidence**:
+  - `source_rebuild_path_loads_cross_target_bytecode_packs` (q-pack) —
+    a cross-target bytecode pack rejects with the `--no-bytecode` and
+    rebuild hints; the SAME pack verifies on the source path.
+  - `no_bytecode_flag_recovers_cross_target_packs_from_source`
+    (runtime-local) — embed real bytecode via velqu-bytecode, flip the
+    target arch to a foreign machine: normal startup rejects (both
+    recovery paths in the message); the SAME pack serves 200 from
+    source under `--no-bytecode`.
+
+### Tests and evidence
+
+- `cargo test -p q-pack` — 53 + 2; `cargo test -p q-engine-quickjs` —
+  1 + 96; `cargo test -p q-http` — 4 + 6 + 1; `cargo test -p
+  q-schema-runtime` — 58 + 4 + 5; `cargo test -p velqu-runtime` — 25 —
+  all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (canonical proofPack
+  refresh flagged in M26-002-A).
+
+Commit: `23c8cb7`.

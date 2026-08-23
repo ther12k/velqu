@@ -14,6 +14,16 @@ use sha2::{Digest, Sha256};
 /// CURRENT at a time; older supported modes load only through their named
 /// adapter; unknown versions never fall back or guess.
 pub const PACK_FORMAT_LEGACY_V1: u32 = 1;
+
+/// M26-002-C: bytecode loading policy. `Enforce` is the default (all
+/// bytecode fingerprint checks run); `Skip` is the explicit
+/// source-rebuild path (`--no-bytecode`): the verified source bundle
+/// evaluates instead of the embedded bytecode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BytecodePolicy {
+    Enforce,
+    Skip,
+}
 /// The current numeric mode. Legacy v1 until M26-003 flips producer and
 /// runtime to binary QPack v2 (ADR-0024 migration rule); the flip is one
 /// constant change plus a native adapter, never a silent in-place rewrite.
@@ -714,11 +724,40 @@ pub struct PolicyDecl {
 impl QPack {
     /// Load + fully verify a pack. Fails before any serving can happen.
     pub fn load_and_verify(path: &std::path::Path) -> Result<QPack, PackError> {
+        Self::load_and_verify_with(path, BytecodePolicy::Enforce)
+    }
+
+    /// M26-002-C: the explicit source-rebuild path. `Skip` ignores the
+    /// embedded bytecode entirely (no bytecode fingerprint checks, no
+    /// bytecode load — the verified SOURCE bundle evaluates instead);
+    /// every other fingerprint dimension still enforces. This is the
+    /// sanctioned recovery path for cross-target bytecode: rebuild the
+    /// pack, or start with `--no-bytecode` to run from source.
+    pub fn load_and_verify_with(
+        path: &std::path::Path,
+        policy: BytecodePolicy,
+    ) -> Result<QPack, PackError> {
         let bytes = std::fs::read(path)?;
         let pack: QPack =
             serde_json::from_slice(&bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
-        pack.verify()?;
+        match policy {
+            BytecodePolicy::Enforce => pack.verify()?,
+            BytecodePolicy::Skip => pack.verify_without_bytecode()?,
+        }
         Ok(pack)
+    }
+
+    /// M26-002-C: verify with the embedded bytecode ignored (source path).
+    pub fn verify_without_bytecode(&self) -> Result<(), PackError> {
+        if self.bundle_bytecode.is_some() {
+            let mut source_only = self.clone();
+            source_only.bundle_bytecode = None;
+            // integrity.bytecodeSha256 without bytecode normally rejects;
+            // on the source path it is simply unused
+            source_only.integrity.bytecode_sha256 = None;
+            return source_only.verify();
+        }
+        self.verify()
     }
 
     pub fn verify(&self) -> Result<(), PackError> {
@@ -1499,7 +1538,7 @@ impl QPack {
             .collect();
             if !mismatches.is_empty() {
                 return reject(format!(
-                    "cross-target pack rejected (incompatible dimensions: {}): bytecode targets {}/{} {}-bit {} endian, runtime is {}/{} {}-bit {} endian — rebuild the pack for this target",
+                    "cross-target pack rejected (incompatible dimensions: {}): bytecode targets {}/{} {}-bit {} endian, runtime is {}/{} {}-bit {} endian — rebuild the pack for this target, or start with --no-bytecode to run from source",
                     mismatches.join(", "),
                     target.arch, target.os, target.pointer_width, target.endianness,
                     std::env::consts::ARCH, std::env::consts::OS,
@@ -2267,6 +2306,42 @@ mod tests {
         let msg = p.verify().unwrap_err().to_string();
         assert!(msg.contains("without a target fingerprint"), "{msg}");
         assert!(msg.contains("fail closed"), "{msg}");
+    }
+
+    #[test]
+    fn source_rebuild_path_loads_cross_target_bytecode_packs() {
+        // a cross-target bytecode pack rejects under the default policy,
+        // with the message pointing at BOTH recovery paths
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: Some(BytecodeTarget {
+                arch: "bogus-arch".into(),
+                os: std::env::consts::OS.into(),
+                pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+                endianness: if cfg!(target_endian = "big") {
+                    "big".into()
+                } else {
+                    "little".into()
+                },
+            }),
+            data: String::new(),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(&b""[..])));
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("--no-bytecode"), "{msg}");
+        assert!(msg.contains("rebuild the pack"), "{msg}");
+
+        // the explicit source path verifies the SAME pack (bytecode
+        // ignored; every other fingerprint dimension still enforced)
+        p.verify_without_bytecode()
+            .expect("source path verifies cross-target bytecode pack");
     }
 
     #[test]
