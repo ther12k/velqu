@@ -3,8 +3,10 @@
 Status: normative layout frozen by ADR-0025 (M26-001-B). The encoder and
 native adapter are built in M26-003; no producer emits this format before
 then, and per ADR-0024 unknown versions fail closed. Integrity-vs-
-authenticity policy is ADR-0026/M26-001-C; debug source sidecars are
-M26-001-D.
+authenticity policy is ADR-0026; debug source sidecars are ADR-0027 —
+sources and maps live in an external `<pack>.sources.json` sidecar that
+the runtime never reads; this layout has no source or source-map
+section by design.
 
 All integers are **little-endian**. All offsets are absolute byte offsets
 from the start of the file.
