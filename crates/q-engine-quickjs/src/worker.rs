@@ -682,8 +682,20 @@ impl WorkerInner {
                 let mut embedded_handles: Option<CachedPrelude> = None;
                 if let Some(bc) = bytecode {
                     // ADR-0017: load pre-compiled bytecode (skips parsing + compilation).
-                    // Safety: caller (WorkerBuilder) verified sha256 and exact engine/ABI
-                    // version match in QPack::verify() before handing us these bytes.
+                    // SAFETY (M26-005-C audit): `Module::load` accepts
+                    // engine-produced bytecode without a format parse, so
+                    // the invariants it relies on must hold BEFORE this
+                    // call, all enforced upstream and pinned by tests:
+                    // 1. byte-exact engine/ABI/binding fingerprint —
+                    //    `rejects_engine_mismatch`, `rejects_build_hash_mismatch_with_dimension`,
+                    //    `cross_target_bytecode_fails_closed_with_dimensions`;
+                    // 2. content integrity — sha256 verified over the ONE
+                    //    decoded buffer (M26-004-B single-decode cache);
+                    //    tamper pins: `rejects_tampered_bundle`,
+                    //    `bytecode_pack_serves_identically_and_mismatch_fails_before_ready`,
+                    //    `hash_valid_garbage_bytecode_rejects_before_ready`.
+                    // Hash-valid garbage still rejects at eval (3), so a
+                    // crafted buffer cannot reach QuickJS internals.
                     let module = unsafe {
                         Module::load(ctx.clone(), bc).map_err(|e| {
                             format!("bytecode load failed: {}", describe_error(&ctx, &e))
