@@ -4,7 +4,7 @@ parent_task: M26-005
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,57 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-005-B (PASS)
+
+Deliverable: validate ALL section bounds before access — closing a real
+integer-overflow hole in the directory range checks.
+
+Defect fixed: directory `offset`/`len` are raw file-controlled u64s, and
+the previous range rule used unchecked `e.offset + e.len`:
+
+- debug builds: an overflowing pair PANICS (arithmetic overflow) inside
+  the parser — violating "malformed lengths cannot panic";
+- release builds: the sum wraps, the `> file_len` check can pass, and
+  the later slice indexes wrap past every bound.
+
+Change (`crates/q-pack/src/lib.rs`, `parse_directory_of_size`):
+
+- `e.offset.checked_add(e.len)` with a typed rejection
+  ("offset+len overflows u64") before any use;
+- the pairwise overlap rule rewritten over checked sums (prior entries
+  are already range-validated, so their ends are finite);
+- every remaining rule (offset ≥ dir_end, 8-alignment, len > 0,
+  past-end, duplicate ids) unchanged and still evaluated before any
+  section body is sliced or hashed.
+
+Tests (79 total):
+
+- `overflowing_directory_values_reject_without_panic` — five malformed
+  shapes (aligned u64::MAX-7 offset + 16 len; u64::MAX len from the
+  first legal body offset; unaligned u64::MAX offset; both fields huge;
+  untouched control file still validates). Debug-profile tests mean an
+  unchecked addition would abort the suite — this is the regression
+  pin.
+- `bounds_checks_precede_any_section_access` — a past-end SECOND entry
+  rejects identically even when the FIRST section's body bytes are also
+  corrupted: structural bounds run before content hashing (ordering
+  proof).
+- Existing 12-rule directory suite, 4 000-round header mutation, and
+  integration fuzz unchanged and green.
+
+Commands and results:
+
+- `cargo test -p q-pack` — 79 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: malformed lengths cannot panic (overflow regression pin);
+fuzz parser stable (no parser semantics changed for well-formed input —
+valid files parse identically); shared/embedded modes unaffected
+(same `&[u8]` consumer). Allocation profiling is V/Z scope.

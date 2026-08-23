@@ -461,7 +461,17 @@ pub mod qpack2 {
                         e.section_id
                     ));
                 }
-                if e.offset + e.len > bytes.len() as u64 {
+                // M26-005-B: offset/len are raw file-controlled u64s —
+                // every range computation is checked BEFORE any slicing
+                // so malformed lengths can neither panic (debug overflow)
+                // nor wrap past the file (release).
+                let Some(range_end) = e.offset.checked_add(e.len) else {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): offset+len overflows u64",
+                        e.section_id
+                    ));
+                };
+                if range_end > bytes.len() as u64 {
                     return Err(format!(
                         "directory entry {i} (id {:#x}): range past end of file",
                         e.section_id
@@ -470,10 +480,12 @@ pub mod qpack2 {
                 if entries.iter().any(|p| p.section_id == e.section_id) {
                     return Err(format!("duplicate section id {:#x}", e.section_id));
                 }
-                if entries
-                    .iter()
-                    .any(|p| e.offset < p.offset + p.len && p.offset < e.offset + e.len)
-                {
+                let overlaps = entries.iter().any(|p| {
+                    p.offset
+                        .checked_add(p.len)
+                        .is_some_and(|p_end| range_end > p.offset && p_end > e.offset)
+                });
+                if overlaps {
                     return Err(format!(
                         "directory entry {i} (id {:#x}): range overlaps another section",
                         e.section_id
@@ -2112,6 +2124,72 @@ pub mod qpack2 {
                 "raw section must be smaller than base64 text"
             );
             assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        // ---- M26-005-B: bounds before access ----
+
+        #[test]
+        fn overflowing_directory_values_reject_without_panic() {
+            // Directory offset/len are raw file-controlled u64s. Before
+            // M26-005-B, `offset + len` could overflow: panic in debug,
+            // wrap past every bound in release. Every shape here must
+            // return a typed error (tests run in debug, so an unchecked
+            // addition would abort the suite).
+            let file = valid_file();
+            let base = super::HEADER_SIZE as usize;
+            let patch = |f: &mut Vec<u8>, off: u64, len: u64| {
+                f[base + 8..base + 16].copy_from_slice(&off.to_le_bytes());
+                f[base + 16..base + 24].copy_from_slice(&len.to_le_bytes());
+            };
+            // aligned offset near u64::MAX + len → checked_add overflows
+            let mut f = file.clone();
+            patch(&mut f, u64::MAX - 7, 16);
+            let err = reader::validate(&f).unwrap_err();
+            assert!(err.contains("overflows u64"), "{err}");
+            // len = u64::MAX from the first legal body offset (dir end)
+            let mut f = file.clone();
+            patch(&mut f, 512, u64::MAX);
+            let err = reader::validate(&f).unwrap_err();
+            assert!(
+                err.contains("overflows u64") || err.contains("past end of file"),
+                "{err}"
+            );
+            // offset = u64::MAX, len = 1 (unaligned MAX rejects at the
+            // alignment rule — still a typed error, never a panic)
+            let mut f = file.clone();
+            patch(&mut f, u64::MAX, 1);
+            let err = reader::validate(&f).unwrap_err();
+            assert!(!err.is_empty());
+            // both huge
+            let mut f = file.clone();
+            patch(&mut f, u64::MAX - 7, u64::MAX - 7);
+            let err = reader::validate(&f).unwrap_err();
+            assert!(err.contains("overflows u64"), "{err}");
+            // the untouched file still validates
+            assert!(reader::validate(&file).is_ok());
+        }
+
+        #[test]
+        fn bounds_checks_precede_any_section_access() {
+            // A file whose FIRST entry is fine but whose SECOND entry is
+            // past-end must reject WITHOUT hashing or slicing section 0:
+            // patching section bodies after the fact cannot change the
+            // error — structural bounds run before content work.
+            let file = valid_file();
+            let base = super::HEADER_SIZE as usize;
+            let mut f = file.clone();
+            // entry 1 offset far past EOF but aligned (dir_end small)
+            f[base + 64 + 8..base + 64 + 16].copy_from_slice(&(1u64 << 40).to_le_bytes());
+            let err = reader::validate(&f).unwrap_err();
+            assert!(err.contains("past end of file"), "{err}");
+            // corrupt section 0's BODY bytes too: the bounds error is
+            // identical (bounds ran first; the hash was never reached)
+            let mut f2 = f.clone();
+            let e0_off = u64::from_le_bytes(f2[base + 8..base + 16].try_into().unwrap()) as usize;
+            let e0_len = u64::from_le_bytes(f2[base + 16..base + 24].try_into().unwrap()) as usize;
+            f2[e0_off..e0_off + e0_len].fill(0xAA);
+            let err2 = reader::validate(&f2).unwrap_err();
+            assert_eq!(err, err2, "bounds rejection must precede content hashing");
         }
 
         // ---- M26-005-A: mmap/read-only pack bytes ----
