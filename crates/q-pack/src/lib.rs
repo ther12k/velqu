@@ -398,6 +398,38 @@ pub mod qpack2 {
             sha2::Sha256::digest(&canon).into()
         }
 
+        /// M26-006-A: aggregate CONTENT digest over exactly the REQUIRED
+        /// execution sections (catalog §6). Optional sections — e.g.
+        /// BUNDLE_BYTECODE — are excluded: this digest pins the
+        /// execution graph (router, plans, schemas, policies,
+        /// capabilities, contract summary, strings), not deploy-mode
+        /// extras. Each required section's sha256 is RECOMPUTED from
+        /// the section bytes (never taken from directory claims), then
+        /// the (id, recomputed hash) pairs are hashed together, ids
+        /// ascending. Layout artifacts (offsets, padding, alignment)
+        /// are deliberately NOT part of the canonical form: re-laying
+        /// out the same required content yields the same digest, while
+        /// any required-content byte change — even one whose directory
+        /// hash was repaired to match — changes it.
+        ///
+        /// ADR-0026 boundary: this is INTEGRITY — it detects corruption.
+        /// It establishes no origin; out-of-band publisher signatures
+        /// (M26-006-B hook) may commit to this value.
+        pub fn required_sections_digest(sections: &[(DirEntry, &[u8])]) -> [u8; 32] {
+            use sha2::Digest;
+            let mut sorted: Vec<&(DirEntry, &[u8])> = sections
+                .iter()
+                .filter(|(e, _)| section::REQUIRED.contains(&e.section_id))
+                .collect();
+            sorted.sort_by_key(|(e, _)| e.section_id);
+            let mut canon = Vec::new();
+            for (e, body) in sorted {
+                canon.extend_from_slice(&e.section_id.to_le_bytes());
+                canon.extend_from_slice(&sha2::Sha256::digest(body));
+            }
+            sha2::Sha256::digest(&canon).into()
+        }
+
         /// Directory parse accepting BOTH header sizes: 64 (no binding)
         /// and 96 (execution hash present and verified).
         pub fn parse_directory_with_binding(bytes: &[u8]) -> Result<Vec<DirEntry>, String> {
@@ -2118,10 +2150,15 @@ pub mod qpack2 {
             let body_off = bc.0.offset as usize + bc.0.len as usize - 1;
             tampered[body_off] ^= 0xff;
             assert!(reader::validate(&tampered).is_err());
-            // ...and even with the content hash repaired, the M26-003-D
-            // execution-integrity binding still rejects
+            // ...and with the content hash CORRECTLY repaired, per-section
+            // integrity accepts the self-consistent rewrite (ADR-0026: any
+            // writer able to rewrite content can rewrite in-band digests)
+            // — only the M26-003-D execution-integrity binding rejects it
             let repaired = repair_section_hash(&tampered, &entries, section::BUNDLE_BYTECODE);
-            assert!(reader::validate(&repaired).is_err());
+            assert!(
+                reader::validate(&repaired).is_ok(),
+                "self-consistent rewrites pass per-section integrity (ADR-0026)"
+            );
             assert!(reader::parse_directory_with_binding(&repaired).is_err());
         }
 
@@ -2149,6 +2186,79 @@ pub mod qpack2 {
                 "raw section must be smaller than base64 text"
             );
             assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        // ---- M26-006-A: required-sections execution digest ----
+
+        #[test]
+        fn required_sections_digest_detects_corruption_and_ignores_optional() {
+            let base = |with_bytecode: bool| -> Vec<u8> {
+                let mut payloads: Vec<(u16, &[u8])> = vec![
+                    (section::STRINGS, b"strings-payload-bytes"),
+                    (section::ROUTES, b"router-graph-payload"),
+                    (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                    (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                    (section::POLICIES, b"policies-payload-xxx"),
+                    (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                    (section::CONTRACT_SUMMARY, b"contract-summary12"),
+                ];
+                if with_bytecode {
+                    payloads.push((section::BUNDLE_BYTECODE, b"qjsbc-bytes-here-xx"));
+                }
+                reader::build_file(&payloads)
+            };
+            let file = base(false);
+            let sections = reader::validate(&file).unwrap();
+            let d0 = reader::required_sections_digest(&sections);
+
+            // optional section presence does NOT change the digest
+            let with_bc = base(true);
+            let s_bc = reader::validate(&with_bc).unwrap();
+            assert_eq!(
+                d0,
+                reader::required_sections_digest(&s_bc),
+                "BUNDLE_BYTECODE is optional and outside the execution digest"
+            );
+
+            // any required-section byte change changes the digest EVEN IF
+            // the directory's recorded hash is repaired to match — the
+            // digest recomputes from bytes, so self-consistent rewrites
+            // still produce a different execution digest
+            let mut tampered = file.clone();
+            let routes = sections
+                .iter()
+                .find(|(e, _)| e.section_id == section::ROUTES)
+                .unwrap();
+            let body_off = routes.0.offset as usize;
+            tampered[body_off] ^= 0x01;
+            let repaired =
+                repair_section_hash(&tampered, &file_dir_entries(&file), section::ROUTES);
+            let s_t = reader::validate(&repaired).unwrap();
+            assert_ne!(
+                d0,
+                reader::required_sections_digest(&s_t),
+                "byte corruption must change the digest even with repaired directory hashes"
+            );
+
+            // stability: identical content re-laid-out at different
+            // offsets/length padding yields the same REQUIRED digest only
+            // when required bytes are identical — different strings body
+            // changes it
+            let mut other = file.clone();
+            let strings = sections
+                .iter()
+                .find(|(e, _)| e.section_id == section::STRINGS)
+                .unwrap();
+            other[strings.0.offset as usize] ^= 0x01;
+            let repaired_strings =
+                repair_section_hash(&other, &file_dir_entries(&file), section::STRINGS);
+            let s_o = reader::validate(&repaired_strings).unwrap();
+            assert_ne!(d0, reader::required_sections_digest(&s_o));
+        }
+
+        /// Parse a well-formed file's directory for hash-repair helpers.
+        fn file_dir_entries(file: &[u8]) -> Vec<reader::DirEntry> {
+            reader::parse_directory(file).unwrap()
         }
 
         // ---- M26-005-C: unsafe confinement + platform smoke ----
@@ -2338,7 +2448,9 @@ pub mod qpack2 {
         }
 
         /// Rebuild a tampered file with one section's content sha256
-        /// recomputed so ONLY the aggregate binding can catch the change.
+        /// recomputed so the per-section rule passes and only an
+        /// aggregate (binding / execution digest) can catch the change.
+        /// Works for both header layouts (reads the stored header_size).
         fn repair_section_hash(
             file: &[u8],
             entries: &[super::reader::DirEntry],
@@ -2351,11 +2463,12 @@ pub mod qpack2 {
                 .enumerate()
                 .find(|(_, e)| e.section_id == id)
                 .unwrap();
-            let dir_off =
-                super::reader::EXTENDED_HEADER_SIZE as usize + i * super::DIR_ENTRY_SIZE as usize;
+            let header_size = u32::from_le_bytes(file[12..16].try_into().unwrap()) as usize;
+            let dir_off = header_size + i * super::DIR_ENTRY_SIZE as usize;
             let body = &file[e.offset as usize..(e.offset + e.len) as usize];
             let hash: [u8; 32] = sha2::Sha256::digest(body).into();
-            out[dir_off + 32..dir_off + 64].copy_from_slice(&hash);
+            // content_sha256 lives at entry offset 24 (spec §3)
+            out[dir_off + 24..dir_off + 56].copy_from_slice(&hash);
             out
         }
 
