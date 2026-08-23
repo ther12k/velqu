@@ -192,6 +192,11 @@ pub mod qpack2 {
         pub enum PackBytes {
             #[cfg(unix)]
             Mapped(memmap2::Mmap),
+            /// Pack bytes compiled into a standalone binary
+            /// (`include_bytes!`-style, M26-009-B wiring). Zero-copy by
+            /// construction: validation borrows straight out of the
+            /// executable image; nothing is copied or reconstructed.
+            Embedded(&'static [u8]),
             Owned(Vec<u8>),
         }
 
@@ -201,6 +206,7 @@ pub mod qpack2 {
                 match self {
                     #[cfg(unix)]
                     PackBytes::Mapped(m) => m.as_ref(),
+                    PackBytes::Embedded(b) => b,
                     PackBytes::Owned(v) => v.as_slice(),
                 }
             }
@@ -2269,9 +2275,14 @@ pub mod qpack2 {
 
             let mapped = reader::PackBytes::open(&path).unwrap();
             let owned = reader::PackBytes::Owned(file.clone());
+            // standalone-binary carrier: static bytes, zero-copy by
+            // construction (leaked here to mimic include_bytes!)
+            let embedded = reader::PackBytes::Embedded(Box::leak(file.clone().into_boxed_slice()));
 
             let m = reader::validate(&mapped).expect("mapped file validates");
             let o = reader::validate(&owned).expect("owned file validates");
+            let e = reader::validate(&embedded).expect("embedded bytes validate");
+            assert_eq!(m.len(), e.len());
             assert_eq!(m.len(), o.len());
             for ((me, mb), (oe, ob)) in m.iter().zip(o.iter()) {
                 assert_eq!(me.section_id, oe.section_id);
@@ -2287,6 +2298,17 @@ pub mod qpack2 {
                     p >= base && p + body.len() <= base + mapped.len(),
                     "section {:#x} body is not a view into the pack bytes",
                     e.section_id
+                );
+            }
+            // embedded carrier is zero-copy too: bodies are views into
+            // the static bytes, not copies
+            let ebase = embedded.as_ptr() as usize;
+            for (e_ent, e_body) in &e {
+                let p = e_body.as_ptr() as usize;
+                assert!(
+                    p >= ebase && p + e_body.len() <= ebase + embedded.len(),
+                    "embedded section {:#x} body is not a view into the static bytes",
+                    e_ent.section_id
                 );
             }
             let _ = std::fs::remove_dir_all(&dir);
