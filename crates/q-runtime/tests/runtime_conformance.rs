@@ -1132,6 +1132,26 @@ fn write_pack(dir: &std::path::Path) -> PathBuf {
 }
 
 #[test]
+fn source_sidecar_never_affects_serving() {
+    // ADR-0027: a present-but-garbage <pack>.sources.json sidecar changes
+    // nothing about serving — the runtime has no load path to it.
+    let dir = temp_dir("sidecar");
+    let pack_path = write_pack(&dir);
+    std::fs::write(
+        dir.join("app.qpack.sources.json"),
+        b"{\"formatVersion\":99,\"packSha256\":\"garbage\"}",
+    )
+    .unwrap();
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "sidecar must not influence serving");
+    assert_eq!(r.header("x-velqu-stage"), Some("native"));
+    drop(server);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn debug_dump_pack() {
     let dir = std::path::PathBuf::from("/tmp/velqu-debug");
     let _ = std::fs::remove_dir_all(&dir);

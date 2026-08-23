@@ -4,7 +4,7 @@ parent_task: M26-004
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -115,3 +115,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-004-C (PASS)
+
+Deliverable: ADR-0027 producer flip — production packs embed no source
+map; debug sources and maps move to the external
+`<pack>.sources.json` sidecar (advisory tooling file, bound to the exact
+pack bytes via packSha256) that the runtime never reads.
+
+Changed files:
+
+- `packages/compiler/src/emit.ts` — pack field `sourceMap` now `null`
+  (debug-free production default; the map is still computed for the
+  sidecar).
+- `packages/compiler/src/index.ts` — build writes
+  `app.qpack.sources.json` beside the pack: `{formatVersion: 1,
+  packSha256: sha256(pack bytes), bundleSource, sourceMap, modules}`.
+- `crates/q-pack/src/lib.rs` — `sources_sidecar` module:
+  `SourcesSidecar`/`SidecarModule` types, `SIDECAR_FORMAT_VERSION = 1`,
+  `verify_against(pack_sha256)` TOOL-side advisory binding check
+  (unknown format versions fail closed for tooling; mismatch = wrong
+  pack). Runtime confers nothing (ADR-0026 trust model).
+- `crates/q-runtime/tests/runtime_conformance.rs` — test
+  `source_sidecar_never_affects_serving`.
+- `conformance/compiler/compiler.test.ts` — sidecar suite.
+
+Tests:
+
+- `source_sidecar_never_affects_serving` (velqu-runtime) — a
+  present-but-garbage sidecar next to a valid pack: server serves
+  normally (ADR-0027 compatibility matrix row 1).
+- `sources_sidecar_binds_to_one_pack_and_tooling_checks_are_advisory`
+  (q-pack) — sidecar JSON round trip; exact-hash verifies, drift and
+  unknown format versions reject for tooling.
+- Compiler conformance "production pack embeds no source map; sidecar
+  carries sources bound to the pack hash" — pack.sourceMap is null,
+  sidecar exists, packSha256 equals sha256(app.qpack), bundleSource
+  contains the function manifest, modules non-empty.
+- Pre-existing `verification_is_independent_of_debug_sidecars` unchanged
+  and still green.
+
+Commands and results:
+
+- `cargo test -p q-pack` — 74 passed + 2.
+- `cargo test -p velqu-runtime` — 27 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `bun test` — 83 pass / 0 fail / 178+ expects in the compiler suite
+  alone (full suite 83 pass).
+- `bun run typecheck`, `cargo fmt`, `cargo clippy --workspace
+  --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: no runtime read path to sidecars (pinned by test); production
+packs debug-free by default; v1 compatibility preserved (legacy packs
+with inline maps still verify and symbolize via `mapper_for`).

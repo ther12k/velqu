@@ -97,6 +97,59 @@ pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, Pa
 /// `docs/specs/pack-format-v2.md`). The encoder and native decoder land
 /// with M26-003; these constants exist so spec/code drift fails tests
 /// first. Nothing here changes legacy-v1 behavior.
+/// ADR-0027 debug source sidecar (`<pack>.sources.json`): advisory
+/// tooling file bound to exactly one pack via `pack_sha256`. The runtime
+/// NEVER reads sidecars — no load path or fallback consults them
+/// (`verification_is_independent_of_debug_sidecars`); verification here
+/// serves DEVELOPMENT TOOLING ONLY (symbolizers, inspect) and confers no
+/// authenticity (ADR-0026).
+pub mod sources_sidecar {
+    use serde::{Deserialize, Serialize};
+
+    pub const SIDECAR_FORMAT_VERSION: u32 = 1;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SidecarModule {
+        pub id: String,
+        pub file: String,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SourcesSidecar {
+        pub format_version: u32,
+        /// sha256 (hex) of the exact pack file bytes this sidecar belongs to.
+        pub pack_sha256: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub bundle_source: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub source_map: Option<String>,
+        #[serde(default)]
+        pub modules: Vec<SidecarModule>,
+    }
+
+    impl SourcesSidecar {
+        /// Tool-side advisory check: the sidecar must declare the exact
+        /// pack file hash it belongs to. A mismatch is an ergonomic warning
+        /// for tooling, never a runtime behavior change.
+        pub fn verify_against(&self, pack_sha256: &str) -> Result<(), String> {
+            if self.format_version != SIDECAR_FORMAT_VERSION {
+                return Err(format!(
+                    "sources sidecar format version {} != {} (ADR-0024: unknown versions fail closed)",
+                    self.format_version, SIDECAR_FORMAT_VERSION
+                ));
+            }
+            if self.pack_sha256 != pack_sha256 {
+                return Err(
+                    "sources sidecar belongs to a different pack (packSha256 mismatch)".to_string(),
+                );
+            }
+            Ok(())
+        }
+    }
+}
+
 pub mod qpack2 {
     /// File magic at offset 0 (ASCII).
     pub const MAGIC: &[u8; 8] = b"VELQUQPK";
@@ -4373,6 +4426,35 @@ mod tests {
         debug_build
             .verify()
             .expect("debug-annotated v1 pack still verifies");
+    }
+
+    #[test]
+    fn sources_sidecar_binds_to_one_pack_and_tooling_checks_are_advisory() {
+        use sources_sidecar::{SidecarModule, SourcesSidecar, SIDECAR_FORMAT_VERSION};
+        let sidecar = SourcesSidecar {
+            format_version: SIDECAR_FORMAT_VERSION,
+            pack_sha256: hex(&Sha256::digest(b"exact-pack-bytes")),
+            bundle_source: Some("globalThis.__velquFunctionManifest = [];".into()),
+            source_map: Some("{\"version\":3,\"sources\":[]}".into()),
+            modules: vec![SidecarModule {
+                id: "app.ts".into(),
+                file: "app.ts".into(),
+            }],
+        };
+        // round trip through the sidecar JSON form
+        let json = serde_json::to_string(&sidecar).unwrap();
+        let back: SourcesSidecar = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, sidecar);
+        // tool-side binding: exact hash verifies, drift rejects
+        let want = hex(&Sha256::digest(b"exact-pack-bytes"));
+        assert_eq!(back.verify_against(&want), Ok(()));
+        assert!(back
+            .verify_against(&hex(&Sha256::digest(b"other-pack")))
+            .is_err());
+        // unknown sidecar format versions fail closed for tooling too
+        let mut future = sidecar.clone();
+        future.format_version = 2;
+        assert!(future.verify_against(&want).is_err());
     }
 
     #[test]
