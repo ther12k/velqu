@@ -4,7 +4,7 @@ parent_task: M26-001
 milestone: M26
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -114,3 +114,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M26-001-V merged in PR #779 at
+  commit `17121ea1d2c949e0846e14ad56539f149e297477`; issue #184 is closed.
+  The evidence package is based on clean parent HEAD `1e468fb` before
+  this commit.
+- Parent acceptance matrix: `M26-001-V` maps all four guardrails to
+  source and named tests:
+  1. Unknown versions fail closed: `detect_pack_format_mode` +
+     `unknown_versions_fail_closed` +
+     `mode_two_still_fails_closed_before_native_adapter`.
+  2. Current mode has no legacy handler table:
+     `numeric_pack_with_handler_table_is_rejected`,
+     `numeric_pack_without_compiled_router_is_rejected`,
+     `accepts_valid_numeric_pack`.
+  3. Compatibility policy explicit: ADR-0024 (mode policy, named
+     legacy-v1 boundary, compatibility matrix, migration rules),
+     ADR-0025 (section directory), ADR-0026 (integrity ≠ authenticity),
+     ADR-0027 (debug/source sidecar) + `docs/specs/pack-format-v2.md`.
+  4. Untrusted arbitrary bytecode forbidden: compiler-owned,
+     integrity-pinned bytecode (missing hash / hash mismatch /
+     integrity-without-bytecode all reject; engine/ABI mismatches
+     reject; runtime-local tampered-bytecode fails BEFORE ready).
+- Source-backed implementation records:
+  - `M26-001-A` (PR #775, #180 closed): numeric current mode + legacy v1
+    adapter (ADR-0024, mode dispatch, fail-closed unknowns).
+  - `M26-001-B` (PR #776, #181 closed): section directory, alignment,
+    bounds, optional sections, versioning (ADR-0025, pack-format-v2
+    spec, qpack2 module).
+  - `M26-001-C` (PR #777, #182 closed): integrity separated from
+    authenticity (ADR-0026 + pinning tests).
+  - `M26-001-D` (PR #778, #183 closed): debug/source sidecar policy
+    (ADR-0027 + runtime-independence pin).
+- Exact verification (fresh on this branch): `cargo test -p q-pack`
+  (48 + 2); `cargo test -p q-engine-quickjs` (1 + 96);
+  `cargo test -p q-http` (4 + 6 + 1); `cargo test -p velqu-runtime`
+  (24); `bun test` (81 passed, 0 failed, 481 expect calls);
+  `bun run typecheck` clean; `cargo fmt --check` clean; `cargo clippy
+  --workspace --all-targets -- -D warnings` clean; `scripts/validate-okf`
+  clean; `./scripts/verify` ALL stages pass.
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M26-001 PASS;
+  the beta checklist and task index mark this Z packet PASS. The
+  generated Spark queues expose M26-002-A (#186) next.
+- Remaining scope: `M26-002`+ remain TODO until implemented and
+  evidenced.
+
+Commit: `ef0d456`.
