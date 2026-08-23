@@ -111,6 +111,102 @@ pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, Pa
 /// (`verification_is_independent_of_debug_sidecars`); verification here
 /// serves DEVELOPMENT TOOLING ONLY (symbolizers, inspect) and confers no
 /// authenticity (ADR-0026).
+/// M26-006-B: Ed25519-compatible detached signature hook (ADR-0026).
+///
+/// Signatures are OUT-OF-BAND BY DESIGN: the pack carries no signature
+/// fields, the runtime has no trust anchors, and no runtime code path
+/// reads anything from this module. This hook serves RELEASE TOOLING —
+/// the publisher signs the pack file, operators/deployment pipelines
+/// verify BEFORE deployment. The recommended signing message is the
+/// pack file bytes; `sign_digest`/`verify_digest` exist for pipelines
+/// that commit to the M26-006-A `required_sections_digest` instead.
+///
+/// This is authenticity, not integrity: per-section digests detect
+/// corruption in-band; this proves WHO authorized the bytes.
+pub mod signatures {
+    use serde::{Deserialize, Serialize};
+
+    pub const ALGORITHM_ED25519: &str = "ed25519";
+
+    /// Release-metadata record for a detached signature — the "slot"
+    /// release pipelines publish next to the artifact (e.g. in
+    /// SHA256SUMS-style metadata). Never inside any pack layout.
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    pub struct DetachedSignature {
+        pub algorithm: String,
+        /// signer public key, hex (Ed25519: 32 bytes)
+        pub public_key_hex: String,
+        /// detached signature, hex (Ed25519: 64 bytes)
+        pub signature_hex: String,
+    }
+
+    fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
+        if !s.len().is_multiple_of(2) {
+            return Err("hex string has odd length".into());
+        }
+        let mut out = Vec::with_capacity(s.len() / 2);
+        let bytes = s.as_bytes();
+        for pair in bytes.chunks(2) {
+            let hi = (pair[0] as char).to_digit(16).ok_or("invalid hex digit")?;
+            let lo = (pair[1] as char).to_digit(16).ok_or("invalid hex digit")?;
+            out.push(((hi << 4) | lo) as u8);
+        }
+        Ok(out)
+    }
+
+    fn hex_encode(b: &[u8]) -> String {
+        b.iter().map(|x| format!("{x:02x}")).collect()
+    }
+
+    impl DetachedSignature {
+        /// TOOL SIDE: sign the exact pack file bytes with the publisher
+        /// key and produce the release-metadata record.
+        pub fn sign_pack(secret: &ed25519_dalek::SigningKey, pack_bytes: &[u8]) -> Self {
+            use ed25519_dalek::Signer;
+            let sig = secret.sign(pack_bytes);
+            DetachedSignature {
+                algorithm: ALGORITHM_ED25519.into(),
+                public_key_hex: hex_encode(&secret.verifying_key().to_bytes()),
+                signature_hex: hex_encode(&sig.to_bytes()),
+            }
+        }
+
+        /// Verify this record against the exact pack file bytes.
+        /// Fails closed on: wrong algorithm tag, malformed hex, wrong
+        /// key/signature lengths, or a signature mismatch.
+        pub fn verify_over(&self, pack_bytes: &[u8]) -> Result<(), String> {
+            if self.algorithm != ALGORITHM_ED25519 {
+                return Err(format!(
+                    "unsupported signature algorithm {:?} (only ed25519)",
+                    self.algorithm
+                ));
+            }
+            let key = hex_decode(&self.public_key_hex)?;
+            let sig = hex_decode(&self.signature_hex)?;
+            let key: [u8; 32] = key
+                .try_into()
+                .map_err(|_| "public key is not 32 bytes".to_string())?;
+            let sig: [u8; 64] = sig
+                .try_into()
+                .map_err(|_| "signature is not 64 bytes".to_string())?;
+            use ed25519_dalek::Verifier;
+            let vk = ed25519_dalek::VerifyingKey::from_bytes(&key)
+                .map_err(|e| format!("invalid ed25519 public key: {e}"))?;
+            let sig = ed25519_dalek::Signature::from_bytes(&sig);
+            vk.verify(pack_bytes, &sig)
+                .map_err(|e| format!("ed25519 signature mismatch: {e}"))
+        }
+
+        /// Verify a pipeline that committed to the M26-006-A
+        /// required-sections digest instead of the raw bytes: the
+        /// signature must be over the 32-byte digest.
+        pub fn verify_digest(&self, digest: &[u8; 32]) -> Result<(), String> {
+            self.verify_over(digest)
+        }
+    }
+}
+
 pub mod sources_sidecar {
     use serde::{Deserialize, Serialize};
 
@@ -2186,6 +2282,92 @@ pub mod qpack2 {
                 "raw section must be smaller than base64 text"
             );
             assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        /// Deterministic-ish test key generation from a seed (no rand
+        /// dependency; ed25519-dalek keys derive directly from seeds).
+        fn generate_publisher_key() -> ed25519_dalek::SigningKey {
+            let seed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap();
+            let mut bytes = [0u8; 32];
+            let nanos = seed.as_nanos().to_le_bytes(); // 16 bytes
+            bytes[..16].copy_from_slice(&nanos);
+            let secs = seed.as_secs().to_le_bytes(); // 8 bytes
+            bytes[16..24].copy_from_slice(&secs);
+            bytes[24..32].fill(0x5a);
+            ed25519_dalek::SigningKey::from_bytes(&bytes)
+        }
+
+        // ---- M26-006-B: detached ed25519 signature hook ----
+
+        #[test]
+        fn ed25519_rfc8032_test_vector_verifies() {
+            // RFC 8032 §7.1 TEST 1 (public constants, no secrets):
+            // empty message, well-known keypair/signature.
+            use crate::signatures::DetachedSignature;
+            let sig = DetachedSignature {
+                algorithm: "ed25519".into(),
+                public_key_hex:
+                    "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a".into(),
+                signature_hex: "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b".into(),
+            };
+            assert_eq!(sig.verify_over(b""), Ok(()));
+            // any other message must fail
+            assert!(sig.verify_over(b"x").is_err());
+        }
+
+        #[test]
+        fn detached_signature_roundtrip_and_fail_closed() {
+            use crate::signatures::DetachedSignature;
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            let pack = reader::build_file_bound(&payloads);
+
+            // tool side: random publisher key signs the exact pack bytes
+            let secret = generate_publisher_key();
+            let record = DetachedSignature::sign_pack(&secret, &pack);
+            assert_eq!(record.algorithm, "ed25519");
+            assert!(record.verify_over(&pack).is_ok());
+
+            // tampered pack bytes reject
+            let mut tampered = pack.clone();
+            let last = tampered.len() - 1;
+            tampered[last] ^= 0x01;
+            assert!(record.verify_over(&tampered).is_err());
+
+            // digest pipeline: sign + verify the M26-006-A digest
+            let sections = reader::validate(&pack).unwrap();
+            let digest = reader::required_sections_digest(&sections);
+            let digest_record = DetachedSignature::sign_pack(&secret, &digest);
+            assert!(digest_record.verify_digest(&digest).is_ok());
+            let mut other = digest;
+            other[0] ^= 0x01;
+            assert!(digest_record.verify_digest(&other).is_err());
+
+            // fail-closed shapes: wrong algorithm, malformed hex, bad lengths
+            let mut bad = record.clone();
+            bad.algorithm = "ecdsa".into();
+            assert!(bad.verify_over(&pack).is_err());
+            let mut bad = record.clone();
+            bad.public_key_hex = bad.public_key_hex[..62].to_string();
+            assert!(bad.verify_over(&pack).is_err());
+            let mut bad = record.clone();
+            bad.signature_hex = format!("{}00", bad.signature_hex);
+            assert!(bad.verify_over(&pack).is_err());
+            // a DIFFERENT signer's key rejects
+            let other_secret = generate_publisher_key();
+            let forged = DetachedSignature::sign_pack(&other_secret, &pack);
+            let mut forged_key_mismatch = forged;
+            forged_key_mismatch.public_key_hex = record.public_key_hex.clone();
+            assert!(forged_key_mismatch.verify_over(&pack).is_err());
         }
 
         // ---- M26-006-A: required-sections execution digest ----

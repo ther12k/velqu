@@ -4,7 +4,7 @@ parent_task: M26-006
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -119,3 +119,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-006-B (PASS)
+
+Deliverable: Ed25519-compatible detached signature slot/hook, exactly
+as ADR-0026 frames it — OUT-OF-BAND authenticity for release tooling;
+the pack carries no signature fields and NO runtime code path reads
+this module.
+
+Changed files:
+
+- `Cargo.toml` + `crates/q-pack/Cargo.toml` + `Cargo.lock` —
+  `ed25519-dalek = "2"` (q-pack only).
+- `crates/q-pack/src/lib.rs` — `q_pack::signatures`:
+  - `DetachedSignature` serde record (the "slot" release pipelines
+    publish beside the artifact): algorithm tag, publicKeyHex,
+    signatureHex.
+  - `sign_pack(&SigningKey, pack_bytes)` — tool side.
+  - `verify_over(pack_bytes)` — fails closed on wrong algorithm tag,
+    malformed hex, wrong key/signature lengths, invalid key, or
+    signature mismatch.
+  - `verify_digest(&[u8;32])` — for pipelines committing to the
+    M26-006-A `required_sections_digest` instead of raw bytes.
+
+Tests (83 total):
+
+- `ed25519_rfc8032_test_vector_verifies` — RFC 8032 §7.1 TEST 1
+  (public constants): verifies on the empty message, rejects any other
+  message.
+- `detached_signature_roundtrip_and_fail_closed` — sign/verify over a
+  bound pack; tampered bytes reject; digest-pipeline sign/verify with
+  digest-tamper rejection; wrong algorithm, truncated hex, wrong
+  lengths, and a different signer's key all fail closed.
+
+Commands and results:
+
+- `cargo test -p q-pack` — 83 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: signature verifies publisher when configured (roundtrip +
+RFC vector); no digest/authenticity conflation (module docs state the
+boundary; per-section digests remain the in-band corruption control);
+key discovery configuration is M26-006-C; the unsigned-local-dev policy
+is M26-006-D.
