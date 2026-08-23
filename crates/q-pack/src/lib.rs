@@ -177,6 +177,55 @@ pub mod qpack2 {
     pub mod reader {
         use super::{section, DIR_ENTRY_SIZE, FLAG_OPTIONAL, HEADER_SIZE, MAGIC, SECTION_ALIGN};
 
+        /// Pack file bytes: mmap'd READ-ONLY where supported (unix),
+        /// owned `Vec<u8>` otherwise (M26-005-A). Deref to `&[u8]` so
+        /// directory validation borrows zero-copy section views out of
+        /// the mapping — no owned copy of the pack is reconstructed.
+        pub enum PackBytes {
+            #[cfg(unix)]
+            Mapped(memmap2::Mmap),
+            Owned(Vec<u8>),
+        }
+
+        impl std::ops::Deref for PackBytes {
+            type Target = [u8];
+            fn deref(&self) -> &[u8] {
+                match self {
+                    #[cfg(unix)]
+                    PackBytes::Mapped(m) => m.as_ref(),
+                    PackBytes::Owned(v) => v.as_slice(),
+                }
+            }
+        }
+
+        impl PackBytes {
+            /// Open a pack file read-only. Prefer a read-only mapping on
+            /// unix; empty/unmappable/other platforms fall back to a
+            /// bounded owned read. Validation rejects malformed lengths
+            /// identically on either path (same `&[u8]` consumer).
+            pub fn open(path: &std::path::Path) -> Result<PackBytes, String> {
+                let file =
+                    std::fs::File::open(path).map_err(|e| format!("open pack failed: {e}"))?;
+                #[cfg(unix)]
+                {
+                    let len = file
+                        .metadata()
+                        .map_err(|e| format!("pack metadata failed: {e}"))?
+                        .len();
+                    if len > 0 {
+                        // Safety: read-only mapping (`Mmap::map` requests
+                        // PROT_READ) of a file we hold open for the
+                        // mapping's lifetime; consumers only read.
+                        let map = unsafe { memmap2::Mmap::map(&file) }
+                            .map_err(|e| format!("mmap pack failed: {e}"))?;
+                        return Ok(PackBytes::Mapped(map));
+                    }
+                }
+                let bytes = std::fs::read(path).map_err(|e| format!("read pack failed: {e}"))?;
+                Ok(PackBytes::Owned(bytes))
+            }
+        }
+
         #[derive(Debug)]
         pub struct Header {
             pub total_size: u64,
@@ -2063,6 +2112,73 @@ pub mod qpack2 {
                 "raw section must be smaller than base64 text"
             );
             assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        // ---- M26-005-A: mmap/read-only pack bytes ----
+
+        #[test]
+        fn pack_bytes_mapped_and_owned_validate_identically_zero_copy() {
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            let file = reader::build_file_bound(&payloads);
+            let dir = std::env::temp_dir().join("velqu-m26-005-a");
+            let _ = std::fs::create_dir_all(&dir);
+            let path = dir.join("mapped.qpk2");
+            std::fs::write(&path, &file).unwrap();
+
+            let mapped = reader::PackBytes::open(&path).unwrap();
+            let owned = reader::PackBytes::Owned(file.clone());
+
+            let m = reader::validate(&mapped).expect("mapped file validates");
+            let o = reader::validate(&owned).expect("owned file validates");
+            assert_eq!(m.len(), o.len());
+            for ((me, mb), (oe, ob)) in m.iter().zip(o.iter()) {
+                assert_eq!(me.section_id, oe.section_id);
+                assert_eq!(me.content_sha256, oe.content_sha256);
+                assert_eq!(mb, ob, "mapped and owned views must carry the same bytes");
+            }
+            // zero-copy proof: every mapped section body is a view INSIDE
+            // the mapping (no owned reconstruction of section bytes)
+            let base = mapped.as_ptr() as usize;
+            for (e, body) in &m {
+                let p = body.as_ptr() as usize;
+                assert!(
+                    p >= base && p + body.len() <= base + mapped.len(),
+                    "section {:#x} body is not a view into the pack bytes",
+                    e.section_id
+                );
+            }
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+
+        #[test]
+        fn pack_bytes_rejects_missing_and_malformed_without_panic() {
+            // missing file
+            assert!(reader::PackBytes::open(std::path::Path::new(
+                "/nonexistent/definitely-missing.qpk2"
+            ))
+            .is_err());
+            // empty file: owned fallback, then header validation rejects
+            let dir = std::env::temp_dir().join("velqu-m26-005-a-empty");
+            let _ = std::fs::create_dir_all(&dir);
+            let empty = dir.join("empty.qpk2");
+            std::fs::write(&empty, b"").unwrap();
+            let bytes = reader::PackBytes::open(&empty).unwrap();
+            assert!(reader::validate(&bytes).is_err());
+            // junk bytes: mapped path on unix, must reject (never panic)
+            let junk = dir.join("junk.qpk2");
+            std::fs::write(&junk, vec![0x41u8; 4096]).unwrap();
+            let bytes = reader::PackBytes::open(&junk).unwrap();
+            assert!(reader::validate(&bytes).is_err());
+            assert!(reader::parse_directory_with_binding(&bytes).is_err());
+            let _ = std::fs::remove_dir_all(&dir);
         }
 
         /// Rebuild a tampered file with one section's content sha256

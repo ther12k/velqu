@@ -4,7 +4,7 @@ parent_task: M26-005
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-005-A (PASS)
+
+Deliverable: read-only mapped pack bytes where supported — the qpack2
+reader can consume the pack through a zero-copy `&[u8]` view backed by
+a read-only mmap on unix (owned fallback elsewhere), so directory
+validation borrows section views straight out of the mapping without
+reconstructing owned trees.
+
+Changed files:
+
+- `Cargo.toml` + `crates/q-pack/Cargo.toml` + `Cargo.lock` — workspace
+  dep `memmap2 = "0.9"` (q-pack only).
+- `crates/q-pack/src/lib.rs` — `qpack2::reader::PackBytes`:
+  - `Mapped(memmap2::Mmap)` on unix / `Owned(Vec<u8>)` otherwise;
+    `Deref<Target = [u8]>` so every existing rule (header, directory,
+    per-section sha256, required ids, binding) consumes it unchanged.
+  - `PackBytes::open(path)`: opens read-only; maps non-empty files on
+    unix (`Mmap::map` = PROT_READ), falls back to an owned read for
+    empty files, mmap failures, and non-unix.
+
+Tests (crates/q-pack/src/lib.rs, 77 total):
+
+- `pack_bytes_mapped_and_owned_validate_identically_zero_copy` — the
+  same bound file validates identically through the mapped and owned
+  paths (ids, hashes, byte equality), AND every section body pointer
+  lies inside the pack-bytes allocation: sections are views, not
+  copies (parent intent: no reconstructed owned trees).
+- `pack_bytes_rejects_missing_and_malformed_without_panic` — missing
+  file errors; empty file falls back to owned and rejects in header
+  validation; 4 KiB junk through the mapped path rejects in validate
+  and parse_directory_with_binding without panicking (guardrail:
+  malformed lengths cannot panic or read out of bounds).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 77 passed + 2, 0 failed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: malformed lengths cannot panic (junk/empty tests; the
+12-rule directory suite and mutation fuzz unchanged); reader is
+mode-agnostic (`&[u8]` consumer — shared and embedded modes both
+hand slices); fuzz parser stable (no parser change; PackBytes is a
+carrier). Startup allocation boundedness measurement is M26-005-V/Z
+scope (no perf claims made here).
