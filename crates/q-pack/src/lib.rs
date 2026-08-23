@@ -2846,6 +2846,13 @@ pub struct QPack {
     /// explicitly (G0-r1): no more inferring mode from `functions`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution_mode: Option<String>,
+    /// Decoded bytecode bytes cached by `verify_and_cache_bytecode` so
+    /// production startup base64-decodes exactly once: the same buffer
+    /// feeds the integrity hash and the engine handoff (M26-004-B).
+    /// Not serialized; absent when verification fails or bytecode is
+    /// skipped/absent.
+    #[serde(skip)]
+    pub decoded_bytecode: Option<Vec<u8>>,
     pub routes: Vec<RouteEntry>,
     /// schema IR registry: key -> IR node (q-schema-runtime types)
     #[serde(default)]
@@ -2912,10 +2919,10 @@ impl QPack {
         policy: BytecodePolicy,
     ) -> Result<QPack, PackError> {
         let bytes = std::fs::read(path)?;
-        let pack: QPack =
+        let mut pack: QPack =
             serde_json::from_slice(&bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
         match policy {
-            BytecodePolicy::Enforce => pack.verify()?,
+            BytecodePolicy::Enforce => pack.verify_and_cache_bytecode()?,
             BytecodePolicy::Skip => pack.verify_without_bytecode()?,
         }
         Ok(pack)
@@ -2935,6 +2942,23 @@ impl QPack {
     }
 
     pub fn verify(&self) -> Result<(), PackError> {
+        self.verify_inner(None)
+    }
+
+    /// Verify and cache the decoded bytecode so production startup
+    /// base64-decodes exactly once (M26-004-B): the integrity hash and
+    /// the engine handoff share one decode. The cache is populated only
+    /// on success; a rejected pack leaves it empty.
+    pub fn verify_and_cache_bytecode(&mut self) -> Result<(), PackError> {
+        let mut slot = self.decoded_bytecode.take();
+        let result = self.verify_inner(Some(&mut slot));
+        if result.is_ok() {
+            self.decoded_bytecode = slot;
+        }
+        result
+    }
+
+    fn verify_inner(&self, cache: Option<&mut Option<Vec<u8>>>) -> Result<(), PackError> {
         let reject = |msg: String| Err(PackError::Rejected(msg));
         if self.kind != "velqu.qpack" {
             return reject(format!("unexpected kind {:?}", self.kind));
@@ -3023,6 +3047,9 @@ impl QPack {
                 return reject(
                     "integrity failure: bytecode sha256 mismatch (tampered or corrupt)".into(),
                 );
+            }
+            if let Some(slot) = cache {
+                *slot = Some(data);
             }
         } else if self.integrity.bytecode_sha256.is_some() {
             return reject(
@@ -4042,6 +4069,7 @@ pub fn minimal_pack_public() -> QPack {
         plan: None,
     };
     let mut pack = QPack {
+        decoded_bytecode: None,
         header_name_table: Vec::new(),
         query_name_table: Vec::new(),
         cookie_name_table: Vec::new(),
@@ -4139,6 +4167,7 @@ mod tests {
             plan: None,
         };
         let mut pack = QPack {
+            decoded_bytecode: None,
         header_name_table: Vec::new(),
             query_name_table: Vec::new(),
             cookie_name_table: Vec::new(),
@@ -4516,6 +4545,62 @@ mod tests {
         // ignored; every other fingerprint dimension still enforced)
         p.verify_without_bytecode()
             .expect("source path verifies cross-target bytecode pack");
+    }
+
+    #[test]
+    fn verify_caches_decoded_bytecode_exactly_once() {
+        // host-matching bytecode with a correct hash: the ONE decode done
+        // for the integrity check must also serve the engine handoff
+        let code: &[u8] = b"qjsbc-module-bytes-payload";
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: Some(BytecodeTarget {
+                arch: std::env::consts::ARCH.into(),
+                os: std::env::consts::OS.into(),
+                pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+                endianness: if cfg!(target_endian = "big") {
+                    "big".into()
+                } else {
+                    "little".into()
+                },
+            }),
+            data: base64_encode(code),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(code)));
+        assert!(p.decoded_bytecode.is_none());
+        p.verify_and_cache_bytecode()
+            .expect("valid host bytecode verifies and caches");
+        assert_eq!(p.decoded_bytecode.as_deref(), Some(code));
+        // plain verify() (no cache request) never populates the field
+        let mut q = p.clone();
+        q.decoded_bytecode = None;
+        q.verify().expect("plain verify still works");
+        assert!(q.decoded_bytecode.is_none());
+    }
+
+    #[test]
+    fn failed_verify_leaves_no_cached_bytecode() {
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: "little".into(),
+            target: None,
+            data: base64_encode(b"tampered-payload"),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(b"different-bytes")));
+        assert!(p.verify_and_cache_bytecode().is_err());
+        assert!(
+            p.decoded_bytecode.is_none(),
+            "a rejected pack must not hand bytecode to the engine"
+        );
     }
 
     #[test]

@@ -68,7 +68,7 @@ fn run(args: Args) -> i32 {
     } else {
         q_pack::BytecodePolicy::Enforce
     };
-    let pack = match QPack::load_and_verify_with(&args.pack, policy) {
+    let mut pack = match QPack::load_and_verify_with(&args.pack, policy) {
         Ok(p) => p,
         Err(e) => {
             eprintln!(
@@ -149,13 +149,13 @@ fn run(args: Args) -> i32 {
         stages.push(("engine.spawn".into(), t.elapsed().as_secs_f64() * 1000.0));
 
         let t = Instant::now();
-        // ADR-0017: if the pack carries verified bytecode, skip source eval
+        // ADR-0017: if the pack carries verified bytecode, skip source eval.
+        // M26-004-B: the single base64 decode already happened inside
+        // verify (hash + handoff share one buffer); take it, no re-decode.
         let bytecode_decoded: Option<Vec<u8>> = if args.no_bytecode {
             None
         } else {
-            pack.bundle_bytecode
-                .as_ref()
-                .and_then(|bc| q_pack::base64_decode(&bc.data))
+            pack.decoded_bytecode.take()
         };
         let load_plan = if !pack.functions.is_empty() {
             q_engine::EngineLoadPlan::Numeric {

@@ -4,7 +4,7 @@ parent_task: M26-004
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -115,3 +115,60 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-004-B (PASS)
+
+Deliverable: base64-decode the embedded bytecode exactly once per
+production startup. Previously the bytecode was decoded TWICE: once
+inside `QPack::verify` (to hash it for the integrity check) and once in
+`velqu-runtime` main (to hand bytes to the engine). Now one decode feeds
+both.
+
+Changed files:
+
+- `crates/q-pack/src/lib.rs`
+- `crates/q-runtime/src/main.rs`
+- `crates/q-runtime/tests/runtime_conformance.rs` (fixture initializer
+  for the new field only)
+
+Implementation:
+
+- `QPack.decoded_bytecode: Option<Vec<u8>>` — `#[serde(skip)]` cache,
+  never serialized, absent on failure/skip.
+- `verify()` body refactored to `verify_inner(&self, cache: Option<&mut
+  Option<Vec<u8>>>)`; `verify()` wraps with `None` (unchanged behavior);
+  new `verify_and_cache_bytecode(&mut self)` passes a slot that the
+  bytecode block fills with the SAME decoded buffer used for the sha256
+  check — populated only on success.
+- `load_and_verify_with`: `BytecodePolicy::Enforce` now calls
+  `verify_and_cache_bytecode`; `Skip` path unchanged (never populates).
+- `main.rs` handoff: `pack.decoded_bytecode.take()` instead of a second
+  `base64_decode` (no re-decode, no copy beyond the take).
+
+Tests (crates/q-pack/src/lib.rs):
+
+- `verify_caches_decoded_bytecode_exactly_once` — host-matching
+  bytecode with correct hash verifies and the cache equals the decoded
+  bytes; plain `verify()` still works and never populates the field.
+- `failed_verify_leaves_no_cached_bytecode` — hash mismatch rejects AND
+  leaves the cache empty (a rejected pack cannot hand bytecode to the
+  engine).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 73 passed + 2, 0 failed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `cargo test -p velqu-runtime` — 26 passed.
+- `bun test` — 82 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (qRuntimeRelease +
+  proofPack manifest hashes; flagged matched-evidence follow-up from
+  M26-002-A).
+
+Guardrails: engine still loads bytecode OR source exactly once (worker
+either/or unchanged, covered by `bytecode_pack_serves_identically...`);
+no source parse in bytecode mode (ADR-0017 path untouched); tamper
+rejection strengthened by the failed-verify-no-cache invariant. The v2
+section path already carries raw bytes with no base64 (M26-004-A).
