@@ -239,7 +239,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-006-A](../tasks/03_m26_qpack_v2/M26-006-A-hash-required-execution-sections.md) | P1 | implement | PASS | M26-003-Z, M26-004-Z | Hash required execution sections |
 | [M26-006-B](../tasks/03_m26_qpack_v2/M26-006-B-provide-ed25519-compatible-signature-slot-hook.md) | P1 | implement | PASS | M26-006-A | Provide Ed25519-compatible signature slot/hook |
 | [M26-006-C](../tasks/03_m26_qpack_v2/M26-006-C-define-key-discovery-configuration.md) | P1 | implement | PASS | M26-006-B | Define key discovery/configuration |
-| [M26-006-D](../tasks/03_m26_qpack_v2/M26-006-D-keep-unsigned-local-development-supported-with-explicit-policy.md) | P1 | implement | TODO | M26-006-C | Keep unsigned local development supported with explicit policy |
+| [M26-006-D](../tasks/03_m26_qpack_v2/M26-006-D-keep-unsigned-local-development-supported-with-explicit-policy.md) | P1 | implement | PASS | M26-006-C | Keep unsigned local development supported with explicit policy |
 | [M26-006-V](../tasks/03_m26_qpack_v2/M26-006-V-verify-implement-execution-integrity-and-authenticity-hooks.md) | P1 | verify | TODO | M26-006-A, M26-006-B, M26-006-C, M26-006-D | Verify Implement execution integrity and authenticity hooks |
 | [M26-006-Z](../tasks/03_m26_qpack_v2/M26-006-Z-package-evidence-for-implement-execution-integrity-and-authenticity-hooks.md) | P1 | evidence | TODO | M26-006-V | Package evidence for Implement execution integrity and authenticity hooks |
 | [M26-007-A](../tasks/03_m26_qpack_v2/M26-007-A-remove-timestamps-non-deterministic-map-order.md) | P1 | implement | TODO | M26-003-Z, M26-004-Z | Remove timestamps/non-deterministic map order |
