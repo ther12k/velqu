@@ -2899,6 +2899,11 @@ pub struct QPack {
     /// explicitly (G0-r1): no more inferring mode from `functions`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution_mode: Option<String>,
+    /// M26-004-D: "embedded" when the compiled module bytecode contains
+    /// the prelude and handler manifest (startup then performs zero
+    /// prelude source evaluation). Absent = host-evaluated prelude.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_prelude: Option<String>,
     /// Decoded bytecode bytes cached by `verify_and_cache_bytecode` so
     /// production startup base64-decodes exactly once: the same buffer
     /// feeds the integrity hash and the engine handoff (M26-004-B).
@@ -2983,12 +2988,16 @@ impl QPack {
 
     /// M26-002-C: verify with the embedded bytecode ignored (source path).
     pub fn verify_without_bytecode(&self) -> Result<(), PackError> {
-        if self.bundle_bytecode.is_some() {
+        if self.bundle_bytecode.is_some() || self.bundle_prelude.is_some() {
             let mut source_only = self.clone();
             source_only.bundle_bytecode = None;
             // integrity.bytecodeSha256 without bytecode normally rejects;
             // on the source path it is simply unused
             source_only.integrity.bytecode_sha256 = None;
+            // M26-004-D: the embedded marker describes the BYTECODE module
+            // layout; the source path always evaluates the host prelude,
+            // so bytecode layout markers no longer apply.
+            source_only.bundle_prelude = None;
             return source_only.verify();
         }
         self.verify()
@@ -3108,6 +3117,21 @@ impl QPack {
             return reject(
                 "integrity declares bytecodeSha256 but no bundleBytecode present".into(),
             );
+        }
+        match self.bundle_prelude.as_deref() {
+            None => {}
+            Some("embedded") => {
+                if self.bundle_bytecode.is_none() {
+                    return reject(
+                        "bundlePrelude \"embedded\" requires bundleBytecode (source packs evaluate the host prelude)".into(),
+                    );
+                }
+            }
+            Some(other) => {
+                return reject(format!(
+                    "unknown bundlePrelude value {other:?} (only \"embedded\" is defined)"
+                ));
+            }
         }
         let routes_hash = self.routes_canonical_sha256();
         if routes_hash != self.integrity.routes_sha256 {
@@ -4122,6 +4146,7 @@ pub fn minimal_pack_public() -> QPack {
         plan: None,
     };
     let mut pack = QPack {
+        bundle_prelude: None,
         decoded_bytecode: None,
         header_name_table: Vec::new(),
         query_name_table: Vec::new(),
@@ -4220,6 +4245,7 @@ mod tests {
             plan: None,
         };
         let mut pack = QPack {
+            bundle_prelude: None,
             decoded_bytecode: None,
         header_name_table: Vec::new(),
             query_name_table: Vec::new(),
@@ -4665,6 +4691,24 @@ mod tests {
         q.decoded_bytecode = None;
         q.verify().expect("plain verify still works");
         assert!(q.decoded_bytecode.is_none());
+    }
+
+    #[test]
+    fn bundle_prelude_marker_rules() {
+        // embedded marker without bytecode rejects (source packs evaluate
+        // the host prelude; the marker describes the bytecode module)
+        let mut p = minimal_pack();
+        p.bundle_prelude = Some("embedded".into());
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("requires bundleBytecode"), "{msg}");
+        // unknown marker values fail closed
+        p.bundle_prelude = Some("inline".into());
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("unknown bundlePrelude"), "{msg}");
+        // the explicit source path clears the marker with the bytecode
+        p.bundle_prelude = Some("embedded".into());
+        p.verify_without_bytecode()
+            .expect("source path verifies embedded-prelude packs (host prelude)");
     }
 
     #[test]

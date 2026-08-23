@@ -139,6 +139,10 @@ fn run(args: Args) -> i32 {
         let mapper = source_map::mapper_for(&pack);
         let config = QuickJsConfig {
             request_slot_capacity: limits.max_queue.max(1),
+            // M26-004-D: embedded-prelude bytecode skips host prelude eval;
+            // the explicit source path always evaluates it.
+            embedded_prelude: pack.bundle_prelude.as_deref() == Some("embedded")
+                && !args.no_bytecode,
             ..Default::default()
         };
         let mut engine = QuickJsEngine::spawn(

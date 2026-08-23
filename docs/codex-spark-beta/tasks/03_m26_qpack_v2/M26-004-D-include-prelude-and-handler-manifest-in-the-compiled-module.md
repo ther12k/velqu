@@ -4,7 +4,7 @@ parent_task: M26-004
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -120,3 +120,63 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-004-D (PASS)
+
+Deliverable: the compiled module now contains the prelude and handler
+manifest, so bytecode production startup evaluates zero prelude source
+(guardrail: no source parse in bytecode production mode).
+
+Changed files:
+
+- `crates/q-engine-quickjs/src/lib.rs` — `pub mod prelude` (PRELUDE
+  importable by the bytecode tool); `QuickJsConfig.embedded_prelude`
+  (default false).
+- `crates/q-engine-quickjs/src/worker.rs` — handle collection extracted
+  into `collect_prelude_handles` (shared by both paths); spawn evaluates
+  PRELUDE source only when NOT embedded; `load()` collects handles after
+  the module evals (returned through the closure tuple, assigned to
+  `self.prelude` after); embedded flag with no bytecode fails closed in
+  the worker ("embedded-prelude pack must load bytecode").
+- `crates/q-pack/src/lib.rs` — `QPack.bundle_prelude: Option<String>`
+  (serde-omitted by default; closed vocabulary "embedded"); verify
+  rejects embedded-without-bytecode and unknown values;
+  `verify_without_bytecode` clears the marker with the bytecode (the
+  source path always evaluates the host prelude — `--no-bytecode`
+  recovery stays sanctioned for embedded packs).
+- `crates/q-bytecode-tool/src/main.rs` + `Cargo.toml` — compiles
+  `PRELUDE + bundle` (same-workspace, byte-identical prelude) and stamps
+  `bundle_prelude: "embedded"`.
+- `crates/q-runtime/src/main.rs` — config flag wired: marker present AND
+  policy Enforce.
+- `crates/q-runtime/tests/runtime_conformance.rs` — integration test.
+
+Tests:
+
+- `embedded_prelude_pack_serves_identically_and_source_recovery_works`
+  (velqu-runtime, 28 total) — prelude+manifest module bytecode serves
+  C0/C3/JS-JSON identically; `--no-bytecode` boots from source with the
+  host prelude and serves.
+- `bundle_prelude_marker_rules` (q-pack, 75 total) — marker rules and
+  the source-path clearing.
+- Legacy bytecode path unchanged and green
+  (`bytecode_pack_serves_identically_and_mismatch_fails_before_ready`:
+  host prelude + module bytecode without marker).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 75 + 2; `cargo test -p q-engine-quickjs` —
+  1 + 97; `cargo test -p velqu-runtime` — 28.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: no base64 decode at startup (M26-004-B cache still feeds the
+handoff); no source parse in bytecode production mode (prelude source
+eval removed from the embedded path — structural proof: handles can only
+come from module globals); tamper/incompatibility rejects unchanged
+(bytecode sha256 + fingerprint checks cover the prelude-including
+module); source mode explicit (`--no-bytecode` recovery tested).
