@@ -112,6 +112,514 @@ pub mod qpack2 {
     /// absence; presence is always fully validated.
     pub const FLAG_OPTIONAL: u16 = 0x0001;
 
+    /// M26-003-B: graph sections. Stores the verified runtime graph —
+    /// router nodes/edges/terminals (0x0002), RoutePlans (0x0003), the
+    /// schema manifest (0x0004), policy plans (0x0005), the function
+    /// manifest, and capabilities — over a shared strings table.
+    /// Property-equivalent: decoding reproduces the exact encoded
+    /// structures. The full file wrapper (header/directory/integrity)
+    /// lands in M26-003-C/D.
+    pub mod graph {
+        use super::super::{
+            FieldNeeds, RoutePlanDecl, SchemaDecl, SerializedRouter, SerializedRouterNode,
+            SerializedStaticEdge, SerializedTerminal, Strategy,
+        };
+
+        /// Sanity bound on router sizes (malformed input rejects before
+        /// any large allocation).
+        pub const MAX_NODES: u32 = 1 << 20;
+
+        pub fn opt_u32(v: Option<u32>) -> u32 {
+            v.unwrap_or(super::NONE_REF)
+        }
+
+        /// Shared string table builder: dedups interned strings and
+        /// hands out dense refs.
+        #[derive(Default)]
+        pub struct Strings {
+            items: Vec<String>,
+        }
+        impl Strings {
+            pub fn new() -> Self {
+                Self::default()
+            }
+            pub fn intern(&mut self, s: &str) -> u32 {
+                if let Some(i) = self.items.iter().position(|x| x == s) {
+                    return i as u32;
+                }
+                self.items.push(s.to_string());
+                (self.items.len() - 1) as u32
+            }
+            pub fn finish(self) -> Vec<String> {
+                self.items
+            }
+        }
+
+        // ---- router section (0x0002): nodes/edges/terminals ----
+        pub mod router_section {
+            use super::*;
+
+            pub fn encode(nodes: &[SerializedRouterNode], strings: &mut Strings) -> Vec<u8> {
+                let mut out = Vec::new();
+                out.extend_from_slice(&(nodes.len() as u32).to_le_bytes());
+                for n in nodes {
+                    out.extend_from_slice(&(n.static_edges.len() as u16).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(n.param_edge.map(|v| v as u32)).to_le_bytes());
+                    out.extend_from_slice(
+                        &opt_u32(n.wildcard_edge.map(|v| v as u32)).to_le_bytes(),
+                    );
+                    match &n.terminal {
+                        Some(t) => {
+                            out.push(1);
+                            out.extend_from_slice(&t.method_mask.to_le_bytes());
+                            for slot in &t.route_by_method {
+                                out.extend_from_slice(
+                                    &opt_u32(slot.map(|v| v as u32)).to_le_bytes(),
+                                );
+                            }
+                        }
+                        None => out.push(0),
+                    }
+                    for e in &n.static_edges {
+                        out.extend_from_slice(&strings.intern(&e.segment).to_le_bytes());
+                        out.extend_from_slice(&(e.target_node as u32).to_le_bytes());
+                    }
+                }
+                out
+            }
+
+            pub fn decode(bytes: &[u8], strings: &[String]) -> Result<SerializedRouter, String> {
+                let u32at = |off: usize| -> Result<u32, String> {
+                    bytes
+                        .get(off..off + 4)
+                        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "router section truncated".to_string())
+                };
+                let u16at = |off: usize| -> Result<u16, String> {
+                    bytes
+                        .get(off..off + 2)
+                        .map(|b| u16::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "router section truncated".to_string())
+                };
+                let none = |v: u32| -> Result<Option<usize>, String> {
+                    if v == super::super::NONE_REF {
+                        Ok(None)
+                    } else if v >= MAX_NODES {
+                        Err(format!("router ref {v} out of sane range"))
+                    } else {
+                        Ok(Some(v as usize))
+                    }
+                };
+                let node_count = u32at(0)?;
+                if node_count >= MAX_NODES {
+                    return Err("router node count out of sane range".to_string());
+                }
+                let mut nodes = Vec::with_capacity(node_count as usize);
+                let mut pos = 4usize;
+                for n_idx in 0..node_count as usize {
+                    let static_count = u16at(pos)? as usize;
+                    let param_ref = u32at(pos + 2)?;
+                    let wildcard_ref = u32at(pos + 6)?;
+                    let has_terminal = *bytes
+                        .get(pos + 10)
+                        .ok_or_else(|| "router section truncated".to_string())?;
+                    pos += 11;
+                    let mut terminal = None;
+                    if has_terminal == 1 {
+                        let method_mask = u16at(pos)?;
+                        pos += 2;
+                        let mut slots = [None::<usize>; 7];
+                        for slot in slots.iter_mut() {
+                            *slot = none(u32at(pos)?)?;
+                            pos += 4;
+                        }
+                        terminal = Some(SerializedTerminal {
+                            method_mask,
+                            route_by_method: slots,
+                        });
+                    } else if has_terminal != 0 {
+                        return Err(format!("router node {n_idx}: bad terminal flag"));
+                    }
+                    let mut static_edges = Vec::new();
+                    for _ in 0..static_count {
+                        let seg_ref = u32at(pos)?;
+                        let target = u32at(pos + 4)?;
+                        pos += 8;
+                        let segment = strings
+                            .get(seg_ref as usize)
+                            .ok_or_else(|| {
+                                format!("router node {n_idx}: segment ref out of bounds")
+                            })?
+                            .clone();
+                        let target_node = none(target)?
+                            .ok_or_else(|| format!("router node {n_idx}: NONE_REF edge target"))?;
+                        static_edges.push(SerializedStaticEdge {
+                            segment,
+                            target_node,
+                        });
+                    }
+                    nodes.push(SerializedRouterNode {
+                        static_edges,
+                        param_edge: none(param_ref)?,
+                        wildcard_edge: none(wildcard_ref)?,
+                        terminal,
+                    });
+                }
+                if pos != bytes.len() {
+                    return Err("router section has trailing bytes".to_string());
+                }
+                Ok(SerializedRouter { nodes })
+            }
+        }
+
+        // ---- RoutePlans section (0x0003) ----
+        pub mod plans_section {
+            use super::*;
+
+            fn push_ids(out: &mut Vec<u8>, ids: &[u32]) {
+                out.extend_from_slice(&(ids.len() as u16).to_le_bytes());
+                for id in ids {
+                    out.extend_from_slice(&id.to_le_bytes());
+                }
+            }
+
+            pub fn encode(plans: &[RoutePlanDecl], strings: &mut Strings) -> Vec<u8> {
+                let mut out = Vec::new();
+                out.extend_from_slice(&(plans.len() as u32).to_le_bytes());
+                for p in plans {
+                    out.extend_from_slice(&p.route_id.to_le_bytes());
+                    out.extend_from_slice(&p.handler_id.to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.policy_id).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.policy_handler_id).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.params_schema_id).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.query_schema_id).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.headers_schema_id).to_le_bytes());
+                    out.extend_from_slice(&opt_u32(p.body_schema_id).to_le_bytes());
+                    out.extend_from_slice(&p.default_status.to_le_bytes());
+                    out.push(match p.response_strategy {
+                        Strategy::Native => 0u8,
+                        Strategy::Js => 1u8,
+                    });
+                    let needs = p.field_needs;
+                    let mut flags = 0u8;
+                    if needs.params {
+                        flags |= 1;
+                    }
+                    if needs.query {
+                        flags |= 2;
+                    }
+                    if needs.headers {
+                        flags |= 4;
+                    }
+                    if needs.body {
+                        flags |= 8;
+                    }
+                    out.push(flags);
+                    out.extend_from_slice(&(p.deadline_ms as u32).to_le_bytes());
+                    out.extend_from_slice(
+                        &opt_u32(
+                            p.validation_fallback_reason
+                                .as_ref()
+                                .map(|s| strings.intern(s)),
+                        )
+                        .to_le_bytes(),
+                    );
+                    out.extend_from_slice(
+                        &opt_u32(
+                            p.response_fallback_reason
+                                .as_ref()
+                                .map(|s| strings.intern(s)),
+                        )
+                        .to_le_bytes(),
+                    );
+                    out.extend_from_slice(&(p.allowed_statuses.len() as u16).to_le_bytes());
+                    for st in &p.allowed_statuses {
+                        out.extend_from_slice(&st.to_le_bytes());
+                    }
+                    push_ids(&mut out, &p.header_name_ids);
+                    push_ids(&mut out, &p.query_name_ids);
+                    push_ids(&mut out, &p.cookie_name_ids);
+                }
+                out
+            }
+
+            pub fn decode(bytes: &[u8], strings: &[String]) -> Result<Vec<RoutePlanDecl>, String> {
+                let u32at = |off: usize| -> Result<u32, String> {
+                    bytes
+                        .get(off..off + 4)
+                        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "plans section truncated".to_string())
+                };
+                let u16at = |off: usize| -> Result<u16, String> {
+                    bytes
+                        .get(off..off + 2)
+                        .map(|b| u16::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "plans section truncated".to_string())
+                };
+                let some = |v: u32, strings: &[String]| -> Result<Option<String>, String> {
+                    if v == super::super::NONE_REF {
+                        Ok(None)
+                    } else {
+                        strings
+                            .get(v as usize)
+                            .map(|s| Some(s.clone()))
+                            .ok_or_else(|| "plans: fallback reason ref out of bounds".to_string())
+                    }
+                };
+                let read_ids = |pos: &mut usize| -> Result<Vec<u32>, String> {
+                    let n = u16at(*pos)? as usize;
+                    *pos += 2;
+                    let mut ids = Vec::with_capacity(n.min(1 << 16));
+                    for _ in 0..n {
+                        ids.push(u32at(*pos)?);
+                        *pos += 4;
+                    }
+                    Ok(ids)
+                };
+                let count = u32at(0)? as usize;
+                if count > 1 << 20 {
+                    return Err("plans count out of sane range".to_string());
+                }
+                let mut out = Vec::with_capacity(count);
+                let mut pos = 4usize;
+                for i in 0..count {
+                    let route_id = u32at(pos)?;
+                    let handler_id = u32at(pos + 4)?;
+                    let policy_id = u32at(pos + 8)?;
+                    let policy_handler_id = u32at(pos + 12)?;
+                    let params_schema_id = u32at(pos + 16)?;
+                    let query_schema_id = u32at(pos + 20)?;
+                    let headers_schema_id = u32at(pos + 24)?;
+                    let body_schema_id = u32at(pos + 28)?;
+                    let default_status = u16at(pos + 32)?;
+                    let strategy = *bytes.get(pos + 34).ok_or("plans section truncated")?;
+                    let flags = *bytes.get(pos + 35).ok_or("plans section truncated")?;
+                    let deadline_ms = u32at(pos + 36)? as u64;
+                    let val_reason_ref = u32at(pos + 40)?;
+                    let resp_reason_ref = u32at(pos + 44)?;
+                    pos += 48;
+                    let status_count = u16at(pos)? as usize;
+                    pos += 2;
+                    let mut allowed_statuses = Vec::with_capacity(status_count.min(1 << 12));
+                    for _ in 0..status_count {
+                        allowed_statuses.push(u16at(pos)?);
+                        pos += 2;
+                    }
+                    let header_name_ids = read_ids(&mut pos)?;
+                    let query_name_ids = read_ids(&mut pos)?;
+                    let cookie_name_ids = read_ids(&mut pos)?;
+                    let response_strategy = match strategy {
+                        0 => Strategy::Native,
+                        1 => Strategy::Js,
+                        other => return Err(format!("plan {i}: bad strategy byte {other}")),
+                    };
+                    let opt = |v: u32| -> Option<u32> {
+                        if v == super::super::NONE_REF {
+                            None
+                        } else {
+                            Some(v)
+                        }
+                    };
+                    out.push(RoutePlanDecl {
+                        route_id,
+                        handler_id,
+                        policy_id: opt(policy_id),
+                        policy_handler_id: opt(policy_handler_id),
+                        params_schema_id: opt(params_schema_id),
+                        query_schema_id: opt(query_schema_id),
+                        headers_schema_id: opt(headers_schema_id),
+                        body_schema_id: opt(body_schema_id),
+                        header_name_ids,
+                        query_name_ids,
+                        cookie_name_ids,
+                        default_status,
+                        allowed_statuses,
+                        field_needs: FieldNeeds {
+                            params: flags & 1 != 0,
+                            query: flags & 2 != 0,
+                            headers: flags & 4 != 0,
+                            body: flags & 8 != 0,
+                        },
+                        response_strategy,
+                        validation_fallback_reason: some(val_reason_ref, strings)?,
+                        response_fallback_reason: some(resp_reason_ref, strings)?,
+                        deadline_ms,
+                    });
+                }
+                if pos != bytes.len() {
+                    return Err("plans section has trailing bytes".to_string());
+                }
+                Ok(out)
+            }
+        }
+
+        // ---- schema manifest section (0x0004): dense envelope; the IR
+        // node itself travels as canonical JSON until the binary IR
+        // codec lands (property-equivalent, semantics unchanged) ----
+        pub mod schemas_section {
+            use super::*;
+
+            pub fn encode(decls: &[SchemaDecl], strings: &mut Strings) -> Vec<u8> {
+                let mut out = Vec::new();
+                out.extend_from_slice(&(decls.len() as u32).to_le_bytes());
+                for d in decls {
+                    out.extend_from_slice(&d.id.to_le_bytes());
+                    out.extend_from_slice(&strings.intern(&d.key).to_le_bytes());
+                    out.extend_from_slice(&(d.features.len() as u16).to_le_bytes());
+                    for f in &d.features {
+                        out.extend_from_slice(&strings.intern(f).to_le_bytes());
+                    }
+                    let ir = serde_json::to_string(&d.ir).unwrap_or_default();
+                    out.extend_from_slice(&(ir.len() as u32).to_le_bytes());
+                    out.extend_from_slice(ir.as_bytes());
+                }
+                out
+            }
+
+            pub fn decode(bytes: &[u8], strings: &[String]) -> Result<Vec<SchemaDecl>, String> {
+                let u32at = |off: usize| -> Result<u32, String> {
+                    bytes
+                        .get(off..off + 4)
+                        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "schemas section truncated".to_string())
+                };
+                let u16at = |off: usize| -> Result<u16, String> {
+                    bytes
+                        .get(off..off + 2)
+                        .map(|b| u16::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "schemas section truncated".to_string())
+                };
+                let get = |v: u32| -> Result<&String, String> {
+                    strings
+                        .get(v as usize)
+                        .ok_or_else(|| "schemas: string ref out of bounds".to_string())
+                };
+                let count = u32at(0)? as usize;
+                if count > 1 << 20 {
+                    return Err("schemas count out of sane range".to_string());
+                }
+                let mut out = Vec::with_capacity(count);
+                let mut pos = 4usize;
+                for _ in 0..count {
+                    let id = u32at(pos)?;
+                    let key = get(u32at(pos + 4)?)?.clone();
+                    pos += 8;
+                    let fcount = u16at(pos)? as usize;
+                    pos += 2;
+                    let mut features = Vec::with_capacity(fcount.min(64));
+                    for _ in 0..fcount {
+                        features.push(get(u32at(pos)?)?.clone());
+                        pos += 4;
+                    }
+                    let ir_len = u32at(pos)? as usize;
+                    pos += 4;
+                    let ir_bytes = bytes
+                        .get(pos..pos + ir_len)
+                        .ok_or_else(|| "schemas: IR blob truncated".to_string())?;
+                    pos += ir_len;
+                    let ir = serde_json::from_slice(ir_bytes)
+                        .map_err(|e| format!("schemas: IR blob is not valid IR JSON: {e}"))?;
+                    out.push(SchemaDecl {
+                        id,
+                        key,
+                        features,
+                        ir,
+                    });
+                }
+                if pos != bytes.len() {
+                    return Err("schemas section has trailing bytes".to_string());
+                }
+                Ok(out)
+            }
+        }
+
+        // ---- policy plans (0x0005): PolicyEntry + the dense manifest ----
+        pub mod policy_section {
+            use super::super::super::{PolicyDecl, PolicyEntry};
+            use super::super::policies_table;
+            use super::*;
+
+            pub fn encode(
+                entries: &[(String, PolicyEntry)],
+                manifest: &[super::super::super::PolicyDecl],
+                strings: &mut Strings,
+            ) -> Vec<u8> {
+                let rows: Vec<crate::qpack2::PolicyRow> = entries
+                    .iter()
+                    .map(|(id, e)| {
+                        (
+                            strings.intern(id),
+                            strings.intern(&e.handler),
+                            e.provides
+                                .as_ref()
+                                .map(|p| strings.intern(p))
+                                .unwrap_or(super::super::NONE_REF),
+                            e.declared_statuses.clone(),
+                        )
+                    })
+                    .collect();
+                let mut out = policies_table::encode(&rows);
+                out.extend_from_slice(&(manifest.len() as u32).to_le_bytes());
+                for d in manifest {
+                    out.extend_from_slice(&d.id.to_le_bytes());
+                    out.extend_from_slice(&strings.intern(&d.key).to_le_bytes());
+                    out.extend_from_slice(&d.handler_id.to_le_bytes());
+                }
+                out
+            }
+
+            /// Decode rows + manifest: walks the row records to find the
+            /// manifest boundary, then decodes each part.
+            pub fn decode(
+                bytes: &[u8],
+                strings: &[String],
+            ) -> Result<(Vec<crate::qpack2::PolicyRow>, Vec<PolicyDecl>), String> {
+                let u32at = |off: usize| -> Result<u32, String> {
+                    bytes
+                        .get(off..off + 4)
+                        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "policy section truncated".to_string())
+                };
+                let u16at = |off: usize| -> Result<u16, String> {
+                    bytes
+                        .get(off..off + 2)
+                        .map(|b| u16::from_le_bytes(b.try_into().unwrap()))
+                        .ok_or_else(|| "policy section truncated".to_string())
+                };
+                let row_count = u32at(0)? as usize;
+                let mut pos = 4usize;
+                for _ in 0..row_count {
+                    pos += 14; // id, handler, provides, status_count
+                    let n = u16at(pos - 2)? as usize;
+                    pos += n * 2;
+                }
+                let rows = policies_table::decode(&bytes[..pos])?;
+                let manifest_count = u32at(pos)? as usize;
+                pos += 4;
+                let mut manifest = Vec::with_capacity(manifest_count.min(1 << 16));
+                for i in 0..manifest_count {
+                    let id = u32at(pos)?;
+                    let key_ref = u32at(pos + 4)?;
+                    let handler_id = u32at(pos + 8)?;
+                    pos += 12;
+                    let key = strings
+                        .get(key_ref as usize)
+                        .ok_or_else(|| format!("policy manifest {i}: key ref out of bounds"))?
+                        .clone();
+                    manifest.push(PolicyDecl {
+                        id,
+                        key,
+                        handler_id,
+                    });
+                }
+                if pos != bytes.len() {
+                    return Err("policy section has trailing bytes".to_string());
+                }
+                Ok((rows, manifest))
+            }
+        }
+    }
+
     // ---- section id catalog (spec §6; ids reserved by M26-001-B) ----
     pub mod section {
         pub const STRINGS: u16 = 0x0001;
@@ -603,6 +1111,201 @@ pub mod qpack2 {
                 (dense_strings as i64 - json_strings as i64) <= per_string_overhead,
                 "strings dense {dense_strings} vs json {json_strings}"
             );
+        }
+
+        // ---- M26-003-B: graph section round-trip/fuzz/report ----
+
+        use super::super::{PolicyDecl, PolicyEntry, RoutePlanDecl, SchemaDecl};
+        use super::graph::{plans_section, router_section, schemas_section, Strings};
+
+        #[allow(clippy::type_complexity)]
+        fn graph_fixture() -> (
+            super::super::SerializedRouter,
+            Vec<RoutePlanDecl>,
+            Vec<SchemaDecl>,
+            Vec<(String, PolicyEntry)>,
+            Vec<PolicyDecl>,
+        ) {
+            // a three-node router: root -> static "users" -> param edge,
+            // terminal on the param node claiming GET
+            let router = super::super::SerializedRouter {
+                nodes: vec![
+                    super::super::SerializedRouterNode {
+                        static_edges: vec![super::super::SerializedStaticEdge {
+                            segment: "users".into(),
+                            target_node: 1,
+                        }],
+                        param_edge: Some(2),
+                        wildcard_edge: None,
+                        terminal: None,
+                    },
+                    super::super::SerializedRouterNode::default(),
+                    super::super::SerializedRouterNode {
+                        static_edges: vec![],
+                        param_edge: None,
+                        wildcard_edge: None,
+                        terminal: Some(super::super::SerializedTerminal {
+                            method_mask: 0b1,
+                            route_by_method: [Some(0), None, None, None, None, None, None],
+                        }),
+                    },
+                ],
+            };
+            let plans = vec![RoutePlanDecl {
+                route_id: 0,
+                handler_id: 0,
+                policy_id: Some(0),
+                policy_handler_id: Some(1),
+                params_schema_id: Some(3),
+                query_schema_id: None,
+                headers_schema_id: None,
+                body_schema_id: Some(4),
+                header_name_ids: vec![0, 1],
+                query_name_ids: vec![],
+                cookie_name_ids: vec![],
+                default_status: 200,
+                allowed_statuses: vec![200, 422],
+                field_needs: super::super::FieldNeeds {
+                    params: true,
+                    query: false,
+                    headers: false,
+                    body: true,
+                },
+                response_strategy: super::super::Strategy::Native,
+                validation_fallback_reason: None,
+                response_fallback_reason: Some("measured".into()),
+                deadline_ms: 5000,
+            }];
+            let schemas = vec![SchemaDecl {
+                id: 3,
+                key: "sch:users.get.params".into(),
+                features: vec!["object".into(), "string".into()],
+                ir: serde_json::from_str(r#"{"kind":"object","properties":{"id":{"kind":"string","pattern":"^usr_[0-9]+$"}},"required":["id"]}"#).unwrap(),
+            }];
+            let policies = vec![(
+                "auth.session".to_string(),
+                PolicyEntry {
+                    id: "auth.session".into(),
+                    handler: "auth.session.check".into(),
+                    declared_statuses: vec![401],
+                    provides: Some("session".into()),
+                },
+            )];
+            let manifest = vec![PolicyDecl {
+                id: 0,
+                key: "auth.session".into(),
+                handler_id: 1,
+            }];
+            (router, plans, schemas, policies, manifest)
+        }
+
+        #[test]
+        fn graph_sections_round_trip() {
+            let (router, plans, schemas, policies, manifest) = graph_fixture();
+            let mut strings = Strings::new();
+            let router_b = router_section::encode(&router.nodes, &mut strings);
+            let plans_b = plans_section::encode(&plans, &mut strings);
+            let schemas_b = schemas_section::encode(&schemas, &mut strings);
+            let table = strings.finish();
+            // policy section interns into its own pass seeded with the
+            // same table so refs stay compatible
+            let mut strings2 = Strings::new();
+            for s in &table {
+                strings2.intern(s);
+            }
+            let policy_b =
+                super::graph::policy_section::encode(&policies, &manifest, &mut strings2);
+            let table = strings2.finish();
+
+            let r2 = router_section::decode(&router_b, &table).unwrap();
+            assert_eq!(r2, router);
+            let p2 = plans_section::decode(&plans_b, &table).unwrap();
+            assert_eq!(p2, plans);
+            let s2 = schemas_section::decode(&schemas_b, &table).unwrap();
+            assert_eq!(s2, schemas);
+            // policy rows + manifest decode as one section
+            let (rows, manifest) = super::graph::policy_section::decode(&policy_b, &table).unwrap();
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].3, vec![401u16]);
+            assert_eq!(
+                manifest,
+                vec![PolicyDecl {
+                    id: 0,
+                    key: "auth.session".into(),
+                    handler_id: 1
+                }]
+            );
+        }
+
+        #[test]
+        fn graph_sections_mutation_never_panics() {
+            struct Rng(u64);
+            impl Rng {
+                fn next(&mut self) -> u64 {
+                    let mut x = self.0;
+                    x ^= x << 13;
+                    x ^= x >> 7;
+                    x ^= x << 17;
+                    self.0 = x;
+                    x
+                }
+            }
+            let (router, plans, schemas, _policies, _manifest) = graph_fixture();
+            let mut rng = Rng(0xB00CA);
+            let mut rejected = 0usize;
+            let rounds = 3_000;
+            for _ in 0..rounds {
+                let mut strings = Strings::new();
+                let (bytes, which) = match rng.next() % 3 {
+                    0 => (router_section::encode(&router.nodes, &mut strings), 0),
+                    1 => (plans_section::encode(&plans, &mut strings), 1),
+                    _ => (schemas_section::encode(&schemas, &mut strings), 2),
+                };
+                let table = strings.finish();
+                let mut bytes = bytes;
+                let idx = (rng.next() as usize) % bytes.len();
+                bytes[idx] ^= 1u8 << (rng.next() % 8);
+                let result = match which {
+                    0 => router_section::decode(&bytes, &table).map(|_| ()),
+                    1 => plans_section::decode(&bytes, &table).map(|_| ()),
+                    _ => schemas_section::decode(&bytes, &table).map(|_| ()),
+                };
+                if result.is_err() {
+                    rejected += 1;
+                }
+            }
+            // every mutation either rejects or decodes (some bit flips are
+            // semantically legal values); no panic, bounded work — and the
+            // section content hash catches legal-value flips at read time
+            assert!(
+                rejected > 500,
+                "mutation must overwhelmingly reject: {rejected}"
+            );
+        }
+
+        #[test]
+        fn graph_section_size_report() {
+            let (router, plans, schemas, policies, manifest) = graph_fixture();
+            let mut strings = Strings::new();
+            let router_b = router_section::encode(&router.nodes, &mut strings);
+            let plans_b = plans_section::encode(&plans, &mut strings);
+            let schemas_b = schemas_section::encode(&schemas, &mut strings);
+            drop(strings.finish());
+            let json_router = serde_json::to_string(&router).unwrap();
+            let json_plans = serde_json::to_string(&plans).unwrap();
+            let json_schemas = serde_json::to_string(&schemas).unwrap();
+            let json_policies = serde_json::to_string(&policies).unwrap();
+            eprintln!(
+                "graph section sizes: router dense={} json={} | plans dense={} json={} | schemas dense={} json={} | policies json={}",
+                router_b.len(), json_router.len(),
+                plans_b.len(), json_plans.len(),
+                schemas_b.len(), json_schemas.len(),
+                json_policies.len(),
+            );
+            // structural report only: sizes recorded; the fixed-width
+            // record win scales with record count (see M26-003-A report)
+            assert!(!router_b.is_empty() && !plans_b.is_empty() && !schemas_b.is_empty());
+            let _ = (policies, manifest);
         }
 
         // Mode dispatch still rejects 2 until the native adapter lands:
