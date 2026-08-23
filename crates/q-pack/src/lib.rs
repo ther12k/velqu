@@ -26,6 +26,29 @@ pub const CONTRACT_VERSION: u32 = 1;
 /// Engine this runtime build embeds (quickjs-ng vendored by rquickjs =0.12.2).
 pub const ENGINE_NAME: &str = "quickjs-ng";
 pub const ENGINE_VERSION: &str = "0.15.1";
+/// M26-002-A: the rquickjs binding version pinned by the workspace
+/// (rquickjs =0.12.2, AGENTS.md constraint 1).
+pub const RQUICKJS_VERSION: &str = "0.12.2";
+
+/// M26-002-A: deterministic runtime build fingerprint — the runtime
+/// identity tuple (ABI, engine, version, rquickjs, binding). A binary-level
+/// reproducible-build hash replaces this constant when the release pipeline
+/// embeds one; the tuple hash is the build identity until then.
+/// M26-002-A: canonical capability-set hash — sha256 over the sorted,
+/// newline-joined capability names (empty set hashes the empty string).
+pub fn capability_hash(caps: &[String]) -> String {
+    let mut sorted = caps.to_vec();
+    sorted.sort();
+    hex(&Sha256::digest(sorted.join("\n").as_bytes()))
+}
+
+pub fn runtime_build_hash() -> String {
+    let tuple = format!(
+        "abi={}:engine={}:version={}:rquickjs={}:binding={}",
+        RUNTIME_ABI, ENGINE_NAME, ENGINE_VERSION, RQUICKJS_VERSION, ENGINE_BINDING
+    );
+    hex(&Sha256::digest(tuple.as_bytes()))
+}
 pub const ENGINE_BINDING: &str = "rquickjs-0.12.2";
 
 #[derive(Debug, thiserror::Error)]
@@ -113,6 +136,14 @@ pub struct EngineRef {
     pub name: String,
     pub version: String,
     pub binding: String,
+    /// M26-002-A: rquickjs binding version (fingerprint dimension).
+    #[serde(default)]
+    pub rquickjs: String,
+    /// M26-002-A: runtime build fingerprint — sha256 over the runtime
+    /// identity tuple (see `runtime_build_hash`). Engine upgrades change
+    /// it, so packs require a rebuild (M26-002 guardrail).
+    #[serde(default)]
+    pub build_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -639,6 +670,11 @@ pub struct QPack {
     pub policies: BTreeMap<String, PolicyEntry>,
     #[serde(default)]
     pub capabilities: Vec<String>,
+    /// M26-002-A: sha256 over the sorted capability names. Optional for
+    /// legacy-v1 packs (absent = unchecked); present-but-wrong rejects
+    /// with the dimension named.
+    #[serde(default)]
+    pub capability_hash: String,
     #[serde(default)]
     pub functions: Vec<FunctionDecl>,
     #[serde(default)]
@@ -719,6 +755,22 @@ impl QPack {
                 "engine mismatch: pack wants {} {} via {}, runtime embeds {} {} via {} (SEC-001 exact match)",
                 self.engine.name, self.engine.version, self.engine.binding,
                 ENGINE_NAME, ENGINE_VERSION, ENGINE_BINDING
+            ));
+        }
+        // M26-002-A: fingerprint dimensions each reject with the
+        // incompatible dimension named (guardrail: the error identifies
+        // what is incompatible)
+        if self.engine.rquickjs != RQUICKJS_VERSION {
+            return reject(format!(
+                "rquickjs version mismatch (incompatible dimension: binding): pack wants {}, runtime embeds {}",
+                self.engine.rquickjs, RQUICKJS_VERSION
+            ));
+        }
+        if self.engine.build_hash != runtime_build_hash() {
+            return reject(format!(
+                "runtime build hash mismatch (incompatible dimension: runtime build): pack wants {}, runtime is {} — engine upgrades require a pack rebuild",
+                self.engine.build_hash,
+                runtime_build_hash()
             ));
         }
         // integrity
@@ -1417,6 +1469,17 @@ impl QPack {
                 return reject(format!("unknown capability {} declared", cap));
             }
         }
+        // M26-002-A: when the pack declares a capability hash it must match
+        // the declared set (dimension: capabilities)
+        if !self.capability_hash.is_empty()
+            && self.capability_hash != capability_hash(&self.capabilities)
+        {
+            return reject(format!(
+                "capability hash mismatch (incompatible dimension: capabilities): pack declares {}, computed {}",
+                self.capability_hash,
+                capability_hash(&self.capabilities)
+            ));
+        }
         for route in &self.routes {
             // M25-007-B: a raw-response route's handler bypasses response
             // validation by design — a declared response schema would be a
@@ -1738,6 +1801,8 @@ pub fn minimal_pack_public() -> QPack {
             name: ENGINE_NAME.into(),
             version: ENGINE_VERSION.into(),
             binding: ENGINE_BINDING.into(),
+            rquickjs: RQUICKJS_VERSION.into(),
+            build_hash: runtime_build_hash(),
         },
         schema_ir_version: SCHEMA_IR_VERSION,
         contract_version: CONTRACT_VERSION,
@@ -1759,6 +1824,7 @@ pub fn minimal_pack_public() -> QPack {
         schemas: BTreeMap::new(),
         policies: BTreeMap::new(),
         capabilities: vec![],
+        capability_hash: String::new(),
         functions: vec![],
         schema_manifest: vec![],
         policy_manifest: vec![],
@@ -1832,6 +1898,8 @@ mod tests {
                 name: ENGINE_NAME.into(),
                 version: ENGINE_VERSION.into(),
                 binding: ENGINE_BINDING.into(),
+                rquickjs: RQUICKJS_VERSION.into(),
+                build_hash: runtime_build_hash(),
             },
             schema_ir_version: SCHEMA_IR_VERSION,
             contract_version: CONTRACT_VERSION,
@@ -1853,6 +1921,7 @@ mod tests {
             schemas: BTreeMap::new(),
             policies: BTreeMap::new(),
             capabilities: vec![],
+            capability_hash: String::new(),
             functions: vec![],
             schema_manifest: vec![],
             policy_manifest: vec![],
@@ -2024,6 +2093,50 @@ mod tests {
         debug_build
             .verify()
             .expect("debug-annotated v1 pack still verifies");
+    }
+
+    #[test]
+    fn rejects_rquickjs_mismatch_with_dimension() {
+        let mut p = minimal_pack();
+        p.engine.rquickjs = "0.11.0".into();
+        let err = p.verify().unwrap_err();
+        assert!(err.to_string().contains("rquickjs version mismatch"));
+        assert!(err.to_string().contains("incompatible dimension: binding"));
+    }
+
+    #[test]
+    fn rejects_build_hash_mismatch_with_dimension() {
+        let mut p = minimal_pack();
+        p.engine.build_hash = "deadbeef".into();
+        let err = p.verify().unwrap_err();
+        assert!(err.to_string().contains("runtime build hash mismatch"));
+        assert!(err
+            .to_string()
+            .contains("incompatible dimension: runtime build"));
+        assert!(err.to_string().contains("pack rebuild"));
+    }
+
+    #[test]
+    fn capability_hash_present_must_match_and_absent_is_v1_compatible() {
+        // absent (legacy v1): loads unchecked
+        let p = minimal_pack();
+        assert!(p.capability_hash.is_empty());
+        p.verify()
+            .expect("absent capability hash keeps v1 packs loading");
+
+        // present + correct: verifies
+        let mut p = minimal_pack();
+        p.capability_hash = capability_hash(&p.capabilities);
+        p.verify().expect("matching capability hash verifies");
+
+        // present + wrong: rejects with the dimension named
+        let mut p = minimal_pack();
+        p.capability_hash = "00".repeat(32);
+        let err = p.verify().unwrap_err();
+        assert!(err.to_string().contains("capability hash mismatch"));
+        assert!(err
+            .to_string()
+            .contains("incompatible dimension: capabilities"));
     }
 
     #[test]

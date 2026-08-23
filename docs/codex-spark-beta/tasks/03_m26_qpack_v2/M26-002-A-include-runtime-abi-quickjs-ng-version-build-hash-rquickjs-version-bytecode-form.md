@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -120,3 +120,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-002-A)
+
+Status: **PASS**. The full runtime fingerprint travels with every pack and
+each dimension rejects with the incompatible dimension named:
+
+- **Fingerprint dimensions** (`crates/q-pack/src/lib.rs`): runtime ABI ✓
+  (pre-existing), engine name/version/binding ✓ (pre-existing), PLUS
+  `EngineRef.rquickjs` (pinned 0.12.2) and `EngineRef.buildHash` — the
+  runtime build fingerprint `runtime_build_hash()` = sha256 over the
+  runtime identity tuple (abi, engine, version, rquickjs, binding;
+  binary-level reproducible-build hashes replace the tuple hash when the
+  release pipeline embeds one). Bytecode form/target-triple/pointer-
+  width/endianness were already carried (`BundleBytecode` +
+  `BytecodeTarget`, M24-era) and remain verified.
+- **Capability hash**: `QPack.capability_hash` = `capability_hash(&caps)`
+  (sha256 over sorted, newline-joined names). Present-but-wrong rejects
+  ("incompatible dimension: capabilities"); ABSENT keeps legacy-v1 packs
+  loading (ADR-0024 compatibility — v1 packs predate the field).
+- **Dimension-named rejections**: rquickjs mismatch ("dimension:
+  binding"), build-hash mismatch ("dimension: runtime build … engine
+  upgrades require a pack rebuild" — the rebuild guardrail).
+- **Compiler parity** (`packages/compiler/src/emit.ts`): the pack emits
+  `engine.rquickjs`, `engine.buildHash` (Bun CryptoHasher mirroring the
+  Rust tuple hash), and `capabilityHash` — proven end-to-end: the
+  freshly built proof pack LOADS and serves (TS/Rust hash agreement is
+  proven by the load itself; any mismatch rejects before ready).
+
+### Tests and evidence
+
+- `rejects_rquickjs_mismatch_with_dimension`,
+  `rejects_build_hash_mismatch_with_dimension`,
+  `capability_hash_present_must_match_and_absent_is_v1_compatible`
+  (q-pack).
+- Compiler conformance "pack carries the full runtime fingerprint
+  (M26-002-A)" — engine fields, 64-hex build hash, capability-hash
+  agreement recomputed in the test.
+- `cargo test -p q-pack` — 51 + 2; `cargo test -p q-engine-quickjs` —
+  1 + 96; `cargo test -p q-http` — 4 + 6 + 1; `cargo test -p
+  q-schema-runtime` — 58 + 4 + 5; `cargo test -p velqu-runtime` — 24 —
+  all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except
+  `validate-benchmark-evidence`: the known isolated-worktree hash
+  mismatch for `qRuntimeRelease`/`proofPack`. NOTE: this packet
+  legitimately changes pack bytes (the fingerprint fields), so the
+  canonical `proofPack` manifest entry requires a matched refresh —
+  flagged for the benchmark-manifest owner; not silently altered here.
+
+Commit: `6881d25`.

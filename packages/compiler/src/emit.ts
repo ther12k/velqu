@@ -239,6 +239,22 @@ function buildSerializedRouter(routes: Array<{ method: string; pathSegments: Arr
   return { nodes };
 }
 
+
+/** M26-002-A: sha256 hex via Bun — mirrors q-pack's hex(&Sha256::digest()). */
+function sha256Hex(input: string): string {
+  return new Bun.CryptoHasher("sha256").update(input).digest("hex");
+}
+
+/** Runtime identity tuple hash — MUST equal q_pack::runtime_build_hash(). */
+function runtimeBuildHash(): string {
+  return sha256Hex("abi=1:engine=quickjs-ng:version=0.15.1:rquickjs=0.12.2:binding=rquickjs-0.12.2");
+}
+
+/** Capability-set hash — MUST equal q_pack::capability_hash(). */
+function capabilitySetHash(caps: string[]): string {
+  return sha256Hex([...caps].sort().join("\n"));
+}
+
 export function buildPack(
   app: ExtractedApp,
   bundle: BundleResult,
@@ -481,7 +497,16 @@ export function buildPack(
     kind: "velqu.qpack",
     runtimeAbi: 1,
     executionMode: "numeric",
-    engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
+    // M26-002-A: the full runtime fingerprint travels with the pack —
+    // rquickjs version and the runtime build hash (sha256 over the
+    // runtime identity tuple, mirroring q-pack runtime_build_hash)
+    engine: {
+      name: "quickjs-ng",
+      version: "0.15.1",
+      binding: "rquickjs-0.12.2",
+      rquickjs: "0.12.2",
+      buildHash: runtimeBuildHash(),
+    },
     schemaIrVersion: 2,
     contractVersion: 1,
     contractHash,
@@ -495,6 +520,8 @@ export function buildPack(
     schemas,
     policies: policyPacks,
     capabilities,
+    // M26-002-A: capability-set hash (mirrors q-pack capability_hash)
+    capabilityHash: capabilitySetHash(capabilities),
     functions,
     schemaManifest,
     headerNameTable,
