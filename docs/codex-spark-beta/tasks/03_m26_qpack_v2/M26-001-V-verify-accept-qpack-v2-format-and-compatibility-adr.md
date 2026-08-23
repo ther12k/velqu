@@ -4,7 +4,7 @@ parent_task: M26-001
 milestone: M26
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -129,3 +129,62 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-001-V)
+
+Status: **PASS**. Every parent M26-001 acceptance guardrail maps to source
+and passing tests; all verification commands were run fresh on this branch
+(no code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Unknown versions fail closed.**
+   - `detect_pack_format_mode` (q-pack, M26-001-A) is the first dispatch
+     in `verify()`; `tests::unknown_versions_fail_closed` drives
+     v{0,2,3,u32::MAX} — each rejects with "not supported … fail closed"
+     naming the supported adapter; the qpack2 section's
+     `mode_two_still_fails_closed_before_native_adapter` pins that v2
+     bytes never reach a native adapter by accident.
+2. **Current mode has no legacy handler table.**
+   - `tests::numeric_pack_with_handler_table_is_rejected` — a numeric
+     pack carrying handlerTable rejects ("must not carry handlerTable");
+     `numeric_pack_without_compiled_router_is_rejected` and
+     `accepts_valid_numeric_pack` pin the current-mode shape.
+3. **Compatibility policy is explicit.**
+   - ADR-0024 (numeric mode policy, legacy v1 adapter as the named
+     compatibility boundary, compatibility matrix, migration rules) with
+     the spec header cross-reference; ADR-0025 (section directory) +
+     `docs/specs/pack-format-v2.md` (64-byte header, alignment, bounds)
+     define the v2 layout; ADR-0026 separates integrity from
+     authenticity; ADR-0027 fixes the debug/source sidecar policy with a
+     runtime-independence test.
+4. **Untrusted arbitrary bytecode is forbidden.**
+   - The trust model (ADR-0024): embedded bytecode is compiler-owned and
+     integrity-pinned, never a loading path for arbitrary bytes —
+     `verify()` rejects `bundleBytecode` without
+     `integrity.bytecodeSha256`, any hash mismatch ("tampered or
+     corrupt"), and integrity declaring bytecode with no bytecode
+     present; engine/ABI/binding mismatches reject
+     (`rejects_engine_mismatch`, `rejects_abi_mismatch_and_duplicate_ids`);
+     the runtime-local
+     `bytecode_pack_serves_identically_and_mismatch_fails_before_ready`
+     proves tampered bytecode fails BEFORE ready.
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-pack` — 48 + 2 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed.
+- `cargo test -p q-http` — 4 + 6 + 1 passed.
+- `cargo test -p velqu-runtime` — 24 integration passed.
+- `bun test` — 81 passed, 0 failed, 481 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — links checked, 0 errors.
+- `./scripts/verify` — ALL stages pass (the benchmark-manifest mismatch
+  known from isolated worktrees no longer reproduces — the manifest was
+  refreshed on master with matched artifacts).
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `4911842`.
