@@ -4,7 +4,7 @@ parent_task: M26-003
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -125,3 +125,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-003-A)
+
+Status: **PASS**. The dense section schemas for QPack v2 are defined in
+the `qpack2` module with round-trip, mutation-fuzz, and size-report
+evidence:
+
+- **Section id catalog** (`qpack2::section`): the spec §6 reserved ids
+  (STRINGS/ROUTES/ROUTE_PLANS/SCHEMA_MANIFEST/POLICIES/CAPABILITIES/
+  BUNDLE_BYTECODE/CONTRACT_SUMMARY) plus `REQUIRED` — a pack missing any
+  required id rejects.
+- **Dense schemas** (each with encode + bounds-checked decode):
+  - `strings_table` (0x0001): count + length-prefixed UTF-8; strict
+    trailing-byte and UTF-8 checks.
+  - `functions_table`: count + per record `id u32, key ref u32,
+    kind u8`; key refs resolve against the strings table (out-of-bounds
+    rejects; unknown kind bytes reject).
+  - `policies_table` (0x0005, `PolicyRow` type): id/handler/provides
+    refs + u16 status lists; `NONE_REF` sentinel for absent references.
+  - `capabilities_table` (0x0006): count + string refs (the M26-002-A
+    capability hash computes over the same sorted names).
+  - `contract_summary` (0x0008): exactly 12 bytes — hash ref, route
+    count, format revision.
+  - `NONE_REF` sentinel: dense encodings never use Option.
+- **Evidence**:
+  - Round-trip: `dense_sections_round_trip` (full corpus decode-back)
+    and `dense_sections_empty_round_trip` (empty tables are legal).
+  - Mutation fuzz: `dense_sections_never_panic_under_mutation` — 2,000
+    single-byte corruptions across all tables: no panic, bounded work,
+    overwhelmingly-rejecting counts asserted (section content hashes at
+    read time are the spec-level backstop, noted in the test).
+  - Size report: `dense_section_size_report` — HONEST findings on a
+    25-record corpus: record tables (functions/policies) are strictly
+    smaller dense (fixed-width + string refs vs repeated JSON keys);
+    the strings table is size-NEUTRAL for plain ASCII (JSON ~3
+    bytes/string overhead vs dense's 4-byte length prefix) — its value
+    is the shared-reference model; escape-heavy content flips strings
+    decisively. The report prints measured numbers; assertions encode
+    the honest claims only.
+
+### Tests and evidence
+
+- `cargo test -p q-pack` — 57 + 2 passed (5 new dense tests).
+- `cargo test -p q-engine-quickjs` — 1 + 97; `cargo test -p velqu-runtime`
+  — 26 — all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (pack bytes changed in
+  M26-002-A; canonical proofPack refresh flagged there).
+
+The full encoder (router/RoutePlans/schema sections) lands in
+M26-003-B; offsets/bounds runtime readers in M26-003-C; integrity
+binding in M26-003-D.
+
+Commit: `2a31aff`.

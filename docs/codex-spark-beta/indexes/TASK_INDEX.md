@@ -218,7 +218,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-002-D](../tasks/03_m26_qpack_v2/M26-002-D-never-silently-fall-back.md) | P0 | implement | PASS | M26-002-C | Never silently fall back |
 | [M26-002-V](../tasks/03_m26_qpack_v2/M26-002-V-verify-define-strict-runtime-and-bytecode-fingerprint.md) | P0 | verify | PASS | M26-002-A, M26-002-B, M26-002-C, M26-002-D | Verify Define strict runtime and bytecode fingerprint |
 | [M26-002-Z](../tasks/03_m26_qpack_v2/M26-002-Z-package-evidence-for-define-strict-runtime-and-bytecode-fingerprint.md) | P0 | evidence | PASS | M26-002-V | Package evidence for Define strict runtime and bytecode fingerprint |
-| [M26-003-A](../tasks/03_m26_qpack_v2/M26-003-A-define-dense-section-schemas.md) | P0 | implement | TODO | M26-001-Z, G0-GATE, M25-GATE | Define dense section schemas |
+| [M26-003-A](../tasks/03_m26_qpack_v2/M26-003-A-define-dense-section-schemas.md) | P0 | implement | PASS | M26-001-Z, G0-GATE, M25-GATE | Define dense section schemas |
 | [M26-003-B](../tasks/03_m26_qpack_v2/M26-003-B-store-router-nodes-edges-terminals-routeplans-schema-programs-policy-plans-funct.md) | P0 | implement | TODO | M26-003-A | Store router nodes/edges/terminals, RoutePlans, schema programs, policy plans, function manifest, debug names, and capability inventory |
 | [M26-003-C](../tasks/03_m26_qpack_v2/M26-003-C-use-offsets-and-bounds-checks.md) | P0 | implement | TODO | M26-003-B | Use offsets and bounds checks |
 | [M26-003-D](../tasks/03_m26_qpack_v2/M26-003-D-bind-sections-to-execution-integrity.md) | P0 | implement | TODO | M26-003-C | Bind sections to execution integrity |
