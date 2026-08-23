@@ -4,7 +4,7 @@ parent_task: M26-004
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -116,3 +116,62 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-004-A (PASS)
+
+Deliverable: store the raw QuickJS module bytecode as qpack2 section
+0x0007 (spec §6, OPTIONAL) — raw bytes verbatim, engine-target metadata
+as string refs; no base64 anywhere on the v2 path.
+
+Changed files: `crates/q-pack/src/lib.rs` only.
+
+Implementation (`qpack2::graph::bytecode_section`):
+
+- `BytecodeMeta { quickjs, binding, endianness, target: Option<BytecodeTarget> }`
+  — the v1 `BundleBytecode` fields minus the base64 `data`; reuses the
+  crate-root `BytecodeTarget`.
+- Payload layout: quickjs_ref u32, binding_ref u32, endianness_ref u32,
+  has_target u8 [target: arch_ref u32, os_ref u32, pointer_width u8,
+  endianness_ref u32], code_len u32, then the bytecode bytes verbatim.
+  Fixed header size 30 bytes with target present.
+- `encode(&meta, &code, &mut strings)` / `decode(bytes, strings)` with
+  bounds-checked decode: truncation at every boundary, out-of-bounds
+  string refs, target flag drift, pointer width not 4/8, code_len past
+  the sane bound `MAX_CODE_BYTES = 1<<28` (constraint 11), code_len
+  shorter/longer than remaining bytes, and trailing bytes all reject.
+
+Tests (crates/q-pack/src/lib.rs):
+
+- `bytecode_section_round_trips_raw_bytes` — payload mixing bytes outside
+  the base64 alphabet survives byte-for-byte with and without target: if
+  any base64 encode/decode happened on this path, those bytes could not
+  round-trip (guardrail: no base64 decode at startup on the v2 path).
+- `bytecode_section_rejects_drift_and_truncation` — every malformed
+  shape listed above rejects.
+- `bytecode_section_in_bound_file_and_tamper_rejected` — a bound v2 file
+  (96-byte header) carrying section 0x0007 validates and decodes; a
+  payload byte flip rejects via per-section sha256; with the content
+  hash repaired, the M26-003-D execution-integrity binding still rejects.
+- `bytecode_base64_vs_raw_size_report` — honest size evidence: 768 raw
+  bytes → 1 026 bytes as base64-in-JSON vs 798 bytes as v2 section
+  (30-byte fixed header); raw section strictly smaller (report printed
+  under --nocapture).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 71 passed + 2, 0 failed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `cargo test -p velqu-runtime` — 26 passed.
+- `bun test` — 82 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (qRuntimeRelease +
+  proofPack manifest hashes; flagged matched-evidence follow-up from
+  M26-002-A, not altered here).
+
+Guardrails: no base64 decode on the v2 bytecode path (round-trip proof);
+tamper/incompatibility rejection (per-section sha256 + execution-integrity
+binding + drift rejections); source-mode explicitness and load-exactly-once
+are M26-004-C/B scope (v2 sections are not yet the production load path —
+`current_mode_is_pinned_until_native_v2_lands`).
