@@ -206,7 +206,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
-| [M26-001-A](../tasks/03_m26_qpack_v2/M26-001-A-define-numeric-current-mode-and-legacy-v1-adapter.md) | P0 | implement | TODO | M25-GATE | Define numeric current mode and legacy v1 adapter |
+| [M26-001-A](../tasks/03_m26_qpack_v2/M26-001-A-define-numeric-current-mode-and-legacy-v1-adapter.md) | P0 | implement | PASS | M25-GATE | Define numeric current mode and legacy v1 adapter |
 | [M26-001-B](../tasks/03_m26_qpack_v2/M26-001-B-specify-section-directory-alignment-bounds-optional-sections-and-versioning.md) | P0 | implement | TODO | M26-001-A | Specify section directory, alignment, bounds, optional sections, and versioning |
 | [M26-001-C](../tasks/03_m26_qpack_v2/M26-001-C-separate-integrity-from-authenticity.md) | P0 | implement | TODO | M26-001-B | Separate integrity from authenticity |
 | [M26-001-D](../tasks/03_m26_qpack_v2/M26-001-D-define-debug-source-sidecar-policy.md) | P0 | implement | TODO | M26-001-C | Define debug/source sidecar policy |

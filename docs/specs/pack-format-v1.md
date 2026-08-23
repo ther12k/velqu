@@ -3,6 +3,10 @@
 Status: frozen working decision (see `docs/open-decisions.md`). Changing this
 format after M1 measurements requires a version bump and an ADR.
 
+M2.6 note (ADR-0024): this format is the **legacy v1 adapter** mode
+(`formatVersion: 1`, `PackFormatMode::LegacyV1`). Binary QPack v2 is a
+separate numeric mode; unknown versions fail closed at pack verify.
+
 The production artifact `app.qpack` is a single UTF-8 JSON file with this shape.
 Field order is fixed for deterministic hashing (serialize with sorted keys
 where noted). The runtime never compiles routes, schemas, or OpenAPI at

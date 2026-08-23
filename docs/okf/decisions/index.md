@@ -25,3 +25,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 21. [ADR-0021 — M2.4 Zero-Copy Ingress and Worker-Local Request Ownership](0021-m24-zero-copy-ingress-ownership.md) (accepted; freezes the M24 ownership spine, terminal invariants, state-machine tests plan, and threat review)
 22. [ADR-0022 — Schema IR v2: Declarative Transform, File, and Problem Nodes](0022-schema-ir-v2.md) (accepted; implements the M2.5 schema track; M25-001-A)
 23. [ADR-0023 — Canonical Ordering and Hashing for Schema IR v2 Projections](0023-canonical-ordering-and-hashing.md) (accepted; implements ADR-0022; M25-001-C)
+24. [ADR-0024 — QPack v2 Numeric Current Mode and Legacy v1 Adapter](0024-qpack-v2-numeric-mode-and-legacy-v1-adapter.md) (accepted; freezes format-mode policy, trust model, compatibility matrix, and migration rules; M26-001-A)
