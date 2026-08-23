@@ -223,7 +223,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-003-C](../tasks/03_m26_qpack_v2/M26-003-C-use-offsets-and-bounds-checks.md) | P0 | implement | PASS | M26-003-B | Use offsets and bounds checks |
 | [M26-003-D](../tasks/03_m26_qpack_v2/M26-003-D-bind-sections-to-execution-integrity.md) | P0 | implement | PASS | M26-003-C | Bind sections to execution integrity |
 | [M26-003-V](../tasks/03_m26_qpack_v2/M26-003-V-verify-encode-compiled-router-routeplans-schemas-policies-and-functions-as-secti.md) | P0 | verify | PASS | M26-003-A, M26-003-B, M26-003-C, M26-003-D | Verify Encode compiled router, RoutePlans, schemas, policies, and functions as sections |
-| [M26-003-Z](../tasks/03_m26_qpack_v2/M26-003-Z-package-evidence-for-encode-compiled-router-routeplans-schemas-policies-and-func.md) | P0 | evidence | TODO | M26-003-V | Package evidence for Encode compiled router, RoutePlans, schemas, policies, and functions as sections |
+| [M26-003-Z](../tasks/03_m26_qpack_v2/M26-003-Z-package-evidence-for-encode-compiled-router-routeplans-schemas-policies-and-func.md) | P0 | evidence | PASS | M26-003-V | Package evidence for Encode compiled router, RoutePlans, schemas, policies, and functions as sections |
 | [M26-004-A](../tasks/03_m26_qpack_v2/M26-004-A-store-raw-module-bytecode-section.md) | P0 | implement | TODO | M26-002-Z, M26-003-Z | Store raw module bytecode section |
 | [M26-004-B](../tasks/03_m26_qpack_v2/M26-004-B-load-exactly-once.md) | P0 | implement | TODO | M26-004-A | Load exactly once |
 | [M26-004-C](../tasks/03_m26_qpack_v2/M26-004-C-make-source-optional-sidecar-development-section.md) | P0 | implement | TODO | M26-004-B | Make source optional sidecar/development section |
