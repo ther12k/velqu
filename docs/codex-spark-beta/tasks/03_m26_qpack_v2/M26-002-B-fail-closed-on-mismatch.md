@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-002-B)
+
+Status: **PASS**. Fingerprint mismatches fail closed BEFORE ready, with
+the incompatible dimensions named:
+
+- `crates/q-pack/src/lib.rs` `verify()`: bytecode packs are checked
+  against the HOST target at load — arch, OS, pointer width, and
+  endianness each compared; any mismatch rejects as "cross-target pack
+  rejected (incompatible dimensions: …)" naming every mismatching
+  dimension, the full pack-vs-runtime target description, and the
+  "rebuild the pack for this target" remedy (guardrails: fail before
+  ready + rebuild requirement). Bytecode WITHOUT a target fingerprint
+  cannot prove compatibility and rejects fail-closed (the embed tool
+  always stamps one). The pre-existing endianness-only check remains as
+  defense in depth behind the richer check.
+- Evidence: `cross_target_bytecode_fails_closed_with_dimensions` —
+  wrong arch (dimension named + rebuild hint), wrong pointer width,
+  flipped endianness, and missing target each reject with the expected
+  dimension in the message.
+
+### Tests and evidence
+
+- `cargo test -p q-pack` — 52 + 2 passed (new cross-target suite).
+- `cargo test -p q-engine-quickjs` — 1 + 96; `cargo test -p q-http` —
+  4 + 6 + 1; `cargo test -p q-schema-runtime` — 58 + 4 + 5;
+  `cargo test -p velqu-runtime` — 24 — all passed (the runtime-local
+  bytecode suite proves matching-target bytecode still serves).
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (pack bytes changed in
+  M26-002-A; canonical proofPack refresh flagged there).
+
+Commit: `b49c9d5`.

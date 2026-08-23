@@ -1469,6 +1469,44 @@ impl QPack {
                 return reject(format!("unknown capability {} declared", cap));
             }
         }
+        // M26-002-B: bytecode fails closed on cross-target mismatch —
+        // the guardrail is enforced BEFORE ready, never at eval time.
+        // Bytecode without a target cannot prove compatibility and
+        // rejects (the embed tool always stamps one).
+        if let Some(bc) = &self.bundle_bytecode {
+            let host_endianness = if cfg!(target_endian = "big") {
+                "big"
+            } else {
+                "little"
+            };
+            let target = bc.target.as_ref().ok_or_else(|| {
+                PackError::Rejected(
+                    "bytecode present without a target fingerprint (incompatible dimension: target triple) — cannot verify cross-target compatibility, fail closed".into(),
+                )
+            })?;
+            let mismatches: Vec<&str> = [
+                (target.arch != std::env::consts::ARCH, "arch"),
+                (target.os != std::env::consts::OS, "os"),
+                (
+                    target.pointer_width as usize != std::mem::size_of::<usize>() * 8,
+                    "pointer width",
+                ),
+                (target.endianness != host_endianness, "endianness"),
+            ]
+            .into_iter()
+            .filter(|(mismatch, _)| *mismatch)
+            .map(|(_, dim)| dim)
+            .collect();
+            if !mismatches.is_empty() {
+                return reject(format!(
+                    "cross-target pack rejected (incompatible dimensions: {}): bytecode targets {}/{} {}-bit {} endian, runtime is {}/{} {}-bit {} endian — rebuild the pack for this target",
+                    mismatches.join(", "),
+                    target.arch, target.os, target.pointer_width, target.endianness,
+                    std::env::consts::ARCH, std::env::consts::OS,
+                    std::mem::size_of::<usize>() * 8, host_endianness,
+                ));
+            }
+        }
         // M26-002-A: when the pack declares a capability hash it must match
         // the declared set (dimension: capabilities)
         if !self.capability_hash.is_empty()
@@ -2137,6 +2175,98 @@ mod tests {
         assert!(err
             .to_string()
             .contains("incompatible dimension: capabilities"));
+    }
+
+    #[test]
+    fn cross_target_bytecode_fails_closed_with_dimensions() {
+        let bc_target = |arch: &str, os: &str, width: u8| BytecodeTarget {
+            arch: arch.into(),
+            os: os.into(),
+            pointer_width: width,
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+        };
+
+        // wrong arch: rejected, dimension named, rebuild hint
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: Some(bc_target("msp430", std::env::consts::OS, 64)),
+            data: String::new(),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(&b""[..])));
+        let err = p.verify().unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("cross-target pack rejected"), "{msg}");
+        assert!(msg.contains("arch"), "{msg}");
+        assert!(msg.contains("rebuild the pack for this target"), "{msg}");
+
+        // wrong pointer width
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: Some(bc_target(std::env::consts::ARCH, std::env::consts::OS, 16)),
+            data: String::new(),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(&b""[..])));
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("pointer width"), "{msg}");
+
+        // wrong endianness
+        let mut p = minimal_pack();
+        let flipped = if cfg!(target_endian = "big") {
+            "little"
+        } else {
+            "big"
+        };
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: flipped.into(),
+            target: Some(BytecodeTarget {
+                arch: std::env::consts::ARCH.into(),
+                os: std::env::consts::OS.into(),
+                pointer_width: 64,
+                endianness: flipped.into(),
+            }),
+            data: String::new(),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(&b""[..])));
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("endianness"), "{msg}");
+
+        // bytecode WITHOUT a target: cannot prove compatibility, fail closed
+        let mut p = minimal_pack();
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: None,
+            data: String::new(),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(&b""[..])));
+        let msg = p.verify().unwrap_err().to_string();
+        assert!(msg.contains("without a target fingerprint"), "{msg}");
+        assert!(msg.contains("fail closed"), "{msg}");
     }
 
     #[test]
