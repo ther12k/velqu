@@ -610,6 +610,7 @@ fn fixture_pack() -> q_pack::QPack {
     ];
 
     let mut pack = QPack {
+        decoded_bytecode: None,
         header_name_table: Vec::new(),
         query_name_table: Vec::new(),
         cookie_name_table: Vec::new(),
