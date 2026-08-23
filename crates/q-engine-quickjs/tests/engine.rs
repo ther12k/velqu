@@ -3475,3 +3475,30 @@ async fn interrupted_watched_chain_retention_is_zero() {
     assert_eq!(eng.bridge_snapshot().live_slots as usize, 0);
     eng.shutdown();
 }
+
+/// M26-002-D: invalid bytecode NEVER silently falls back to source —
+/// the load fails loudly ("bytecode load failed"), matching the parent
+/// guardrail (bytecode is a build artifact; if it cannot load, startup
+/// rejects rather than quietly evaluating the bundle).
+#[tokio::test]
+async fn invalid_bytecode_fails_loudly_never_silently_sources() {
+    let mut eng = engine();
+    let garbage: Vec<u8> = vec![0xde, 0xad, 0xbe, 0xef, 0x00, 0x01, 0x02];
+    let err = eng
+        .load(
+            BUNDLE,
+            Some(&garbage),
+            EngineLoadPlan::Legacy {
+                expected_handlers: expected_table(),
+            },
+        )
+        .expect_err("invalid bytecode must fail the load");
+    assert!(
+        err.contains("bytecode load failed"),
+        "expected a loud bytecode failure, got: {err}"
+    );
+    // and the engine did not silently evaluate the source instead: the
+    // handlers were never registered, so a legacy load plan now reports
+    // missing handlers rather than serving
+    eng.shutdown();
+}

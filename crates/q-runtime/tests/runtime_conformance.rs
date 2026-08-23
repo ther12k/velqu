@@ -3081,6 +3081,68 @@ globalThis.__velquFunctions = [spin_forever, ok_probe];
     let _ = child.wait();
 }
 
+/// M26-002-D: garbage bytecode with MATCHING integrity never silently
+/// serves from source — startup rejects loudly before ready. (The
+/// explicit source path from M26-002-C is a flag, never an automatic
+/// fallback.)
+#[test]
+fn hash_valid_garbage_bytecode_rejects_before_ready() {
+    // fixture pack with real embedded bytecode
+    let dir = temp_dir("nofallback");
+    let pack_path = write_pack(&dir);
+    let bytecode_bin = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.to_path_buf())))
+        .map(|p| p.join("velqu-bytecode"))
+        .expect("locate target dir");
+    let bc_path = dir.join("app-bc.qpack");
+    let out = Command::new(&bytecode_bin)
+        .args([
+            "embed",
+            "--pack",
+            pack_path.to_str().unwrap(),
+            "--out",
+            bc_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("embed bytecode");
+    assert!(out.status.success(), "embed failed");
+
+    // replace the bytecode DATA with garbage and RECOMPUTE the integrity
+    // hash so integrity passes — only the load itself can catch this
+    let raw: Value = serde_json::from_slice(&std::fs::read(&bc_path).unwrap()).unwrap();
+    let mut garbage_pack = raw.clone();
+    let garbage = b"garbage-bytecode-not-a-module".to_vec();
+    garbage_pack["bundleBytecode"]["data"] = q_pack::base64_encode(&garbage).into();
+    {
+        use sha2::{Digest, Sha256};
+        let h = Sha256::digest(&garbage);
+        let hex: String = h.iter().map(|b| format!("{:02x}", b)).collect();
+        garbage_pack["integrity"]["bytecodeSha256"] = json!(hex);
+    }
+    let garbage_path = dir.join("app-garbage.qpack");
+    std::fs::write(&garbage_path, serde_json::to_vec(&garbage_pack).unwrap()).unwrap();
+
+    // startup rejects loudly: integrity + fingerprint pass, the bytecode
+    // LOAD fails — never a silent source fallback
+    let port = free_port();
+    let out = Command::new(env!("CARGO_BIN_EXE_velqu-runtime"))
+        .arg("--pack")
+        .arg(&garbage_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .output()
+        .expect("spawn runtime");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.status.success(), "garbage bytecode must not serve");
+    assert!(
+        stderr.contains("bytecode load failed") || stderr.contains("startup.rejected"),
+        "expected loud rejection, got: {stderr}"
+    );
+    // never silently sourced: nothing listened
+    assert!(std::net::TcpStream::connect(("127.0.0.1", port)).is_err());
+}
+
 /// M26-002-C: the explicit source-rebuild path. A pack whose embedded
 /// bytecode targets a different machine rejects on normal startup (the
 /// message names --no-bytecode and the rebuild remedy); the SAME pack
