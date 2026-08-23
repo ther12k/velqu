@@ -231,7 +231,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-004-V](../tasks/03_m26_qpack_v2/M26-004-V-verify-embed-raw-quickjs-bytecode-without-base64.md) | P0 | verify | PASS | M26-004-A, M26-004-B, M26-004-C, M26-004-D | Verify Embed raw QuickJS bytecode without base64 |
 | [M26-004-Z](../tasks/03_m26_qpack_v2/M26-004-Z-package-evidence-for-embed-raw-quickjs-bytecode-without-base64.md) | P0 | evidence | PASS | M26-004-V | Package evidence for Embed raw QuickJS bytecode without base64 |
 | [M26-005-A](../tasks/03_m26_qpack_v2/M26-005-A-use-mmap-read-only-bytes-where-supported.md) | P0 | implement | PASS | M26-003-Z | Use mmap/read-only bytes where supported |
-| [M26-005-B](../tasks/03_m26_qpack_v2/M26-005-B-validate-all-section-bounds-before-access.md) | P0 | implement | TODO | M26-005-A | Validate all section bounds before access |
+| [M26-005-B](../tasks/03_m26_qpack_v2/M26-005-B-validate-all-section-bounds-before-access.md) | P0 | implement | PASS | M26-005-A | Validate all section bounds before access |
 | [M26-005-C](../tasks/03_m26_qpack_v2/M26-005-C-avoid-unsafe-unchecked-access-unless-independently-audited.md) | P0 | implement | TODO | M26-005-B | Avoid unsafe unchecked access unless independently audited |
 | [M26-005-D](../tasks/03_m26_qpack_v2/M26-005-D-support-embedded-pack-bytes-in-standalone-binary.md) | P0 | implement | TODO | M26-005-C | Support embedded pack bytes in standalone binary |
 | [M26-005-V](../tasks/03_m26_qpack_v2/M26-005-V-verify-implement-zero-copy-or-bounded-copy-pack-reader.md) | P0 | verify | TODO | M26-005-A, M26-005-B, M26-005-C, M26-005-D | Verify Implement zero-copy or bounded-copy pack reader |
