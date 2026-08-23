@@ -236,7 +236,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-005-D](../tasks/03_m26_qpack_v2/M26-005-D-support-embedded-pack-bytes-in-standalone-binary.md) | P0 | implement | PASS | M26-005-C | Support embedded pack bytes in standalone binary |
 | [M26-005-V](../tasks/03_m26_qpack_v2/M26-005-V-verify-implement-zero-copy-or-bounded-copy-pack-reader.md) | P0 | verify | PASS | M26-005-A, M26-005-B, M26-005-C, M26-005-D | Verify Implement zero-copy or bounded-copy pack reader |
 | [M26-005-Z](../tasks/03_m26_qpack_v2/M26-005-Z-package-evidence-for-implement-zero-copy-or-bounded-copy-pack-reader.md) | P0 | evidence | PASS | M26-005-V | Package evidence for Implement zero-copy or bounded-copy pack reader |
-| [M26-006-A](../tasks/03_m26_qpack_v2/M26-006-A-hash-required-execution-sections.md) | P1 | implement | TODO | M26-003-Z, M26-004-Z | Hash required execution sections |
+| [M26-006-A](../tasks/03_m26_qpack_v2/M26-006-A-hash-required-execution-sections.md) | P1 | implement | PASS | M26-003-Z, M26-004-Z | Hash required execution sections |
 | [M26-006-B](../tasks/03_m26_qpack_v2/M26-006-B-provide-ed25519-compatible-signature-slot-hook.md) | P1 | implement | TODO | M26-006-A | Provide Ed25519-compatible signature slot/hook |
 | [M26-006-C](../tasks/03_m26_qpack_v2/M26-006-C-define-key-discovery-configuration.md) | P1 | implement | TODO | M26-006-B | Define key discovery/configuration |
 | [M26-006-D](../tasks/03_m26_qpack_v2/M26-006-D-keep-unsigned-local-development-supported-with-explicit-policy.md) | P1 | implement | TODO | M26-006-C | Keep unsigned local development supported with explicit policy |
