@@ -4,7 +4,7 @@ parent_task: M26-006
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -113,3 +113,50 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-006-C (PASS)
+
+Deliverable: key discovery/configuration for the OUT-OF-BAND
+verification tooling (ADR-0026: the runtime never loads keys — this
+configuration belongs to release pipelines and operators).
+
+Change (`crates/q-pack/src/lib.rs`, `q_pack::signatures`):
+
+- `TrustSource` (serde-tagged enum): `Inline { keys }`,
+  `File { path }` (one hex key per line; blank lines and `#` comments
+  ignored), `Environment { var }` (newline-separated).
+- `TrustConfig { sources }`: `load()` unions all sources, validates
+  every key (32 bytes, valid hex), dedups, and FAILS CLOSED on any
+  malformed key in any source — a partially trusted keyring is never
+  usable. `verify_signature(&DetachedSignature, pack_bytes)` verifies
+  the signature AND that its signer key is in the trust set; an empty
+  trust set refuses to verify anything.
+
+Test (`trust_config_discovers_keys_from_all_sources_and_fails_closed`,
+84 total):
+
+- keys discovered from file (with comments/blank lines) + inline + env;
+  duplicates dedup;
+- signature by a trusted publisher verifies; tampered bytes reject;
+- a VALID ed25519 signature by an untrusted key rejects
+  ("not in the trust set");
+- malformed/short keys fail the whole load; empty trust set fails
+  closed;
+- the config round-trips through JSON (release-pipeline config file).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 84 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: signature verifies publisher when configured (trust-set
+authorization on top of M26-006-B verification); no runtime trust
+anchors (tooling-only module, untouched by any runtime path); the
+unsigned-local-dev policy is M26-006-D.

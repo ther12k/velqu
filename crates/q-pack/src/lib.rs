@@ -205,6 +205,107 @@ pub mod signatures {
             self.verify_over(digest)
         }
     }
+
+    /// M26-006-C: key discovery for OUT-OF-BAND verification tooling
+    /// (ADR-0026: the runtime never loads keys; this configuration
+    /// belongs to release pipelines / operators). Sources evaluate in
+    /// order; the union of loaded keys (deduped) is the trust set.
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[serde(rename_all = "camelCase", tag = "type")]
+    pub enum TrustSource {
+        /// explicit hex-encoded ed25519 public keys in the config
+        Inline { keys: Vec<String> },
+        /// keyring file: one hex key per line; blank lines and `#`
+        /// comments ignored
+        File { path: String },
+        /// environment variable holding newline-separated hex keys
+        Environment { var: String },
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrustConfig {
+        #[serde(default)]
+        pub sources: Vec<TrustSource>,
+    }
+
+    impl TrustConfig {
+        fn parse_key(line: &str) -> Result<[u8; 32], String> {
+            let key = hex_decode(line.trim())?;
+            key.try_into()
+                .map_err(|_| format!("trusted key {line:?} is not 32 bytes"))
+        }
+
+        /// Load and validate the full trust set. Any malformed key in
+        /// ANY source fails the whole load (fail closed — a partially
+        /// trusted keyring is never usable). Duplicate keys dedup.
+        pub fn load(&self) -> Result<Vec<[u8; 32]>, String> {
+            let mut keys: Vec<[u8; 32]> = Vec::new();
+            for src in &self.sources {
+                let lines: Vec<String> = match src {
+                    TrustSource::Inline { keys } => keys.clone(),
+                    TrustSource::File { path } => {
+                        let content = std::fs::read_to_string(path)
+                            .map_err(|e| format!("trust file {path:?}: {e}"))?;
+                        content
+                            .lines()
+                            .filter(|l| {
+                                let t = l.trim();
+                                !t.is_empty() && !t.starts_with('#')
+                            })
+                            .map(|l| l.to_string())
+                            .collect()
+                    }
+                    TrustSource::Environment { var } => std::env::var(var)
+                        .map_err(|e| format!("trust env {var:?}: {e}"))?
+                        .lines()
+                        .filter(|l| {
+                            let t = l.trim();
+                            !t.is_empty() && !t.starts_with('#')
+                        })
+                        .map(|l| l.to_string())
+                        .collect(),
+                };
+                for line in lines {
+                    let key = Self::parse_key(&line)?;
+                    if !keys.contains(&key) {
+                        keys.push(key);
+                    }
+                }
+            }
+            Ok(keys)
+        }
+
+        /// Verify a detached signature against the trust set: the
+        /// signature must verify AND be made by one of the trusted
+        /// keys. An empty trust set fails closed.
+        pub fn verify_signature(
+            &self,
+            signature: &DetachedSignature,
+            pack_bytes: &[u8],
+        ) -> Result<(), String> {
+            let trusted = self.load()?;
+            if trusted.is_empty() {
+                return Err("trust set is empty — refusing to verify (fail closed)".into());
+            }
+            let mut last_err = String::from("signature key is not in the trust set");
+            for key in &trusted {
+                let candidate = DetachedSignature {
+                    algorithm: signature.algorithm.clone(),
+                    public_key_hex: hex_encode(key),
+                    signature_hex: signature.signature_hex.clone(),
+                };
+                if candidate.public_key_hex == signature.public_key_hex {
+                    return candidate.verify_over(pack_bytes);
+                }
+                last_err = format!(
+                    "{last_err}; key {} did not produce this signature",
+                    hex_encode(&key[..4])
+                );
+            }
+            Err(last_err)
+        }
+    }
 }
 
 pub mod sources_sidecar {
@@ -2297,6 +2398,106 @@ pub mod qpack2 {
             bytes[16..24].copy_from_slice(&secs);
             bytes[24..32].fill(0x5a);
             ed25519_dalek::SigningKey::from_bytes(&bytes)
+        }
+
+        // ---- M26-006-C: key discovery configuration ----
+
+        #[test]
+        fn trust_config_discovers_keys_from_all_sources_and_fails_closed() {
+            use crate::signatures::{DetachedSignature, TrustConfig, TrustSource};
+            let publisher = generate_publisher_key();
+            let publisher_hex = {
+                let b = publisher.verifying_key().to_bytes();
+                b.iter().map(|x| format!("{x:02x}")).collect::<String>()
+            };
+            let other = generate_publisher_key();
+            let other_hex = {
+                let b = other.verifying_key().to_bytes();
+                b.iter().map(|x| format!("{x:02x}")).collect::<String>()
+            };
+
+            // file source with comments/blank lines + inline + env
+            let dir = std::env::temp_dir().join("velqu-m26-006-c");
+            let _ = std::fs::create_dir_all(&dir);
+            let keyfile = dir.join("trusted.keys");
+            std::fs::write(
+                &keyfile,
+                format!("# release signers\n{publisher_hex}\n\n   \n{publisher_hex}\n"),
+            )
+            .unwrap();
+            std::env::set_var("VELQU_TEST_TRUST_KEYS", &other_hex);
+
+            let cfg = TrustConfig {
+                sources: vec![
+                    TrustSource::File {
+                        path: keyfile.to_string_lossy().into_owned(),
+                    },
+                    TrustSource::Inline {
+                        keys: vec![publisher_hex.clone()],
+                    },
+                    TrustSource::Environment {
+                        var: "VELQU_TEST_TRUST_KEYS".into(),
+                    },
+                ],
+            };
+            let trusted = cfg.load().unwrap();
+            assert_eq!(
+                trusted.len(),
+                2,
+                "duplicates dedup, two distinct keys remain"
+            );
+
+            // signature by a trusted publisher verifies
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            let pack = reader::build_file_bound(&payloads);
+            let sig = DetachedSignature::sign_pack(&publisher, &pack);
+            assert_eq!(cfg.verify_signature(&sig, &pack), Ok(()));
+            // tampered bytes still reject through a trusted key
+            let mut tampered = pack.clone();
+            let last = tampered.len() - 1;
+            tampered[last] ^= 0x01;
+            assert!(cfg.verify_signature(&sig, &tampered).is_err());
+
+            // signature by an UNTRUSTED key rejects even though it is
+            // itself a valid ed25519 signature
+            let third = generate_publisher_key();
+            let untrusted_sig = DetachedSignature::sign_pack(&third, &pack);
+            let err = cfg.verify_signature(&untrusted_sig, &pack).unwrap_err();
+            assert!(err.contains("not in the trust set"), "{err}");
+
+            // malformed key anywhere fails the whole load (fail closed)
+            let bad_cfg = TrustConfig {
+                sources: vec![TrustSource::Inline {
+                    keys: vec![publisher_hex.clone(), "zz".into()],
+                }],
+            };
+            assert!(bad_cfg.load().is_err());
+            let short_cfg = TrustConfig {
+                sources: vec![TrustSource::Inline {
+                    keys: vec!["abcd".into()],
+                }],
+            };
+            assert!(short_cfg.load().is_err());
+
+            // empty trust set refuses to verify anything
+            let empty_cfg = TrustConfig { sources: vec![] };
+            let err = empty_cfg.verify_signature(&sig, &pack).unwrap_err();
+            assert!(err.contains("fail closed"), "{err}");
+
+            // config round-trips through JSON (release-pipeline config file)
+            let json = serde_json::to_string(&cfg).unwrap();
+            let back: TrustConfig = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, cfg);
+            let _ = std::fs::remove_dir_all(&dir);
+            std::env::remove_var("VELQU_TEST_TRUST_KEYS");
         }
 
         // ---- M26-006-B: detached ed25519 signature hook ----
