@@ -8,7 +8,18 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-pub const PACK_FORMAT_VERSION: u32 = 1;
+/// Numeric pack-format modes (ADR-0024). `formatVersion` is a mode
+/// selector, not a minor revision: the runtime implements a closed set of
+/// modes and fails closed on anything outside it. Exactly one mode is
+/// CURRENT at a time; older supported modes load only through their named
+/// adapter; unknown versions never fall back or guess.
+pub const PACK_FORMAT_LEGACY_V1: u32 = 1;
+/// The current numeric mode. Legacy v1 until M26-003 flips producer and
+/// runtime to binary QPack v2 (ADR-0024 migration rule); the flip is one
+/// constant change plus a native adapter, never a silent in-place rewrite.
+pub const PACK_FORMAT_CURRENT: u32 = PACK_FORMAT_LEGACY_V1;
+/// Workspace-wide alias: "the version the current producer emits".
+pub const PACK_FORMAT_VERSION: u32 = PACK_FORMAT_CURRENT;
 pub const RUNTIME_ABI: u32 = 1;
 pub const SCHEMA_IR_VERSION: u32 = 2;
 pub const CONTRACT_VERSION: u32 = 1;
@@ -25,6 +36,28 @@ pub enum PackError {
     Malformed(String),
     #[error("pack rejected: {0}")]
     Rejected(String),
+}
+
+/// Which adapter decodes and validates a pack (ADR-0024). One variant per
+/// numeric mode; no variant carries a cross-mode handler table, and a
+/// current-mode pack never silently reuses legacy semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackFormatMode {
+    /// UTF-8 JSON pack, frozen v1 shape (`docs/specs/pack-format-v1.md`),
+    /// loaded only through this named adapter.
+    LegacyV1,
+}
+
+/// Resolve a numeric `formatVersion` to its adapter. Unknown versions fail
+/// closed: no fallback, no best-effort parse of a newer/older layout.
+pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, PackError> {
+    match format_version {
+        PACK_FORMAT_LEGACY_V1 => Ok(PackFormatMode::LegacyV1),
+        other => Err(PackError::Rejected(format!(
+            "pack formatVersion {other} not supported (supported modes: \
+             {PACK_FORMAT_LEGACY_V1} = legacy-v1 JSON adapter); unknown versions fail closed"
+        ))),
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -610,12 +643,9 @@ impl QPack {
         if self.kind != "velqu.qpack" {
             return reject(format!("unexpected kind {:?}", self.kind));
         }
-        if self.format_version != PACK_FORMAT_VERSION {
-            return reject(format!(
-                "pack formatVersion {} not supported (runtime supports {})",
-                self.format_version, PACK_FORMAT_VERSION
-            ));
-        }
+        // ADR-0024: mode dispatch happens before any other check; the
+        // adapter chosen here owns every later interpretation of the pack.
+        detect_pack_format_mode(self.format_version)?;
         if self.runtime_abi != RUNTIME_ABI {
             return reject(format!(
                 "runtime ABI {} != pack {}",
@@ -1792,6 +1822,47 @@ mod tests {
     #[test]
     fn verifies_minimal_pack() {
         minimal_pack().verify().expect("valid pack");
+    }
+
+    // M26-001-A (ADR-0024): formatVersion is a closed numeric mode set.
+    // Legacy v1 resolves to the named adapter; every other version fails
+    // closed with no fallback path.
+    #[test]
+    fn legacy_v1_resolves_to_named_adapter() {
+        assert_eq!(
+            detect_pack_format_mode(PACK_FORMAT_LEGACY_V1).unwrap(),
+            PackFormatMode::LegacyV1
+        );
+        assert_eq!(PACK_FORMAT_CURRENT, PACK_FORMAT_LEGACY_V1);
+        minimal_pack().verify().expect("v1 pack loads via adapter");
+    }
+
+    #[test]
+    fn unknown_versions_fail_closed() {
+        for v in [0u32, 2, 3, u32::MAX] {
+            let err = detect_pack_format_mode(v).unwrap_err();
+            let msg = err.to_string();
+            assert!(msg.contains("not supported"), "v{v}: {msg}");
+            assert!(msg.contains("fail closed"), "v{v}: {msg}");
+            // The rejection names the supported adapter instead of guessing.
+            assert!(msg.contains("legacy-v1"), "v{v}: {msg}");
+        }
+        let mut p = minimal_pack();
+        p.format_version = 2;
+        let err = p.verify().unwrap_err().to_string();
+        assert!(
+            err.contains("not supported") && err.contains("fail closed"),
+            "{err}"
+        );
+    }
+
+    // ADR-0024: while M26-003 has not landed, the current numeric mode IS
+    // legacy v1. This pin forces a conscious flip (constant + native
+    // adapter) rather than an accidental drift.
+    #[test]
+    fn current_mode_is_pinned_until_native_v2_lands() {
+        assert_eq!(PACK_FORMAT_CURRENT, 1);
+        assert_eq!(PACK_FORMAT_VERSION, PACK_FORMAT_CURRENT);
     }
 
     // M25-007-A: fallback never activates silently — a js plan strategy
