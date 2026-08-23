@@ -347,11 +347,66 @@ pub(crate) enum InvocationDisposition {
 /// Field order matters: Rust drops fields in declaration order, so the
 /// Persistent handler cache, the CachedPrelude, and the Context MUST drop before the Runtime
 /// (QuickJS asserts on live objects at JS_FreeRuntime otherwise).
+/// Collect Persistent handles to the prelude globals. Shared by the
+/// source path (after `ctx.eval(PRELUDE)`) and the M26-004-D embedded
+/// path (after the compiled module — prelude + manifest — evaluates).
+fn collect_prelude_handles(ctx: &rquickjs::Ctx<'_>) -> Result<CachedPrelude, String> {
+    let run_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquRun")
+            .map_err(|e| e.to_string())?,
+    );
+    let make_ctx_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquMakeCtx")
+            .map_err(|e| e.to_string())?,
+    );
+    let make_req_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquMakeReq")
+            .map_err(|e| e.to_string())?,
+    );
+    let watch_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquWatch")
+            .map_err(|e| e.to_string())?,
+    );
+    let op_resolve_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquOpResolve")
+            .map_err(|e| e.to_string())?,
+    );
+    let op_reject_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquOpReject")
+            .map_err(|e| e.to_string())?,
+    );
+    let json_obj: Object = ctx.globals().get("JSON").map_err(|e| e.to_string())?;
+    let stringify_func: Function = json_obj.get("stringify").map_err(|e| e.to_string())?;
+    let stringify_fn = Persistent::save(ctx, stringify_func);
+    Ok(CachedPrelude {
+        run_fn,
+        make_ctx_fn,
+        make_req_fn,
+        watch_fn,
+        op_resolve_fn,
+        op_reject_fn,
+        stringify_fn,
+    })
+}
+
 pub(crate) struct WorkerInner {
     handler_cache: BTreeMap<String, Persistent<Function<'static>>>,
     /// M2.3: dense, indexed function vector for $O(1)$ direct vector dispatch
     function_vector: Vec<Persistent<Function<'static>>>,
     prelude: Option<CachedPrelude>,
+    embedded_prelude: bool,
     ctx: Context,
     rt: Runtime,
     store: Rc<RequestStore>,
@@ -409,7 +464,8 @@ impl WorkerInner {
             bridge_counters,
         ));
         MAPPER.with(|m| *m.borrow_mut() = Some(Arc::clone(&mapper)));
-        let prelude = ctx.with(|ctx| -> Result<CachedPrelude, String> {
+        let embedded_prelude = config.embedded_prelude;
+        let prelude = ctx.with(|ctx| -> Result<Option<CachedPrelude>, String> {
             install_natives(
                 &ctx,
                 Rc::clone(&store),
@@ -418,61 +474,21 @@ impl WorkerInner {
                 tokio_handle,
             )
             .map_err(|e| format!("natives failed: {e:?}"))?;
+            // M26-004-D: embedded-prelude packs carry the prelude inside the
+            // compiled module bytecode — no prelude source evaluation at
+            // startup; handles are collected after module eval in load().
+            if embedded_prelude {
+                return Ok(None);
+            }
             ctx.eval::<(), _>(PRELUDE)
                 .map_err(|e| format!("prelude failed: {e:?}"))?;
-            let run_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquRun")
-                    .map_err(|e| e.to_string())?,
-            );
-            let make_ctx_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquMakeCtx")
-                    .map_err(|e| e.to_string())?,
-            );
-            let make_req_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquMakeReq")
-                    .map_err(|e| e.to_string())?,
-            );
-            let watch_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquWatch")
-                    .map_err(|e| e.to_string())?,
-            );
-            let op_resolve_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquOpResolve")
-                    .map_err(|e| e.to_string())?,
-            );
-            let op_reject_fn = Persistent::save(
-                &ctx,
-                ctx.globals()
-                    .get::<_, Function>("__velquOpReject")
-                    .map_err(|e| e.to_string())?,
-            );
-            let json_obj: Object = ctx.globals().get("JSON").map_err(|e| e.to_string())?;
-            let stringify_func: Function = json_obj.get("stringify").map_err(|e| e.to_string())?;
-            let stringify_fn = Persistent::save(&ctx, stringify_func);
-            Ok(CachedPrelude {
-                run_fn,
-                make_ctx_fn,
-                make_req_fn,
-                watch_fn,
-                op_resolve_fn,
-                op_reject_fn,
-                stringify_fn,
-            })
+            collect_prelude_handles(&ctx).map(Some)
         })?;
         Ok(WorkerInner {
             handler_cache: BTreeMap::new(),
             function_vector: Vec::new(),
-            prelude: Some(prelude),
+            prelude,
+            embedded_prelude,
             ctx,
             rt,
             store,
@@ -647,19 +663,23 @@ impl WorkerInner {
         plan: &q_engine::EngineLoadPlan,
     ) -> Result<LoadStats, String> {
         let t0 = Instant::now();
-        let (register_calls, cache, vec_fns): (
+        let embedded = self.embedded_prelude;
+        let (register_calls, cache, vec_fns, embedded_handles): (
             usize,
             BTreeMap<String, Persistent<Function<'static>>>,
             Vec<Persistent<Function<'static>>>,
+            Option<CachedPrelude>,
         ) = self.ctx.with(
             |ctx| -> Result<
                 (
                     usize,
                     BTreeMap<String, Persistent<Function<'static>>>,
                     Vec<Persistent<Function<'static>>>,
+                    Option<CachedPrelude>,
                 ),
                 String,
             > {
+                let mut embedded_handles: Option<CachedPrelude> = None;
                 if let Some(bc) = bytecode {
                     // ADR-0017: load pre-compiled bytecode (skips parsing + compilation).
                     // Safety: caller (WorkerBuilder) verified sha256 and exact engine/ABI
@@ -672,7 +692,21 @@ impl WorkerInner {
                     let (_evaled, _promise) = module
                         .eval()
                         .map_err(|e| format!("module eval failed: {}", describe_error(&ctx, &e)))?;
+                    // M26-004-D: embedded-prelude packs define the prelude
+                    // globals inside the module — collect handles now; no
+                    // prelude source was ever evaluated.
+                    if embedded {
+                        embedded_handles = Some(collect_prelude_handles(&ctx).map_err(|e| {
+                            format!("embedded prelude incomplete after module eval: {e}")
+                        })?);
+                    }
                 } else {
+                    if embedded {
+                        return Err(
+                            "embedded-prelude pack must load bytecode (source path has no prelude)"
+                                .to_string(),
+                        );
+                    }
                     ctx.eval::<Value, _>(bundle).map_err(|e| {
                         format!("bundle evaluation failed: {}", describe_error(&ctx, &e))
                     })?;
@@ -727,7 +761,7 @@ impl WorkerInner {
                             }
                             vec_fns.push(Persistent::save(&ctx, f));
                         }
-                        Ok((0, BTreeMap::new(), vec_fns))
+                        Ok((0, BTreeMap::new(), vec_fns, embedded_handles.take()))
                     }
                     q_engine::EngineLoadPlan::Legacy { expected_handlers } => {
                         let handlers: Object = ctx
@@ -762,11 +796,16 @@ impl WorkerInner {
                                 expected_handlers.len()
                             ));
                         }
-                        Ok((count, cache, Vec::new()))
+                        Ok((count, cache, Vec::new(), embedded_handles.take()))
                     }
                 }
             },
         )?;
+        // M26-004-D: embedded-prelude handles collected inside the module
+        // eval land here (the closure cannot touch self).
+        if let Some(handles) = embedded_handles {
+            self.prelude = Some(handles);
+        }
         let eval_ms = t0.elapsed().as_secs_f64() * 1000.0;
         self.handler_cache = cache;
         self.function_vector = vec_fns;

@@ -864,6 +864,7 @@ dependencies = [
 name = "q-bytecode-tool"
 version = "0.1.0"
 dependencies = [
+ "q-engine-quickjs",
  "q-pack",
  "rquickjs",
  "serde_json",

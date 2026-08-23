@@ -33,8 +33,11 @@ fn main() {
         std::process::exit(1);
     });
 
-    // 2. Compile bundle source → QuickJS module bytecode
-    let bytecode_bytes = compile_bytecode(&pack.bundle);
+    // 2. Compile prelude + bundle source → QuickJS module bytecode
+    // (M26-004-D: the module carries the prelude and handler manifest, so
+    // bytecode production startup evaluates zero prelude source)
+    let module_source = format!("{}\n{}", q_engine_quickjs::prelude::PRELUDE, pack.bundle);
+    let bytecode_bytes = compile_bytecode(&module_source);
 
     // 3. Hash + encode
     let bc_sha256 = hex(&Sha256::digest(&bytecode_bytes));
@@ -44,6 +47,7 @@ fn main() {
 
     // 4. Embed
     pack.bundle_form = Some("module".to_string());
+    pack.bundle_prelude = Some("embedded".to_string());
     let endian = if cfg!(target_endian = "big") {
         "big"
     } else {

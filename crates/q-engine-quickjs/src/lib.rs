@@ -7,7 +7,7 @@
 //! settled/cancelled invocations are dropped (RUN-006, SEC-003).
 
 mod convert;
-mod prelude;
+pub mod prelude;
 mod worker;
 
 use std::sync::{Arc, Mutex};
@@ -55,6 +55,10 @@ pub struct QuickJsConfig {
     /// Maximum number of live request slots owned by this worker. Runtime
     /// admission supplies the HTTP queue bound so the slab cannot outgrow it.
     pub request_slot_capacity: usize,
+    /// M26-004-D: the pack's compiled module bytecode already contains the
+    /// prelude and handler manifest, so startup performs zero prelude
+    /// source evaluation — handles are collected after module eval.
+    pub embedded_prelude: bool,
 }
 
 impl Default for QuickJsConfig {
@@ -66,6 +70,7 @@ impl Default for QuickJsConfig {
             job_deadline_ms: 5_000,
             max_invocation_jobs: 100_000,
             request_slot_capacity: 256,
+            embedded_prelude: false,
         }
     }
 }

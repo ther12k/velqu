@@ -610,6 +610,7 @@ fn fixture_pack() -> q_pack::QPack {
     ];
 
     let mut pack = QPack {
+        bundle_prelude: None,
         decoded_bytecode: None,
         header_name_table: Vec::new(),
         query_name_table: Vec::new(),
@@ -3411,6 +3412,99 @@ globalThis.__velquFunctions = [twin_shape];
     std::thread::sleep(Duration::from_millis(150));
     child.kill().unwrap();
     let _ = child.wait();
+}
+
+#[test]
+fn embedded_prelude_pack_serves_identically_and_source_recovery_works() {
+    // M26-004-D: the compiled module bytecode contains prelude + handler
+    // manifest (bundlePrelude "embedded"); startup evaluates zero prelude
+    // source. Serving must be identical, and --no-bytecode must recover
+    // via the host prelude + source bundle.
+    let dir = temp_dir("embedded");
+    let pack_path = write_pack(&dir);
+    let mut pack = q_pack::QPack::load_and_verify(&pack_path).unwrap();
+
+    let module_source = format!("{}\n{}", q_engine_quickjs::prelude::PRELUDE, pack.bundle);
+    let rt = rquickjs::Runtime::new().unwrap();
+    let ctx = rquickjs::Context::full(&rt).unwrap();
+    let bytecode_bytes = ctx
+        .with(|ctx| -> rquickjs::Result<Vec<u8>> {
+            let module = rquickjs::Module::declare(ctx.clone(), "app.js", module_source.as_str())?;
+            module.write(rquickjs::WriteOptions {
+                endianness: rquickjs::WriteOptionsEndianness::Native,
+                ..Default::default()
+            })
+        })
+        .unwrap();
+    let bc_sha = {
+        use sha2::{Digest, Sha256};
+        let h = Sha256::digest(&bytecode_bytes);
+        h.iter().map(|b| format!("{b:02x}")).collect::<String>()
+    };
+    let endian = if cfg!(target_endian = "big") {
+        "big"
+    } else {
+        "little"
+    }
+    .to_string();
+    pack.bundle_form = Some("module".to_string());
+    pack.bundle_prelude = Some("embedded".to_string());
+    pack.bundle_bytecode = Some(q_pack::BundleBytecode {
+        quickjs: q_pack::ENGINE_VERSION.to_string(),
+        binding: q_pack::ENGINE_BINDING.to_string(),
+        endianness: endian.clone(),
+        target: Some(q_pack::BytecodeTarget {
+            arch: std::env::consts::ARCH.to_string(),
+            os: std::env::consts::OS.to_string(),
+            pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+            endianness: endian,
+        }),
+        data: q_pack::base64_encode(&bytecode_bytes),
+    });
+    pack.integrity.bytecode_sha256 = Some(bc_sha);
+    let bc_path = dir.join("app-embedded.qpack");
+    std::fs::write(&bc_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    // bytecode mode: prelude came from the module — serving identical
+    let port = free_port();
+    let server = Server::start(&bc_path, port);
+    let r = http(port, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"status\":\"ok\"}");
+    let r = http(port, "GET /hello/Rafi HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"message\":\"Hello Rafi\"}");
+    let r = http(port, "GET /js-json HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"ok\":true}");
+    server.stop();
+
+    // explicit source recovery: host prelude evaluates, source bundle runs
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let port2 = free_port();
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&bc_path)
+        .arg("--port")
+        .arg(port2.to_string())
+        .arg("--no-bytecode")
+        .spawn()
+        .unwrap();
+    let mut ready = false;
+    for _ in 0..100 {
+        if std::net::TcpStream::connect(("127.0.0.1", port2)).is_ok() {
+            ready = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(ready, "source recovery must boot");
+    let r = http(port2, "GET /hello/Rafi HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    assert_eq!(r.text(), "{\"message\":\"Hello Rafi\"}");
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
