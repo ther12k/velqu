@@ -1,7 +1,7 @@
 {
   "format": "velqu-benchmark-manifest-v2",
-  "generatedAt": "2026-08-20T21:38:15.496959Z",
-  "commit": "4de942b0a13307578d5f5977436c8dcdd5029894",
+  "generatedAt": "2026-08-23T02:59:25.830506Z",
+  "commit": "8e99fa492a25903f086d8fa2efc7159c3f59d0b8",
   "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "environment": {
     "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
@@ -19,19 +19,19 @@
   "artifacts": {
     "qRuntimeRelease": {
       "path": "target/release/velqu-runtime",
-      "sha256": "3846e7da0580ebf3a62ed3fa91b958795a136b2a36f4b493b9490a4ba34db6cb"
+      "sha256": "1476e1d38611ee25f166558bad0e900c5ed417f0b9a00b36c81e9a2d2a0408ff"
     },
     "proofPack": {
       "path": "examples/proof/dist/app.qpack",
-      "sha256": "e5f70e36c324d0d492b2a7f2bec97c00a4d2d02c4928e7c266eb445ad31cfd89"
+      "sha256": "a0eecf4c099e59e12cac912f23ede2363f2655435940afd4c459f51c7f7db072"
     },
     "routeCountPack10000": {
       "path": "benchmarks/raw/packs/app-10000.qpack",
-      "sha256": "8e70210cd813dbecd6490d4dea3bcb0e1158962fa5d35af2d9e69c66577a6ea0"
+      "sha256": "655442a2f41263b8e2a04a3a0f9f9c56c1a7ef18a9dba55448880b8069b0513e"
     },
     "routeCountBytecodePack10000": {
       "path": "benchmarks/raw/packs/app-10000-bc.qpack",
-      "sha256": "34b5b64813f2b836f42b3c586f258803110da6e8b9d978446b03e70f6dff85c7"
+      "sha256": "6251722210a32fc4269b680e044c3b534abde2ae128589d8426135574826272c"
     }
   },
   "runs": {
@@ -48,10 +48,10 @@
       "raw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl"
     },
     "routeCount": {
-      "runId": "g0-route-count-1787214108",
-      "samples": 5,
-      "rows": 60,
-      "raw": "benchmarks/raw/route-count/route-count-1787214115845.jsonl"
+      "runId": "m25-010-c-1787452642",
+      "samples": 40,
+      "rows": 480,
+      "raw": "benchmarks/raw/route-count/route-count-1787452753541.jsonl"
     },
     "startup": {
       "profile": "benchmarks/raw/profiles/startup-10000.json",
