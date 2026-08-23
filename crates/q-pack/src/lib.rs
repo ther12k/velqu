@@ -993,6 +993,141 @@ pub mod qpack2 {
                 Ok((rows, manifest))
             }
         }
+
+        // ---- bundle bytecode (0x0007): RAW quickjs-ng module bytecode ----
+        //
+        // The v1 pack embeds bytecode as a base64 String inside JSON, which
+        // the runtime must base64-decode before loading. This section stores
+        // the engine-target metadata as string refs plus the bytecode bytes
+        // verbatim — no base64 anywhere on the v2 path.
+        pub mod bytecode_section {
+            use super::super::super::BytecodeTarget;
+            use super::*;
+
+            /// Sanity bound on declared bytecode length (constraint 11);
+            /// decode rejects larger counts before allocating.
+            pub const MAX_CODE_BYTES: u32 = 1 << 28;
+
+            /// Engine-target metadata carried beside the raw bytecode — the
+            /// `BundleBytecode` fields minus the base64 `data`.
+            #[derive(Debug, Clone, PartialEq, Eq, Default)]
+            pub struct BytecodeMeta {
+                pub quickjs: String,
+                pub binding: String,
+                /// "little" | "big"
+                pub endianness: String,
+                pub target: Option<BytecodeTarget>,
+            }
+
+            fn put_ref(out: &mut Vec<u8>, strings: &mut Strings, s: &str) {
+                out.extend_from_slice(&strings.intern(s).to_le_bytes());
+            }
+
+            fn get_ref(
+                bytes: &[u8],
+                off: usize,
+                strings: &[String],
+                what: &str,
+            ) -> Result<String, String> {
+                let raw = bytes
+                    .get(off..off + 4)
+                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                    .ok_or_else(|| "bytecode section truncated".to_string())?;
+                strings
+                    .get(raw as usize)
+                    .map(|s| s.as_str())
+                    .ok_or_else(|| format!("bytecode section: {what} ref out of bounds"))
+                    .map(|s| s.to_string())
+            }
+
+            /// Payload layout: quickjs_ref u32, binding_ref u32,
+            /// endianness_ref u32, has_target u8 [target: arch_ref u32,
+            /// os_ref u32, pointer_width u8, endianness_ref u32],
+            /// code_len u32, code bytes verbatim.
+            pub fn encode(meta: &BytecodeMeta, code: &[u8], strings: &mut Strings) -> Vec<u8> {
+                let mut out = Vec::new();
+                put_ref(&mut out, strings, &meta.quickjs);
+                put_ref(&mut out, strings, &meta.binding);
+                put_ref(&mut out, strings, &meta.endianness);
+                match &meta.target {
+                    Some(t) => {
+                        out.push(1);
+                        put_ref(&mut out, strings, &t.arch);
+                        put_ref(&mut out, strings, &t.os);
+                        out.push(t.pointer_width);
+                        put_ref(&mut out, strings, &t.endianness);
+                    }
+                    None => out.push(0),
+                }
+                out.extend_from_slice(&(code.len() as u32).to_le_bytes());
+                out.extend_from_slice(code);
+                out
+            }
+
+            pub fn decode(
+                bytes: &[u8],
+                strings: &[String],
+            ) -> Result<(BytecodeMeta, Vec<u8>), String> {
+                let quickjs = get_ref(bytes, 0, strings, "quickjs")?;
+                let binding = get_ref(bytes, 4, strings, "binding")?;
+                let endianness = get_ref(bytes, 8, strings, "endianness")?;
+                let has_target = *bytes
+                    .get(12)
+                    .ok_or_else(|| "bytecode section truncated".to_string())?;
+                let mut pos = 13usize;
+                let target = if has_target == 1 {
+                    let arch = get_ref(bytes, pos, strings, "target arch")?;
+                    let os = get_ref(bytes, pos + 4, strings, "target os")?;
+                    let pointer_width = *bytes
+                        .get(pos + 8)
+                        .ok_or_else(|| "bytecode section truncated".to_string())?;
+                    let t_endianness = get_ref(bytes, pos + 9, strings, "target endianness")?;
+                    if ![4u8, 8].contains(&pointer_width) {
+                        return Err(format!(
+                            "bytecode target pointer width {pointer_width} is not 4 or 8"
+                        ));
+                    }
+                    pos += 13;
+                    Some(BytecodeTarget {
+                        arch,
+                        os,
+                        pointer_width,
+                        endianness: t_endianness,
+                    })
+                } else if has_target == 0 {
+                    None
+                } else {
+                    return Err("bytecode section target flag is neither 0 nor 1".into());
+                };
+                let code_len = bytes
+                    .get(pos..pos + 4)
+                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                    .ok_or_else(|| "bytecode section truncated".to_string())?;
+                if code_len > MAX_CODE_BYTES {
+                    return Err(format!(
+                        "bytecode length {code_len} exceeds sane bound {MAX_CODE_BYTES}"
+                    ));
+                }
+                pos += 4;
+                let end = pos + code_len as usize;
+                let code = bytes
+                    .get(pos..end)
+                    .ok_or_else(|| "bytecode section truncated (code_len past end)".to_string())?
+                    .to_vec();
+                if end != bytes.len() {
+                    return Err("bytecode section has trailing bytes".to_string());
+                }
+                Ok((
+                    BytecodeMeta {
+                        quickjs,
+                        binding,
+                        endianness,
+                        target,
+                    },
+                    code,
+                ))
+            }
+        }
     }
 
     // ---- section id catalog (spec §6; ids reserved by M26-001-B) ----
@@ -1719,6 +1854,184 @@ pub mod qpack2 {
             // record win scales with record count (see M26-003-A report)
             assert!(!router_b.is_empty() && !plans_b.is_empty() && !schemas_b.is_empty());
             let _ = (policies, manifest);
+        }
+
+        // ---- M26-004-A: raw bytecode section ----
+
+        use super::graph::bytecode_section::{self, BytecodeMeta};
+
+        fn bytecode_payload() -> Vec<u8> {
+            // binary-heavy bytes including values outside the base64
+            // alphabet: if any base64 encode/decode happened on this path,
+            // these bytes could not survive a round trip.
+            (0..768u32)
+                .map(|i| ((i * 37 + (i >> 4)) & 0xff) as u8)
+                .collect()
+        }
+
+        fn bytecode_meta(with_target: bool) -> BytecodeMeta {
+            BytecodeMeta {
+                quickjs: "0.15.1".into(),
+                binding: "sha256:abcd0123".into(),
+                endianness: "little".into(),
+                target: with_target.then(|| super::super::BytecodeTarget {
+                    arch: "x86_64".into(),
+                    os: "linux".into(),
+                    pointer_width: 8,
+                    endianness: "little".into(),
+                }),
+            }
+        }
+
+        #[test]
+        fn bytecode_section_round_trips_raw_bytes() {
+            for with_target in [true, false] {
+                let meta = bytecode_meta(with_target);
+                let code = bytecode_payload();
+                let mut strings = Strings::new();
+                let payload = bytecode_section::encode(&meta, &code, &mut strings);
+                let table = strings.finish();
+                let (m2, c2) = bytecode_section::decode(&payload, &table).unwrap();
+                assert_eq!(m2, meta);
+                assert_eq!(c2, code, "raw bytecode bytes must survive verbatim");
+                // and the payload itself contains the raw bytes untransformed
+                assert!(payload.windows(16).any(|w| w.iter().any(|b| *b > 127)));
+            }
+        }
+
+        #[test]
+        fn bytecode_section_rejects_drift_and_truncation() {
+            let meta = bytecode_meta(true);
+            let code = bytecode_payload();
+            let mut strings = Strings::new();
+            let payload = bytecode_section::encode(&meta, &code, &mut strings);
+            let table = strings.finish();
+
+            // truncated at every header boundary
+            for cut in [0usize, 4, 8, 12, 13, 26, 30] {
+                assert!(
+                    bytecode_section::decode(&payload[..cut.min(payload.len())], &table).is_err(),
+                    "cut at {cut} must reject"
+                );
+            }
+            // trailing bytes
+            let mut trailing = payload.clone();
+            trailing.push(0);
+            assert!(bytecode_section::decode(&trailing, &table).is_err());
+            // code_len drift: shrink the declared length
+            let mut drifted = payload.clone();
+            let len_at = payload.len() - code.len() - 4;
+            drifted[len_at..len_at + 4].copy_from_slice(&((code.len() as u32 - 1).to_le_bytes()));
+            assert!(bytecode_section::decode(&drifted, &table).is_err());
+            // bad target flag
+            let mut flag = payload.clone();
+            flag[12] = 2;
+            assert!(bytecode_section::decode(&flag, &table).is_err());
+            // out-of-bounds string ref
+            let mut oob = payload.clone();
+            oob[0..4].copy_from_slice(&0xffff_ff00u32.to_le_bytes());
+            assert!(bytecode_section::decode(&oob, &table).is_err());
+            // bad pointer width
+            let mut pw = payload.clone();
+            pw[13 + 8] = 7;
+            assert!(bytecode_section::decode(&pw, &table).is_err());
+            // declared code_len beyond the sane bound rejects before use
+            let mut huge = payload.clone();
+            huge[len_at..len_at + 4].copy_from_slice(&0xffff_ffffu32.to_le_bytes());
+            assert!(bytecode_section::decode(&huge, &table).is_err());
+        }
+
+        #[test]
+        fn bytecode_section_in_bound_file_and_tamper_rejected() {
+            let meta = bytecode_meta(true);
+            let code = bytecode_payload();
+            let mut strings = Strings::new();
+            let bc_payload = bytecode_section::encode(&meta, &code, &mut strings);
+            let table = strings.finish();
+            let strings_payload: Vec<u8> = table.join("\0").into_bytes();
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, &strings_payload),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+                (section::BUNDLE_BYTECODE, &bc_payload),
+            ];
+            let file = reader::build_file_bound(&payloads);
+            let entries = reader::parse_directory_with_binding(&file).unwrap();
+            let sections = reader::validate(&file).unwrap();
+            assert_eq!(sections.len(), 8);
+            assert!(entries
+                .iter()
+                .any(|e| e.section_id == section::BUNDLE_BYTECODE));
+            let bc = sections
+                .iter()
+                .find(|(e, _)| e.section_id == section::BUNDLE_BYTECODE)
+                .unwrap();
+            let (m2, c2) = bytecode_section::decode(bc.1, &table).unwrap();
+            assert_eq!(m2, meta);
+            assert_eq!(c2, code);
+
+            // any payload byte change rejects via per-section sha256...
+            let mut tampered = file.clone();
+            let body_off = bc.0.offset as usize + bc.0.len as usize - 1;
+            tampered[body_off] ^= 0xff;
+            assert!(reader::validate(&tampered).is_err());
+            // ...and even with the content hash repaired, the M26-003-D
+            // execution-integrity binding still rejects
+            let repaired = repair_section_hash(&tampered, &entries, section::BUNDLE_BYTECODE);
+            assert!(reader::validate(&repaired).is_err());
+            assert!(reader::parse_directory_with_binding(&repaired).is_err());
+        }
+
+        #[test]
+        fn bytecode_base64_vs_raw_size_report() {
+            // honest structural report: v1 stores base64 text in JSON
+            // (~4/3 inflation plus JSON string quotes); the v2 section
+            // stores the bytes verbatim plus a fixed metadata header.
+            let code = bytecode_payload();
+            let mut strings = Strings::new();
+            let payload = bytecode_section::encode(&bytecode_meta(true), &code, &mut strings);
+            drop(strings.finish());
+            let b64_len = code.len().div_ceil(3) * 4;
+            let v1_stored = b64_len + 2; // JSON string quotes
+            let v2_stored = payload.len();
+            eprintln!(
+                "bytecode storage: raw={} base64-in-json={} v2-section={} (header={})",
+                code.len(),
+                v1_stored,
+                v2_stored,
+                v2_stored - code.len()
+            );
+            assert!(
+                v2_stored < v1_stored,
+                "raw section must be smaller than base64 text"
+            );
+            assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        /// Rebuild a tampered file with one section's content sha256
+        /// recomputed so ONLY the aggregate binding can catch the change.
+        fn repair_section_hash(
+            file: &[u8],
+            entries: &[super::reader::DirEntry],
+            id: u16,
+        ) -> Vec<u8> {
+            use sha2::Digest;
+            let mut out = file.to_vec();
+            let (i, e) = entries
+                .iter()
+                .enumerate()
+                .find(|(_, e)| e.section_id == id)
+                .unwrap();
+            let dir_off =
+                super::reader::EXTENDED_HEADER_SIZE as usize + i * super::DIR_ENTRY_SIZE as usize;
+            let body = &file[e.offset as usize..(e.offset + e.len) as usize];
+            let hash: [u8; 32] = sha2::Sha256::digest(body).into();
+            out[dir_off + 32..dir_off + 64].copy_from_slice(&hash);
+            out
         }
 
         // ---- M26-003-C: offsets and bounds checks ----
