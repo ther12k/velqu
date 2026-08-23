@@ -207,7 +207,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
 | [M26-001-A](../tasks/03_m26_qpack_v2/M26-001-A-define-numeric-current-mode-and-legacy-v1-adapter.md) | P0 | implement | PASS | M25-GATE | Define numeric current mode and legacy v1 adapter |
-| [M26-001-B](../tasks/03_m26_qpack_v2/M26-001-B-specify-section-directory-alignment-bounds-optional-sections-and-versioning.md) | P0 | implement | TODO | M26-001-A | Specify section directory, alignment, bounds, optional sections, and versioning |
+| [M26-001-B](../tasks/03_m26_qpack_v2/M26-001-B-specify-section-directory-alignment-bounds-optional-sections-and-versioning.md) | P0 | implement | PASS | M26-001-A | Specify section directory, alignment, bounds, optional sections, and versioning |
 | [M26-001-C](../tasks/03_m26_qpack_v2/M26-001-C-separate-integrity-from-authenticity.md) | P0 | implement | TODO | M26-001-B | Separate integrity from authenticity |
 | [M26-001-D](../tasks/03_m26_qpack_v2/M26-001-D-define-debug-source-sidecar-policy.md) | P0 | implement | TODO | M26-001-C | Define debug/source sidecar policy |
 | [M26-001-V](../tasks/03_m26_qpack_v2/M26-001-V-verify-accept-qpack-v2-format-and-compatibility-adr.md) | P0 | verify | TODO | M26-001-A, M26-001-B, M26-001-C, M26-001-D | Verify Accept QPack v2 format and compatibility ADR |

@@ -26,3 +26,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 22. [ADR-0022 — Schema IR v2: Declarative Transform, File, and Problem Nodes](0022-schema-ir-v2.md) (accepted; implements the M2.5 schema track; M25-001-A)
 23. [ADR-0023 — Canonical Ordering and Hashing for Schema IR v2 Projections](0023-canonical-ordering-and-hashing.md) (accepted; implements ADR-0022; M25-001-C)
 24. [ADR-0024 — QPack v2 Numeric Current Mode and Legacy v1 Adapter](0024-qpack-v2-numeric-mode-and-legacy-v1-adapter.md) (accepted; freezes format-mode policy, trust model, compatibility matrix, and migration rules; M26-001-A)
+25. [ADR-0025 — QPack v2 Section Directory, Alignment, Bounds, and Versioning](0025-qpack-v2-section-directory-and-bounds.md) (accepted; freezes the normative mode-2 layout in `docs/specs/pack-format-v2.md`; M26-001-B)

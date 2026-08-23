@@ -60,6 +60,53 @@ pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, Pa
     }
 }
 
+/// Mode-2 binary layout constants (ADR-0025,
+/// `docs/specs/pack-format-v2.md`). The encoder and native decoder land
+/// with M26-003; these constants exist so spec/code drift fails tests
+/// first. Nothing here changes legacy-v1 behavior.
+pub mod qpack2 {
+    /// File magic at offset 0 (ASCII).
+    pub const MAGIC: &[u8; 8] = b"VELQUQPK";
+    /// Numeric mode this layout belongs to.
+    pub const FORMAT_VERSION: u32 = 2;
+    /// Fixed header size in bytes.
+    pub const HEADER_SIZE: u64 = 64;
+    /// Fixed directory-entry stride in bytes.
+    pub const DIR_ENTRY_SIZE: u64 = 64;
+    /// Required alignment for every section start.
+    pub const SECTION_ALIGN: u64 = 8;
+    /// Directory entry flag bit: the adapter may tolerate this section's
+    /// absence; presence is always fully validated.
+    pub const FLAG_OPTIONAL: u16 = 0x0001;
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        // Spec §2/§3 pins: header and directory strides are exactly 64
+        // bytes and everything downstream stays 8-aligned. Changing either
+        // is a new numeric mode, never an in-place patch.
+        #[test]
+        fn layout_constants_match_spec() {
+            assert_eq!(MAGIC, b"VELQUQPK");
+            assert_eq!(FORMAT_VERSION, 2);
+            assert_eq!(HEADER_SIZE % SECTION_ALIGN, 0);
+            assert_eq!(DIR_ENTRY_SIZE % SECTION_ALIGN, 0);
+            let dir_end = HEADER_SIZE + DIR_ENTRY_SIZE * 7;
+            assert_eq!(dir_end % SECTION_ALIGN, 0);
+            assert_eq!(FLAG_OPTIONAL, 1);
+        }
+
+        // Mode dispatch still rejects 2 until the native adapter lands:
+        // no producer emits v2 before M26-003 (ADR-0024 rule 1).
+        #[test]
+        fn mode_two_still_fails_closed_before_native_adapter() {
+            let err = crate::detect_pack_format_mode(FORMAT_VERSION).unwrap_err();
+            assert!(err.to_string().contains("fail closed"));
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineRef {
