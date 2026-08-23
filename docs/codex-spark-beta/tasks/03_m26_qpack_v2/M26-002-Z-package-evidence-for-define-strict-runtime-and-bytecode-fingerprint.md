@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -120,3 +120,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M26-002-V merged in PR #785 at
+  commit `0c5509c2bff5e1e607c1863eda0908845fac56ec`; issue #190 is
+  closed. The evidence package is based on clean parent HEAD `e151534`
+  before this commit.
+- Parent acceptance matrix: `M26-002-V` maps all four guardrails to
+  source and named tests (mismatches reject before ready; dimension-
+  named errors; engine upgrades require rebuild via the build hash;
+  cross-target packs rejected with the explicit `--no-bytecode` source
+  path and the no-silent-fallback proof).
+- Source-backed implementation records:
+  - `M26-002-A` (PR #781, #186 closed): the full runtime fingerprint
+    (rquickjs version, runtime build hash, capability hash; bytecode
+    target fields pre-existing) with dimension-named rejections and
+    compiler parity (Bun-mirrored hashes, proven by loading).
+  - `M26-002-B` (PR #782, #187 closed): fail closed on cross-target
+    mismatch (arch/os/pointer-width/endianness; missing target rejects).
+  - `M26-002-C` (PR #783, #188 closed): the explicit `--no-bytecode`
+    source-rebuild path end to end.
+  - `M26-002-D` (PR #784, #189 closed): never silently fall back —
+    pinned at engine and process boundaries (hash-valid garbage
+    bytecode rejects before ready).
+- Note: the fingerprint fields change pack bytes; the canonical
+  benchmark manifest's `proofPack` entry requires a matched refresh
+  (flagged in M26-002-A; not silently altered here).
+- Exact verification (fresh on this branch): all targeted suites green
+  (q-pack 53+2, q-engine-quickjs 1+97, q-http 4+6+1, q-schema-runtime
+  58+4+5, velqu-runtime 26; bun 81→82 with 487 expects; typecheck, fmt,
+  clippy -D warnings, validate-okf clean). `./scripts/verify` completes
+  every stage except the documented isolated-worktree benchmark-manifest
+  mismatch.
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M26-002 PASS.
+  The generated Spark queues expose M26-003-A next.
+- Remaining scope: `M26-003`+ remain TODO until implemented and
+  evidenced.
+
+Commit: `8bc32e9`.
