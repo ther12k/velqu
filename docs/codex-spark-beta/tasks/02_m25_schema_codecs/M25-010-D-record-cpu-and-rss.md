@@ -4,7 +4,7 @@ parent_task: M25-010
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -126,3 +126,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-010-D)
+
+Status: **PASS**.
+
+- Raw evidence: `benchmarks/raw/codec-m25-010-d/` — codec.jsonl (2,000
+  samples × 3 candidates × 10 cases), codec-summary.json (per-case
+  `rssKbAfter`/`hwmKb`, process `maxRssKb`), codec.alloc.json (tracer
+  profile), evidence.json (artifact sha256s). Allocator tracing
+  captured this time (`allocatorStatus: captured`; tracer sha matches
+  the M25-002-C record) — closes M25-010-A's disclosed gap.
+- Bench change (`crates/q-bench-support/src/bin/codec_bench/main.rs`):
+  added RSS recording (VmRSS/VmHWM per case + ru_maxrss process peak,
+  with a note that ru_maxrss was observed inconsistent on some hosts —
+  prefer hwmKb); PACKET field set to M25-010-D; COMMAND template and
+  evidence paths now reflect the actual out-dir.
+- Report: `docs/reports/m25-010-d-cpu-rss.md` — CPU p50 per cell,
+  allocation deltas, RSS findings, decision matrix, host caveat.
+- Key facts (honest): C2 CPU wins at array scale (records1000 −15%
+  vs generic-rust) and is neutral-to-noise elsewhere; strategy choice
+  moves per-case RSS by ≤ ~220 KB; bench process HWM 12.7 MB;
+  host candidates share a parse-dominated allocation profile (+1.5%
+  calls for the projection). Cold-start RSS cross-referenced from
+  M25-010-C.
+
+### Tests and evidence
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed; `cargo test -p
+  q-schema-runtime` — 58 + 5 + 4 passed; workspace cargo tests green
+  (incl. q-pack 41 + 2, velqu-runtime 24).
+- `bun test` — 81 passed, 0 failed, 481 expect() calls.
+- `bun run verify` — **ALL PASS** (fmt, clippy -D warnings,
+  validate-okf, validate-production-plan, benchmark-report parity,
+  release builds, typecheck, conformance suites, evidence validation).
+- Bench invocation:
+  `LD_PRELOAD=target/alloc-tracer.so VELQU_ALLOC_PROFILE=benchmarks/raw/codec-m25-010-d/codec.alloc.json target/release/q-codec-bench --out-dir benchmarks/raw/codec-m25-010-d --iters 2000`.

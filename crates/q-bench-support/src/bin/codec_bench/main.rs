@@ -61,8 +61,8 @@ __velquRegister("codec.pass_body", pass_body);
 
 const WARMUP: usize = 200;
 const GENERATED_MODULE_PATH: &str = "crates/q-bench-support/src/bin/codec_bench/generated.rs";
-const COMMAND: &str = "LD_PRELOAD=target/alloc-tracer.so VELQU_ALLOC_PROFILE=benchmarks/raw/codec-c/codec.alloc.json /usr/bin/time -v -o benchmarks/raw/codec-c/codec.process.time.txt target/m25-002-c-bench/release/q-codec-bench --out-dir benchmarks/raw/codec-c --iters 2000";
-const PACKET: &str = "M25-002-C";
+const COMMAND: &str = "cc -shared -fPIC -O2 -ldl -o target/alloc-tracer.so scripts/alloc-tracer.c && RUSTFLAGS=\"--remap-path-prefix=$PWD=/velqu-src\" cargo build --release -p q-bench-support && LD_PRELOAD=target/alloc-tracer.so VELQU_ALLOC_PROFILE=<out-dir>/codec.alloc.json target/release/q-codec-bench --out-dir <out-dir> --iters 2000";
+const PACKET: &str = "M25-010-D";
 
 /// M25-002-C allocator-event snapshot ABI (scripts/alloc-tracer.c).
 #[repr(C)]
@@ -117,6 +117,39 @@ fn cpu_time_us() -> (u64, u64) {
         let user = (ru.ru_utime.tv_sec as u64) * 1_000_000 + ru.ru_utime.tv_usec as u64;
         let sys = (ru.ru_stime.tv_sec as u64) * 1_000_000 + ru.ru_stime.tv_usec as u64;
         (user, sys)
+    }
+}
+
+/// Resident set size in KiB from /proc/self/status: (VmRSS, VmHWM).
+/// (0, 0) means the file was unreadable — recorded as absent, never guessed.
+fn rss_kb() -> (u64, u64) {
+    let Ok(status) = std::fs::read_to_string("/proc/self/status") else {
+        return (0, 0);
+    };
+    let parse_kb = |line: &str| -> u64 {
+        line.split_whitespace()
+            .nth(1)
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    let mut vmrss = 0u64;
+    let mut hwm = 0u64;
+    for line in status.lines() {
+        if line.starts_with("VmRSS:") {
+            vmrss = parse_kb(line);
+        } else if line.starts_with("VmHWM:") {
+            hwm = parse_kb(line);
+        }
+    }
+    (vmrss, hwm)
+}
+
+/// Process peak RSS in KiB via getrusage ru_maxrss (Linux: KiB).
+fn max_rss_kb() -> u64 {
+    unsafe {
+        let mut ru: libc::rusage = std::mem::zeroed();
+        libc::getrusage(libc::RUSAGE_SELF, &mut ru);
+        ru.ru_maxrss as u64
     }
 }
 
@@ -372,6 +405,9 @@ fn main() {
                 alloc_calls.push(s.alloc.map(|a| a.call_count()).unwrap_or(0) as f64);
             }
             let all_ok = correct == iters && last_out_bytes > 0;
+            // M25-010-D: RSS snapshot after the case completes (VmRSS =
+            // current resident set, VmHWM = process peak so far).
+            let (rss_after_kb, hwm_kb) = rss_kb();
             summary_cases.push(json!({
                 "case": schema.name,
                 "candidate": cand.name(),
@@ -380,6 +416,8 @@ fn main() {
                 "correct": correct,
                 "inBytes": in_bytes,
                 "outBytes": last_out_bytes,
+                "rssKbAfter": rss_after_kb,
+                "hwmKb": hwm_kb,
                 "metrics": {
                     "totalUs": metric_stats(&mut total_us),
                     "codecUs": metric_stats(&mut codec_us),
@@ -404,6 +442,8 @@ fn main() {
         "generatedModule": GENERATED_MODULE_PATH,
         "instrumentation": {
             "cpu": "getrusage(RUSAGE_SELF) deltas per sample; perf_event_paranoid=4 denies hardware counters on this host",
+            "rss": "per-case VmRSS/VmHWM snapshot from /proc/self/status after the case (authoritative); maxRssKb via ru_maxrss is recorded raw but was observed inconsistent on some hosts — prefer hwmKb",
+            "maxRssKb": max_rss_kb(),
             "bridgeTiming": if cfg!(feature = "bench-instrumentation") { "enabled (q-bridge access timing compiled in)" } else { "absent (bench-instrumentation feature off; bridgeAccessUs rows are 0)" },
             "allocator": allocator_status,
             "allocatorMetric": "allocator events and requested bytes, not live heap",
@@ -433,8 +473,8 @@ fn main() {
     let sum_hash =
         sha256_hex(&std::fs::read(format!("{out_dir}/codec-summary.json")).expect("summary read"));
     let mut evidence_files = vec![
-        json!({ "path": "benchmarks/raw/codec-c/codec.jsonl", "sha256": raw_hash }),
-        json!({ "path": "benchmarks/raw/codec-c/codec-summary.json", "sha256": sum_hash }),
+        json!({ "path": format!("{out_dir}/codec.jsonl"), "sha256": raw_hash }),
+        json!({ "path": format!("{out_dir}/codec-summary.json"), "sha256": sum_hash }),
     ];
     // Final process-wide allocator profile (written by the tracer at exit, so
     // it cannot be hashed here); record its path relative to the repo when
