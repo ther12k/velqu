@@ -7,7 +7,9 @@ M2.6 note (ADR-0024): this format is the **legacy v1 adapter** mode
 (`formatVersion: 1`, `PackFormatMode::LegacyV1`). Binary QPack v2 is a
 separate numeric mode with its normative layout in
 `docs/specs/pack-format-v2.md` (ADR-0025); unknown versions fail closed
-at pack verify.
+at pack verify. The `integrity` block below is **integrity only**
+(ADR-0026): it detects corruption and naive tampering; authenticity is
+out-of-band deployment policy (detached signatures / build provenance).
 
 The production artifact `app.qpack` is a single UTF-8 JSON file with this shape.
 Field order is fixed for deterministic hashing (serialize with sorted keys

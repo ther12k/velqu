@@ -66,8 +66,11 @@ Directory rules (all enforced before any section is interpreted):
 3. `offset % 8 == 0` and `len > 0`.
 4. Ranges `[offset, offset+len)` are disjoint across entries.
 5. `offset + len <= total_size`.
-6. `content_sha256` must match the bytes at read time (integrity binding;
-   authenticity/signature policy is M26-001-C and lives outside the pack).
+6. `content_sha256` must match the bytes at read time. This is
+   **integrity only** (ADR-0026): it detects corruption and naive
+   tampering, never establishes origin. Authenticity is out-of-band
+   deployment policy — detached signatures or build provenance; the
+   runtime has no trust anchors and no in-pack signature semantics.
 
 ## 4. Optional sections
 

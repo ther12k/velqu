@@ -1990,6 +1990,25 @@ mod tests {
         );
     }
 
+    // M26-001-C (ADR-0026): integrity and authenticity are different
+    // questions. In-band digests prove bit-fidelity against the pack's own
+    // integrity block — nothing more. A writer who can rewrite the pack
+    // can also rewrite its digests, so a self-consistent pack verifies
+    // WITHOUT any trust anchor. Authenticity ("who authorized these
+    // bytes") is therefore out-of-band by design: detached signatures or
+    // build provenance at deployment time; the runtime has no key store,
+    // accepts no authenticity-by-declaration field, and forbids untrusted
+    // arbitrary bytecode (compiler-owned embed path only).
+    #[test]
+    fn self_consistent_digests_verify_without_trust_anchor() {
+        let mut p = minimal_pack();
+        p.bundle.push(' '); // attacker rewrites content...
+        rehash(&mut p); // ...and recomputes in-band digests to match
+        p.verify().expect("integrity alone cannot detect this");
+        // The corollary is policy, not code: origin authorization MUST come
+        // from outside the pack (ADR-0026). No verify() input can express it.
+    }
+
     #[test]
     fn rejects_engine_mismatch() {
         let mut p = minimal_pack();
