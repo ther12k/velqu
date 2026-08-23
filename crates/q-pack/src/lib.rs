@@ -1613,6 +1613,44 @@ pub mod qpack2 {
         }
 
         #[test]
+        fn binary_and_transitional_representations_agree() {
+            // G2-p3: the v2 binary sections and the transitional JSON/serde
+            // form must carry the identical verified graph — same structures
+            // out of both decode paths, and the transitional form round-trips.
+            let (router, plans, schemas, policies, manifest) = graph_fixture();
+            let tj: super::super::SerializedRouter =
+                serde_json::from_str(&serde_json::to_string(&router).unwrap()).unwrap();
+            let tp: Vec<RoutePlanDecl> =
+                serde_json::from_str(&serde_json::to_string(&plans).unwrap()).unwrap();
+            let ts: Vec<SchemaDecl> =
+                serde_json::from_str(&serde_json::to_string(&schemas).unwrap()).unwrap();
+            assert_eq!(tj, router);
+            assert_eq!(tp, plans);
+            assert_eq!(ts, schemas);
+
+            let mut strings = Strings::new();
+            let router_b = router_section::encode(&router.nodes, &mut strings);
+            let plans_b = plans_section::encode(&plans, &mut strings);
+            let schemas_b = schemas_section::encode(&schemas, &mut strings);
+            let table = strings.finish();
+            let mut strings2 = Strings::new();
+            for s in &table {
+                strings2.intern(s);
+            }
+            let _policy_b =
+                super::graph::policy_section::encode(&policies, &manifest, &mut strings2);
+            let table = strings2.finish();
+
+            let bj: super::super::SerializedRouter =
+                router_section::decode(&router_b, &table).unwrap();
+            let bp = plans_section::decode(&plans_b, &table).unwrap();
+            let bs = schemas_section::decode(&schemas_b, &table).unwrap();
+            assert_eq!(bj, tj);
+            assert_eq!(bp, tp);
+            assert_eq!(bs, ts);
+        }
+
+        #[test]
         fn graph_sections_mutation_never_panics() {
             struct Rng(u64);
             impl Rng {
