@@ -112,6 +112,241 @@ pub mod qpack2 {
     /// absence; presence is always fully validated.
     pub const FLAG_OPTIONAL: u16 = 0x0001;
 
+    /// M26-003-C: file-level offsets and bounds checks. Parses the 64-byte
+    /// header and the section directory with every spec §2/§3 rule
+    /// enforced BEFORE any section content is interpreted:
+    /// magic exact; header_size == 64; total_size == actual length;
+    /// reserved zero; entries unique by id; offsets >= header+directory;
+    /// 8-aligned; len > 0; ranges disjoint; within the file; content
+    /// sha256 verified at read time (integrity only — ADR-0026).
+    /// Required ids must all be present; unknown ids reject even when
+    /// flagged optional.
+    pub mod reader {
+        use super::{section, DIR_ENTRY_SIZE, FLAG_OPTIONAL, HEADER_SIZE, MAGIC, SECTION_ALIGN};
+
+        #[derive(Debug)]
+        pub struct Header {
+            pub total_size: u64,
+            pub section_count: u32,
+        }
+
+        #[derive(Debug)]
+        pub struct DirEntry {
+            pub section_id: u16,
+            pub flags: u16,
+            pub offset: u64,
+            pub len: u64,
+            pub content_sha256: [u8; 32],
+        }
+
+        pub fn parse_header(bytes: &[u8]) -> Result<Header, String> {
+            if bytes.len() < HEADER_SIZE as usize {
+                return Err("file shorter than the fixed header".to_string());
+            }
+            if &bytes[0..8] != MAGIC {
+                return Err("magic mismatch (not a v2 pack)".to_string());
+            }
+            let version = u32::from_le_bytes(bytes[8..12].try_into().unwrap());
+            if version != super::FORMAT_VERSION {
+                return Err(format!(
+                    "format version {version} != {}",
+                    super::FORMAT_VERSION
+                ));
+            }
+            let header_size = u32::from_le_bytes(bytes[12..16].try_into().unwrap());
+            if header_size as u64 != HEADER_SIZE {
+                return Err(format!("header_size {header_size} != {HEADER_SIZE}"));
+            }
+            let total_size = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+            if total_size != bytes.len() as u64 {
+                return Err(format!(
+                    "total_size {total_size} != actual length {}",
+                    bytes.len()
+                ));
+            }
+            let section_count = u32::from_le_bytes(bytes[24..28].try_into().unwrap());
+            let reserved = u32::from_le_bytes(bytes[28..32].try_into().unwrap());
+            if reserved != 0 {
+                return Err("header reserved field is non-zero".to_string());
+            }
+            if bytes[32..64].iter().any(|b| *b != 0) {
+                return Err("header reserved bytes are non-zero".to_string());
+            }
+            Ok(Header {
+                total_size,
+                section_count,
+            })
+        }
+
+        pub fn parse_directory(bytes: &[u8]) -> Result<Vec<DirEntry>, String> {
+            let header = parse_header(bytes)?;
+            let dir_end = HEADER_SIZE + DIR_ENTRY_SIZE * header.section_count as u64;
+            if dir_end > bytes.len() as u64 {
+                return Err("directory extends past end of file".to_string());
+            }
+            let mut entries: Vec<DirEntry> = Vec::new();
+            for i in 0..header.section_count as usize {
+                let base = (HEADER_SIZE + DIR_ENTRY_SIZE * i as u64) as usize;
+                let e = DirEntry {
+                    section_id: u16::from_le_bytes(bytes[base..base + 2].try_into().unwrap()),
+                    flags: u16::from_le_bytes(bytes[base + 2..base + 4].try_into().unwrap()),
+                    offset: u64::from_le_bytes(bytes[base + 8..base + 16].try_into().unwrap()),
+                    len: u64::from_le_bytes(bytes[base + 16..base + 24].try_into().unwrap()),
+                    content_sha256: bytes[base + 24..base + 56].try_into().unwrap(),
+                };
+                if e.flags & !FLAG_OPTIONAL != 0 {
+                    return Err(format!(
+                        "directory entry {i}: unknown flag bits {:#x}",
+                        e.flags
+                    ));
+                }
+                let entry_reserved =
+                    u32::from_le_bytes(bytes[base + 4..base + 8].try_into().unwrap());
+                if entry_reserved != 0 {
+                    return Err(format!("directory entry {i}: reserved field is non-zero"));
+                }
+                if e.offset < dir_end {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): offset overlaps header/directory",
+                        e.section_id
+                    ));
+                }
+                if !e.offset.is_multiple_of(SECTION_ALIGN) {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): offset not 8-aligned",
+                        e.section_id
+                    ));
+                }
+                if e.len == 0 {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): zero length",
+                        e.section_id
+                    ));
+                }
+                if e.offset + e.len > bytes.len() as u64 {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): range past end of file",
+                        e.section_id
+                    ));
+                }
+                if let Some(prev) = entries.iter().find(|p| p.section_id == e.section_id) {
+                    return Err(format!(
+                        "duplicate section id {:#x} (entries at offsets {} and {})",
+                        e.section_id, prev.offset, e.offset
+                    ));
+                }
+                if entries
+                    .iter()
+                    .any(|p| e.offset < p.offset + p.len && p.offset < e.offset + e.len)
+                {
+                    return Err(format!(
+                        "directory entry {i} (id {:#x}): range overlaps another section",
+                        e.section_id
+                    ));
+                }
+                entries.push(e);
+            }
+            Ok(entries)
+        }
+
+        /// Full validation: header + directory + catalog rules (required
+        /// ids present; unknown ids reject even when optional) + per-section
+        /// content sha256. Returns validated entries with their slices.
+        pub fn validate(bytes: &[u8]) -> Result<Vec<(DirEntry, &[u8])>, String> {
+            let entries = parse_directory(bytes)?;
+            for e in &entries {
+                let known = matches!(
+                    e.section_id,
+                    section::STRINGS
+                        | section::ROUTES
+                        | section::ROUTE_PLANS
+                        | section::SCHEMA_MANIFEST
+                        | section::POLICIES
+                        | section::CAPABILITIES
+                        | section::BUNDLE_BYTECODE
+                        | section::CONTRACT_SUMMARY
+                );
+                if !known {
+                    return Err(format!(
+                        "unknown section id {:#x} — outside the registered catalog; no skip-and-continue (spec §5)",
+                        e.section_id
+                    ));
+                }
+                let body = &bytes[e.offset as usize..(e.offset + e.len) as usize];
+                use sha2::Digest;
+                let hash = sha2::Sha256::digest(body);
+                if hash[..] != e.content_sha256[..] {
+                    return Err(format!(
+                        "section {:#x}: content sha256 mismatch (integrity failure)",
+                        e.section_id
+                    ));
+                }
+            }
+            for required in section::REQUIRED {
+                if !entries.iter().any(|e| e.section_id == *required) {
+                    return Err(format!(
+                        "required section {:#x} missing (spec §6)",
+                        required
+                    ));
+                }
+            }
+            Ok(entries
+                .into_iter()
+                .map(|e| {
+                    let body = &bytes[e.offset as usize..(e.offset + e.len) as usize];
+                    (e, body)
+                })
+                .collect())
+        }
+
+        /// Build a v2 file from section payloads (writer for tests and
+        /// the future encoder): lays out sections 8-aligned after the
+        /// directory and computes every content hash.
+        pub fn build_file(payloads: &[(u16, &[u8])]) -> Vec<u8> {
+            use sha2::Digest;
+            let section_count = payloads.len() as u32;
+            let dir_end = HEADER_SIZE + DIR_ENTRY_SIZE * payloads.len() as u64;
+            let mut out = Vec::new();
+            out.extend_from_slice(MAGIC);
+            out.extend_from_slice(&super::FORMAT_VERSION.to_le_bytes());
+            out.extend_from_slice(&(HEADER_SIZE as u32).to_le_bytes());
+            out.extend_from_slice(&0u64.to_le_bytes()); // total_size patched later
+            out.extend_from_slice(&section_count.to_le_bytes());
+            out.extend_from_slice(&0u32.to_le_bytes());
+            out.extend_from_slice(&[0u8; 32]);
+            // section bodies first to learn offsets
+            let mut bodies = Vec::new();
+            let mut offset = dir_end;
+            for (_, body) in payloads {
+                while !offset.is_multiple_of(SECTION_ALIGN) {
+                    offset += 1;
+                }
+                bodies.push((offset, body));
+                offset += body.len() as u64;
+            }
+            let total = offset;
+            out[16..24].copy_from_slice(&total.to_le_bytes());
+            for (i, (id, body)) in payloads.iter().enumerate() {
+                let base = (HEADER_SIZE + DIR_ENTRY_SIZE * i as u64) as usize;
+                out.extend_from_slice(&vec![0u8; base - out.len()]);
+                out.extend_from_slice(&id.to_le_bytes());
+                out.extend_from_slice(&0u16.to_le_bytes()); // flags
+                out.extend_from_slice(&0u32.to_le_bytes()); // reserved
+                let (sec_off, _) = bodies[i];
+                out.extend_from_slice(&sec_off.to_le_bytes());
+                out.extend_from_slice(&(body.len() as u64).to_le_bytes());
+                out.extend_from_slice(&sha2::Sha256::digest(body));
+            }
+            for (sec_off, body) in &bodies {
+                while (out.len() as u64) < *sec_off {
+                    out.push(0);
+                }
+                out.extend_from_slice(body);
+            }
+            out
+        }
+    }
+
     /// M26-003-B: graph sections. Stores the verified runtime graph —
     /// router nodes/edges/terminals (0x0002), RoutePlans (0x0003), the
     /// schema manifest (0x0004), policy plans (0x0005), the function
@@ -1306,6 +1541,191 @@ pub mod qpack2 {
             // record win scales with record count (see M26-003-A report)
             assert!(!router_b.is_empty() && !plans_b.is_empty() && !schemas_b.is_empty());
             let _ = (policies, manifest);
+        }
+
+        // ---- M26-003-C: offsets and bounds checks ----
+        use super::reader;
+        use super::section;
+
+        fn valid_file() -> Vec<u8> {
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            reader::build_file(&payloads)
+        }
+
+        #[test]
+        fn header_and_directory_round_trip() {
+            let file = valid_file();
+            let entries = reader::validate(&file).expect("valid file validates");
+            assert_eq!(entries.len(), 7);
+            // every offset is 8-aligned and past the directory
+            for (e, body) in &entries {
+                assert!(e.offset % super::SECTION_ALIGN == 0);
+                assert!(e.len > 0);
+                assert_eq!(body.len() as u64, e.len);
+            }
+            // ids are exactly the required catalog
+            let ids: std::collections::BTreeSet<u16> =
+                entries.iter().map(|(e, _)| e.section_id).collect();
+            assert_eq!(ids, section::REQUIRED.iter().copied().collect());
+        }
+
+        #[test]
+        fn every_directory_rule_violation_rejects() {
+            let set16 = |file: &mut Vec<u8>, base: usize, off: usize, v: u16| {
+                file[base + off..base + off + 2].copy_from_slice(&v.to_le_bytes());
+            };
+            let set64 = |file: &mut Vec<u8>, base: usize, off: usize, v: u64| {
+                file[base + off..base + off + 8].copy_from_slice(&v.to_le_bytes());
+            };
+            let dir_base =
+                |i: usize| (super::HEADER_SIZE + super::DIR_ENTRY_SIZE * i as u64) as usize;
+
+            // magic mismatch
+            let mut f = valid_file();
+            f[0] = b'X';
+            assert!(reader::parse_header(&f).unwrap_err().contains("magic"));
+
+            // header_size wrong
+            let mut f = valid_file();
+            f[12..16].copy_from_slice(&32u32.to_le_bytes());
+            assert!(reader::parse_header(&f)
+                .unwrap_err()
+                .contains("header_size"));
+
+            // total_size wrong
+            let mut f = valid_file();
+            let wrong_total = f.len() as u64 + 1;
+            f[16..24].copy_from_slice(&wrong_total.to_le_bytes());
+            assert!(reader::parse_header(&f).unwrap_err().contains("total_size"));
+
+            // reserved non-zero
+            let mut f = valid_file();
+            f[28] = 1;
+            assert!(reader::parse_header(&f).unwrap_err().contains("reserved"));
+
+            // offset overlaps the directory
+            let mut f = valid_file();
+            set64(&mut f, dir_base(0), 8, 64);
+            assert!(reader::parse_directory(&f)
+                .unwrap_err()
+                .contains("header/directory"));
+
+            // misaligned offset
+            let mut f = valid_file();
+            let base = dir_base(0);
+            let off = u64::from_le_bytes(f[base + 8..base + 16].try_into().unwrap());
+            set64(&mut f, base, 8, off + 1);
+            assert!(reader::parse_directory(&f).unwrap_err().contains("aligned"));
+
+            // zero length
+            let mut f = valid_file();
+            set64(&mut f, dir_base(0), 16, 0);
+            assert!(reader::parse_directory(&f)
+                .unwrap_err()
+                .contains("zero length"));
+
+            // range past end of file
+            let mut f = valid_file();
+            let huge_len = f.len() as u64 * 4;
+            set64(&mut f, dir_base(0), 16, huge_len);
+            assert!(reader::parse_directory(&f)
+                .unwrap_err()
+                .contains("past end"));
+
+            // duplicate section id
+            let mut f = valid_file();
+            let id1 = u16::from_le_bytes(f[dir_base(1)..dir_base(1) + 2].try_into().unwrap());
+            set16(&mut f, dir_base(0), 0, id1);
+            assert!(reader::parse_directory(&f)
+                .unwrap_err()
+                .contains("duplicate"));
+
+            // content hash mismatch (mutate a body byte, hash stays stale)
+            let mut f = valid_file();
+            let last = f.len() - 1;
+            f[last] ^= 0xFF;
+            assert!(reader::validate(&f)
+                .unwrap_err()
+                .contains("sha256 mismatch"));
+
+            // unknown section id rejects even when required ids all present
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"s"),
+                (section::ROUTES, b"r"),
+                (section::ROUTE_PLANS, b"p"),
+                (section::SCHEMA_MANIFEST, b"s"),
+                (section::POLICIES, b"p"),
+                (section::CAPABILITIES, b"c"),
+                (section::CONTRACT_SUMMARY, b"c"),
+                (0x7777, b"experiment"),
+            ];
+            let f = reader::build_file(&payloads);
+            assert!(reader::validate(&f)
+                .unwrap_err()
+                .contains("unknown section id"));
+
+            // missing required section rejects
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"s"),
+                (section::ROUTES, b"r"),
+                (section::ROUTE_PLANS, b"p"),
+                (section::SCHEMA_MANIFEST, b"s"),
+                (section::POLICIES, b"p"),
+                (section::CAPABILITIES, b"c"),
+                // CONTRACT_SUMMARY missing
+            ];
+            let f = reader::build_file(&payloads);
+            assert!(reader::validate(&f)
+                .unwrap_err()
+                .contains("required section"));
+        }
+
+        #[test]
+        fn header_directory_mutation_never_panics() {
+            struct Rng(u64);
+            impl Rng {
+                fn next(&mut self) -> u64 {
+                    let mut x = self.0;
+                    x ^= x << 13;
+                    x ^= x >> 7;
+                    x ^= x << 17;
+                    self.0 = x;
+                    x
+                }
+            }
+            let file = valid_file();
+            // only the header + directory bytes are fuzzed here; section
+            // bodies are covered by the M26-003-B section fuzz and the
+            // content-hash check above
+            let fuzz_len = (super::HEADER_SIZE + super::DIR_ENTRY_SIZE * 7) as usize;
+            let mut rng = Rng(0xB0_0505);
+            let mut rejected = 0usize;
+            for _ in 0..4_000 {
+                let mut bytes = file[..fuzz_len].to_vec();
+                bytes.extend_from_slice(&file[fuzz_len..]);
+                let idx = (rng.next() as usize) % fuzz_len;
+                bytes[idx] ^= 1u8 << (rng.next() % 8);
+                if reader::validate(&bytes).is_err() {
+                    rejected += 1;
+                }
+            }
+            // most header/directory mutations reject; survivors are flips
+            // inside offset/len fields that land on legal values and the
+            // single legal flag bit — those are caught by the sha256
+            // range checks only when they move ranges; no panic, bounded
+            // work either way (content hashes cover the bodies)
+            assert!(
+                rejected > 3_300,
+                "mutation must overwhelmingly reject: {rejected}"
+            );
         }
 
         // Mode dispatch still rejects 2 until the native adapter lands:
