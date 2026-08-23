@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { build, contractDiff, diffContracts, CompileError } from "@velqu/compiler";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const TMP = "/tmp/velqu-conformance";
 
@@ -577,5 +577,32 @@ describe("problem contracts (M25-006-C: policy errors flow into Treaty unions)",
         "internal",
       ].sort(),
     );
+  });
+});
+
+describe("debug source sidecar (ADR-0027, M26-004-C)", () => {
+  test("production pack embeds no source map; sidecar carries sources bound to the pack hash", async () => {
+    const out = `${TMP}/sidecar`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "examples/proof/src/app.ts", outDir: out });
+
+    const packRaw = readFileSync(`${out}/app.qpack`, "utf8");
+    const pack = JSON.parse(packRaw);
+    // production default: the pack ships debug-free
+    expect(pack.sourceMap ?? null).toBeNull();
+
+    // the sidecar exists next to the pack and binds to its exact bytes
+    const sidecarPath = `${out}/app.qpack.sources.json`;
+    expect(existsSync(sidecarPath)).toBe(true);
+    const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
+    expect(sidecar.formatVersion).toBe(1);
+    const { createHash } = await import("node:crypto");
+    const want = createHash("sha256").update(packRaw).digest("hex");
+    expect(sidecar.packSha256).toBe(want);
+    // sources live in the sidecar, not the pack
+    expect(typeof sidecar.bundleSource).toBe("string");
+    expect(sidecar.bundleSource).toContain("__velquFunctionManifest");
+    expect(Array.isArray(sidecar.modules)).toBe(true);
+    expect(sidecar.modules.length).toBeGreaterThan(0);
   });
 });

@@ -226,7 +226,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-003-Z](../tasks/03_m26_qpack_v2/M26-003-Z-package-evidence-for-encode-compiled-router-routeplans-schemas-policies-and-func.md) | P0 | evidence | PASS | M26-003-V | Package evidence for Encode compiled router, RoutePlans, schemas, policies, and functions as sections |
 | [M26-004-A](../tasks/03_m26_qpack_v2/M26-004-A-store-raw-module-bytecode-section.md) | P0 | implement | PASS | M26-002-Z, M26-003-Z | Store raw module bytecode section |
 | [M26-004-B](../tasks/03_m26_qpack_v2/M26-004-B-load-exactly-once.md) | P0 | implement | PASS | M26-004-A | Load exactly once |
-| [M26-004-C](../tasks/03_m26_qpack_v2/M26-004-C-make-source-optional-sidecar-development-section.md) | P0 | implement | TODO | M26-004-B | Make source optional sidecar/development section |
+| [M26-004-C](../tasks/03_m26_qpack_v2/M26-004-C-make-source-optional-sidecar-development-section.md) | P0 | implement | PASS | M26-004-B | Make source optional sidecar/development section |
 | [M26-004-D](../tasks/03_m26_qpack_v2/M26-004-D-include-prelude-and-handler-manifest-in-the-compiled-module.md) | P0 | implement | TODO | M26-004-C | Include prelude and handler manifest in the compiled module |
 | [M26-004-V](../tasks/03_m26_qpack_v2/M26-004-V-verify-embed-raw-quickjs-bytecode-without-base64.md) | P0 | verify | TODO | M26-004-A, M26-004-B, M26-004-C, M26-004-D | Verify Embed raw QuickJS bytecode without base64 |
 | [M26-004-Z](../tasks/03_m26_qpack_v2/M26-004-Z-package-evidence-for-embed-raw-quickjs-bytecode-without-base64.md) | P0 | evidence | TODO | M26-004-V | Package evidence for Embed raw QuickJS bytecode without base64 |

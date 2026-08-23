@@ -515,7 +515,10 @@ export function buildPack(
     modules: app.modules,
     entry: "app.js",
     bundle: bundle.code,
-    sourceMap: bundle.sourceMap,
+    // ADR-0027: production packs embed no source map; debug sources and
+    // maps move to the external <pack>.sources.json sidecar (written by
+    // buildApp) that the runtime never reads.
+    sourceMap: null,
     routes: packRoutes,
     schemas,
     policies: policyPacks,

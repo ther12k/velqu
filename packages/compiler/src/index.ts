@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
@@ -202,6 +203,15 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     "openapi.json": JSON.stringify(openapi, null, 2),
     ...(writeLock ? { "contract.lock.json": JSON.stringify(lock, null, 2) } : {}),
     "build-report.json": JSON.stringify(buildReport, null, 2),
+    // ADR-0027 debug source sidecar: advisory tooling file bound to this
+    // exact pack via packSha256; the runtime never reads it.
+    "app.qpack.sources.json": JSON.stringify({
+      formatVersion: 1,
+      packSha256: createHash("sha256").update(packJson).digest("hex"),
+      bundleSource: bundle.code,
+      sourceMap: bundle.sourceMap,
+      modules: app.modules.map((m) => ({ id: m, file: m })),
+    }),
   };
   const artifactBytes: Record<string, number> = {};
   for (const [name, content] of Object.entries(files)) {
