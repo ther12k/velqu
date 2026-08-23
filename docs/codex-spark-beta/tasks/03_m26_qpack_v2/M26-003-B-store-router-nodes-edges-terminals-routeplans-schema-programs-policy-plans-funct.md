@@ -4,7 +4,7 @@ parent_task: M26-003
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -120,3 +120,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-003-B)
+
+Status: **PASS**. The verified runtime graph stores as dense v2 sections
+(`qpack2::graph`), property-equivalent to the transitional structures:
+
+- **Router section** (0x0002 — nodes/edges/terminals): dense node
+  records (static-edge count, param/wildcard refs, optional terminal
+  with method mask + 7 route slots) + per-edge (segment string ref,
+  target). Decode is bounds-checked with a sane-range cap, resolves
+  segment refs against the shared strings table, and rejects trailing
+  bytes.
+- **RoutePlans section** (0x0003): fixed-width per-plan records (route/
+  handler/policy/schema ids, default status, strategy byte, field-needs
+  flags, deadline, fallback-reason string refs) + variable tails
+  (allowed statuses, header/query/cookie name-id arrays). Decodes back
+  to the exact `RoutePlanDecl` (fallback reasons resolve through the
+  strings table).
+- **Schema manifest section** (0x0004): dense envelope (id, key ref,
+  feature refs) with the IR node as canonical JSON payload —
+  property-equivalent; the binary IR codec is future codec work, noted.
+- **Policy plans** (0x0005): M26-003-A rows + a dense `PolicyDecl`
+  manifest tail; `policy_section::decode` walks the row records to find
+  the manifest boundary and decodes both parts.
+- **Function manifest**: the M26-003-A functions table (already dense).
+- **Shared strings**: an interning `Strings` builder dedups every string
+  (segments, keys, reasons, features) into the single strings section.
+
+### Tests and evidence
+
+- `graph_sections_round_trip` — router, plans, schemas decode back to
+  the EXACT encoded structures (PartialEq on the real types); policy
+  rows + manifest decode as one section.
+- `graph_sections_mutation_never_panics` — 3,000 single-byte mutations
+  across router/plans/schemas sections: no panic, bounded work,
+  overwhelmingly-rejecting counts asserted (section content hashes are
+  the read-time backstop for semantically legal bit flips).
+- `graph_section_size_report` — measured dense-vs-JSON sizes printed
+  for router/plans/schemas/policies (structural assertions only; the
+  per-record fixed-width win scales with record count per the
+  M26-003-A report).
+- `cargo test -p q-pack` — 60 + 2; `cargo test -p q-router` — 15;
+  `cargo test -p q-engine-quickjs` — 1 + 97; `cargo test -p
+  velqu-runtime` — 26 — all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (pack bytes changed in
+  M26-002-A; canonical proofPack refresh flagged there).
+
+Offsets/bounds runtime readers land in M26-003-C; integrity binding in
+M26-003-D.
+
+Commit: `120a72c`.
