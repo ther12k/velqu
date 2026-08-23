@@ -200,7 +200,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M25-010-D](../tasks/02_m25_schema_codecs/M25-010-D-record-cpu-and-rss.md) | P1 | implement | PASS | M25-010-C | Record CPU and RSS |
 | [M25-010-V](../tasks/02_m25_schema_codecs/M25-010-V-verify-close-codec-performance-and-cold-start-evidence.md) | P1 | verify | PASS | M25-010-A, M25-010-B, M25-010-C, M25-010-D | Verify Close codec performance and cold-start evidence |
 | [M25-010-Z](../tasks/02_m25_schema_codecs/M25-010-Z-package-evidence-for-close-codec-performance-and-cold-start-evidence.md) | P1 | evidence | PASS | M25-010-V | Package evidence for Close codec performance and cold-start evidence |
-| [M25-GATE](../gates/M25-GATE.md) | P0 | gate | TODO | M25-001-Z, M25-002-Z, M25-003-Z, M25-004-Z, M25-005-Z, M25-006-Z, M25-007-Z, M25-008-Z, M25-009-Z, M25-010-Z | M2.5 — Schema-Specialized Input and JSON Output Pipeline exit gate |
+| [M25-GATE](../gates/M25-GATE.md) | P0 | gate | PASS | M25-001-Z, M25-002-Z, M25-003-Z, M25-004-Z, M25-005-Z, M25-006-Z, M25-007-Z, M25-008-Z, M25-009-Z, M25-010-Z | M2.5 — Schema-Specialized Input and JSON Output Pipeline exit gate |
 
 ## M26 — Binary QPack v2 and Reproducible Artifact ABI
 

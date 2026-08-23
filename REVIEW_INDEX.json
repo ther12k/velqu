@@ -1,58 +1,63 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-08-20T09:10:00Z",
+  "generatedAt": "2026-08-23T05:20:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M24-ZERO-COPY-INGRESS",
+  "milestone": "M25-SCHEMA-SPECIALIZED-CODECS",
   "status": "PASS",
-  "reviewedImplementationCommit": "75bda51f6872524d363a0f5eadc2460cf6bc8678",
-  "evidenceCheckpoint": "03cc48955c2f8b05c29cf6ca196572c67ed5dd2d",
+  "reviewedImplementationCommit": "d61096c660189bf0b5899251ee34730f7e2271fc",
+  "evidenceCheckpoint": "d61096c660189bf0b5899251ee34730f7e2271fc",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "M24 package dependency closure",
+      "gate": "M25 package dependency closure",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/*-Z-*.md"
+        "docs/codex-spark-beta/tasks/02_m25_schema_codecs/*-Z-*.md"
       ],
       "tests": [
         "scripts/spark-queue"
       ],
-      "evidence": "M24-001-Z through M24-010-Z status PASS"
+      "evidence": "M25-001-Z through M25-010-Z status PASS"
     },
     {
-      "gate": "Ownership, admission, lazy bridge, body, observability, fuzz conformance",
+      "gate": "Canonical Schema IR, generated codecs, explicit fallbacks, Treaty/OpenAPI/lock unification, fuzz conformance, performance evidence",
       "status": "PASS",
       "source": [
-        "crates/q-http/src/lib.rs",
-        "crates/q-bridge/src/lib.rs",
-        "crates/q-runtime/src/serve.rs",
-        "crates/q-engine-quickjs/src/worker.rs",
-        "crates/q-engine-quickjs/src/prelude.rs"
+        "crates/q-schema-runtime/src/lib.rs",
+        "crates/q-engine-quickjs/src/convert.rs",
+        "packages/schema/src/index.ts",
+        "packages/compiler/src/emit.ts",
+        "crates/q-pack/src/lib.rs",
+        "conformance/schema/schema.conformance.test.ts"
       ],
       "tests": [
+        "cargo test -p q-schema-runtime",
+        "cargo test -p q-pack",
         "cargo test -p q-engine-quickjs",
-        "cargo test -p q-http",
-        "cargo test -p q-bridge",
-        "cargo test -p velqu-runtime",
         "bun test"
       ],
-      "evidence": "Packet-local acceptance matrices"
+      "evidence": "Packet-local acceptance matrices plus docs/reports/m25-010-a-codec-workloads.md, m25-010-b-size.md, m25-010-c-cold-start-delta.md, m25-010-d-cpu-rss.md"
     },
     {
-      "gate": "Clean full verification and reproducible artifact parity",
-      "status": "BLOCKED",
+      "gate": "Clean full verification, reproducible artifact parity, and owner-dispositioned cold-start limitation",
+      "status": "PASS",
       "source": [
         "scripts/verify",
-        "benchmarks/manifest.json"
+        "benchmarks/manifest.json",
+        "docs/reports/m25-gate-review.md"
       ],
       "tests": [
         "./scripts/verify",
         "python3 scripts/validate-benchmark-evidence.py"
       ],
-      "evidence": "Canonical qRuntimeRelease/proofPack hashes differ from temporary worktree outputs"
+      "evidence": "ALL PASS at candidate d61096c; raw-to-report parity recomputed fresh; 1,000-route cold-start regression owner-approved as documented limitation mitigated by M2.6 QPack v2"
     }
   ],
   "openItems": [],
-  "verification": {}
+  "verification": {
+    "command": "./scripts/verify",
+    "result": "PASS — exit 0 at candidate commit",
+    "typescriptTests": 81
+  }
 }
