@@ -435,6 +435,29 @@ describe("strategy selection (M25-002-D: evidence-driven codec selection)", () =
     expect(std.plan.responseFallbackReason).toBeUndefined();
   });
 
+  test("pack carries the full runtime fingerprint (M26-002-A)", async () => {
+    const out = `${TMP}/fingerprint`;
+    rmSync(out, { recursive: true, force: true });
+    await build({ project: "examples/proof", outDir: out });
+    const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
+
+    // engine fingerprint: rquickjs version + runtime build hash
+    expect(pack.engine.rquickjs).toBe("0.12.2");
+    expect(pack.engine.buildHash).toMatch(/^[0-9a-f]{64}$/);
+
+    // capability hash: sha256 over the sorted, newline-joined names
+    const caps = [...pack.capabilities].sort();
+    const expected = new Bun.CryptoHasher("sha256").update(caps.join("\n")).digest("hex");
+    expect(pack.capabilityHash).toBe(expected);
+
+    // the fingerprint the runtime verifies must agree with this build —
+    // proven by the pack actually loading (runtime-local suites) and the
+    // identical constants asserted here
+    expect(pack.engine.version).toBe("0.15.1");
+    expect(pack.engine.binding).toBe("rquickjs-0.12.2");
+    expect(pack.runtimeAbi).toBe(1);
+  });
+
   test("route manifest exposes codec choice and bridge crossings (M25-007-D)", async () => {
     const out = `${TMP}/inspect-codecs`;
     rmSync(out, { recursive: true, force: true });
