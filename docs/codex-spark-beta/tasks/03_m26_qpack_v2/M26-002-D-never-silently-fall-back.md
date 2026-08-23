@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-002-D)
+
+Status: **PASS**. No silent fallback exists — and the property is now
+pinned by tests at both layers:
+
+- **Engine** (`q-engine-quickjs`): bytecode load failure produces a loud
+  error ("bytecode load failed: …") that startup surfaces as
+  `startup.rejected`; the engine NEVER evaluates the source bundle as an
+  automatic fallback (the source path exists ONLY as the explicit
+  M26-002-C `--no-bytecode` flag).
+- **Evidence**:
+  - `invalid_bytecode_fails_loudly_never_silently_sources` (engine
+    suite) — garbage bytes handed to `load` fail with "bytecode load
+    failed", never a quiet source evaluation.
+  - `hash_valid_garbage_bytecode_rejects_before_ready` (runtime-local) —
+    a pack whose bytecode DATA is replaced with garbage AND whose
+    integrity hash is recomputed to match (so integrity and every
+    fingerprint dimension pass) still rejects at startup with the loud
+    bytecode-load failure, and nothing ever listens — no silent source
+    fallback at the process boundary.
+
+### Tests and evidence
+
+- `cargo test -p q-pack` — 53 + 2; `cargo test -p q-engine-quickjs` —
+  1 + 97 (new); `cargo test -p q-http` — 4 + 6 + 1; `cargo test -p
+  q-schema-runtime` — 58 + 4 + 5; `cargo test -p velqu-runtime` — 26
+  (new) — all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except the documented
+  isolated-worktree benchmark-manifest mismatch (canonical proofPack
+  refresh flagged in M26-002-A).
+
+Commit: `59647fb`.
