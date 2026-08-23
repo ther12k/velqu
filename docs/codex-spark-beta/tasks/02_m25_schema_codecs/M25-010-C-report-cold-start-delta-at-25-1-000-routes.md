@@ -4,7 +4,7 @@ parent_task: M25-010
 milestone: M25
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M25.md
 commit_required: true
 ---
@@ -126,3 +126,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M25-010-C)
+
+Status: **PASS** (with an escalated gate decision — see below).
+
+- Raw evidence: `benchmarks/raw/route-count/route-count-1787452753541.jsonl`
+  (+ regenerated `summary.json`, run `m25-010-c-1787452642`) — 4
+  candidates × 3 sizes × 40 fresh-process samples, randomized order,
+  zero failures.
+- Report: `docs/reports/m25-010-c-cold-start-delta.md` — results table,
+  delta vs the previous recorded run, stage attribution, decision
+  matrix, guardrail status.
+- Fixture refresh (disclosed): committed route-count packs were stale
+  (`schemaIrVersion: 1`, no `responseFallbackReason`) and rejected by
+  the current runtime at load. Regenerated via the checked-in fixture
+  builder, which now tags js response strategies with the closed-
+  vocabulary reason `"explicit"` (M25-007-A); bytecode variants
+  re-embedded. Pack growth +2.8%; no protocol or assertion changes.
+- Key findings (honest): within-run scaling delta 25→1,000 routes is
+  +1,223% (source) / +957% (bytecode); vs the G0 smoke the 1,000-route
+  cold start regressed ~3–4x (~85 µs per added route at scale,
+  up from ~30 µs). Stage logs attribute ~90% of startup to `pack.load`;
+  post-ready codec tables are a minority share. Per parent guardrail
+  ("no unapproved cold-start regression") the regression is documented
+  here and **escalated to M25-GATE** for approval/mitigation (binary
+  QPack v2 load path being the natural candidate).
+- `benchmarks/manifest.json` refreshed for new pack hashes and the new
+  route-count run (fixture pack rebuilt in-place, gitignored output).
+
+### Tests and evidence
+
+- `cargo test -p q-engine-quickjs` — 1 + 96 passed; `cargo test -p
+  q-schema-runtime` — 58 + 5 + 4 passed; `cargo test --workspace` — all
+  green (incl. q-pack 41 + 2, velqu-runtime 24).
+- `bun test` — 81 passed, 0 failed, 481 expect() calls.
+- `bun run typecheck` — clean. `cargo fmt --check`, `cargo clippy
+  --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — 176 links, 0 errors;
+  `scripts/validate-benchmark-evidence.py` — no errors.
+- `bun run verify` — **ALL PASS**.
+- Harness invocation:
+  `ROUTE_COUNT_RUN_ID=m25-010-c-$(date +%s) bun benchmarks/harness/route-count.ts --samples=40`.

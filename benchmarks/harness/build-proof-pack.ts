@@ -245,6 +245,9 @@ function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyT
       body: r.body != null,
     },
     responseStrategy,
+    // M25-007-A: js plan strategies must carry a fallback reason from the
+    // closed vocabulary — pack verification rejects silent fallbacks
+    ...(responseStrategy === "js" ? { responseFallbackReason: "explicit" } : {}),
     deadlineMs: 5000,
   };
 
