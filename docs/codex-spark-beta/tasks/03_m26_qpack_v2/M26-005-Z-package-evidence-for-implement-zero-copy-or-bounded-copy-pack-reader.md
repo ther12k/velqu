@@ -4,7 +4,7 @@ parent_task: M26-005
 milestone: M26
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -123,3 +123,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M26-005-V merged in PR #803 at
+  commit `29a8f0f6abf1d13bdc22ab1b88f704fe14e8bc89`; issue #208 is
+  closed. The evidence package is based on clean parent HEAD `6189285`
+  before this commit.
+- Parent acceptance matrix: `M26-005-V` maps all four guardrails to
+  source and named tests (malformed lengths cannot panic — checked-add
+  overflow fix pinned in debug; startup allocations bounded —
+  structural zero-copy proofs across carriers with count-before-size
+  directory derivation and MAX_NODES/MAX_CODE_BYTES caps; shared +
+  embedded reader modes — Mapped/Owned/Embedded carrier identity +
+  read-only smoke; fuzz parser stable — fuzz and mutation suites
+  unchanged).
+- Source-backed implementation records:
+  - `M26-005-A` (PR #799, #204 closed): `PackBytes` read-only mmap on
+    unix with owned fallback; zero-copy section views proven by
+    pointer-range assertions.
+  - `M26-005-B` (PR #800, #205 closed): ALL section bounds validated
+    before access; fixed a real unchecked-arithmetic hole
+    (`offset+len` overflow: debug panic / release wrap-past-bounds) —
+    regression-pinned by five malformed shapes.
+  - `M26-005-C` (PR #801, #206 closed): unsafe confinement — exactly
+    one audited unsafe block in q-pack (mmap SAFETY audit),
+    `deny(unsafe_op_in_unsafe_fn)`, expanded bytecode-module and
+    fill-bytes audits; mode-0444 platform smoke.
+  - `M26-005-D` (PR #802, #207 closed): `Embedded(&'static [u8])`
+    carrier for standalone-binary mode; carrier identity + zero-copy
+    proofs.
+  - `M26-005-V` (PR #803, #208 closed): verification closure; no
+    defects found.
+- Exact verification (fresh on this branch): q-pack 80+2, q-router 15,
+  q-engine-quickjs 1+97, velqu-runtime 28 passed; bun 83 pass / 0 fail
+  / 487 expect(); typecheck, fmt --check, clippy `-D warnings` clean.
+  `./scripts/verify` completes every stage except the documented
+  isolated-worktree benchmark-manifest mismatch (qRuntimeRelease +
+  proofPack; flagged matched-evidence follow-up from M26-002-A).
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M26-005 PASS;
+  TASK_INDEX marks M26-005-Z PASS. The generated Spark queues expose
+  M26-006-A next.
+- Remaining scope: `M26-006`+ remain TODO until implemented and
+  evidenced.
