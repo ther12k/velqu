@@ -4,7 +4,7 @@ parent_task: M26-002
 milestone: M26
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -116,3 +116,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-002-V)
+
+Status: **PASS**. Every parent M26-002 acceptance guardrail maps to source
+and passing tests; all verification commands ran fresh on this branch (no
+code changes — verification closure only).
+
+### Guardrail → source → evidence
+
+1. **Any fingerprint mismatch rejects before ready.**
+   - ABI/engine/rquickjs/build-hash/capability-hash rejections
+     (M26-002-A tests), cross-target bytecode rejections at load
+     (M26-002-B), hash-valid garbage bytecode rejecting at the engine
+     boundary (M26-002-D runtime test) — every path is
+     `startup.rejected`, never a partial serve.
+2. **Error identifies incompatible dimension.**
+   - Every rejection names its dimension: "dimension: binding"
+     (rquickjs), "dimension: runtime build" (+ rebuild remedy),
+     "dimension: capabilities", "incompatible dimensions: arch/os/
+     pointer width/endianness" (cross-target), bytecode-load failures
+     with the underlying error.
+3. **Engine upgrades require pack rebuild.**
+   - `runtime_build_hash()` covers the engine identity tuple; any
+     upgrade changes it and packs pin the exact hash ("engine upgrades
+     require a pack rebuild" in the message).
+4. **Cross-target packs are rejected.**
+   - `cross_target_bytecode_fails_closed_with_dimensions` (all four
+     dimensions independently); bytecode without a target fingerprint
+     rejects fail-closed; the explicit `--no-bytecode` source path
+     (M26-002-C) is a flag, never an automatic fallback (M26-002-D
+     hash-valid-garbage proof).
+
+### Command results (this branch, fresh worktree)
+
+- `cargo test -p q-pack` — 53 + 2; `cargo test -p q-engine-quickjs` —
+  1 + 97; `cargo test -p q-http` — 4 + 6 + 1; `cargo test -p
+  q-schema-runtime` — 58 + 4 + 5; `cargo test -p velqu-runtime` — 26 —
+  all passed.
+- `bun test` — 82 passed, 0 failed, 487 expect calls.
+- `bun run typecheck` — clean. `cargo fmt --check` — clean.
+- `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `scripts/validate-okf` — clean.
+- `./scripts/verify` — all stages pass except
+  `validate-benchmark-evidence`: the documented isolated-worktree
+  hash mismatch for `qRuntimeRelease`/`proofPack` (M26-002-A changed
+  pack bytes; canonical proofPack refresh flagged there).
+
+Changed files: this record, `docs/codex-spark-beta/STATUS.md`,
+`docs/codex-spark-beta/indexes/TASK_INDEX.md` (verification closure only).
+
+Commit: `c98d794`.
