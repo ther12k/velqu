@@ -4,7 +4,7 @@ parent_task: M26-005
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-005-D (PASS)
+
+Deliverable: the reader supports embedded pack bytes — pack content
+compiled into a standalone binary — completing the reader's
+shared/embedded mode coverage (parent guardrail).
+
+Change (`crates/q-pack/src/lib.rs` only):
+
+- `qpack2::reader::PackBytes` gains `Embedded(&'static [u8])`:
+  `include_bytes!`-style carrier for the standalone-binary mode
+  (executable wiring itself is M26-009-B). Zero-copy by construction —
+  validation borrows section views straight out of the executable
+  image; nothing is copied or reconstructed.
+- `pack_bytes_mapped_and_owned_validate_identically_zero_copy`
+  extended: the same bound file validates identically through mapped,
+  owned, AND embedded carriers (ids, hashes, byte equality), and every
+  embedded section body pointer lies inside the static bytes (views,
+  not copies).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 80 passed + 2, 0 failed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: reader works for shared (Mapped/Owned) and embedded modes
+(one `&[u8]` consumer, all carriers tested); malformed lengths cannot
+panic (M26-005-B checked bounds apply to every carrier — the
+missing/malformed and overflow tests share the same validate path);
+fuzz parser stable (no parser change).
