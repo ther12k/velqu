@@ -2009,6 +2009,23 @@ mod tests {
         // from outside the pack (ADR-0026). No verify() input can express it.
     }
 
+    // M26-001-D (ADR-0027): debug/source sidecars live outside the pack.
+    // Verification neither requires nor consults them — a pack verifies
+    // identically with or without embedded source-map text (legacy v1's
+    // frozen optional field), and no verify() input can point at one.
+    #[test]
+    fn verification_is_independent_of_debug_sidecars() {
+        let with_map = minimal_pack();
+        assert!(with_map.source_map.is_none());
+        with_map.verify().expect("production-style pack verifies");
+
+        let mut debug_build = minimal_pack();
+        debug_build.source_map = Some("{\"version\":3,\"sources\":[]}".into());
+        debug_build
+            .verify()
+            .expect("debug-annotated v1 pack still verifies");
+    }
+
     #[test]
     fn rejects_engine_mismatch() {
         let mut p = minimal_pack();

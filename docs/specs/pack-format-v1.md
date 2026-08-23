@@ -10,6 +10,8 @@ separate numeric mode with its normative layout in
 at pack verify. The `integrity` block below is **integrity only**
 (ADR-0026): it detects corruption and naive tampering; authenticity is
 out-of-band deployment policy (detached signatures / build provenance).
+The optional `sourceMap` field is debug material (ADR-0027): production
+producers should omit it; the runtime never requires or consults it.
 
 The production artifact `app.qpack` is a single UTF-8 JSON file with this shape.
 Field order is fixed for deterministic hashing (serialize with sorted keys

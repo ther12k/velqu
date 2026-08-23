@@ -4,7 +4,7 @@ parent_task: M26-001
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-001-D)
+
+Status: **PASS**.
+
+### Deliverables
+
+- **ADR-0027** (`docs/okf/decisions/0027-debug-source-sidecar-
+  policy.md`): production packs carry no debug/source content — mode 2
+  has no source/source-map section (bytecode section OPTIONAL so the
+  source rebuild path survives); legacy v1 keeps its frozen optional
+  `sourceMap` but producers should omit it for production, with the
+  default flip landing atomically with the M26-003 encoder. Debug
+  material moves to an external `<pack>.sources.json` sidecar
+  (`packSha256`-bound, tool-verified): the runtime NEVER reads it —
+  no load path, no fallback, no env knob. Sidecars inherit ADR-0026:
+  integrity-referenced, authenticity-free, behavior-neutral. Includes
+  sidecar layout diagram and compatibility matrix (pack type x sidecar
+  presence).
+- **Test pinning runtime independence**
+  (`crates/q-pack/src/lib.rs`):
+  `verification_is_independent_of_debug_sidecars` — a pack verifies
+  identically with and without embedded source-map text; verification
+  takes no sidecar input.
+- **Spec cross-references**: `docs/specs/pack-format-v2.md` header now
+  states there is no source/map section by design (ADR-0027);
+  `docs/specs/pack-format-v1.md` marks `sourceMap` as debug material.
+
+### Command results (fresh worktree)
+
+- `cargo test -p q-pack` — 50 passed (49 + 1 new); `cargo test -p
+  velqu-runtime` — 24 passed; `bun test` — 81 passed / 481 expect();
+  typecheck/fmt clean; clippy `-D warnings` clean (one unused-mut in
+  the new test fixed before commit); `./scripts/verify` — ALL PASS
+  (exit 0).
