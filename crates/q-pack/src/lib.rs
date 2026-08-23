@@ -206,6 +206,48 @@ pub mod signatures {
         }
     }
 
+    /// M26-006-D: explicit authenticity POLICY for deployment
+    /// tooling. Local development stays first-class: unsigned packs are
+    /// fully usable (in-band integrity — per-section digests and the
+    /// execution-integrity binding — is ALWAYS enforced by the reader,
+    /// independent of this policy). Requiring signatures is an explicit
+    /// production decision, never a default.
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+    #[serde(rename_all = "camelCase", tag = "mode")]
+    pub enum AuthenticityPolicy {
+        /// Unsigned packs allowed — local development / CI default.
+        /// A PRESENT signature is still verified and a bad one rejects.
+        #[default]
+        UnsignedAllowed,
+        /// Every pack MUST carry a detached signature made by a key in
+        /// the trust set.
+        RequireSignature { config: TrustConfig },
+    }
+
+    impl AuthenticityPolicy {
+        /// Enforce the policy for one pack. `signature` is the detached
+        /// signature record supplied by the pipeline (there is no
+        /// in-pack source — ADR-0026).
+        pub fn enforce(
+            &self,
+            pack_bytes: &[u8],
+            signature: Option<&DetachedSignature>,
+        ) -> Result<(), String> {
+            match self {
+                AuthenticityPolicy::UnsignedAllowed => match signature {
+                    None => Ok(()), // explicit allowance, not an oversight
+                    Some(sig) => sig.verify_over(pack_bytes),
+                },
+                AuthenticityPolicy::RequireSignature { config } => {
+                    let sig = signature.ok_or_else(|| {
+                        "unsigned pack rejected: policy requires a publisher signature".to_string()
+                    })?;
+                    config.verify_signature(sig, pack_bytes)
+                }
+            }
+        }
+    }
+
     /// M26-006-C: key discovery for OUT-OF-BAND verification tooling
     /// (ADR-0026: the runtime never loads keys; this configuration
     /// belongs to release pipelines / operators). Sources evaluate in
@@ -2398,6 +2440,76 @@ pub mod qpack2 {
             bytes[16..24].copy_from_slice(&secs);
             bytes[24..32].fill(0x5a);
             ed25519_dalek::SigningKey::from_bytes(&bytes)
+        }
+
+        // ---- M26-006-D: explicit unsigned/signed policy ----
+
+        #[test]
+        fn unsigned_local_dev_is_explicit_and_production_requires_signatures() {
+            use crate::signatures::{
+                AuthenticityPolicy, DetachedSignature, TrustConfig, TrustSource,
+            };
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            let pack = reader::build_file_bound(&payloads);
+            // in-band integrity holds regardless of policy
+            assert!(reader::validate(&pack).is_ok());
+
+            // UnsignedAllowed (the DEFAULT): unsigned pack is fine —
+            // explicit allowance, not an oversight
+            assert_eq!(
+                AuthenticityPolicy::default(),
+                AuthenticityPolicy::UnsignedAllowed
+            );
+            assert_eq!(
+                AuthenticityPolicy::UnsignedAllowed.enforce(&pack, None),
+                Ok(())
+            );
+            // a PRESENT signature is still verified; a bad one rejects
+            let publisher = generate_publisher_key();
+            let sig = DetachedSignature::sign_pack(&publisher, &pack);
+            assert_eq!(
+                AuthenticityPolicy::UnsignedAllowed.enforce(&pack, Some(&sig)),
+                Ok(())
+            );
+            let mut tampered = pack.clone();
+            let last = tampered.len() - 1;
+            tampered[last] ^= 0x01;
+            assert!(AuthenticityPolicy::UnsignedAllowed
+                .enforce(&tampered, Some(&sig))
+                .is_err());
+
+            // RequireSignature: unsigned rejected with an explicit reason
+            let publisher_hex = {
+                let b = publisher.verifying_key().to_bytes();
+                b.iter().map(|x| format!("{x:02x}")).collect::<String>()
+            };
+            let policy = AuthenticityPolicy::RequireSignature {
+                config: TrustConfig {
+                    sources: vec![TrustSource::Inline {
+                        keys: vec![publisher_hex],
+                    }],
+                },
+            };
+            let err = policy.enforce(&pack, None).unwrap_err();
+            assert!(err.contains("requires a publisher signature"), "{err}");
+            // signed by the trusted publisher passes
+            assert_eq!(policy.enforce(&pack, Some(&sig)), Ok(()));
+            // signed by an UNTRUSTED key still rejects
+            let outsider = generate_publisher_key();
+            let forged = DetachedSignature::sign_pack(&outsider, &pack);
+            assert!(policy.enforce(&pack, Some(&forged)).is_err());
+            // policy round-trips through JSON (deployment config file)
+            let json = serde_json::to_string(&policy).unwrap();
+            let back: AuthenticityPolicy = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, policy);
         }
 
         // ---- M26-006-C: key discovery configuration ----

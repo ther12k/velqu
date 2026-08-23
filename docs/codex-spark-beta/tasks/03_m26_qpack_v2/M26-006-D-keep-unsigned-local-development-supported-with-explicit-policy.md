@@ -4,7 +4,7 @@ parent_task: M26-006
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -113,3 +113,47 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-006-D (PASS)
+
+Deliverable: unsigned local development stays first-class with an
+EXPLICIT policy boundary — requiring signatures is a deliberate
+production decision, never a default.
+
+Change (`crates/q-pack/src/lib.rs`, `q_pack::signatures`):
+
+- `AuthenticityPolicy` (serde, `#[default] UnsignedAllowed`):
+  - `UnsignedAllowed` — unsigned packs fully usable (in-band integrity
+    — per-section digests + execution-integrity binding — is ALWAYS
+    enforced by the reader regardless of policy); a PRESENT signature
+    is still verified and a bad one rejects.
+  - `RequireSignature { config: TrustConfig }` — every pack must carry
+    a detached signature from a trusted key (M26-006-C discovery).
+- `enforce(pack_bytes, Option<&DetachedSignature>)` — the pipeline
+  supplies the signature record (no in-pack source, ADR-0026); each
+  outcome is explicit, including the unsigned allowance (Ok on None
+  under UnsignedAllowed is a documented allowance, not an oversight).
+
+Test (`unsigned_local_dev_is_explicit_and_production_requires_signatures`,
+85 total): default is UnsignedAllowed; unsigned pack passes and the
+reader's in-band integrity is independent; present-signature verify +
+tamper rejection; RequireSignature rejects unsigned with an explicit
+reason; trusted-signer pass; untrusted-signer reject; policy JSON
+round-trip (deployment config file).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 85 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).
+
+Guardrails: unsigned production policy is EXPLICIT (RequireSignature
+must be configured deliberately); no digest/authenticity conflation
+(module docs restate the ADR-0026 boundary; the runtime never reads
+any of this — tooling-only).
