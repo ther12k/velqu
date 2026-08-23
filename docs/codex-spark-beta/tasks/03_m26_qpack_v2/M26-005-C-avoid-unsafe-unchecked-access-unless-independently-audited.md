@@ -4,7 +4,7 @@ parent_task: M26-005
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -107,3 +107,52 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-005-C (PASS)
+
+Deliverable: no unchecked unsafe access on the pack path; every
+remaining `unsafe` is independently audited with invariants and pinned
+tests.
+
+Unsafe inventory on the pack path (complete):
+
+1. `crates/q-pack/src/lib.rs` — exactly ONE unsafe block: the read-only
+   mmap in `qpack2::reader::PackBytes::open`. Expanded to a full SAFETY
+   audit: PROT_READ/MAP_SHARED, Mmap owns the fd, consumers never write
+   (write-through faults), residual SIGBUS-on-external-truncation hazard
+   stated as accepted (immutable build artifacts; owned fallback for
+   empty/unmappable), and all reads go through the M26-005-B
+   checked-bounds reader. Crate root now carries
+   `#![deny(unsafe_op_in_unsafe_fn)]` plus the one-unsafe policy
+   doc — any future unsafe must be an explicit reviewable block.
+2. `crates/q-engine-quickjs/src/worker.rs` `Module::load` (bytecode) —
+   audit expanded: lists the upstream-enforced invariants (engine/ABI/
+   binding fingerprint; sha256 over the single decoded buffer, with the
+   exact tamper/dimension test names pinning each). Hash-valid garbage
+   still rejects at eval, so a crafted buffer cannot reach QuickJS
+   internals.
+3. `crates/q-engine-quickjs/src/worker.rs` `__velquFillBytes` copy —
+   already carries a reviewed FFI SAFETY block (unique live Uint8Array,
+   single worker thread); unchanged.
+
+Everything else on the pack path — header/directory parsing, bounds
+checks, per-section hashing, binding verification, graph/bytecode
+section decoders — is safe code with checked arithmetic.
+
+Test added (80 total in q-pack):
+
+- `pack_bytes_open_works_on_write_protected_files` — platform smoke:
+  a mode-0444 pack opens through the mapped path and validates
+  (production packs are read-only artifacts).
+
+Commands and results:
+
+- `cargo test -p q-pack` — 80 passed + 2, 0 failed.
+- `cargo test -p q-engine-quickjs` — 1 + 97 passed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 83 pass / 0 fail / 487 expect().
+- `bun run typecheck` — clean.
+- `cargo fmt`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — green except the pre-existing documented
+  `validate-benchmark-evidence` scoped failure (flagged follow-up from
+  M26-002-A).

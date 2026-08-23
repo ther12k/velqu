@@ -2,6 +2,14 @@
 //!
 //! The pack is the single production artifact (see `docs/specs/pack-format-v1.md`).
 //! Everything here is load-and-verify only: no compilation, no discovery.
+//!
+//! M26-005-C unsafe policy: this crate contains exactly ONE `unsafe`
+//! block — the read-only mmap in `qpack2::reader::PackBytes::open` —
+//! audited in place with a full SAFETY block. Everything the reader
+//! does with mapped bytes is bounds-checked safe code (checked range
+//! arithmetic, M26-005-B). `unsafe_op_in_unsafe_fn` is denied so any
+//! future unsafe must be an explicit, reviewable block.
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use std::collections::BTreeMap;
 
@@ -213,9 +221,20 @@ pub mod qpack2 {
                         .map_err(|e| format!("pack metadata failed: {e}"))?
                         .len();
                     if len > 0 {
-                        // Safety: read-only mapping (`Mmap::map` requests
-                        // PROT_READ) of a file we hold open for the
-                        // mapping's lifetime; consumers only read.
+                        // SAFETY (M26-005-C audit — the crate's ONLY unsafe):
+                        // 1. `Mmap::map` requests a PROT_READ, MAP_SHARED
+                        //    mapping; `Mmap` owns the fd for its lifetime,
+                        //    so the mapping outlives `file` correctly.
+                        // 2. Consumers deref to `&[u8]` and NEVER write —
+                        //    write-through would fault (read-only map).
+                        // 3. Residual hazard (inherent to mmap, accepted):
+                        //    ANOTHER process truncating the file after
+                        //    mapping raises SIGBUS on access. Deployed
+                        //    packs are immutable build artifacts; the
+                        //    owned fallback covers empty/unmappable files.
+                        // 4. All reads through the mapping go through the
+                        //    checked-bounds reader (M26-005-B): no slice
+                        //    is derived without a validated range.
                         let map = unsafe { memmap2::Mmap::map(&file) }
                             .map_err(|e| format!("mmap pack failed: {e}"))?;
                         return Ok(PackBytes::Mapped(map));
@@ -2124,6 +2143,43 @@ pub mod qpack2 {
                 "raw section must be smaller than base64 text"
             );
             assert_eq!(v2_stored - code.len(), 30, "fixed metadata header size");
+        }
+
+        // ---- M26-005-C: unsafe confinement + platform smoke ----
+
+        #[test]
+        fn pack_bytes_open_works_on_write_protected_files() {
+            // Platform smoke: production packs are read-only artifacts;
+            // the mapped path must open files without any write permit
+            // (unix mode 0444) and validate through the read-only map.
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::STRINGS, b"strings-payload-bytes"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+            ];
+            let file = reader::build_file_bound(&payloads);
+            let dir = std::env::temp_dir().join("velqu-m26-005-c");
+            let _ = std::fs::create_dir_all(&dir);
+            let path = dir.join("readonly.qpk2");
+            std::fs::write(&path, &file).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o444)).unwrap();
+            }
+            let bytes = reader::PackBytes::open(&path)
+                .expect("read-only file opens through the mapped path");
+            assert!(reader::validate(&bytes).is_ok());
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+            }
+            let _ = std::fs::remove_dir_all(&dir);
         }
 
         // ---- M26-005-B: bounds before access ----
