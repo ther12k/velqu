@@ -134,6 +134,8 @@ Update a checkbox only after the task commit and required tests pass.
 
 ## M25 — Schema-Specialized Validation and JSON Codecs
 
+**Gate status: PASS.** All ten M25 parents have passing verification and evidence packets; the exit gate decision (including owner-approved disposition of the documented 1,000-route cold-start regression, mitigated by M2.6 binary QPack v2) is recorded in `gates/M25-GATE.md` and `docs/reports/m25-gate-review.md`.
+
 - [x] [M25-001-A — Specify objects, arrays, unions, literals, enums, formats, defaults, optional/null, transforms, files, and problem schemas](tasks/02_m25_schema_codecs/M25-001-A-specify-objects-arrays-unions-literals-enums-formats-defaults-optional-null-tran.md)
 - [x] [M25-001-B — Define compatibility and fallback markers](tasks/02_m25_schema_codecs/M25-001-B-define-compatibility-and-fallback-markers.md)
 - [x] [M25-001-C — Canonicalize ordering and hashing](tasks/02_m25_schema_codecs/M25-001-C-canonicalize-ordering-and-hashing.md)
@@ -194,7 +196,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M25-010-D — Record CPU and RSS](tasks/02_m25_schema_codecs/M25-010-D-record-cpu-and-rss.md)
 - [x] [M25-010-V — Verify Close codec performance and cold-start evidence](tasks/02_m25_schema_codecs/M25-010-V-verify-close-codec-performance-and-cold-start-evidence.md)
 - [x] [M25-010-Z — Package evidence for Close codec performance and cold-start evidence](tasks/02_m25_schema_codecs/M25-010-Z-package-evidence-for-close-codec-performance-and-cold-start-evidence.md)
-- [ ] [M25-GATE — M2.5 — Schema-Specialized Input and JSON Output Pipeline exit gate](gates/M25-GATE.md)
+- [x] [M25-GATE — M2.5 — Schema-Specialized Input and JSON Output Pipeline exit gate](gates/M25-GATE.md)
 
 ## M26 — Binary QPack v2 and Reproducible Artifact ABI
 

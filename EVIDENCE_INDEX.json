@@ -1,25 +1,27 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-08-20T09:10:00Z",
+  "generatedAt": "2026-08-23T05:20:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M24-ZERO-COPY-INGRESS",
-  "reviewedImplementationCommit": "75bda51f6872524d363a0f5eadc2460cf6bc8678",
+  "milestone": "M25-SCHEMA-SPECIALIZED-CODECS",
+  "reviewedImplementationCommit": "d61096c660189bf0b5899251ee34730f7e2271fc",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS \u2014 clean master verification, artifact hashes, reports, Rust, TypeScript, and OKF checks pass",
-    "rustTests": "workspace tests PASS",
-    "typescriptTests": 36,
+    "result": "PASS — clean candidate-commit verification, artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
+    "rustTests": "workspace tests PASS (q-pack 43, q-engine-quickjs 97, q-http 11, q-bridge 11, q-schema-runtime 67, velqu-runtime 24)",
+    "typescriptTests": 81,
     "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS"
   },
   "benchmarks": {
     "coldStart": "benchmarks/raw/cold-start/summary.json",
     "coldStartRaw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl",
     "routeCount": "benchmarks/raw/route-count/summary.json",
-    "routeCountRaw": "benchmarks/raw/route-count/route-count-1787214115845.jsonl",
+    "routeCountRaw": "benchmarks/raw/route-count/route-count-1787452753541.jsonl",
+    "codecWorkloads": "benchmarks/raw/codec-m25-010-a/codec-summary.json",
+    "codecCpuRss": "benchmarks/raw/codec-m25-010-d/codec-summary.json",
+    "packSizes": "benchmarks/raw/sizes-m25-010-b/sizes.json",
     "warm": "benchmarks/raw/warm/summary.json",
-    "warmRaw": "benchmarks/raw/warm/g0-warm-1787214167.jsonl",
     "startupProfile": "benchmarks/raw/profiles/startup-10000.json",
     "allocationProfile": "benchmarks/raw/profiles/startup-10000.alloc.json",
     "manifest": "benchmarks/manifest.json",
@@ -27,26 +29,33 @@
     "protocol": {
       "warm": "5 independent randomized repetitions, concurrency 1/10/50, 240 raw cells, 1 second per cell, zero errors",
       "cold": "5 fresh-process samples per Velqu route class, 7 classes, 35 rows, zero failures/timeouts",
-      "routeCount": "5 fresh processes per candidate/route-size cell, randomized candidate/size order, zero failures",
+      "routeCount": "40 fresh processes per candidate/route-size cell, randomized candidate/size order (m25-010-c), zero failures",
+      "codec": "2000 iters x 3 candidates x 10 corpus cases after 200 warmup; allocator tracer captured in m25-010-d",
       "startup": "ready-line-bounded wall-clock profile for the generated 10,001-route fixture; perf counters denied by perf_event_paranoid=4",
-      "allocation": "captured with scripts/alloc-tracer.c; counts are process-startup instrumentation, not a general allocator benchmark"
+      "allocation": "captured with scripts/alloc-tracer.c; counts are instrumentation deltas, not a general allocator benchmark"
     }
   },
   "reports": [
-    "docs/reports/m24-gate-review.md"
+    "docs/reports/m25-gate-review.md",
+    "docs/reports/m25-010-c-cold-start-delta.md",
+    "docs/reports/m25-010-d-cpu-rss.md",
+    "docs/reports/m25-010-a-codec-workloads.md",
+    "docs/reports/m25-010-b-size.md"
   ],
   "reportGenerator": "scripts/generate-benchmark-reports.py",
   "taskLedger": {
     "file": "TASKS.production.json",
     "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "PASS \u2014 120-task production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
+    "result": "PASS — production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
   },
   "release": {
     "script": "scripts/release-packet",
     "binding": "release packet binds clean candidate HEAD",
     "checksums": "sha256sum -c release/SHA256SUMS.txt"
   },
-  "openItems": [],
+  "openItems": [
+    "Owner-approved documented limitation: 1,000-route cold-start regression (~3-4x vs G0 smoke, ~90% pack.load) accepted for the beta track; mitigation carried by M2.6 binary QPack v2 (M26-001). See docs/reports/m25-010-c-cold-start-delta.md and gates/M25-GATE.md."
+  ],
   "gates": []
 }
