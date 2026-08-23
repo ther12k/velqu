@@ -4,7 +4,7 @@ parent_task: M26-001
 milestone: M26
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -112,3 +112,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-001-C)
+
+Status: **PASS**.
+
+### Deliverables
+
+- **ADR-0026** (`docs/okf/decisions/0026-integrity-is-not-
+  authenticity.md`): integrity (in-band digests, bit-fidelity evidence,
+  enforced fail closed at load) is separated from authenticity (origin
+  authorization), which is out-of-band deployment policy — detached
+  signatures or build provenance. The runtime has no key store or trust
+  anchors, accepts no authenticity-by-declaration fields, and untrusted
+  arbitrary bytecode stays forbidden (compiler-owned rebuild path).
+  Includes layout diagrams (where each lives in v1 and v2) and a
+  compatibility matrix (pristine/corrupted/rehashed x signed/unsigned).
+- **Test pinning the separation** (`crates/q-pack/src/lib.rs`):
+  `self_consistent_digests_verify_without_trust_anchor` — a rewritten
+  pack whose digests were recomputed still passes verify, proving
+  integrity alone cannot establish origin; the corollary policy lives
+  in ADR-0026, not in code. Existing tamper rejections
+  (`rejects_tampered_bundle`, `rejects_tampered_routes`) unchanged.
+- **Spec cross-references**: `docs/specs/pack-format-v1.md` (integrity
+  block note) and `docs/specs/pack-format-v2.md` §3 rule 6 (digest is
+  integrity-only) now cite ADR-0026.
+
+### Command results (fresh worktree)
+
+- `cargo test -p q-pack` — 49 passed (48 + 1 new); `cargo test -p
+  velqu-runtime` — 24 passed; `bun test` — 81 passed / 481 expect();
+  typecheck/fmt/clippy clean; `./scripts/verify` — ALL PASS (exit 0).
