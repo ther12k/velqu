@@ -795,8 +795,18 @@ pub mod qpack2 {
         /// Build a v2 file WITH the execution-integrity binding: a 96-byte
         /// header whose extension area carries the aggregate hash over
         /// the final directory.
+        ///
+        /// M26-007-C: canonical layout — sections are laid out in
+        /// ASCENDING section-id order regardless of caller-supplied
+        /// order, and the only inter-section padding is zero fill to
+        /// `SECTION_ALIGN`. Identical section content therefore always
+        /// produces a byte-identical file (and an identical execution
+        /// binding), so input permutation cannot change pack bytes.
         pub fn build_file_bound(payloads: &[(u16, &[u8])]) -> Vec<u8> {
             use sha2::Digest;
+            let mut ordered: Vec<(u16, &[u8])> = payloads.to_vec();
+            ordered.sort_by_key(|(id, _)| *id);
+            let payloads: &[(u16, &[u8])] = &ordered;
             let section_count = payloads.len() as u32;
             let dir_end = EXTENDED_HEADER_SIZE + DIR_ENTRY_SIZE * payloads.len() as u64;
             let mut out = Vec::new();
@@ -852,8 +862,15 @@ pub mod qpack2 {
         /// Build a v2 file from section payloads (writer for tests and
         /// the future encoder): lays out sections 8-aligned after the
         /// directory and computes every content hash.
+        ///
+        /// M26-007-C: canonical layout — ascending section-id order and
+        /// zero-only alignment padding, exactly as `build_file_bound`;
+        /// caller-supplied order cannot change the output bytes.
         pub fn build_file(payloads: &[(u16, &[u8])]) -> Vec<u8> {
             use sha2::Digest;
+            let mut ordered: Vec<(u16, &[u8])> = payloads.to_vec();
+            ordered.sort_by_key(|(id, _)| *id);
+            let payloads: &[(u16, &[u8])] = &ordered;
             let section_count = payloads.len() as u32;
             let dir_end = HEADER_SIZE + DIR_ENTRY_SIZE * payloads.len() as u64;
             let mut out = Vec::new();
@@ -1797,6 +1814,70 @@ pub mod qpack2 {
             let dir_end = HEADER_SIZE + DIR_ENTRY_SIZE * 7;
             assert_eq!(dir_end % SECTION_ALIGN, 0);
             assert_eq!(FLAG_OPTIONAL, 1);
+        }
+
+        // ---- M26-007-C: canonical section ordering and padding ----
+
+        #[test]
+        fn section_order_and_padding_are_canonical() {
+            // deliberately UNSORTED payload order (ids descend)
+            let payloads: Vec<(u16, &[u8])> = vec![
+                (section::CONTRACT_SUMMARY, b"contract-summary12"),
+                (section::CAPABILITIES, b"caps-payload-bytes-xx"),
+                (section::POLICIES, b"policies-payload-xxx"),
+                (section::SCHEMA_MANIFEST, b"schemas-payload-xxxx"),
+                (section::ROUTE_PLANS, b"plans-payload-xxxx"),
+                (section::ROUTES, b"router-graph-payload"),
+                (section::STRINGS, b"strings-payload-bytes"),
+            ];
+
+            // permutation invariance: reversed / rotated input orders
+            // produce BYTE-IDENTICAL files (plain and bound)
+            let mut reversed = payloads.clone();
+            reversed.reverse();
+            let mut rotated = payloads.clone();
+            rotated.rotate_left(3);
+            for build in [reader::build_file, reader::build_file_bound] {
+                let canonical = build(&payloads);
+                assert_eq!(build(&reversed), canonical, "reversed input changed bytes");
+                assert_eq!(build(&rotated), canonical, "rotated input changed bytes");
+
+                // directory is ascending by id and every offset 8-aligned
+                let sections = reader::validate(&canonical).unwrap();
+                let ids: Vec<u16> = sections.iter().map(|(e, _)| e.section_id).collect();
+                let mut sorted = ids.clone();
+                sorted.sort();
+                assert_eq!(ids, sorted, "directory not ascending by id");
+                for (e, _) in &sections {
+                    assert_eq!(e.offset % SECTION_ALIGN, 0);
+                }
+
+                // the ONLY non-body bytes are zero alignment fill:
+                // every byte between directory end and section bodies is 0
+                let hs = u32::from_le_bytes(canonical[12..16].try_into().unwrap()) as u64;
+                let dir_end = hs + DIR_ENTRY_SIZE * sections.len() as u64;
+                let mut covered: Vec<(u64, u64)> = sections
+                    .iter()
+                    .map(|(e, _)| (e.offset, e.offset + e.len))
+                    .collect();
+                covered.sort();
+                let mut cursor = dir_end;
+                for (start, end) in covered {
+                    while cursor < start {
+                        assert_eq!(
+                            canonical[cursor as usize], 0,
+                            "non-zero alignment padding at {cursor}"
+                        );
+                        cursor += 1;
+                    }
+                    cursor = end;
+                }
+                assert_eq!(
+                    cursor,
+                    canonical.len() as u64,
+                    "trailing bytes after last body"
+                );
+            }
         }
 
         // ---- M26-003-A: dense section schema evidence ----
