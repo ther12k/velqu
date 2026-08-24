@@ -4,7 +4,7 @@ parent_task: M26-006
 milestone: M26
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -123,3 +123,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M26-006-V merged in PR #809 at
+  commit `66a28be`; issue #214 is closed. The evidence package is based
+  on clean parent HEAD `31d7e4f` before this commit.
+- Parent acceptance matrix: `M26-006-V` maps all four guardrails to
+  source and named tests (digest detects corruption — recomputed
+  aggregate over required sections catches self-consistent rewrites;
+  signature verifies publisher — RFC 8032 vector + fail-closed
+  roundtrip + trust-set authorization; unsigned production policy
+  explicit — default UnsignedAllowed, RequireSignature deliberate with
+  JSON round-trip; no digest/authenticity conflation — ADR-0026
+  boundary in spec, module docs, and the threat model).
+- Source-backed implementation records:
+  - `M26-006-A` (PR #805, #210 closed): `required_sections_digest` —
+    sha256 recomputed per required section, (id, hash) pairs hashed;
+    layout artifacts excluded; test-fix honesty note on the +24
+    integrity-field offset.
+  - `M26-006-B` (PR #806, #211 closed): `DetachedSignature`
+    out-of-band slot — `sign_pack`, `verify_over` (fails closed on
+    algorithm/hex/length/key/mismatch), `verify_digest`.
+  - `M26-006-C` (PR #807, #212 closed): `TrustSource`
+    Inline/File/Environment + `TrustConfig::load` (union, dedup,
+    any-malformed-key fails the whole load) and `verify_signature`
+    (empty trust set refuses).
+  - `M26-006-D` (PR #808, #213 closed): `AuthenticityPolicy`
+    (`#[default] UnsignedAllowed` / `RequireSignature { config }`) +
+    `enforce(pack_bytes, Option<&DetachedSignature>)`.
+  - `M26-006-V` (PR #809, #214 closed): verification closure; key
+    rotation notes (trust-set rotation with explicit overlap windows,
+    empty-set fail-closed, no runtime trust anchors); threat-model
+    update in `docs/okf/engineering/security-model.md`.
+- Required microtask evidence: integrity/signature tests mapped above;
+  key rotation notes and threat-model update delivered in M26-006-V's
+  verification record and `docs/okf/engineering/security-model.md`.
+- Exact verification (fresh on this branch): q-pack 85+2, q-http 11
+  (4+6+1), velqu-runtime 28 passed; bun 83 pass / 0 fail / 495
+  expect(); typecheck, fmt --check, clippy `-D warnings` clean.
+  `./scripts/verify` completes every stage except the documented
+  pre-existing benchmark-manifest mismatch (qRuntimeRelease +
+  proofPack; flagged matched-evidence follow-up from M26-002-A).
+- Evidence-generation fix in this packet: editing
+  `engineering/security-model.md` in M26-006-V invalidated the OKF
+  bundle tamper manifest (`validate-okf`: size/hash mismatch) because
+  the full `./scripts/verify` gate had last run before that edit.
+  Refreshed the file's `bytes`+`sha256` entry in
+  `docs/okf/MANIFEST.json` following the 102a580 precedent
+  (per-entry refresh only). `validate-okf` now PASS (180 links
+  checked).
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M26-006
+  PASS; TASK_INDEX marks M26-006-V PASS (bookkeeping missed by the V
+  packet) and M26-006-Z PASS. STATUS.md marks the Z checkbox. The
+  generated Spark queues expose M26-007-A next.
+- Remaining scope: `M26-007`+ remain TODO until implemented and
+  evidenced.
