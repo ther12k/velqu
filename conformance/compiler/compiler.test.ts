@@ -4,10 +4,37 @@
  * deterministic rebuilds (COMP-003/COMP-009).
  */
 import { describe, expect, test } from "bun:test";
-import { build, contractDiff, diffContracts, CompileError } from "@velqu/compiler";
+import { build, contractDiff, diffContracts, CompileError, PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "@velqu/compiler";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const TMP = "/tmp/velqu-conformance";
+
+describe("pinned toolchain (M26-007-B)", () => {
+  test("the running toolchain satisfies the pins (build would otherwise drift)", () => {
+    // the suite itself runs under the real toolchain — this asserts the
+    // pin table matches reality and that a matching pair passes
+    expect(() =>
+      assertPinnedToolchain({ bun: Bun.version!, typescript: PINNED_TOOLCHAIN.typescript }),
+    ).not.toThrow();
+  });
+  test("a mismatched bun or typescript is diagnosed by name before any build work", () => {
+    for (const running of [
+      { bun: "9.9.9", typescript: PINNED_TOOLCHAIN.typescript },
+      { bun: PINNED_TOOLCHAIN.bun, typescript: "4.1.0" },
+      { bun: "9.9.9", typescript: "4.1.0" },
+    ]) {
+      let err: Error | null = null;
+      try {
+        assertPinnedToolchain(running);
+      } catch (e) {
+        err = e as Error;
+      }
+      expect(err).toBeInstanceOf(ToolchainError);
+      expect(err!.message).toContain("toolchain mismatch");
+      expect(err!.message).toContain(running.bun !== PINNED_TOOLCHAIN.bun ? `bun ${running.bun}` : `typescript ${running.typescript}`);
+    }
+  });
+});
 
 describe("compiler traps (COMP-002: never run the app)", () => {
   test("service factories and module side effects never execute during build", async () => {

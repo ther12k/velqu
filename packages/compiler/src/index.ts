@@ -5,9 +5,11 @@ import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
 import { bundleApp, buildPack, contractDts, openapiFor, diffContracts } from "./emit";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
+import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
 
 export { CompileError } from "./extract";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
+export { PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "./toolchain";
 export {
   evaluateAppStrategies,
   selectRouteStrategies,
@@ -38,6 +40,9 @@ export interface BuildResult {
 
 export async function build(opts: BuildOptions): Promise<BuildResult> {
   const t0 = performance.now();
+  // M26-007-B: the pinned toolchain is enforced before any build work —
+  // a different bun/typescript silently changes bundle bytes and builtBy.
+  assertPinnedToolchain({ bun: Bun.version!, typescript: ts.version });
   const entry = resolveEntry(opts.project);
   const outDir = opts.outDir ?? join(dirname(entry), "..", "dist");
   mkdirSync(outDir, { recursive: true });
@@ -45,7 +50,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   const app = extractApp(entry);
   const bundle = await bundleApp(app, { sourceMap: opts.sourceMap });
   const { packJson, pack } = buildPack(app, bundle, {
-    compilerVersion: "0.1.0",
+    compilerVersion: PINNED_TOOLCHAIN.compiler,
     typescriptVersion: ts.version,
   });
 
