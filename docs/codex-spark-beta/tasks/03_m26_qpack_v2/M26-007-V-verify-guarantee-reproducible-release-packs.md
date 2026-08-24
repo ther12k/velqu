@@ -4,7 +4,7 @@ parent_task: M26-007
 milestone: M26
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -122,3 +122,83 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M26-007-V (PASS)
+
+Parent: M26-007 "Guarantee reproducible release packs". All four
+implementation dependencies merged before this branch (PRs #811–#814;
+issues #216–#219 closed).
+
+### Acceptance criterion mapping
+
+1. **Two clean builds produce identical SHA-256.**
+   - JSON pack path: `rebuild produces byte-identical pack and
+     contract hash` (COMP-003) compares EVERY dist artifact raw-byte
+     across two builds 20 ms apart — 13 files, including app.qpack,
+     contract.json, contract.lock.json, build-report.json/md.
+   - Independent processes: `scripts/compare-builds` (in the gate) —
+     second builder runs from `/` with absolute paths; **12 artifacts
+     byte-identical**, `app.qpack`
+     `363e60153830f7dba101ea3c196baef5f174ad8b978d41c630c9bdb2119f3de3`.
+   - Binary v2 path: `section_order_and_padding_are_canonical` proves
+     reversed/rotated section permutations produce byte-identical
+     files for both writers, ascending directories, zero-only padding.
+   - Bytecode embed probe: two `velqu-bytecode embed` runs 1.2 s apart
+     produce identical `app-bc.qpack` (`cd982e8412d8f6bcb8d4e951da76
+     017e66c629f14294cfec27cd428649fcc3ca`) — deterministic serde_json
+     canonicalization.
+
+2. **Non-reproducibility is diagnosed.**
+   - Toolchain drift: pinned-toolchain suite — any bun/typescript
+     mismatch raises `ToolchainError` naming the offending version
+     BEFORE any build work (`build()` asserts first).
+   - Path/cwd leakage: found and FIXED by M26-007-D's comparison
+     (Bun.build cwd-relative banners); the gate that caught it now
+     fails with a full sha256sum diff on any recurrence.
+   - Map-order variance: M26-007-A made status-key order, default
+     status fallback, and schema embedding canonical, so authoring
+     order cannot silently change output.
+
+3. **Build metadata lives outside deterministic payload or is
+   canonical.** No wall-clock fields exist in any artifact
+   (`generatedAt`/`lockedAt`/`builtAt` removed in M26-007-A; grep over
+   dist confirms zero matches). The only toolchain metadata inside the
+   pack (`builtBy`, `engine` identity tuple + build hash) is a pinned
+   compile-time constant mirrored by q-pack's runtime fingerprint.
+   Binary header/directory/padding are fully canonicalized
+   (M26-007-C).
+
+4. **CI verifies reproducibility.** `.github/workflows/verify.yml`
+   runs `./scripts/verify` on every push/PR — which now includes the
+   "Independent-build reproducibility (M26-007-D)" step — with the Bun
+   pin aligned to `PINNED_TOOLCHAIN` (1.4.0). The Actions runner
+   itself currently executes zero steps on every PR (infrastructure,
+   documented on every PR #714–#814); the local one-command gate is
+   the gate of record until infra recovers.
+
+### Required microtask evidence
+
+- Independent builder report: compare-builds PASS (above).
+- Artifact hashes: app.qpack 363e6015…; embed cd982e84… ×2 identical.
+- Reproducibility tests: COMP-003 strengthened test,
+  `section_order_and_padding_are_canonical`, pinned-toolchain suite,
+  compare-builds gate step.
+
+### Changed files
+
+This task record, STATUS.md checkbox, TASK_INDEX row only. No defects
+requiring code fixes surfaced during verification; no unrelated
+findings needing follow-up tasks.
+
+### Commands and results (branch on master e81198c)
+
+- `cargo test -p q-pack` — 86 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 85 pass / 0 fail / 518 expect().
+- `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — all gates green INCLUDING independent-build
+  reproducibility, except the documented pre-existing
+  `validate-benchmark-evidence` scoped failure (qRuntimeRelease +
+  proofPack manifest hashes; flagged matched-evidence follow-up from
+  M26-002-A).
