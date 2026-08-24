@@ -188,3 +188,21 @@ Limits (defaults, overridable by config): body 1 MiB, header 32 KiB, URI 8 KiB,
 queue 256 concurrent, heap 32 MiB, stack 512 KiB, handler deadline 5 s,
 pending ops 1024. Failures before ready exit non-zero with a structured
 diagnostic on stderr.
+
+## Deprecation and migration (ADR-0024, M26-008)
+
+Status: **deprecated, supported.** v1 remains loadable through the
+separate legacy adapter (`q_pack::legacy_v1`) for the whole M2.6 window;
+removal requires an explicit owner-track decision.
+
+- Loader entry point: `q_pack::legacy_v1::read_and_verify` (disk) /
+  `read_and_verify_bytes` (bytes). Mode dispatch happens before the
+  adapter; legacy structures are built only behind it and never on v2
+  hot paths.
+- Unknown/unsupported `formatVersion` values fail closed with an
+  actionable message naming the rebuild/migrate options.
+- Migration paths: (1) rebuild from source with the current compiler —
+  byte-identical output guaranteed by M26-007 reproducibility work;
+  (2) `velqu pack migrate` guidance in M26-008-B. Mixed-mode packs are
+  rejected (M26-008-C); unsupported legacy features fail
+  deterministically (M26-008-D).

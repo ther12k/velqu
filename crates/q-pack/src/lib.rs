@@ -16,6 +16,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod legacy_v1;
+
 /// Numeric pack-format modes (ADR-0024). `formatVersion` is a mode
 /// selector, not a minor revision: the runtime implements a closed set of
 /// modes and fails closed on anything outside it. Exactly one mode is
@@ -96,7 +98,9 @@ pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, Pa
         PACK_FORMAT_LEGACY_V1 => Ok(PackFormatMode::LegacyV1),
         other => Err(PackError::Rejected(format!(
             "pack formatVersion {other} not supported (supported modes: \
-             {PACK_FORMAT_LEGACY_V1} = legacy-v1 JSON adapter); unknown versions fail closed"
+             {PACK_FORMAT_LEGACY_V1} = legacy-v1 JSON adapter); unknown versions fail \
+             closed — rebuild the pack with the current compiler or migrate it \
+             (see docs/specs/pack-format-v1.md deprecation notes)"
         ))),
     }
 }
