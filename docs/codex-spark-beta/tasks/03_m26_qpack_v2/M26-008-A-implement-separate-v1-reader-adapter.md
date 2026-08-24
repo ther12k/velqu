@@ -4,7 +4,7 @@ parent_task: M26-008
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -108,3 +108,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-008-A)
+
+Status: **PASS**.
+
+### Deliverables
+
+- **Separate v1 reader/adapter** (`crates/q-pack/src/legacy_v1.rs`,
+  wired as `pub mod legacy_v1`): the single sanctioned entry point for
+  legacy packs — `read_and_verify` (disk) / `read_and_verify_bytes`
+  (bytes), each re-gating `detect_pack_format_mode` so legacy
+  structures are constructed only behind the adapter. Module docs
+  state the isolation invariant (qpack2 zero-copy hot paths share no
+  types or code path; they borrow, the adapter builds owned trees) and
+  the deprecation policy (supported through M2.6; removal needs an
+  explicit owner decision).
+- **Compatibility fixture** (required evidence): golden v1 pack
+  committed at `crates/q-pack/tests/fixtures/v1/minimal.json`,
+  regenerable via `cargo run -p q-pack --example gen-fixture`; test
+  `loads_committed_v1_fixture` pins byte-for-byte loadability.
+- **Actionable failure** (guardrail): unsupported-version rejection now
+  names the way out — "rebuild the pack with the current compiler or
+  migrate it (see docs/specs/pack-format-v1.md deprecation notes)";
+  pinned by `unsupported_version_message_is_actionable`.
+- **Migration tests + deprecation documentation**: new "Deprecation and
+  migration" section in `docs/specs/pack-format-v1.md` (status
+  deprecated-but-supported, loader entry points, both migration paths,
+  pointers to M26-008-B/C/D).
+- Public contract unchanged: all existing `q_pack::*` paths still work;
+  no behavior change for valid v1 packs.
+
+### Command results (fresh on branch m26-008-a)
+
+- `cargo test -p q-pack` — 90 passed (+3: two adapter tests + fixture);
+  `cargo test -p velqu-runtime` — 28 passed. `bun test` — 0 fail / 518
+  expect(). typecheck/fmt/clippy `-D warnings` clean.
+- `./scripts/verify` — ALL PASS (exit 0; one manifest-hash refresh after
+  the remapped release rebuild — known pattern).

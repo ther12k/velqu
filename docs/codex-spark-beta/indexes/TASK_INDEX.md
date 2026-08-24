@@ -248,7 +248,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-007-D](../tasks/03_m26_qpack_v2/M26-007-D-compare-independent-build-outputs.md) | P1 | implement | PASS | M26-007-C | Compare independent build outputs |
 | [M26-007-V](../tasks/03_m26_qpack_v2/M26-007-V-verify-guarantee-reproducible-release-packs.md) | P1 | verify | PASS | M26-007-A, M26-007-B, M26-007-C, M26-007-D | Verify Guarantee reproducible release packs |
 | [M26-007-Z](../tasks/03_m26_qpack_v2/M26-007-Z-package-evidence-for-guarantee-reproducible-release-packs.md) | P1 | evidence | PASS | M26-007-V | Package evidence for Guarantee reproducible release packs |
-| [M26-008-A](../tasks/03_m26_qpack_v2/M26-008-A-implement-separate-v1-reader-adapter.md) | P1 | implement | TODO | M26-001-Z, M26-005-Z | Implement separate v1 reader/adapter |
+| [M26-008-A](../tasks/03_m26_qpack_v2/M26-008-A-implement-separate-v1-reader-adapter.md) | P1 | implement | PASS | M26-001-Z, M26-005-Z | Implement separate v1 reader/adapter |
 | [M26-008-B](../tasks/03_m26_qpack_v2/M26-008-B-provide-velqu-pack-migrate-or-rebuild-guidance.md) | P1 | implement | TODO | M26-008-A | Provide `velqu pack migrate` or rebuild guidance |
 | [M26-008-C](../tasks/03_m26_qpack_v2/M26-008-C-deprecate-mixed-mode-packs.md) | P1 | implement | TODO | M26-008-B | Deprecate mixed-mode packs |
 | [M26-008-D](../tasks/03_m26_qpack_v2/M26-008-D-test-deterministic-failures-for-unsupported-legacy-features.md) | P1 | implement | TODO | M26-008-C | Test deterministic failures for unsupported legacy features |
