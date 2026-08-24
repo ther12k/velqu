@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# M26-007-D: independent-builder reproducibility check.
+#
+# Builds examples/proof twice through fully independent CLI processes —
+# different working directory and absolute project path for the second —
+# then requires every emitted artifact to be byte-identical (SHA-256).
+# Catches cwd/path leakage that same-process determinism tests cannot see.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ROOT=$(pwd)
+A=$(mktemp -d /tmp/velqu-repro-a.XXXXXX)
+B=$(mktemp -d /tmp/velqu-repro-b.XXXXXX)
+trap 'rm -rf "$A" "$B"' EXIT
+
+# builder 1: from the repository root, relative paths
+bun packages/cli/src/index.ts build --project examples/proof --out "$A" > /dev/null
+
+# builder 2: independent process, different cwd, absolute paths
+(cd / && bun "$ROOT/packages/cli/src/index.ts" build \
+  --project "$ROOT/examples/proof" --out "$B" > /dev/null)
+
+hashes() { (cd "$1" && sha256sum $(ls)); }
+
+if ! diff <(hashes "$A") <(hashes "$B"); then
+  echo "compare-builds: FAIL — independent build outputs differ" >&2
+  exit 1
+fi
+
+COUNT=$(ls "$A" | wc -l)
+HASH=$(sha256sum "$A/app.qpack" | cut -d' ' -f1)
+echo "compare-builds: PASS — $COUNT artifacts byte-identical across independent builders (app.qpack $HASH)"

@@ -4,6 +4,7 @@
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ExtractedApp, RouteInfo } from "./extract";
 import { hash } from "./extract";
@@ -58,13 +59,27 @@ export async function bundleApp(
   const { writeFileSync: wf } = await import("node:fs");
   wf(tmpEntry, entry);
   try {
-    const result = await Bun.build({
-      entrypoints: [tmpEntry],
-      target: "bun",
-      format: "esm",
-      sourcemap: opts.sourceMap === false ? "none" : "linked",
-      minify: false, // keep readable + deterministic
-    });
+    // M26-007-D: pin the bundler's working directory to the app entry
+    // dir — Bun.build writes cwd-relative path banner comments into the
+    // bundle (and sources entries into the map), so an unpinned cwd
+    // silently changes pack bytes for identical source. Bundling from a
+    // fixed base makes output layout-relative and byte-stable.
+    const { chdir } = await import("node:process");
+    const { resolve } = await import("node:path");
+    const prevCwd = process.cwd();
+    chdir(dirname(app.entryFile));
+    let result: Awaited<ReturnType<typeof Bun.build>>;
+    try {
+      result = await Bun.build({
+        entrypoints: [resolve(prevCwd, tmpEntry)],
+        target: "bun",
+        format: "esm",
+        sourcemap: opts.sourceMap === false ? "none" : "linked",
+        minify: false, // keep readable + deterministic
+      });
+    } finally {
+      chdir(prevCwd);
+    }
     if (!result.success) {
       const msgs = result.logs.map((l) => String(l)).join("\n");
       throw new Error(`bundle failed:\n${msgs}`);
