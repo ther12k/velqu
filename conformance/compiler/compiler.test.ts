@@ -53,6 +53,16 @@ describe("determinism (COMP-003/009)", () => {
     expect(p1.integrity.routesSha256).toBe(p2.integrity.routesSha256);
     expect(p1.integrity.bundleSha256).toBe(p2.integrity.bundleSha256);
     expect(p1.contractHash).toBe(p2.contractHash);
+    // M26-007-A: no wall-clock fields anywhere — EVERY build artifact is
+    // byte-identical across clean builds (raw bytes, not parsed JSON).
+    const { readdirSync } = await import("node:fs");
+    const names = readdirSync(out1).sort();
+    expect(names).toEqual(readdirSync(out2).sort());
+    for (const name of names) {
+      const a = readFileSync(`${out1}/${name}`);
+      const b = readFileSync(`${out2}/${name}`);
+      expect(a.equals(b), `${name} differs between clean builds`).toBe(true);
+    }
   });
 });
 

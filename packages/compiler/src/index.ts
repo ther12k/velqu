@@ -50,11 +50,12 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   });
 
   // artifacts
+  // M26-007-A: no wall-clock fields — identical source/locks/toolchain
+  // produce byte-identical build outputs (COMP-003).
   const contract = {
     formatVersion: 1,
     appId: app.appId,
     contractHash: (pack as { contractHash: string }).contractHash,
-    generatedAt: new Date().toISOString(),
     routes: Object.fromEntries(
       app.routes.map((r) => [
         r.id,
@@ -87,7 +88,6 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     formatVersion: 1,
     appId: app.appId,
     contractHash: (pack as { contractHash: string }).contractHash,
-    generatedAt: contract.generatedAt,
     routes: Object.fromEntries(
       app.routes.map((r) => [
         r.id,
@@ -171,7 +171,6 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   const lock = {
     formatVersion: 1,
     contractHash: (pack as { contractHash: string }).contractHash,
-    lockedAt: new Date().toISOString(),
     routes: contract.routes,
   };
 
@@ -181,7 +180,6 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   // build report
   const buildReport = {
     formatVersion: 1,
-    builtAt: new Date().toISOString(),
     appId: app.appId,
     routes: routeManifest,
     schemas: schemaManifest,
@@ -261,8 +259,7 @@ function renderBuildReportMd(report: Record<string, unknown>, bytes: Record<stri
   const lines = [
     `# Build report — ${report.appId}`,
     "",
-    `Built: ${report.builtAt}`,
-    "",
+
     "## Routes",
     "",
     "| Route | Method | Path | Stage | Policy | Caps | Validation | Response |",
