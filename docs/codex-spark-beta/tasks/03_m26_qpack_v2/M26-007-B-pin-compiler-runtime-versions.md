@@ -4,7 +4,7 @@ parent_task: M26-007
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -113,3 +113,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-007-B (PASS)
+
+Deliverable: the compiler/runtime toolchain that produces pack bytes is
+pinned and ENFORCED — any other bun/typescript version fails the build
+by name before any build work, so non-reproducibility is diagnosed at
+build time instead of surfacing as artifact drift.
+
+### Changed files
+
+- `packages/compiler/src/toolchain.ts` (new) — `PINNED_TOOLCHAIN`
+  (compiler 0.1.0, typescript 5.9.3, bun 1.4.0): single source of
+  truth; `assertPinnedToolchain({bun, typescript})` throws
+  `ToolchainError` naming every mismatch; `ToolchainError` exported.
+- `packages/compiler/src/index.ts` — `build()` enforces the pin FIRST
+  (before extraction/bundling); `builtBy.compiler` now comes from
+  `PINNED_TOOLCHAIN.compiler` instead of a duplicated literal.
+- `package.json` — exact dependency pins (`typescript 5.9.3`,
+  `@types/bun 1.3.4`, caret ranges removed) + `engines.bun: "1.4.0"`.
+- `bun.lock` — refreshed: the old `^1.3.4` range had drifted to
+  `@types/bun` 1.3.14 in the lockfile; exact pins resolve to 1.3.4
+  (type-only package; no runtime/pack effect).
+- `conformance/compiler/compiler.test.ts` — new "pinned toolchain"
+  suite: running toolchain satisfies pins; mismatched bun / typescript
+  / both each raise `ToolchainError` containing "toolchain mismatch"
+  and the offending `bun <version>` / `typescript <version>` text.
+
+### Rust side (already pinned, verified unchanged)
+
+`rquickjs =0.12.2` (exact, workspace-pinned per AGENTS.md constraint)
+with quickjs-ng 0.15.1; the pack's engine identity tuple +
+`runtimeBuildHash()` are compile-time constants mirrored by
+q-pack's runtime fingerprint (M26-002). No change needed.
+
+### Artifact hashes
+
+`app.qpack` sha256 unchanged from M26-007-A evidence:
+`9fec4d4dfe08a9641977795756da2162c09468932cf9207e0b74a2290d39d4a7`
+(pins record the versions actually in use — byte-identical output).
+
+### Commands and results
+
+- `cargo test -p q-pack` — 85+2 passed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 85 pass / 0 fail / 518 expect().
+- `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — all gates green except the documented
+  pre-existing `validate-benchmark-evidence` scoped failure
+  (qRuntimeRelease + proofPack manifest hashes; flagged follow-up from
+  M26-002-A).
+
+Independent-builder comparison remains M26-007-D.
