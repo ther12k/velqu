@@ -341,13 +341,19 @@ export function buildPack(
 
   const packRoutes = app.routes.map((r, routeIdx) => {
     const decision = selectRouteStrategies(r);
-    const defaultStatus = Object.keys(r.responses).includes("200")
-      ? 200
-      : Number(Object.keys(r.responses)[0] ?? 200);
-    const allowedStatuses = Object.keys(r.responses)
+    // M26-007-A: status-key order is canonical (numeric ascending), never
+    // source-literal order — the fallback default status is the LOWEST
+    // declared status when 200 is absent, so authoring order cannot change
+    // compiled output.
+    const sortedStatusKeys = Object.keys(r.responses)
       .map((k) => Number(k))
       .filter((n) => !isNaN(n))
-      .sort((a, b) => a - b);
+      .sort((a, b) => a - b)
+      .map((n) => String(n));
+    const defaultStatus = sortedStatusKeys.includes("200")
+      ? 200
+      : Number(sortedStatusKeys[0] ?? 200);
+    const allowedStatuses = sortedStatusKeys.map((k) => Number(k));
     const responseStrategy = decision.primaryResponseStrategy;
 
     const paramsSchemaKey = r.paramsIr ? `sch:${r.id}.params` : null;
@@ -408,14 +414,18 @@ export function buildPack(
         : null,
       headers: null,
       responses: Object.fromEntries(
-        Object.entries(r.responses).map(([k, v]) => [
-          k,
-          {
-            schema: v.ir && !v.problem ? `sch:${r.id}.${k}` : null,
-            strategy: decision.responseStrategies[k] ?? v.strategy ?? "native",
-            problem: v.problem ?? null,
-          },
-        ]),
+        // M26-007-A: canonical key order in serialized output
+        sortedStatusKeys.map((k) => {
+          const v = r.responses[k] as { ir?: unknown; strategy?: string; problem?: unknown };
+          return [
+            k,
+            {
+              schema: v.ir && !v.problem ? `sch:${r.id}.${k}` : null,
+              strategy: decision.responseStrategies[k] ?? v.strategy ?? "native",
+              problem: v.problem ?? null,
+            },
+          ];
+        }),
       ),
       validationStrategy: decision.validationStrategy,
       nativeLiveness: r.liveness,
@@ -520,7 +530,10 @@ export function buildPack(
     // buildApp) that the runtime never reads.
     sourceMap: null,
     routes: packRoutes,
-    schemas,
+    // M26-007-A: schemas embedded in canonical (sorted) key order — the
+    // manifest IDs already derive from sorted keys; byte-identical builds
+    // must not depend on registry insertion order.
+    schemas: Object.fromEntries(sortedSchemaKeys.map((k) => [k, schemas[k]])),
     policies: policyPacks,
     capabilities,
     // M26-002-A: capability-set hash (mirrors q-pack capability_hash)
