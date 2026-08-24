@@ -114,8 +114,15 @@ Controls:
 
 Controls:
 
-- format/version checks;
-- content hash and future signature;
+- format/version checks (unknown versions fail closed);
+- per-section content digests recomputed at load plus a required-sections
+  execution-integrity binding, so corruption and self-consistent rewrites
+  are detected (integrity only — M26-006-A);
+- out-of-band detached-signature authenticity policy: unsigned local
+  development is the explicit default and requiring signatures is a
+  deliberate production decision over a configured publisher trust set
+  (M26-006-B/C/D, ADR-0026) — integrity and authenticity are never
+  conflated;
 - exact engine ABI;
 - no untrusted bytecode;
 - read-only deployment artifact;
