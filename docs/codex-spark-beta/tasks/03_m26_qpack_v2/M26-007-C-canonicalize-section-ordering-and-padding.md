@@ -4,7 +4,7 @@ parent_task: M26-007
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -113,3 +113,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-007-C (PASS)
+
+Deliverable: the binary QPack v2 writers produce a CANONICAL layout —
+sections in ascending section-id order regardless of caller-supplied
+order, zero-only alignment padding — so identical section content
+always yields byte-identical files and an identical execution binding.
+
+### Changed files
+
+- `crates/q-pack/src/lib.rs` only:
+  - `qpack2::reader::build_file_bound` + `build_file` sort payloads by
+    section id ascending before layout (payload tuples are `Copy`, so
+    no other code changed); doc comments state the canonical-layout
+    contract. Previously sections were laid out in caller order, so
+    permuting identical content produced different bytes (and the
+    execution binding over directory entries would differ too).
+  - New test `section_order_and_padding_are_canonical`: for BOTH
+    writers, reversed and rotated input permutations produce
+    BYTE-IDENTICAL output; the directory is ascending by id; every
+    offset is `SECTION_ALIGN`-aligned; every non-body byte between
+    directory end and section bodies is zero; no trailing bytes after
+    the last body.
+
+### Padding semantics (canonical, now pinned by test)
+
+Zero fill to the next 8-byte boundary before each section body; no
+tail padding. The reader already rejected unaligned offsets; the
+writers now guarantee the canonical complement.
+
+### Artifact hashes
+
+- `app.qpack` (JSON pack path) unchanged from M26-007-A/B evidence:
+  `9fec4d4dfe08a9641977795756da2162c09468932cf9207e0b74a2290d39d4a7`.
+- Binary v2 canonicalization is proven by permutation-invariance in
+  the test above (identical bytes across input orders); independent-
+  builder comparison remains M26-007-D.
+
+### Commands and results
+
+- `cargo test -p q-pack` — 86 passed + 2, 0 failed.
+- `cargo test -p velqu-runtime` — 28 passed.
+- `bun test` — 85 pass / 0 fail / 518 expect().
+- `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — all gates green except the documented
+  pre-existing `validate-benchmark-evidence` scoped failure
+  (qRuntimeRelease + proofPack manifest hashes; flagged follow-up from
+  M26-002-A). One unrelated flake (`graceful_shutdown_exits_zero`)
+  failed once under full-gate parallel load and passed on isolated
+  rerun AND on the next full-gate run — no code or assertion was
+  changed for it.
