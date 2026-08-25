@@ -4,7 +4,7 @@ parent_task: M26-009
 milestone: M26
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -122,3 +122,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M26-009-V (PASS)
+
+Parent: M26-009 "Build shared-runtime and standalone deployment
+artifacts". All four implementation dependencies merged before this
+branch: M26-009-A (PR #824, #228), M26-009-B (PR #830, #229),
+M26-009-C (PR #831, #230), M26-009-D (PR #832, #231).
+
+### Acceptance criterion mapping
+
+1. **Both modes pass identical conformance.**
+   Shared mode: the 30 velqu-runtime conformance tests run the same
+   compiled pipeline (`velqu_runtime::run`) extracted in M26-009-B.
+   Cross-mode: `scripts/artifact-smoke.sh` section 5 (run fresh on
+   this branch → SMOKE-OK) serves BOTH binaries over the same pack
+   and asserts byte-identical /health/live and /hello/:name bodies
+   plus `mode":"standalone"` telemetry. `--fingerprint` exercises the
+   identical verification path in both modes (standalone verified
+   compatible on this branch).
+
+2. **Standalone contains no compiler toolchain.**
+   `velqu-standalone` links only the runtime pipeline: no Bun, no
+   TypeScript, no compiler crates — `cargo tree`-level separation
+   (bin depends on `velqu_runtime` + clap only); G-004 preserved (the
+   startup performs zero compilation in both modes). The binary is
+   built behind `--features standalone` so default builds never see
+   it.
+
+3. **Shared mode rejects mismatched runtime.**
+   Smoke step 3 (fresh run on this branch): engine-9.9.9 pack fails
+   closed BEFORE ready with the actionable "engine mismatch"
+   diagnostic. Pre-checkable without serving via
+   `--fingerprint` (exit 2 + diagnostic; conformance test
+   `fingerprint_flag_reports_exact_tuple_and_verifies_without_serving`).
+
+4. **Startup/RSS differences are measured.**
+   `docs/reports/m26-009-b-standalone-mode.md`: n=10 per mode, full
+   raw samples — startupMs p50 3.500 shared vs 2.976 standalone;
+   VmRSS p50 7,236 vs 7,124 kB; artifact sizes 5,201,208 vs
+   5,224,216 B. Overlapping distributions, same-host delta only.
+
+### Changed files
+
+- This task record only. No defects found; no follow-up tasks needed.
+
+### Commands and results (fresh worktree on parent HEAD)
+
+- `cargo test -p q-pack` — 94 + 2; `cargo test -p q-router` — 15;
+  `cargo test -p q-engine-quickjs` — 1 + 97;
+  `cargo test -p velqu-runtime` — 30.
+- `bun test` — 125 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+- `scripts/artifact-smoke.sh` — SMOKE-OK (both modes, mismatch
+  rejection, 10 cold-start samples).
+- `./scripts/verify` — ALL PASS (exit 0).
