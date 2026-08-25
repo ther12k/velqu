@@ -54,44 +54,41 @@ pub fn print_fingerprint(source: &PackSource) -> i32 {
         "event": "runtime.fingerprint",
         "runtime": fp,
     });
-    match source {
-        PackSource::Path(path) => {
-            match QPack::load_and_verify_with(path, q_pack::BytecodePolicy::Enforce) {
-                Ok(pack) => {
-                    out["pack"] = serde_json::json!({
-                        "appId": pack.app_id,
-                        "engine": pack.engine,
-                        "verdict": "compatible",
-                    });
-                    println!("{out}");
-                    0
-                }
-                Err(e) => {
-                    out["verdict"] = serde_json::json!("rejected");
-                    out["error"] = serde_json::json!(e.to_string());
-                    eprintln!("{out}");
-                    2
-                }
-            }
+    // Read the pack bytes ONCE per mode (shared: from disk; standalone:
+    // the embedded artifact) so the printed binding hash is exactly the
+    // hash of the bytes that were verified — no TOCTOU between verify
+    // and hash.
+    let (bytes, sidecar_for): (Vec<u8>, &str) = match source {
+        PackSource::Path(path) => (
+            std::fs::read(path).unwrap_or_else(|e| {
+                eprintln!(
+                    "{}",
+                    serde_json::json!({"level":"error","event":"fingerprint.read","error":e.to_string()})
+                );
+                std::process::exit(2);
+            }),
+            "<pack>.sources.json",
+        ),
+        PackSource::Embedded(bytes) => (bytes.to_vec(), "<executable>.sources.json"),
+    };
+    match QPack::verify_from_slice(&bytes, q_pack::BytecodePolicy::Enforce) {
+        Ok(pack) => {
+            out["pack"] = serde_json::json!({
+                "appId": pack.app_id,
+                "engine": pack.engine,
+                "verdict": "compatible",
+                // M26-009-D: binding key for this mode's debug sidecar
+                "packSha256": q_pack::sources_sidecar::SourcesSidecar::pack_sha256_of(&bytes),
+                "sidecar": sidecar_for,
+            });
+            println!("{out}");
+            0
         }
-        PackSource::Embedded(bytes) => {
-            match QPack::verify_from_slice(bytes, q_pack::BytecodePolicy::Enforce) {
-                Ok(pack) => {
-                    out["pack"] = serde_json::json!({
-                        "appId": pack.app_id,
-                        "engine": pack.engine,
-                        "verdict": "compatible",
-                    });
-                    println!("{out}");
-                    0
-                }
-                Err(e) => {
-                    out["verdict"] = serde_json::json!("rejected");
-                    out["error"] = serde_json::json!(e.to_string());
-                    eprintln!("{out}");
-                    2
-                }
-            }
+        Err(e) => {
+            out["verdict"] = serde_json::json!("rejected");
+            out["error"] = serde_json::json!(e.to_string());
+            eprintln!("{out}");
+            2
         }
     }
 }

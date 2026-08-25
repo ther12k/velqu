@@ -1180,6 +1180,35 @@ fn fingerprint_flag_reports_exact_tuple_and_verifies_without_serving() {
 }
 
 #[test]
+fn fingerprint_reports_sidecar_binding_key() {
+    // M26-009-D: --fingerprint prints packSha256 — the binding key for
+    // the deployment mode's debug sidecar — and it equals sha256 of the
+    // exact pack bytes on disk.
+    let dir = temp_dir("fp-sidecar");
+    let pack_path = write_pack(&dir);
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let out = Command::new(bin)
+        .arg("--fingerprint")
+        .arg("--pack")
+        .arg(&pack_path)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    let j: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&out.stdout).trim()).unwrap();
+    assert_eq!(j["pack"]["verdict"], "compatible");
+    assert_eq!(j["pack"]["sidecar"], "<pack>.sources.json");
+    let want = {
+        use sha2::{Digest, Sha256};
+        let bytes = std::fs::read(&pack_path).unwrap();
+        let h = Sha256::digest(&bytes);
+        h.iter().map(|b| format!("{b:02x}")).collect::<String>()
+    };
+    assert_eq!(j["pack"]["packSha256"].as_str().unwrap(), want);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn source_sidecar_never_affects_serving() {
     // ADR-0027: a present-but-garbage <pack>.sources.json sidecar changes
     // nothing about serving — the runtime has no load path to it.
