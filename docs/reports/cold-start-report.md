@@ -41,14 +41,14 @@ The following earlier comparison remains historical context only and is not part
 
 ## Route-count scaling
 
-The route-count suite uses 40 fresh processes per cell, randomized candidate/size order (seed 710983643, run m26-010-a), and reports failures per cell. Raw and summary artifacts: `benchmarks/raw/route-count/route-count-1787681619011.jsonl` and `benchmarks/raw/route-count/summary.json`.
+The route-count suite uses 100 fresh processes per cell, randomized candidate/size order (seed 3420467447, run m26-010-b), and reports failures per cell. Raw and summary artifacts: `benchmarks/raw/route-count/route-count-1787682637700.jsonl` and `benchmarks/raw/route-count/summary.json`.
 
 | Candidate | 25 routes p50 | 100 routes p50 | 1,000 routes p50 | 5,000 routes p50 | 10,000 routes p50 | 10,000 p95 | 10,000 RSS |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| velqu (bytecode) | 5.71ms | 11.82ms | 83.529ms | 428.076ms | 926.186ms | 969.64ms | 304.8 MB |
-| elysia2 | 109.113ms | 111.974ms | 127.289ms | 184.396ms | 249.895ms | 267.562ms | 96.9 MB |
-| velqu (source) | 6.116ms | 11.032ms | 82.389ms | 433.289ms | 947.671ms | 980.254ms | 305.3 MB |
-| raw-bun | 7.035ms | 7.149ms | 7.594ms | 6.643ms | 8.028ms | 9.621ms | 19.7 MB |
+| velqu (source) | 6.073ms | 11.101ms | 83.96ms | 437.498ms | 949.101ms | 993.941ms | 305.3 MB |
+| velqu (bytecode) | 5.687ms | 10.699ms | 81.321ms | 429.852ms | 924.168ms | 954.37ms | 304.8 MB |
+| elysia2 | 108.59ms | 112.426ms | 129.719ms | 184.752ms | 255.735ms | 284.782ms | 96.9 MB |
+| raw-bun | 7.014ms | 7.039ms | 7.497ms | 7.308ms | 7.424ms | 9.462ms | 19.7 MB |
 
 These are observations for this host and fixture, not universal performance claims. Binary QPack v2 remains the planned lever for reducing JSON-pack parsing cost.
 

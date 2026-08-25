@@ -4,7 +4,7 @@ parent_task: M26-010
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -124,3 +124,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-010-B (PASS)
+
+Deliverable: release-grade process count for the route-count ladder —
+at least 100 fresh processes per cell.
+
+Evidence run: `ROUTE_COUNT_RUN_ID=m26-010-b ROUTE_COUNT_SEED=202608262
+bun benchmarks/harness/route-count.ts --samples=100` — 4 candidates ×
+5 sizes × 100 fresh processes = **2,000 spawns, ZERO failures**,
+every sample retained (`route-count-1787682637700.jsonl`; 2,000 rows).
+
+Stability vs the 40-process A run (same host, same packs): p50s match
+within noise — velqu source 25-route 6.073 vs 6.116 ms; 10k-route
+949.101 vs 947.671 ms; bytecode 10k 924.168 vs 926.186 ms; raw-bun
+flat ~7.0-7.5; elysia2 108.59 → 255.735. Cross-run consistency is
+itself evidence the measurements are not single-run artifacts.
+
+Changed files:
+
+- `benchmarks/raw/route-count/` — new raw + summary (run m26-010-b,
+  100 samples/cell).
+- `docs/reports/cold-start-report.md` — regenerated from the summary
+  (data-driven section carries the 100-process run).
+- `docs/reports/m26-010-a-route-count-ladder.md` — appended the B
+  section (≥100 processes + cross-run stability table note).
+- `benchmarks/manifest.json` — matched refresh (run pointer + rebuilt
+  artifacts under verify's remap flags).
+
+Commands: q-pack 94+2; velqu-runtime 30; bun 125 pass / 0 fail;
+typecheck, fmt, clippy -D warnings clean; `./scripts/verify` — ALL
+PASS (exit 0).
+
+Guardrails: unchanged from A (no startup compilation, no base64
+decode, 25-route budget preserved ~6 ms, honest 10k documentation);
+this packet raises evidence weight only — no production code changed.
