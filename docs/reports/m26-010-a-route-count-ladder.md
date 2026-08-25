@@ -75,3 +75,13 @@ Remaining M26-010 obligations: ≥100 fresh processes per cell (B),
 candidate-order randomization is already seeded+recorded (C will pin
 its disclosure), p50/p95/p99 + RSS + stage timings + hashes as the
 canonical closing record (D).
+
+## M26-010-B: ≥100 fresh processes per cell (release evidence)
+
+Re-run at `--samples=100` (`ROUTE_COUNT_RUN_ID=m26-010-b`): 4 × 5 ×
+100 = **2,000 fresh processes, zero failures**, every sample retained
+(`route-count-1787682637700.jsonl`). p50s are stable against the
+40-process A run (e.g. velqu source 10k: 949.101 vs 947.671 ms;
+25-route: 6.073 vs 6.116 ms) — cross-run consistency within noise on
+this host. The generated `docs/reports/cold-start-report.md` and the
+summary now carry this canonical run.
