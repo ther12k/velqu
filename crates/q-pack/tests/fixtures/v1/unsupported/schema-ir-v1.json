@@ -1,0 +1,83 @@
+{
+  "formatVersion": 1,
+  "kind": "velqu.qpack",
+  "runtimeAbi": 1,
+  "engine": {
+    "name": "quickjs-ng",
+    "version": "0.15.1",
+    "binding": "rquickjs-0.12.2",
+    "rquickjs": "0.12.2",
+    "buildHash": "dcdbfe8a8cde33a842176eb5378e4338f44d48a9f9c99280533bf0afffae1e52"
+  },
+  "schemaIrVersion": 1,
+  "contractVersion": 1,
+  "contractHash": "",
+  "builtBy": {
+    "compiler": "0.1.0",
+    "typescript": "",
+    "bun": ""
+  },
+  "appId": "fixture",
+  "modules": [
+    "health"
+  ],
+  "entry": "app.js",
+  "bundle": "function h(){} __velquRegister('health.live', h);",
+  "sourceMap": null,
+  "routes": [
+    {
+      "id": "health.live",
+      "moduleId": "health",
+      "method": "GET",
+      "path": "/health/live",
+      "pathSegments": [
+        {
+          "kind": "static",
+          "value": "health"
+        },
+        {
+          "kind": "static",
+          "value": "live"
+        }
+      ],
+      "handler": "health.live",
+      "policy": null,
+      "params": null,
+      "query": null,
+      "body": null,
+      "headers": null,
+      "responses": {
+        "200": {
+          "schema": null,
+          "strategy": "js",
+          "problem": null
+        }
+      },
+      "validationStrategy": "native",
+      "nativeLiveness": null,
+      "security": [],
+      "capabilities": [],
+      "deadlineMs": 5000,
+      "plan": null
+    }
+  ],
+  "schemas": {},
+  "policies": {},
+  "capabilities": [],
+  "capabilityHash": "",
+  "functions": [],
+  "schemaManifest": [],
+  "headerNameTable": [],
+  "queryNameTable": [],
+  "cookieNameTable": [],
+  "policyManifest": [],
+  "router": null,
+  "handlerTable": {
+    "health.live": "health.live"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "bundleSha256": "49c550e2ad63c85055975eabfb3eb72f416071bdef4147e5b629526670257ebf",
+    "routesSha256": "7529874293a2e7b79ed6bdcd069ebf9e69236a319e06ef31ddabf4eaa40e3d1c"
+  }
+}

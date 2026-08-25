@@ -106,4 +106,50 @@ mod tests {
             "{err}"
         );
     }
+
+    /// M26-008-D: unsupported legacy features fail DETERMINISTICALLY —
+    /// the same fixture always produces the same rejection substring, and
+    /// two runs produce byte-identical errors (no addresses, counters, or
+    /// environment-dependent text), with no fallback path succeeding.
+    #[test]
+    fn unsupported_legacy_features_fail_deterministically() {
+        let cases: [(&str, &str); 4] = [
+            (
+                // pre-M25 producer: Schema IR v1 is not supported by this runtime
+                "../tests/fixtures/v1/unsupported/schema-ir-v1.json",
+                "schema IR version 1 not supported",
+            ),
+            (
+                // engine fingerprint mismatch (SEC-001 exact match)
+                "../tests/fixtures/v1/unsupported/engine-mismatch.json",
+                "engine mismatch",
+            ),
+            (
+                // legacy prelude declaration without bytecode
+                "../tests/fixtures/v1/unsupported/prelude-without-bytecode.json",
+                "requires bundleBytecode",
+            ),
+            (
+                // future/unknown runtime ABI
+                "../tests/fixtures/v1/unsupported/runtime-abi.json",
+                "runtime ABI",
+            ),
+        ];
+        for (fixture, expected) in cases {
+            // Fixtures are committed; load by name from the unsupported dir.
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/v1/unsupported")
+                .join(fixture.rsplit('/').next().unwrap());
+            let raw =
+                std::fs::read(&path).unwrap_or_else(|e| panic!("fixture {path:?} missing: {e}"));
+            let e1 = read_and_verify_bytes(&raw).unwrap_err().to_string();
+            assert!(
+                e1.contains(expected),
+                "{fixture}: expected '{expected}' in '{e1}'"
+            );
+            let e2 = read_and_verify_bytes(&raw).unwrap_err().to_string();
+            assert_eq!(e1, e2, "{fixture}: rejection must be deterministic");
+            assert!(!e1.contains("0x"), "no addresses in rejections: {e1}");
+        }
+    }
 }
