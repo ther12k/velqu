@@ -3,6 +3,7 @@
  * (Dev server is P1; M2 provides build + inspection + diff per DX-006.)
  */
 import { build, contractDiff, CompileError } from "@velqu/compiler";
+import { assessPackMigrate } from "./pack-migrate";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -96,6 +97,27 @@ async function main() {
       }
       break;
     }
+    case "pack": {
+      // M26-008-B: rebuild/migration guidance for legacy packs.
+      const sub = rest[0];
+      if (sub !== "migrate") {
+        console.error("usage: velqu pack migrate <app.qpack>");
+        process.exit(1);
+      }
+      const file = rest[1];
+      if (!file || !existsSync(file)) {
+        console.error(`pack not found: ${file ?? "(none given)"}`);
+        process.exit(1);
+      }
+      const report = assessPackMigrate(() => readFileSync(file, "utf8"));
+      if (report.status === "legacy-supported") {
+        console.log(`formatVersion ${report.formatVersion} (legacy JSON adapter, supported through M2.6):`);
+        for (const line of report.guidance) console.log(`  - ${line}`);
+        break;
+      }
+      console.error(report.message);
+      process.exit(1);
+    }
     case "contract": {
       const sub = rest[0];
       if (sub !== "diff") {
@@ -122,7 +144,8 @@ async function main() {
 usage:
   velqu build --project <dir|entry> [--profile serverless] [--out <dir>]
   velqu inspect routes|route <id>|capabilities|fallbacks [--dist <dir>]
-  velqu contract diff --against <contract.lock.json>`);
+  velqu contract diff --against <contract.lock.json>
+  velqu pack migrate <app.qpack>`);
       process.exit(cmd ? 1 : 0);
   }
 }
