@@ -43,7 +43,7 @@ pub enum LogMode {
 }
 
 impl LogMode {
-    pub fn from_str(s: &str) -> LogMode {
+    pub fn parse_mode(s: &str) -> LogMode {
         match s.to_ascii_lowercase().as_str() {
             "off" => LogMode::Off,
             "errors" => LogMode::Errors,
