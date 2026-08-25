@@ -8,6 +8,21 @@ license.workspace = true
 name = "velqu-runtime"
 path = "src/main.rs"
 
+[lib]
+name = "velqu_runtime"
+path = "src/lib.rs"
+
+# M26-009-B: standalone mode. The pack is embedded at compile time via
+# VELQU_STANDALONE_PACK; the bin is skipped unless the feature is enabled
+# so ordinary builds never need the variable.
+[[bin]]
+name = "velqu-standalone"
+path = "src/bin/velqu-standalone.rs"
+required-features = ["standalone"]
+
+[features]
+standalone = []
+
 [dependencies]
 q-pack = { workspace = true }
 q-router = { workspace = true }

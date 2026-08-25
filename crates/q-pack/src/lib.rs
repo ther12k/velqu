@@ -3997,6 +3997,21 @@ impl QPack {
     }
 
     /// M26-002-C: verify with the embedded bytecode ignored (source path).
+    /// M26-009-B: verify from in-memory bytes (standalone mode embeds
+    /// the pack in the executable). Same policy semantics and the same
+    /// single-decode bytecode cache as the file path — the embedded
+    /// artifact is the exact build output and is STILL fully verified
+    /// at startup; embedding grants no trust.
+    pub fn verify_from_slice(bytes: &[u8], policy: BytecodePolicy) -> Result<QPack, PackError> {
+        let mut pack: QPack =
+            serde_json::from_slice(bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
+        match policy {
+            BytecodePolicy::Enforce => pack.verify_and_cache_bytecode()?,
+            BytecodePolicy::Skip => pack.verify_without_bytecode()?,
+        }
+        Ok(pack)
+    }
+
     pub fn verify_without_bytecode(&self) -> Result<(), PackError> {
         if self.bundle_bytecode.is_some() || self.bundle_prelude.is_some() {
             let mut source_only = self.clone();
@@ -5701,6 +5716,65 @@ mod tests {
         q.decoded_bytecode = None;
         q.verify().expect("plain verify still works");
         assert!(q.decoded_bytecode.is_none());
+    }
+
+    #[test]
+    fn verify_from_slice_matches_file_verification() {
+        // M26-009-B: standalone mode embeds pack bytes; slice-based
+        // verification must behave EXACTLY like the file path for both
+        // policies (accept, reject, and the bytecode cache).
+        let mut p = minimal_pack();
+        let code: &[u8] = b"standalone-module-bytes";
+        p.bundle_bytecode = Some(BundleBytecode {
+            quickjs: ENGINE_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+            target: Some(BytecodeTarget {
+                arch: std::env::consts::ARCH.into(),
+                os: std::env::consts::OS.into(),
+                pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+                endianness: if cfg!(target_endian = "big") {
+                    "big".into()
+                } else {
+                    "little".into()
+                },
+            }),
+            data: base64_encode(code),
+        });
+        p.integrity.bytecode_sha256 = Some(hex(&Sha256::digest(code)));
+        p.bundle_prelude = Some("embedded".into());
+        p.decoded_bytecode = None;
+        let bytes = serde_json::to_vec(&p).unwrap();
+
+        // Enforce: both paths accept, both populate the single-decode cache
+        let by_slice = QPack::verify_from_slice(&bytes, BytecodePolicy::Enforce).unwrap();
+        assert_eq!(by_slice.decoded_bytecode.as_deref(), Some(code));
+        let dir = std::env::temp_dir().join("velqu-m26-009-b-slice");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("app.qpack");
+        std::fs::write(&path, &bytes).unwrap();
+        let by_file = QPack::load_and_verify_with(&path, BytecodePolicy::Enforce).unwrap();
+        assert_eq!(by_file.decoded_bytecode.as_deref(), Some(code));
+        assert_eq!(by_file.bundle_prelude, by_slice.bundle_prelude);
+
+        // Skip: both accept and never populate the cache
+        let by_slice = QPack::verify_from_slice(&bytes, BytecodePolicy::Skip).unwrap();
+        assert!(by_slice.decoded_bytecode.is_none());
+        let by_file = QPack::load_and_verify_with(&path, BytecodePolicy::Skip).unwrap();
+        assert!(by_file.decoded_bytecode.is_none());
+
+        // tampered bytes: both paths reject identically
+        let mut tampered = bytes.clone();
+        let mid = tampered.len() / 2;
+        tampered[mid] ^= 0x01;
+        assert!(QPack::verify_from_slice(&tampered, BytecodePolicy::Enforce).is_err());
+        std::fs::write(&path, &tampered).unwrap();
+        assert!(QPack::load_and_verify_with(&path, BytecodePolicy::Enforce).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

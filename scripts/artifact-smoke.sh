@@ -79,4 +79,26 @@ done
 MEDIAN=$(sort -n /tmp/smoke-cold.txt | awk '{a[NR]=$1} END {print a[int((NR+1)/2)]}')
 echo "cold-start: $SAMPLES samples, p50 ${MEDIAN}ms (raw: $(tr '\n' ' ' < /tmp/smoke-cold.txt))"
 
+# --- 5. standalone mode: embedded pack, identical serving --------------- (M26-009-B)
+STANDALONE=${STANDALONE_BIN:-target/release/velqu-standalone}
+if [[ ! -x "$STANDALONE" ]]; then
+  echo "building standalone binary (feature standalone, pack $PACK)"
+  VELQU_STANDALONE_PACK="$PACK" cargo build --release -p velqu-runtime --features standalone \
+    || { echo "FAIL: standalone build failed" >&2; exit 1; }
+fi
+STANDALONE_PORT=$((PORT + 3))
+"./$STANDALONE" --port "$STANDALONE_PORT" --log off >/tmp/smoke-standalone.log 2>&1 &
+SA=$!
+trap 'kill $SRV $SA 2>/dev/null || true' EXIT
+wait_ready "$STANDALONE_PORT" || { echo "FAIL: standalone never became ready" >&2; cat /tmp/smoke-standalone.log >&2; exit 1; }
+S_HEALTH=$(curl -sf "http://127.0.0.1:$STANDALONE_PORT/health/live")
+[[ "$S_HEALTH" == "$HEALTH" ]] || { echo "FAIL: standalone health body differs: $S_HEALTH" >&2; exit 1; }
+S_HELLO=$(curl -sf "http://127.0.0.1:$STANDALONE_PORT/hello/smoke")
+[[ "$S_HELLO" == "$HELLO" ]] || { echo "FAIL: standalone hello body differs: $S_HELLO vs $HELLO" >&2; exit 1; }
+S_MODE=$(grep -o '"mode":"[a-z]*"' /tmp/smoke-standalone.log | head -1 || true)
+[[ "$S_MODE" == '"mode":"standalone"' ]] || { echo "FAIL: standalone ready line mode field: $S_MODE" >&2; exit 1; }
+kill $SA 2>/dev/null || true
+wait $SA 2>/dev/null || true
+echo "standalone: identical /health/live and /hello/:name answers; mode=standalone"
+
 echo "SMOKE-OK shared-mode runtime=$RUNTIME pack=$PACK"
