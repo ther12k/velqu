@@ -104,31 +104,50 @@ console.log(`route-count: ${CANDS.length} candidates × ${N_VALUES.length} sizes
 // warm harness
 for (let i = 0; i < 3; i++) await sample(CANDS[1], 25);
 
-const jobs = CANDS.flatMap((cand) => N_VALUES.map((n) => ({ cand, n })));
+// M26-010-C: SAMPLE-LEVEL global shuffle. Every (candidate, size,
+// sample-index) triple is one job; all are shuffled together so no
+// candidate's samples run consecutively — thermal drift, cache state,
+// and time-correlated host noise spread across all cells instead of
+// biasing whichever cell would otherwise run last.
+const jobs = CANDS.flatMap((cand) =>
+  N_VALUES.flatMap((n) => Array.from({ length: SAMPLES }, (_, i) => ({ cand, n, i }))),
+);
 for (let i = jobs.length - 1; i > 0; i--) {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   const j = seed % (i + 1);
   [jobs[i], jobs[j]] = [jobs[j], jobs[i]];
 }
-const results: Array<Record<string, unknown>> = [];
+const cellRows: Array<Record<string, unknown>> = [];
+const cells = new Map<string, { cand: (typeof CANDS)[number]; n: number; rows: Array<{ totalMs: number; rssKb: number | null }>; failures: number }>();
 const raw: string[] = [];
 let executionOrder = 0;
-for (const { cand, n } of jobs) {
-  const rows: Array<{ totalMs: number; rssKb: number | null }> = [];
-  let failures = 0;
-  for (let i = 0; i < SAMPLES; i++) {
+for (const { cand, n, i } of jobs) {
+  const key = `${cand.id}|${n}`;
+  let cell = cells.get(key);
+  if (!cell) {
+    cell = { cand, n, rows: [], failures: 0 };
+    cells.set(key, cell);
+  }
+  {
     const r = await sample(cand, n);
     raw.push(JSON.stringify({ runId, executionOrder: executionOrder++, candidate: cand.id, n, i, totalMs: Math.round(r.totalMs * 1000) / 1000, rssKb: r.rssKb, ok: r.ok, err: r.err }));
-    if (r.ok) rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
-    else failures++;
+    if (r.ok) cell.rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
+    else cell.failures++;
   }
+  // a cell's stats are computed and logged exactly once, when its last
+  // sample lands (samples arrive interleaved after the global shuffle)
+  if (cell.rows.length + cell.failures !== SAMPLES) continue;
+  const rows = cell.rows;
+  const failures = cell.failures;
   const sorted = rows.map((r) => r.totalMs).sort((a, b) => a - b);
   const p = (q: number) => Math.round((sorted[Math.min(sorted.length - 1, Math.round(q * (sorted.length - 1)))] ?? 0) * 1000) / 1000;
   const rssSorted = rows.map((r) => r.rssKb ?? 0).filter((x) => x > 0).sort((a, b) => a - b);
   const pRss = (q: number) => rssSorted[Math.min(rssSorted.length - 1, Math.round(q * (rssSorted.length - 1)))] ?? 0;
-  results.push({ runId, candidate: cand.id, routes: n, samples: rows.length, requestedSamples: SAMPLES, failures, p50Ms: p(0.5), p95Ms: p(0.95), rssP50Kb: pRss(0.5) });
+  const cellResults = { runId, candidate: cand.id, routes: n, samples: rows.length, requestedSamples: SAMPLES, failures, p50Ms: p(0.5), p95Ms: p(0.95), rssP50Kb: pRss(0.5) };
+  cellRows.push(cellResults);
   console.log(`${cand.id} n=${n}: p50=${p(0.5)}ms p95=${p(0.95)}ms rss=${pRss(0.5)}kB failures=${failures}`);
 }
+const results = cellRows;
 // scaling deltas
 for (const cand of CANDS) {
   const r25 = results.find((r) => r.candidate === cand.id && r.routes === 25)!;
@@ -144,6 +163,6 @@ const rawRelative = `benchmarks/raw/route-count/route-count-${stamp}.jsonl`;
 writeFileSync(rawPath, raw.join("\n") + "\n");
 writeFileSync(
   `${ROOT}/benchmarks/raw/route-count/summary.json`,
-  JSON.stringify({ format: "velqu-route-count-v2-randomized", runId, seed, samples: SAMPLES, randomizedCandidateOrder: true, generatedAt: new Date().toISOString(), raw: rawRelative, results }, null, 2),
+  JSON.stringify({ format: "velqu-route-count-v3-sample-shuffled", runId, seed, samples: SAMPLES, randomizedCandidateOrder: true, sampleOrderRandomized: true, generatedAt: new Date().toISOString(), raw: rawRelative, results }, null, 2),
 );
 console.log("wrote benchmarks/raw/route-count/");
