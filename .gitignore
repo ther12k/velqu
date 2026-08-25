@@ -33,4 +33,6 @@ history/
 benchmarks/raw/real-world/smoke/raw.jsonl
 benchmarks/raw/real-world/smoke/upstream.log
 benchmarks/real-world/raw/
+# BETA-001-D: retained raw-sample archives (.gz) ARE tracked; uncompressed
+# rows and logs stay local
 benchmarks/real-world/fairness.md

@@ -27,6 +27,14 @@ Runs three phases:
 
 Phases can be run individually: `./run.sh prepare`, `./run.sh smoke`.
 
+## Raw-sample retention
+
+Every run keeps its complete per-request rows: `retain.ts` writes a
+deterministic `raw.jsonl.gz` (gzip mtime pinned to 0 — byte-reproducible)
+beside `summary.json`, plus a `RETENTION.md` manifest with row counts and
+sha256 hashes for both forms. Uncompressed rows and logs stay local-only;
+archives are the retained evidence.
+
 ## Fairness audit
 
 `fairness.ts` compares two or more candidate summaries and fails loudly on any
