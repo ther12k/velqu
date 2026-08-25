@@ -96,18 +96,7 @@ def cold_report():
         "",
         "## Route-count scaling",
         "",
-        "The route-count suite uses five fresh processes per cell, randomized candidate/size order, and zero failures. "
-        "Its current raw and summary artifacts are `benchmarks/raw/route-count/route-count-1787214115845.jsonl` and "
-        "`benchmarks/raw/route-count/summary.json`.",
-        "",
-        "| Candidate | 25 routes p50 | 1,000 routes p50 | 10,000 routes p50 | 10,000 p95 | 10,000 RSS |",
-        "|---|---:|---:|---:|---:|---:|",
-        "| velqu (source) | 3.606ms | 22.901ms | 303.835ms | 365.968ms | 87.2 MB |",
-        "| velqu (bytecode) | 3.662ms | 21.043ms | 267.937ms | 325.066ms | 86.8 MB |",
-        "| raw-bun | 13.657ms | 15.173ms | 14.896ms | 17.307ms | 37.7 MB |",
-        "| elysia2 | 140.875ms | 166.695ms | 291.674ms | 308.457ms | 160.2 MB |",
-        "",
-        "These are observations for this host and fixture, not universal performance claims. Binary QPack v2 remains the planned lever for reducing JSON-pack parsing cost.",
+        *route_count_section(),
         "",
         "## Scope",
         "",
@@ -115,6 +104,56 @@ def cold_report():
         "",
     ]
     return "\n".join(lines)
+
+
+def route_count_section():
+    """M26-010-A: the route-count ladder, generated from the committed
+    summary (no hand-edited numbers). Falls back to a disclosure note
+    when the summary predates the five-size ladder."""
+    data = load("benchmarks/raw/route-count/summary.json")
+    results = data.get("results", [])
+    sizes = sorted({r.get("routes") for r in results if r.get("routes")})
+    candidates = []
+    for r in results:
+        if r.get("candidate") not in candidates:
+            candidates.append(r.get("candidate"))
+    lines = [
+        f"The route-count suite uses {data.get('samples')} fresh processes per cell, "
+        f"randomized candidate/size order (seed {data.get('seed')}, run {data.get('runId')}), "
+        f"and reports failures per cell. Raw and summary artifacts: "
+        f"`{data.get('raw')}` and `benchmarks/raw/route-count/summary.json`.",
+        "",
+    ]
+    if len(sizes) < 5:
+        lines += [
+            f"NOTE: this summary covers {len(sizes)} sizes ({', '.join(str(s) for s in sizes)}); "
+            "the M26-010-A five-size ladder (25/100/1,000/5,000/10,000) evidence supersedes it.",
+            "",
+        ]
+    header = "| Candidate | " + " | ".join(f"{s:,} routes p50" for s in sizes) + f" | {sizes[-1]:,} p95 | {sizes[-1]:,} RSS |"
+    sep = "|---|" + "---:|" * (len(sizes) + 2)
+    lines.append(header)
+    lines.append(sep)
+    for cand in candidates:
+        cells = []
+        top95 = toprss = None
+        for s in sizes:
+            row = next((r for r in results if r.get("candidate") == cand and r.get("routes") == s), None)
+            if row is None:
+                cells.append("n/a")
+                continue
+            cells.append(f"{row.get('p50Ms')}ms")
+            if s == sizes[-1]:
+                top95 = row.get("p95Ms")
+                toprss = row.get("rssP50Kb")
+        rss = f"{(toprss or 0) / 1024:.1f} MB" if toprss else "n/a"
+        lines.append(f"| {cand} | " + " | ".join(cells) + f" | {top95}ms | {rss} |")
+    lines += [
+        "",
+        "These are observations for this host and fixture, not universal performance claims. "
+        "Binary QPack v2 remains the planned lever for reducing JSON-pack parsing cost.",
+    ]
+    return lines
 
 
 def warm_report():

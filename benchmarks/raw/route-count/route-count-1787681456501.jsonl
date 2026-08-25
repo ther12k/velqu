@@ -1,0 +1,20 @@
+{"runId":"smoke2","executionOrder":0,"candidate":"velqu (source)","n":5000,"i":0,"totalMs":486.082,"rssKb":159644,"ok":true}
+{"runId":"smoke2","executionOrder":1,"candidate":"raw-bun","n":1000,"i":0,"totalMs":9.795,"rssKb":19920,"ok":true}
+{"runId":"smoke2","executionOrder":2,"candidate":"elysia2","n":1000,"i":0,"totalMs":198.427,"rssKb":67900,"ok":true}
+{"runId":"smoke2","executionOrder":3,"candidate":"raw-bun","n":5000,"i":0,"totalMs":8.825,"rssKb":20148,"ok":true}
+{"runId":"smoke2","executionOrder":4,"candidate":"elysia2","n":10000,"i":0,"totalMs":255.907,"rssKb":100576,"ok":true}
+{"runId":"smoke2","executionOrder":5,"candidate":"velqu (source)","n":25,"i":0,"totalMs":4.996,"rssKb":7652,"ok":true}
+{"runId":"smoke2","executionOrder":6,"candidate":"velqu (bytecode)","n":5000,"i":0,"totalMs":416.92,"rssKb":159460,"ok":true}
+{"runId":"smoke2","executionOrder":7,"candidate":"elysia2","n":25,"i":0,"totalMs":119.299,"rssKb":54196,"ok":true}
+{"runId":"smoke2","executionOrder":8,"candidate":"velqu (bytecode)","n":25,"i":0,"totalMs":3.883,"rssKb":7772,"ok":true}
+{"runId":"smoke2","executionOrder":9,"candidate":"raw-bun","n":100,"i":0,"totalMs":9.006,"rssKb":20052,"ok":true}
+{"runId":"smoke2","executionOrder":10,"candidate":"velqu (source)","n":1000,"i":0,"totalMs":84.098,"rssKb":37044,"ok":true}
+{"runId":"smoke2","executionOrder":11,"candidate":"velqu (bytecode)","n":100,"i":0,"totalMs":15.372,"rssKb":11588,"ok":true}
+{"runId":"smoke2","executionOrder":12,"candidate":"velqu (bytecode)","n":1000,"i":0,"totalMs":79.138,"rssKb":36904,"ok":true}
+{"runId":"smoke2","executionOrder":13,"candidate":"raw-bun","n":25,"i":0,"totalMs":8.942,"rssKb":20016,"ok":true}
+{"runId":"smoke2","executionOrder":14,"candidate":"velqu (bytecode)","n":10000,"i":0,"totalMs":953.365,"rssKb":312248,"ok":true}
+{"runId":"smoke2","executionOrder":15,"candidate":"raw-bun","n":10000,"i":0,"totalMs":10.616,"rssKb":20152,"ok":true}
+{"runId":"smoke2","executionOrder":16,"candidate":"elysia2","n":100,"i":0,"totalMs":113.287,"rssKb":57272,"ok":true}
+{"runId":"smoke2","executionOrder":17,"candidate":"velqu (source)","n":10000,"i":0,"totalMs":961.068,"rssKb":312648,"ok":true}
+{"runId":"smoke2","executionOrder":18,"candidate":"velqu (source)","n":100,"i":0,"totalMs":16.061,"rssKb":11676,"ok":true}
+{"runId":"smoke2","executionOrder":19,"candidate":"elysia2","n":5000,"i":0,"totalMs":190.162,"rssKb":82568,"ok":true}

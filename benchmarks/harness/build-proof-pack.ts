@@ -431,7 +431,16 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     kind: "velqu.qpack",
     runtimeAbi: 1,
     executionMode: "numeric",
-    engine: { name: "quickjs-ng", version: "0.15.1", binding: "rquickjs-0.12.2" },
+    // M26-002-A runtime fingerprint (mirrors packages/compiler/src/emit.ts
+    // runtimeBuildHash(); scale packs must satisfy the same contract as
+    // compiler-built packs or verify() rejects them before ready).
+    engine: {
+      name: "quickjs-ng",
+      version: "0.15.1",
+      binding: "rquickjs-0.12.2",
+      rquickjs: "0.12.2",
+      buildHash: sha("abi=1:engine=quickjs-ng:version=0.15.1:rquickjs=0.12.2:binding=rquickjs-0.12.2"),
+    },
     schemaIrVersion: 2,
     contractVersion: 1,
     contractHash,

@@ -54,12 +54,21 @@ manifest = {
         'allocatorProfiler': 'scripts/alloc-tracer.c via LD_PRELOAD',
         'perfEventParanoid': Path('/proc/sys/kernel/perf_event_paranoid').read_text().strip() if Path('/proc/sys/kernel/perf_event_paranoid').is_file() else 'unavailable',
     },
-    'artifacts': {
-        'qRuntimeRelease': artifact('target/release/velqu-runtime'),
-        'proofPack': artifact('examples/proof/dist/app.qpack'),
-        'routeCountPack10000': artifact('benchmarks/raw/packs/app-10000.qpack'),
-        'routeCountBytecodePack10000': artifact('benchmarks/raw/packs/app-10000-bc.qpack'),
-    },
+    'artifacts': dict(
+        [
+            ('qRuntimeRelease', artifact('target/release/velqu-runtime')),
+            ('proofPack', artifact('examples/proof/dist/app.qpack')),
+            # M26-010-A: the full five-size route-count ladder
+        ]
+        + [
+            (f'routeCountPack{n}', artifact(f'benchmarks/raw/packs/app-{n}.qpack'))
+            for n in (25, 100, 1000, 5000, 10000)
+        ]
+        + [
+            (f'routeCountBytecodePack{n}', artifact(f'benchmarks/raw/packs/app-{n}-bc.qpack'))
+            for n in (25, 100, 1000, 5000, 10000)
+        ]
+    ),
     'runs': {
         'warm': {'runId': warm['runId'], 'repetitions': warm['repetitions'], 'rows': len(warm['results']), 'raw': warm['raw']},
         'cold': {'runId': cold['runId'], 'samplesPer': cold['samplesPer'], 'rows': len(cold['results']) * cold['samplesPer'], 'raw': cold['results'][0]['raw']},
