@@ -85,3 +85,14 @@ Re-run at `--samples=100` (`ROUTE_COUNT_RUN_ID=m26-010-b`): 4 × 5 ×
 25-route: 6.073 vs 6.116 ms) — cross-run consistency within noise on
 this host. The generated `docs/reports/cold-start-report.md` and the
 summary now carry this canonical run.
+
+## M26-010-C: sample-level order randomization
+
+The harness now shuffles EVERY (candidate, size, sample) triple
+together (`velqu-route-count-v3-sample-shuffled`): no candidate's
+samples run consecutively, so thermal drift and time-correlated host
+noise spread across all cells. Canonical run `m26-010-c` (4 × 5 ×
+100 = 2,000 spawns, zero failures): max consecutive same-cell samples
+**3** (previously 100 by construction). p50s remain consistent with
+the A/B runs (velqu source 10k: 948.156 ms; 25-route: 6.44 ms) — the
+randomization removes ordering bias without moving the medians.

@@ -4,7 +4,7 @@ parent_task: M26-010
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -130,3 +130,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-010-C (PASS)
+
+Deliverable: order randomization strengthened from cell-level to
+SAMPLE-level — source, bytecode, and competitor samples interleave
+throughout the run.
+
+Harness change (`benchmarks/harness/route-count.ts`):
+
+- Every (candidate, size, sample-index) triple is one job; ALL jobs
+  shuffle together (seeded LCG, seed recorded). Previously cells were
+  shuffled but each cell's samples ran consecutively (100 in a row) —
+  thermal drift/cache state biased later cells.
+- Summary format bumped to `velqu-route-count-v3-sample-shuffled` with
+  `sampleOrderRandomized: true` (cell-order flag retained).
+- Cell stats computed exactly once, when a cell's last sample lands
+  (a partial-duplication bug in the first shuffle implementation was
+  caught by the 20-cell assertion before any evidence was kept).
+
+Canonical run `m26-010-c` (4 × 5 × 100 = 2,000 spawns, zero
+failures, every sample retained): max consecutive same-cell samples
+**3** (was 100 by construction). p50s consistent with A/B runs —
+velqu source 25-route 6.440 ms, 10k 948.156 ms; bytecode 5.952 /
+926.173 ms; raw-bun ~7.8-8.5; elysia2 109.6 → 251.5 — medians did
+not move, so prior ordering was not distorting results; the
+randomization now PROVES that rather than assuming it.
+
+Changed files: harness, new canonical raw + summary, regenerated
+data-driven report, C section in the ladder report, matched manifest
+refresh.
+
+Commands: q-pack 94+2; velqu-runtime 30; bun 125 pass / 0 fail;
+typecheck, fmt, clippy -D warnings clean; `./scripts/verify` — ALL
+PASS (exit 0).
