@@ -27,6 +27,20 @@ Runs three phases:
 
 Phases can be run individually: `./run.sh prepare`, `./run.sh smoke`.
 
+## Fairness audit
+
+`fairness.ts` compares two or more candidate summaries and fails loudly on any
+contract drift (workloads, dataset, version pins), protocol drift (duration,
+concurrency), host-class mismatch, cell-grid mismatch, or retained failures
+(errors/status mismatches — SPEC requires 0%):
+
+```bash
+RUNS=../raw/real-world/velqu,../raw/real-world/elysia ./run.sh audit
+```
+
+Writes `fairness.md` with the verdict. This is the audit BETA-001 requires
+before any cross-candidate comparison may be claimed.
+
 ## Determinism
 
 - The dataset is a pure function of `schema.sql` + `seed.sql` (generate_series
