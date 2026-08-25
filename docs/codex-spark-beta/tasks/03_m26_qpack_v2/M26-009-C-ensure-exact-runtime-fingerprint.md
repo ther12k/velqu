@@ -4,7 +4,7 @@ parent_task: M26-009
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -110,3 +110,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-009-C (PASS)
+
+Deliverable: the exact runtime fingerprint is INSPECTABLE and
+pre-checkable in both deployment modes, not only enforced at boot.
+
+Changed files:
+
+- `crates/q-pack/src/lib.rs` — `RuntimeFingerprint::current()`: the
+  exact tuple verify() enforces (engine name/version, rquickjs,
+  binding, build hash, runtime ABI, arch/os/pointer-width/endianness),
+  serde-serializable for `--fingerprint` JSON output.
+- `crates/q-runtime/src/lib.rs` — `print_fingerprint(&PackSource)`:
+  prints the runtime tuple; with a pack available (either mode) runs
+  FULL verification WITHOUT serving and prints the verdict. Exit 0 =
+  compatible; 2 = rejected with the actionable diagnostic.
+- `crates/q-runtime/src/main.rs` + `src/bin/velqu-standalone.rs` —
+  `--fingerprint` flag on both binaries (shared mode takes --pack;
+  standalone always checks the embedded pack).
+- `crates/q-runtime/tests/runtime_conformance.rs` — integration test.
+- `benchmarks/manifest.json` — matched refresh (runtime source changed;
+  rebuilt with verify's remap flags via the sanctioned script).
+
+Tests:
+
+- `runtime_fingerprint_tuple_is_the_enforced_identity` (q-pack, 93
+  total) — the inspectable tuple equals the enforced constants; a pack
+  with the exact tuple verifies; any drifted dimension rejects.
+- `fingerprint_flag_reports_exact_tuple_and_verifies_without_serving`
+  (velqu-runtime, 29 total) — exit 0 + full JSON tuple + verdict on a
+  compatible pack; exit 2 + "engine mismatch" diagnostic on a drifted
+  pack; no port ever bound.
+
+Commands: q-pack 93+2; velqu-runtime 29; q-engine-quickjs 1+97; bun
+125 pass / 0 fail; typecheck, fmt, clippy -D warnings clean;
+`./scripts/verify` — ALL PASS (exit 0) including
+validate-benchmark-evidence after the matched refresh.
+
+Guardrails: both modes identical (same lib function; shared tested by
+conformance, standalone by the same code path over the embedded
+pack); standalone has no compiler toolchain (verification only);
+shared-mode mismatch rejection unchanged and now also pre-checkable;
+startup/RSS deltas already measured in M26-009-B (no new claims).

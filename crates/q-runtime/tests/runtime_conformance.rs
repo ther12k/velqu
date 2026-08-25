@@ -1133,6 +1133,53 @@ fn write_pack(dir: &std::path::Path) -> PathBuf {
 }
 
 #[test]
+fn fingerprint_flag_reports_exact_tuple_and_verifies_without_serving() {
+    // M26-009-C: --fingerprint prints the runtime's enforced tuple and,
+    // with --pack, runs FULL verification without ever binding a port.
+    let dir = temp_dir("fingerprint");
+    let pack_path = write_pack(&dir);
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+
+    // compatible pack: exit 0, JSON carries the tuple + verdict
+    let out = Command::new(bin)
+        .arg("--fingerprint")
+        .arg("--pack")
+        .arg(&pack_path)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let j: serde_json::Value = serde_json::from_str(stdout.trim()).unwrap();
+    assert_eq!(j["event"], "runtime.fingerprint");
+    assert_eq!(j["runtime"]["engineName"], "quickjs-ng");
+    assert_eq!(j["runtime"]["engineVersion"], "0.15.1");
+    assert_eq!(j["runtime"]["rquickjs"], "0.12.2");
+    assert_eq!(j["runtime"]["runtimeAbi"], 1);
+    assert_eq!(j["runtime"]["pointerWidth"], 64);
+    assert_eq!(j["pack"]["verdict"], "compatible");
+
+    // mismatched pack: exit 2 with the actionable diagnostic, still no port
+    let mut pack = q_pack::QPack::load_and_verify(&pack_path).unwrap();
+    pack.engine.version = "9.9.9".into();
+    let bad = dir.join("bad.qpack");
+    std::fs::write(&bad, serde_json::to_vec(&pack).unwrap()).unwrap();
+    let out = Command::new(bin)
+        .arg("--fingerprint")
+        .arg("--pack")
+        .arg(&bad)
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "mismatched fingerprint must exit 2"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("engine mismatch"), "stderr: {stderr}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn source_sidecar_never_affects_serving() {
     // ADR-0027: a present-but-garbage <pack>.sources.json sidecar changes
     // nothing about serving — the runtime has no load path to it.

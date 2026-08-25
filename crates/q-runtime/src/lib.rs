@@ -43,6 +43,59 @@ pub struct RunConfig {
     pub no_bytecode: bool,
 }
 
+/// M26-009-C: print the runtime's exact fingerprint; when a pack is
+/// available, run the FULL verification (every fingerprint dimension,
+/// integrity, bytecode target) WITHOUT serving, and print the verdict.
+/// Exit 0 = compatible/verified; exit 2 = rejected. Identical behavior
+/// for both deployment modes (the pack source differs, nothing else).
+pub fn print_fingerprint(source: &PackSource) -> i32 {
+    let fp = q_pack::RuntimeFingerprint::current();
+    let mut out = serde_json::json!({
+        "event": "runtime.fingerprint",
+        "runtime": fp,
+    });
+    match source {
+        PackSource::Path(path) => {
+            match QPack::load_and_verify_with(path, q_pack::BytecodePolicy::Enforce) {
+                Ok(pack) => {
+                    out["pack"] = serde_json::json!({
+                        "appId": pack.app_id,
+                        "engine": pack.engine,
+                        "verdict": "compatible",
+                    });
+                    println!("{out}");
+                    0
+                }
+                Err(e) => {
+                    out["verdict"] = serde_json::json!("rejected");
+                    out["error"] = serde_json::json!(e.to_string());
+                    eprintln!("{out}");
+                    2
+                }
+            }
+        }
+        PackSource::Embedded(bytes) => {
+            match QPack::verify_from_slice(bytes, q_pack::BytecodePolicy::Enforce) {
+                Ok(pack) => {
+                    out["pack"] = serde_json::json!({
+                        "appId": pack.app_id,
+                        "engine": pack.engine,
+                        "verdict": "compatible",
+                    });
+                    println!("{out}");
+                    0
+                }
+                Err(e) => {
+                    out["verdict"] = serde_json::json!("rejected");
+                    out["error"] = serde_json::json!(e.to_string());
+                    eprintln!("{out}");
+                    2
+                }
+            }
+        }
+    }
+}
+
 /// Run the server to completion; returns the process exit code.
 #[allow(clippy::needless_return)]
 pub fn run(source: PackSource, cfg: RunConfig) -> i32 {

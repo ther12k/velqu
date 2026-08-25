@@ -16,7 +16,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use velqu_runtime::{run, PackSource, RunConfig};
+use velqu_runtime::{print_fingerprint, run, PackSource, RunConfig};
 
 /// The embedded pack bytes, baked in at compile time. `include_bytes!`
 /// makes the artifact a static, read-only part of the executable image
@@ -47,10 +47,19 @@ struct Args {
     /// bytecode and evaluate the verified SOURCE bundle.
     #[arg(long)]
     no_bytecode: bool,
+    /// M26-009-C: print the exact runtime fingerprint and the embedded
+    /// pack's verification verdict WITHOUT serving; exit 0 when
+    /// compatible, 2 when rejected.
+    #[arg(long)]
+    fingerprint: bool,
 }
 
 fn main() {
     let args = Args::parse();
+    if args.fingerprint {
+        let code = print_fingerprint(&PackSource::Embedded(EMBEDDED_PACK));
+        std::process::exit(code);
+    }
     let code = run(
         PackSource::Embedded(EMBEDDED_PACK),
         RunConfig {

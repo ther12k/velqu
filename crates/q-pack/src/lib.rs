@@ -396,6 +396,50 @@ pub mod signatures {
     }
 }
 
+/// M26-009-C: the RUNTIME's own exact fingerprint, inspectable without
+/// serving. Every dimension here is enforced against the pack's
+/// `EngineRef` (and bytecode target) inside `verify()` before ready;
+/// this type makes the same tuple printable for operators and
+/// deployment pipelines (`--fingerprint` on both host binaries).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeFingerprint {
+    pub engine_name: String,
+    pub engine_version: String,
+    pub rquickjs: String,
+    pub binding: String,
+    pub build_hash: String,
+    pub runtime_abi: u32,
+    pub arch: String,
+    pub os: String,
+    pub pointer_width: u8,
+    pub endianness: String,
+}
+
+impl RuntimeFingerprint {
+    /// The exact tuple this runtime enforces. `build_hash` is the
+    /// sha256 over the engine identity (see `runtime_build_hash`);
+    /// arch/os/width/endianness mirror the cross-target bytecode checks.
+    pub fn current() -> Self {
+        RuntimeFingerprint {
+            engine_name: ENGINE_NAME.into(),
+            engine_version: ENGINE_VERSION.into(),
+            rquickjs: RQUICKJS_VERSION.into(),
+            binding: ENGINE_BINDING.into(),
+            build_hash: runtime_build_hash(),
+            runtime_abi: RUNTIME_ABI,
+            arch: std::env::consts::ARCH.into(),
+            os: std::env::consts::OS.into(),
+            pointer_width: (std::mem::size_of::<usize>() * 8) as u8,
+            endianness: if cfg!(target_endian = "big") {
+                "big".into()
+            } else {
+                "little".into()
+            },
+        }
+    }
+}
+
 pub mod sources_sidecar {
     use serde::{Deserialize, Serialize};
 
@@ -5716,6 +5760,33 @@ mod tests {
         q.decoded_bytecode = None;
         q.verify().expect("plain verify still works");
         assert!(q.decoded_bytecode.is_none());
+    }
+
+    #[test]
+    fn runtime_fingerprint_tuple_is_the_enforced_identity() {
+        // The inspectable tuple must equal the constants verify()
+        // enforces, so `--fingerprint` output can never drift from the
+        // rejection logic.
+        let fp = RuntimeFingerprint::current();
+        assert_eq!(fp.engine_name, ENGINE_NAME);
+        assert_eq!(fp.engine_version, ENGINE_VERSION);
+        assert_eq!(fp.rquickjs, RQUICKJS_VERSION);
+        assert_eq!(fp.binding, ENGINE_BINDING);
+        assert_eq!(fp.build_hash, runtime_build_hash());
+        assert_eq!(fp.runtime_abi, RUNTIME_ABI);
+        assert_eq!(fp.pointer_width, (std::mem::size_of::<usize>() * 8) as u8);
+        assert_eq!(fp.arch, std::env::consts::ARCH);
+        assert_eq!(fp.os, std::env::consts::OS);
+        // a pack declaring this exact tuple verifies against it
+        let mut p = minimal_pack();
+        p.engine.build_hash = fp.build_hash.clone();
+        p.verify()
+            .expect("pack with the runtime's exact fingerprint verifies");
+        // any drifted dimension rejects before ready
+        let mut drifted = minimal_pack();
+        drifted.engine.build_hash = fp.build_hash.clone();
+        drifted.engine.version = "0.0.0".into();
+        assert!(drifted.verify().is_err());
     }
 
     #[test]
