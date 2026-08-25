@@ -538,7 +538,7 @@ Update a checkbox only after the task commit and required tests pass.
 
 - [x] [BETA-001-A — Add Postgres compose, seed/reset, controlled upstream, result schema, load generator, and report generator](tasks/08_public_beta/BETA-001-A-add-postgres-compose-seed-reset-controlled-upstream-result-schema-load-generator.md)
 - [x] [BETA-001-B — Pin candidate versions](tasks/08_public_beta/BETA-001-B-pin-candidate-versions.md)
-- [ ] [BETA-001-C — Define fairness checks](tasks/08_public_beta/BETA-001-C-define-fairness-checks.md)
+- [x] [BETA-001-C — Define fairness checks](tasks/08_public_beta/BETA-001-C-define-fairness-checks.md)
 - [ ] [BETA-001-D — Keep raw samples](tasks/08_public_beta/BETA-001-D-keep-raw-samples.md)
 - [ ] [BETA-001-V — Verify Make the real-world benchmark harness executable](tasks/08_public_beta/BETA-001-V-verify-make-the-real-world-benchmark-harness-executable.md)
 - [ ] [BETA-001-Z — Package evidence for Make the real-world benchmark harness executable](tasks/08_public_beta/BETA-001-Z-package-evidence-for-make-the-real-world-benchmark-harness-executable.md)

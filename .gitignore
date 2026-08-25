@@ -33,3 +33,4 @@ history/
 benchmarks/raw/real-world/smoke/raw.jsonl
 benchmarks/raw/real-world/smoke/upstream.log
 benchmarks/real-world/raw/
+benchmarks/real-world/fairness.md

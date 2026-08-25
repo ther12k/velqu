@@ -73,9 +73,16 @@ cmd_smoke() {
   trap - EXIT
 }
 
+cmd_audit() {
+  local runs="${RUNS:?RUNS=dirA,dirB,... is required (one summary.json per candidate)}"
+  echo "== real-world: fairness audit =="
+  bun fairness.ts --runs "$runs" --out fairness.md
+}
+
 case "${1:-all}" in
   prepare) cmd_prepare ;;
   smoke) cmd_smoke ;;
+  audit) cmd_audit ;;
   all) cmd_prepare; cmd_smoke ;;
-  *) echo "usage: ./run.sh [prepare|smoke|all]" >&2; exit 2 ;;
+  *) echo "usage: ./run.sh [prepare|smoke|audit|all]; audit needs RUNS=dirA,dirB,..." >&2; exit 2 ;;
 esac

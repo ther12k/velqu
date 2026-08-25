@@ -4,7 +4,7 @@ parent_task: BETA-001
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,14 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+## Completion record
+
+- Status: **PASS**
+- Deliverable: fairness checks defined and enforced by `benchmarks/real-world/fairness.ts` (`auditFairness` + `renderFairnessReport`): a run set is fair only when every candidate shares identical contract hashes (spec/workloads/schema/seed/versions), identical protocol shape (durationSec, concurrency levels), identical host class (os/arch), an identical workload x concurrency cell grid, and zero errors/status mismatches in any cell (SPEC's 0%-error bar; failures are retained and named, never hidden). `./run.sh audit` (RUNS=dirA,dirB,...) writes `fairness.md` with a PASS/FAIL verdict table; exit code 1 on any FAIL.
+- Live check: audit run against the committed smoke summaries correctly FAILS with `failures.retained` naming the candidate and cell (smoke drives W1–W3 at the bare upstream by design) — the audit refuses to bless that as a fair comparison, exactly the guard BETA-001 requires before cross-candidate claims.
+- Changed files: `benchmarks/real-world/{fairness.ts,fairness.test.ts,run.sh,README.md}` + `.gitignore` (generated `fairness.md` stays scratch).
+- Tests and exact results: `bun test benchmarks/real-world` 31/31 (9 new fairness tests: identical-contracts pass, single-run-set fail, seed/versions pin drift, duration/concurrency drift, environment-class drift, cell-grid parity, retained-failure naming, deterministic report verdict); full `bun test` 120/120; `bun run typecheck` PASS; `cargo test -p q-engine-quickjs` PASS (98); `cargo test -p q-schema-runtime` PASS (67); `cargo test -p velqu-runtime` PASS (28/28).
+- Fairness audit evidence: the audit itself, its tests, and the live failing verdict on the non-comparable smoke run.
+- Remaining risk / deferred by design: candidate-vs-candidate audits execute once BETA-002 implementations exist; deep response-body equality beyond status verification belongs to BETA-002 parity tests.
+- Next dependency-ready task: BETA-001-D (Keep raw samples) — #499.
+- Working tree clean: yes after commit.
