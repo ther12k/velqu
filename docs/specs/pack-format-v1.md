@@ -201,8 +201,12 @@ removal requires an explicit owner-track decision.
   hot paths.
 - Unknown/unsupported `formatVersion` values fail closed with an
   actionable message naming the rebuild/migrate options.
-- Migration paths: (1) rebuild from source with the current compiler —
-  byte-identical output guaranteed by M26-007 reproducibility work;
-  (2) `velqu pack migrate` guidance in M26-008-B. Mixed-mode packs are
-  rejected (M26-008-C); unsupported legacy features fail
+- Migration paths: (1) **assess a pack** with
+  `velqu pack migrate <app.qpack>` — reports the pack's mode and prints
+  the recommended path; (2) **rebuild from source** with the current
+  compiler (`velqu build --project <dir>`) — deterministic output per
+  the M26-007 reproducibility work, so a rebuild is byte-stable and
+  behavior-neutral; (3) binary mode-2 migration guidance will be
+  reported by the same command once producers emit mode 2. Mixed-mode
+  packs are rejected (M26-008-C); unsupported legacy features fail
   deterministically (M26-008-D).
