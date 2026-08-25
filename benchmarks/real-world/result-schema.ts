@@ -26,6 +26,7 @@ export interface RealWorldEnvironment {
   os: string;
   arch: string;
   commit: string;
+  nodeVersion?: string | null;
 }
 
 export interface RealWorldConfigHashes {
@@ -33,6 +34,7 @@ export interface RealWorldConfigHashes {
   workloads: string;
   schema: string;
   seed: string;
+  versions: string;
   [key: string]: string;
 }
 
@@ -116,7 +118,7 @@ export function validateRealWorldSummary(
   if (!env?.commit) err("environment.commit is required");
 
   const hashes = summary.configHashes;
-  for (const key of ["spec", "workloads", "schema", "seed"]) {
+  for (const key of ["spec", "workloads", "schema", "seed", "versions"]) {
     const v = hashes?.[key];
     if (!v || !HEX64.test(v)) err(`configHashes.${key} must be a sha256 hex digest`);
   }

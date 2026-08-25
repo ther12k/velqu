@@ -20,7 +20,7 @@ function validSummary(): RealWorldSummary {
     durationSec: 10,
     concurrencyLevels: [1, 10],
     environment: { bunVersion: "1.4.0", os: "linux", arch: "x64", commit: "0123456789abcdef" },
-    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH },
+    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH, versions: HASH },
     cells: [
       {
         workload: "W1",
@@ -80,8 +80,10 @@ describe("real-world result schema", () => {
   test("missing or malformed config hashes are reported per key", () => {
     const s = validSummary();
     s.configHashes.seed = "nothex";
+    s.configHashes.versions = "short";
     const errs = validateRealWorldSummary(s, ["W1"], [1, 10]);
     expect(errs).toContain("configHashes.seed must be a sha256 hex digest");
+    expect(errs).toContain("configHashes.versions must be a sha256 hex digest");
     delete (s.configHashes as Record<string, string>).spec;
     const errs2 = validateRealWorldSummary(s, ["W1"], [1, 10]);
     expect(errs2).toContain("configHashes.spec must be a sha256 hex digest");

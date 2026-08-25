@@ -73,6 +73,12 @@ async function gitCommit(): Promise<string> {
   return (await new Response(proc.stdout).text()).trim();
 }
 
+async function nodeVersion(): Promise<string | null> {
+  const proc = Bun.spawn(["node", "--version"], { stdout: "pipe", stderr: "ignore" });
+  if ((await proc.exited) !== 0) return null;
+  return (await new Response(proc.stdout).text()).trim() || null;
+}
+
 function percentileUs(sortedUs: number[], p: number): number {
   if (sortedUs.length === 0) return 0;
   const idx = Math.min(sortedUs.length - 1, Math.floor((p / 100) * sortedUs.length));
@@ -176,12 +182,14 @@ async function main() {
       os: process.platform,
       arch: process.arch,
       commit: await gitCommit(),
+      nodeVersion: await nodeVersion(),
     },
     configHashes: {
       spec: sha256File(`${DIR}/SPEC.md`),
       workloads: sha256File(`${DIR}/workloads.json`),
       schema: sha256File(`${DIR}/postgres/schema.sql`),
       seed: sha256File(`${DIR}/postgres/seed.sql`),
+      versions: sha256File(`${DIR}/versions.json`),
     },
     cells,
     raw: rawPath,

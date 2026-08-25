@@ -4,7 +4,7 @@ parent_task: BETA-001
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,15 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+## Completion record
+
+- Status: **PASS**
+- Deliverable: candidate/toolchain versions pinned in `benchmarks/real-world/versions.json` (`velqu-realworld-versions-v1`): Postgres `17.5-alpine3.22` (matches compose.yaml), Bun `1.4.0` (matches CI pin), Node LTS line 22 (exact patch recorded per run), candidates velqu (workspace/commit-pinned), elysia `2.0.0-beta.4` (matches baseline package.json), hono `4.13.4`, fastify `5.12.1`, drivers pg `8.23.0` / postgres `3.4.9`. Registry versions resolved from npm on 2026-08-25 (exact, no ranges).
+- Wiring: `load.ts` hashes `versions.json` into every summary (`configHashes.versions`) and records `environment.nodeVersion`; `result-schema.ts` requires both (validator + tests updated); `run.sh prepare` echoes the pin manifest; smoke evidence regenerated with the new fields (env now carries `nodeVersion: v24.11.0`, `commit: 31ad65d`).
+- Changed files: `benchmarks/real-world/{versions.json,versions.test.ts,load.ts,result-schema.ts,result-schema.test.ts,run.sh}` + regenerated `benchmarks/raw/real-world/smoke/{summary.json,report.md}`.
+- Tests and exact results: `bun test benchmarks/real-world` 22/22 (7 new version-pin tests incl. cross-file agreement with compose.yaml, CI workflow, and elysia baseline); full `bun test` 111/111; `bun run typecheck` PASS; `cargo test -p q-engine-quickjs` PASS (98); `cargo test -p q-schema-runtime` PASS (67); `cargo test -p velqu-runtime` PASS (28/28 after building the debug `velqu-bytecode` tool the bytecode tests spawn — precondition, not a code change).
+- Smoke results: `./run.sh smoke` PASS — summary validated with versions hash; report regenerated.
+- Fairness audit: version parity is the fairness prerequisite this packet owns; full fairness checks remain BETA-001-C.
+- Remaining risk / deferred by design: candidate implementations (BETA-002) consume these pins; Node patch drift within LTS line is recorded per run rather than pinned.
+- Next dependency-ready task: BETA-001-C (Define fairness checks) — #498.
+- Working tree clean: yes after commit.

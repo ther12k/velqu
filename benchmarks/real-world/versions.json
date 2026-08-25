@@ -1,0 +1,21 @@
+{
+  "format": "velqu-realworld-versions-v1",
+  "postgresImage": "postgres:17.5-alpine3.22",
+  "bun": "1.4.0",
+  "nodeLtsMajor": 22,
+  "candidates": {
+    "velqu": "workspace:0.1.0",
+    "elysia": "2.0.0-beta.4",
+    "hono": "4.13.4",
+    "fastify": "5.12.1"
+  },
+  "drivers": {
+    "pg": "8.23.0",
+    "postgres": "3.4.9"
+  },
+  "notes": [
+    "Velqu is pinned by source commit (summary.environment.commit), not a registry version.",
+    "nodeLtsMajor pins the Node LTS line the Fastify candidate must run on (SPEC.md); the exact patch is recorded per run, not claimed here.",
+    "Exact package versions resolved from the npm registry on 2026-08-25; candidates themselves are implemented in BETA-002."
+  ]
+}
