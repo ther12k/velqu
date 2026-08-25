@@ -46,11 +46,39 @@ function freePort(): number {
   return port;
 }
 
-async function sample(cand: Cand, n: number): Promise<{ totalMs: number; rssKb: number | null; ok: boolean; err?: string }> {
+interface SampleResult {
+  totalMs: number;
+  rssKb: number | null;
+  ok: boolean;
+  err?: string;
+  // M26-010-D: per-stage startup timings from the runtime's own ready
+  // line (velqu candidates only; null otherwise)
+  stages?: Record<string, number> | null;
+}
+
+async function sample(cand: Cand, n: number): Promise<SampleResult> {
   const port = freePort();
   const { cmd, args, env } = cand.spawn(port, n);
   const t0 = performance.now();
-  const proc = Bun.spawn([cmd, ...args], { env: { ...process.env, ...env }, stdout: "ignore", stderr: "ignore" });
+  const proc = Bun.spawn([cmd, ...args], { env: { ...process.env, ...env }, stdout: "pipe", stderr: "ignore" });
+  // drain stdout line-by-line, keeping the first ready line's stages
+  let stages: Record<string, number> | null = null;
+  const drain = (async () => {
+    try {
+      const text = await new Response(proc.stdout).text();
+      for (const line of text.split("\n")) {
+        if (stages) break;
+        const t = line.trim();
+        if (!t.startsWith("{")) continue;
+        try {
+          const j = JSON.parse(t);
+          if (j?.event === "ready" && Array.isArray(j.stages)) {
+            stages = Object.fromEntries(j.stages.map((x: { stage: string; ms: number }) => [x.stage, x.ms]));
+          }
+        } catch {}
+      }
+    } catch {}
+  })();
   try {
     const deadline = performance.now() + 20_000;
     let ready = false;
@@ -82,8 +110,9 @@ async function sample(cand: Cand, n: number): Promise<{ totalMs: number; rssKb: 
         } catch {}
         proc.kill();
         await proc.exited;
-        if (ok) return { totalMs, rssKb, ok };
-        return { totalMs, rssKb, ok: false, err: `body=${body.slice(0, 60)}` };
+        await drain;
+        if (ok) return { totalMs, rssKb, ok, stages };
+        return { totalMs, rssKb, ok: false, err: `body=${body.slice(0, 60)}`, stages };
       } catch {
         await Bun.sleep(0.5);
       }
@@ -92,7 +121,8 @@ async function sample(cand: Cand, n: number): Promise<{ totalMs: number; rssKb: 
   } catch (e) {
     proc.kill();
     await proc.exited;
-    return { totalMs: performance.now() - t0, rssKb: null, ok: false, err: String(e) };
+    await drain;
+    return { totalMs: performance.now() - t0, rssKb: null, ok: false, err: String(e), stages };
   }
 }
 
@@ -118,21 +148,23 @@ for (let i = jobs.length - 1; i > 0; i--) {
   [jobs[i], jobs[j]] = [jobs[j], jobs[i]];
 }
 const cellRows: Array<Record<string, unknown>> = [];
-const cells = new Map<string, { cand: (typeof CANDS)[number]; n: number; rows: Array<{ totalMs: number; rssKb: number | null }>; failures: number }>();
+const cells = new Map<string, { cand: (typeof CANDS)[number]; n: number; rows: Array<{ totalMs: number; rssKb: number | null }>; stages: Array<Record<string, number>>; failures: number }>();
 const raw: string[] = [];
 let executionOrder = 0;
 for (const { cand, n, i } of jobs) {
   const key = `${cand.id}|${n}`;
   let cell = cells.get(key);
   if (!cell) {
-    cell = { cand, n, rows: [], failures: 0 };
+    cell = { cand, n, rows: [], stages: [], failures: 0 };
     cells.set(key, cell);
   }
   {
     const r = await sample(cand, n);
-    raw.push(JSON.stringify({ runId, executionOrder: executionOrder++, candidate: cand.id, n, i, totalMs: Math.round(r.totalMs * 1000) / 1000, rssKb: r.rssKb, ok: r.ok, err: r.err }));
-    if (r.ok) cell.rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
-    else cell.failures++;
+    raw.push(JSON.stringify({ runId, executionOrder: executionOrder++, candidate: cand.id, n, i, totalMs: Math.round(r.totalMs * 1000) / 1000, rssKb: r.rssKb, ok: r.ok, err: r.err, ...(r.stages ? { stages: r.stages } : {}) }));
+    if (r.ok) {
+      cell.rows.push({ totalMs: r.totalMs, rssKb: r.rssKb });
+      if (r.stages) cell.stages.push(r.stages);
+    } else cell.failures++;
   }
   // a cell's stats are computed and logged exactly once, when its last
   // sample lands (samples arrive interleaved after the global shuffle)
@@ -143,9 +175,16 @@ for (const { cand, n, i } of jobs) {
   const p = (q: number) => Math.round((sorted[Math.min(sorted.length - 1, Math.round(q * (sorted.length - 1)))] ?? 0) * 1000) / 1000;
   const rssSorted = rows.map((r) => r.rssKb ?? 0).filter((x) => x > 0).sort((a, b) => a - b);
   const pRss = (q: number) => rssSorted[Math.min(rssSorted.length - 1, Math.round(q * (rssSorted.length - 1)))] ?? 0;
-  const cellResults = { runId, candidate: cand.id, routes: n, samples: rows.length, requestedSamples: SAMPLES, failures, p50Ms: p(0.5), p95Ms: p(0.95), rssP50Kb: pRss(0.5) };
+  // M26-010-D: per-stage p50 across the cell's captured ready lines
+  const stageNames = [...new Set(cell.stages.flatMap((st) => Object.keys(st)))];
+  const stageP50: Record<string, number> = {};
+  for (const name of stageNames) {
+    const xs = cell.stages.map((st) => st[name]).filter((x) => typeof x === "number").sort((a, b) => a - b);
+    if (xs.length) stageP50[name] = Math.round(xs[Math.min(xs.length - 1, Math.round(0.5 * (xs.length - 1)))] * 1000) / 1000;
+  }
+  const cellResults = { runId, candidate: cand.id, routes: n, samples: rows.length, requestedSamples: SAMPLES, failures, p50Ms: p(0.5), p95Ms: p(0.95), p99Ms: p(0.99), rssP50Kb: pRss(0.5), rssP95Kb: pRss(0.95), ...(cell.stages.length ? { stageP50Ms: stageP50 } : {}) };
   cellRows.push(cellResults);
-  console.log(`${cand.id} n=${n}: p50=${p(0.5)}ms p95=${p(0.95)}ms rss=${pRss(0.5)}kB failures=${failures}`);
+  console.log(`${cand.id} n=${n}: p50=${p(0.5)}ms p95=${p(0.95)}ms p99=${p(0.99)}ms rss=${pRss(0.5)}kB failures=${failures}${cell.stages.length ? ` stages=${JSON.stringify(stageP50)}` : ""}`);
 }
 const results = cellRows;
 // scaling deltas
@@ -156,13 +195,43 @@ for (const cand of CANDS) {
   console.log(`${cand.id}: 1000-route vs 25-route p50 delta = ${delta.toFixed(1)}%`);
 }
 import { mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 mkdirSync(`${ROOT}/benchmarks/raw/route-count`, { recursive: true });
 const stamp = Date.now();
 const rawPath = `${ROOT}/benchmarks/raw/route-count/route-count-${stamp}.jsonl`;
 const rawRelative = `benchmarks/raw/route-count/route-count-${stamp}.jsonl`;
+function sha256File(path: string): string {
+  try {
+    return createHash("sha256").update(readFileSync(path)).digest("hex");
+  } catch {
+    return "missing";
+  }
+}
 writeFileSync(rawPath, raw.join("\n") + "\n");
 writeFileSync(
   `${ROOT}/benchmarks/raw/route-count/summary.json`,
-  JSON.stringify({ format: "velqu-route-count-v3-sample-shuffled", runId, seed, samples: SAMPLES, randomizedCandidateOrder: true, sampleOrderRandomized: true, generatedAt: new Date().toISOString(), raw: rawRelative, results }, null, 2),
+  JSON.stringify({
+    format: "velqu-route-count-v4-full-metrics",
+    runId,
+    seed,
+    samples: SAMPLES,
+    randomizedCandidateOrder: true,
+    sampleOrderRandomized: true,
+    generatedAt: new Date().toISOString(),
+    // M26-010-D: raw evidence self-identifies its binaries/packs
+    // (benchmarks/manifest.json remains the canonical release record)
+    binaryHashes: { "target/release/velqu-runtime": sha256File(`${ROOT}/target/release/velqu-runtime`) },
+    packHashes: Object.fromEntries(
+      N_VALUES.flatMap((n) =>
+        ([`app-${n}.qpack`, `app-${n}-bc.qpack`] as const).map((f) => [
+          f,
+          sha256File(`${ROOT}/benchmarks/raw/packs/${f}`),
+        ]),
+      ),
+    ),
+    raw: rawRelative,
+    results,
+  }, null, 2),
 );
 console.log("wrote benchmarks/raw/route-count/");
