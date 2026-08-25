@@ -96,3 +96,28 @@ noise spread across all cells. Canonical run `m26-010-c` (4 × 5 ×
 **3** (previously 100 by construction). p50s remain consistent with
 the A/B runs (velqu source 10k: 948.156 ms; 25-route: 6.44 ms) — the
 randomization removes ordering bias without moving the medians.
+
+## M26-010-D: full metrics — p50/p95/p99, RSS, stage timings, hashes
+
+Summary format `velqu-route-count-v4-full-metrics`; canonical run
+`m26-010-d` (4 × 5 × 100, zero failures, every sample retained with
+its per-stage ready-line timings). The summary now self-identifies its
+evidence: sha256 of the measured `velqu-runtime` binary and of all ten
+ladder packs (mirroring `benchmarks/manifest.json`, which remains the
+canonical release record).
+
+Stage attribution across the ladder (velqu, p50 ms of `pack.load` vs
+total startup):
+
+| routes | source total | source pack.load | bytecode total | bytecode pack.load |
+|---:|---:|---:|---:|---:|
+| 25 | 6.497 | 3.541 | 6.143 | 3.737 |
+| 100 | 12.375 | 9.019 | 12.221 | 9.650 |
+| 1,000 | 84.848 | 76.414 | 82.960 | 78.187 |
+| 5,000 | 434.269 | 405.488 | 432.613 | 417.861 |
+| 10,000 | 947.533 | 892.354 | 926.276 | 901.121 |
+
+`pack.load` grows to ~94% of startup at 10,000 routes — the v1 JSON
+pack parse is the scaling cost, quantified per sample rather than
+inferred from the single 10k profile. p99s stay within ~5% of p95
+(no long-tail pathology); RSS p95 ≈ p50 across cells.

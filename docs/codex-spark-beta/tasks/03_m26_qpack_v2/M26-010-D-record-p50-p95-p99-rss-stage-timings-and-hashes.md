@@ -4,7 +4,7 @@ parent_task: M26-010
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -125,3 +125,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-010-D (PASS)
+
+Deliverable: the route-count evidence now records the full metric set
+per cell — p50/p95/p99, RSS p50/p95, per-stage startup timings, and
+self-identifying hashes.
+
+Harness changes (`benchmarks/harness/route-count.ts`):
+
+- `sample()` pipes velqu stdout and captures the ready line's `stages`
+  (null for bun-based competitors); each raw JSONL row carries its own
+  stage timings.
+- Cell results add `p99Ms`, `rssP95Kb`, and `stageP50Ms` (per-stage
+  p50 across the cell's ready lines).
+- Summary format `velqu-route-count-v4-full-metrics` embeds sha256 of
+  the measured `velqu-runtime` binary and of all ten ladder packs —
+  raw evidence self-identifies what produced it (manifest remains the
+  canonical release record).
+
+Canonical run `m26-010-d` (4 × 5 × 100 = 2,000 spawns, zero
+failures). Stage attribution (velqu p50, pack.load / total): 3.541 /
+6.497 ms at 25 routes → 892.354 / 947.533 ms at 10,000 (source) —
+pack.load reaches ~94% of startup, quantified per sample rather than
+inferred from the single 10k profile. p99 within ~5% of p95 (no
+long-tail pathology); RSS p95 ≈ p50.
+
+Changed files: harness, canonical raw + summary, regenerated report,
+D section in the ladder report, matched manifest refresh.
+
+Commands: q-pack 94+2; velqu-runtime 30; bun 125 pass / 0 fail;
+typecheck, fmt, clippy -D warnings clean; `./scripts/verify` — ALL
+PASS (exit 0).
