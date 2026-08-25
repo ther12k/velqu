@@ -4,7 +4,7 @@ parent_task: M26-008
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -106,4 +106,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 
 ## Handoff format
 
-Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+  Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-008-D)
+
+Status: **PASS**.
+
+### Deliverables
+
+- **Compatibility fixtures** (negative, committed): four unsupported-
+  legacy-feature packs under `crates/q-pack/tests/fixtures/v1/
+  unsupported/` — `schema-ir-v1.json`, `engine-mismatch.json`,
+  `prelude-without-bytecode.json`, `runtime-abi.json`.
+- **Migration/determinism tests** (+1,
+  `unsupported_legacy_features_fail_deterministically` in
+  `crates/q-pack/src/legacy_v1.rs`): for each fixture asserts (a) the
+  exact expected rejection substring, (b) two runs produce
+  byte-identical errors, (c) no addresses/host state in messages —
+  pinning determinism, not just rejection. Together with the M26-008-C
+  mixed-mode cases the full failure matrix is covered.
+- **Deprecation documentation**: "Deterministic failure matrix" table
+  added to `docs/specs/pack-format-v1.md` — feature × fixture ×
+  deterministic rejection substring, with the uniform recovery options.
+- No behavior change: all rejections already used static strings; this
+  packet pins that property so refactors cannot silently make failures
+  nondeterministic or vague.
+
+### Command results
+
+- `cargo test -p q-pack` — 93 passed (+1); `cargo test -p
+  velqu-runtime` — 28 passed; `bun test` — 89 passed / 0 fail / 531
+  expect(); typecheck/fmt/clippy `-D warnings` clean; `./scripts/verify`
+  — ALL PASS (exit 0).

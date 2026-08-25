@@ -216,3 +216,24 @@ removal requires an explicit owner-track decision.
   silently by serde; the reserved-key gate closes that hole so a hybrid
   artifact can never load as v1 while tooling reads different semantics.
   Unsupported legacy features fail deterministically (M26-008-D).
+
+### Deterministic failure matrix (M26-008-D)
+
+Every rejection below uses a static, environment-independent message
+(no addresses, counters, or host state); the same input always produces
+the same error text and exit path, with no fallback. Committed negative
+fixtures under `tests/fixtures/v1/unsupported/` pin each case
+(`unsupported_legacy_features_fail_deterministically`):
+
+| unsupported feature | fixture | deterministic rejection contains |
+|---|---|---|
+| Schema IR v1 (pre-M25 producer) | `schema-ir-v1.json` | `schema IR version 1 not supported` |
+| wrong embedded engine fingerprint | `engine-mismatch.json` | `engine mismatch` |
+| `bundlePrelude: "embedded"` without bytecode | `prelude-without-bytecode.json` | `requires bundleBytecode` |
+| unknown/future runtime ABI | `runtime-abi.json` | `runtime ABI` |
+| unknown `formatVersion` | (mutation test) | `not supported … fail closed — rebuild … migrate` |
+| mode-2 keys inside JSON pack | `../mixed-mode-sections.json` | `mixed-mode pack: 'sections'` |
+| binary container presented as JSON | (synthetic bytes) | `mixed-mode pack … VELQUQPK` |
+
+Recovery for every row is the same two options: rebuild from source with
+the current compiler, or follow the `velqu pack migrate` guidance.
