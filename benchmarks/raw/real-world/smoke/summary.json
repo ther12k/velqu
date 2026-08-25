@@ -1,0 +1,193 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-25T12:55:02.325Z",
+  "baseUrl": "http://127.0.0.1:8791",
+  "durationSec": 2,
+  "concurrencyLevels": [
+    1,
+    10
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "2b02844d7ac414b97bf0c983df6374c4110ad376"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "88a33a052f7efaed2e878cce2a57cd4c2bb3c9aef1f97d29e62e2ff2c9f51e33",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e"
+  },
+  "cells": [
+    {
+      "workload": "W1",
+      "concurrency": 1,
+      "totalRequests": 18362,
+      "errors": 0,
+      "statusMismatches": 18362,
+      "rps": 9181,
+      "p50Us": 71,
+      "p95Us": 310,
+      "p99Us": 524,
+      "maxUs": 3435
+    },
+    {
+      "workload": "W1",
+      "concurrency": 10,
+      "totalRequests": 106141,
+      "errors": 0,
+      "statusMismatches": 106141,
+      "rps": 53070.5,
+      "p50Us": 156,
+      "p95Us": 404,
+      "p99Us": 686,
+      "maxUs": 7534
+    },
+    {
+      "workload": "W2",
+      "concurrency": 1,
+      "totalRequests": 11845,
+      "errors": 0,
+      "statusMismatches": 11845,
+      "rps": 5922.5,
+      "p50Us": 119,
+      "p95Us": 439,
+      "p99Us": 736,
+      "maxUs": 13805
+    },
+    {
+      "workload": "W2",
+      "concurrency": 10,
+      "totalRequests": 92087,
+      "errors": 0,
+      "statusMismatches": 92087,
+      "rps": 46043.5,
+      "p50Us": 165,
+      "p95Us": 529,
+      "p99Us": 870,
+      "maxUs": 5587
+    },
+    {
+      "workload": "W3",
+      "concurrency": 1,
+      "totalRequests": 22236,
+      "errors": 0,
+      "statusMismatches": 22236,
+      "rps": 11118,
+      "p50Us": 57,
+      "p95Us": 251,
+      "p99Us": 428,
+      "maxUs": 5697
+    },
+    {
+      "workload": "W3",
+      "concurrency": 10,
+      "totalRequests": 128928,
+      "errors": 0,
+      "statusMismatches": 128928,
+      "rps": 64464,
+      "p50Us": 108,
+      "p95Us": 379,
+      "p99Us": 671,
+      "maxUs": 6115
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 1,
+      "totalRequests": 1338,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 669,
+      "p50Us": 1469,
+      "p95Us": 1770,
+      "p99Us": 2471,
+      "maxUs": 4324
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 10,
+      "totalRequests": 12268,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 6134,
+      "p50Us": 1465,
+      "p95Us": 2691,
+      "p99Us": 4712,
+      "maxUs": 8994
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 1,
+      "totalRequests": 349,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 174.5,
+      "p50Us": 5642,
+      "p95Us": 6375,
+      "p99Us": 7628,
+      "maxUs": 9823
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 10,
+      "totalRequests": 3523,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1761.5,
+      "p50Us": 5505,
+      "p95Us": 6661,
+      "p99Us": 7871,
+      "maxUs": 13406
+    },
+    {
+      "workload": "W4_10ms",
+      "concurrency": 1,
+      "totalRequests": 188,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 94,
+      "p50Us": 10666,
+      "p95Us": 10988,
+      "p99Us": 11807,
+      "maxUs": 12497
+    },
+    {
+      "workload": "W4_10ms",
+      "concurrency": 10,
+      "totalRequests": 1880,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 940,
+      "p50Us": 10594,
+      "p95Us": 11100,
+      "p99Us": 11654,
+      "maxUs": 12087
+    },
+    {
+      "workload": "W4_25ms",
+      "concurrency": 1,
+      "totalRequests": 78,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 39,
+      "p50Us": 25621,
+      "p95Us": 26123,
+      "p99Us": 27309,
+      "maxUs": 27309
+    },
+    {
+      "workload": "W4_25ms",
+      "concurrency": 10,
+      "totalRequests": 780,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 390,
+      "p50Us": 25755,
+      "p95Us": 26663,
+      "p99Us": 27211,
+      "maxUs": 27328
+    }
+  ],
+  "raw": "../raw/real-world/smoke/raw.jsonl"
+}

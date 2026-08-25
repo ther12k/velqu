@@ -4,7 +4,7 @@ parent_task: BETA-001
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,21 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+## Completion record
+
+- Status: **PASS**
+- Deliverable: the `benchmarks/real-world/` scaffold is now deterministic, one-command infrastructure:
+  - `compose.yaml` — pinned `postgres:17.5-alpine3.22`, benchmark-only creds, `pg_isready` healthcheck, tmpfs data (down discards state).
+  - `postgres/reset.sql` + `postgres/seed.sql` + `reset.sh` — deterministic reset/seed (generate_series + modular arithmetic; no random functions). Live verified: users=1000, products=500, reviews=10000, electronics=100, orders=0 on every invocation.
+  - `upstream.ts` — controlled upstream (W4): `GET /io?ms=N` (validated 0–1000ms) + `/health`; live-verified p50 ≈ 1.37/5.55/10.6/25.7ms for the 1/5/10/25ms cells.
+  - `result-schema.ts` — `velqu-realworld-summary-v1` types + `validateRealWorldSummary` (cells complete, p50≤p95≤p99≤max, error counts ≤ totals, environment + sha256 config hashes required).
+  - `load.ts` — fixed-duration load generator over `workloads.json` at concurrency 1/10/50/200; per-request raw JSONL rows retain errors/status mismatches (candidate failure recorded, never dropped); summary records environment (bun/os/arch/commit) + config hashes.
+  - `report.ts` — deterministic report generator (per-workload tables, retained-failures section, protocol footer).
+  - `run.sh` — one command: `prepare` (compose up --wait + reset) → `smoke` (upstream + 2s load-gen + result-schema validation + report). README documents usage/determinism/CI scope.
+- Changed files: all under `benchmarks/real-world/` (compose.yaml, postgres/{reset,seed}.sql, reset.sh, upstream.ts, result-schema.ts, load.ts, report.ts, run.sh, README.md, *.test.ts) plus `.gitignore` (bulky smoke `raw.jsonl`/logs stay local; `benchmarks/raw/real-world/smoke/{summary.json,report.md}` retained as evidence). No runtime-crate, docs/reports, or benchmarks/manifest.json changes.
+- Smoke results (live, this host): `./run.sh` end-to-end PASS — compose healthy, deterministic counts, W4 latencies timer-accurate, W1–W3 vs bare upstream correctly retained as status mismatches (failure-retention path exercised), `result-schema: PASS`. Evidence: `benchmarks/raw/real-world/smoke/summary.json`, `benchmarks/raw/real-world/smoke/report.md`.
+- Fairness audit: none claimed here — candidate version pinning (BETA-001-B), fairness checks (C), and raw-sample retention policy (D) remain their own packets; smoke drives the upstream only.
+- Tests and exact results: `cargo test -p q-engine-quickjs` PASS (98); `cargo test -p q-http` PASS (11); `cargo test -p q-schema-runtime` PASS (67); `cargo test -p q-capabilities` PASS (crate has no tests; clean build/exit 0); `bun test` PASS (104/104 incl. 15 new: result-schema 6, workloads 5, report 4); `bun run typecheck` PASS.
+- Remaining risk / deferred by design: real candidates (Velqu/BETA-002) not yet driven; docker-dependent phases are operator-run (CI covers unit-tested pieces only); smoke `raw.jsonl` (44MB) intentionally untracked.
+- Next dependency-ready task: BETA-001-B (Pin candidate versions) — #497.
+- Working tree clean: yes after commit.

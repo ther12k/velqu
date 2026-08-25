@@ -26,3 +26,10 @@ packages/*/dist/
 release/
 history/
 *.bundle
+
+# BETA-001-A real-world harness: bulky per-request raw smoke rows and logs
+# (summary.json and report.md are retained as evidence; BETA-001-D owns the
+# full raw-sample retention policy)
+benchmarks/raw/real-world/smoke/raw.jsonl
+benchmarks/raw/real-world/smoke/upstream.log
+benchmarks/real-world/raw/
