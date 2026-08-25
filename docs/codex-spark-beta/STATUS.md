@@ -536,7 +536,7 @@ Update a checkbox only after the task commit and required tests pass.
 
 ## BETA — Public Beta 0.1.0-beta.1
 
-- [ ] [BETA-001-A — Add Postgres compose, seed/reset, controlled upstream, result schema, load generator, and report generator](tasks/08_public_beta/BETA-001-A-add-postgres-compose-seed-reset-controlled-upstream-result-schema-load-generator.md)
+- [x] [BETA-001-A — Add Postgres compose, seed/reset, controlled upstream, result schema, load generator, and report generator](tasks/08_public_beta/BETA-001-A-add-postgres-compose-seed-reset-controlled-upstream-result-schema-load-generator.md)
 - [ ] [BETA-001-B — Pin candidate versions](tasks/08_public_beta/BETA-001-B-pin-candidate-versions.md)
 - [ ] [BETA-001-C — Define fairness checks](tasks/08_public_beta/BETA-001-C-define-fairness-checks.md)
 - [ ] [BETA-001-D — Keep raw samples](tasks/08_public_beta/BETA-001-D-keep-raw-samples.md)

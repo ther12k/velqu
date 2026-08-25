@@ -1,0 +1,22 @@
+# Real-world benchmark Postgres (BETA-001-A).
+# Deterministic by construction: data lives on tmpfs, so `docker compose down`
+# discards all state and `reset.sh` rebuilds the identical dataset from
+# schema.sql + seed.sql.
+name: velqu-realworld
+
+services:
+  postgres:
+    image: postgres:17.5-alpine3.22
+    environment:
+      POSTGRES_USER: velqu_bench
+      POSTGRES_PASSWORD: velqu_bench
+      POSTGRES_DB: velqu_bench
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U velqu_bench -d velqu_bench"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
