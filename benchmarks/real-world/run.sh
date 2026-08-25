@@ -58,6 +58,9 @@ cmd_smoke() {
   echo "== real-world: report =="
   bun report.ts --summary "$out_dir/summary.json" --out "$out_dir/report.md"
 
+  echo "== real-world: raw-sample retention =="
+  bun retain.ts --run "$out_dir"
+
   echo "== real-world: result-schema validation =="
   bun -e "
     const s = await Bun.file('$out_dir/summary.json').json();
