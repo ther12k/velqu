@@ -4,7 +4,7 @@ parent_task: M26-008
 milestone: M26
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -118,3 +118,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-008-Z)
+
+Status: **PASS** — parent M26-008 closed with all acceptance criteria
+proven by M26-008-V (verification commit `908d171`, PR #821). Evidence
+packaging only; no code or behavior changes.
+
+### Evidence package
+
+| packet | deliverable | merged commit |
+|---|---|---|
+| A separate v1 reader/adapter | `q_pack::legacy_v1` adapter + golden fixture + actionable messages + deprecation docs | `4f8a710` (#817) |
+| B migrate/rebuild guidance | `velqu pack migrate` command + pure assessment core + 4 tests | `2714e0a` (#818) |
+| C deprecate mixed-mode packs | `reject_mixed_mode_bytes` gate on both load paths + negative fixture + 2 tests | `17db6ac` (#819) |
+| D deterministic failures | 4 unsupported-feature fixtures + determinism test + failure-matrix doc | `94ddc5a` (#820) |
+| V verification closure | guardrail→source→evidence map + live CLI checks | `908d171` (#821) |
+
+### Required evidence → location
+
+- **Compatibility fixtures**: `crates/q-pack/tests/fixtures/v1/`
+  (`minimal.json` golden positive; `mixed-mode-sections.json`;
+  `unsupported/{schema-ir-v1,engine-mismatch,prelude-without-bytecode,
+  runtime-abi}.json`) — regenerable via the `gen-fixture` example.
+- **Migration tests**: `legacy_v1::tests::*` (adapter load, actionable
+  message, mixed-mode ×2, determinism matrix), `packages/cli/src/
+  pack-migrate.test.ts` (4 guidance cases).
+- **Deprecation documentation**: `docs/specs/pack-format-v1.md`
+  "Deprecation and migration" section with deterministic failure matrix.
+
+### Acceptance guardrails → proof (from V closure, commit 908d171)
+
+1. No legacy structures on current runtime path — pinned CURRENT-mode
+   constant; qpack2 borrowed views vs owned legacy trees; single
+   allocation path. ✓
+2. Supported v1 migrates or loads through the adapter — fixture load +
+   live CLI exit-0 rebuild guidance. ✓
+3. Unsupported packs fail with actionable messages — named rejections,
+   byte-identical determinism, no host state. ✓
+4. Migration does not change public contract — git-diff audit shows
+   zero removed public items; consumer call sites unchanged. ✓
+
+### Command results (fresh on branch m26-008-z)
+
+- `cargo test -p q-pack` — 93 passed; `cargo test -p velqu-runtime` —
+  28 passed; `bun test` — 89 passed / 0 fail / 531 expect(); typecheck
+  clean; `./scripts/verify` — ALL PASS (exit 0).
+
+Parent M26-008 marked PASS in `docs/beta/04_TASK_LEDGER.md`.
