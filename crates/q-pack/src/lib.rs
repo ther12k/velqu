@@ -467,6 +467,40 @@ pub mod sources_sidecar {
     }
 
     impl SourcesSidecar {
+        /// M26-009-D: sha256 (hex) of the exact pack bytes — the binding
+        /// key for sidecars in BOTH deployment modes.
+        pub fn pack_sha256_of(pack_bytes: &[u8]) -> String {
+            use sha2::Digest;
+            let h: [u8; 32] = sha2::Sha256::digest(pack_bytes).into();
+            h.iter().map(|b| format!("{b:02x}")).collect()
+        }
+
+        /// M26-009-D sidecar location convention:
+        /// - shared mode: `<pack>.sources.json` next to the pack file;
+        /// - standalone mode: `<executable>.sources.json` next to the
+        ///   binary, binding to the EMBEDDED pack bytes (the executable
+        ///   itself never reads it — ADR-0027).
+        pub fn sidecar_path_for(artifact: &std::path::Path) -> std::path::PathBuf {
+            let mut s = artifact.as_os_str().to_os_string();
+            s.push(".sources.json");
+            std::path::PathBuf::from(s)
+        }
+
+        /// Tooling entry point: load a sidecar file and verify it binds
+        /// to the given pack bytes (hash + format version). Untrusted
+        /// input — advisory for symbolization only.
+        pub fn load_and_verify(
+            sidecar_path: &std::path::Path,
+            pack_bytes: &[u8],
+        ) -> Result<SourcesSidecar, String> {
+            let text = std::fs::read_to_string(sidecar_path)
+                .map_err(|e| format!("read sidecar {}: {e}", sidecar_path.display()))?;
+            let sidecar: SourcesSidecar = serde_json::from_str(&text)
+                .map_err(|e| format!("parse sidecar {}: {e}", sidecar_path.display()))?;
+            sidecar.verify_against(&Self::pack_sha256_of(pack_bytes))?;
+            Ok(sidecar)
+        }
+
         /// Tool-side advisory check: the sidecar must declare the exact
         /// pack file hash it belongs to. A mismatch is an ergonomic warning
         /// for tooling, never a runtime behavior change.
@@ -5521,6 +5555,57 @@ mod tests {
         debug_build
             .verify()
             .expect("debug-annotated v1 pack still verifies");
+    }
+
+    #[test]
+    fn sidecar_convention_works_for_both_deployment_modes() {
+        use sources_sidecar::{SidecarModule, SourcesSidecar, SIDECAR_FORMAT_VERSION};
+        // shared mode: sidecar next to the PACK file
+        let pack_bytes = b"shared-mode-pack-bytes".to_vec();
+        let dir = std::env::temp_dir().join("velqu-m26-009-d");
+        let _ = std::fs::create_dir_all(&dir);
+        let pack_path = dir.join("app.qpack");
+        std::fs::write(&pack_path, &pack_bytes).unwrap();
+        let sidecar = SourcesSidecar {
+            format_version: SIDECAR_FORMAT_VERSION,
+            pack_sha256: SourcesSidecar::pack_sha256_of(&pack_bytes),
+            bundle_source: Some("bundle".into()),
+            source_map: None,
+            modules: vec![SidecarModule {
+                id: "app.ts".into(),
+                file: "app.ts".into(),
+            }],
+        };
+        let shared_sidecar = SourcesSidecar::sidecar_path_for(&pack_path);
+        assert_eq!(shared_sidecar, dir.join("app.qpack.sources.json"));
+        std::fs::write(&shared_sidecar, serde_json::to_string(&sidecar).unwrap()).unwrap();
+        SourcesSidecar::load_and_verify(&shared_sidecar, &pack_bytes)
+            .expect("shared-mode sidecar binds to its pack bytes");
+
+        // standalone mode: sidecar next to the EXECUTABLE, binding to the
+        // EMBEDDED pack bytes (not the binary's own bytes)
+        let exe_path = dir.join("velqu-standalone");
+        let standalone_sidecar = SourcesSidecar::sidecar_path_for(&exe_path);
+        assert_eq!(
+            standalone_sidecar,
+            dir.join("velqu-standalone.sources.json")
+        );
+        std::fs::write(
+            &standalone_sidecar,
+            serde_json::to_string(&sidecar).unwrap(),
+        )
+        .unwrap();
+        SourcesSidecar::load_and_verify(&standalone_sidecar, &pack_bytes)
+            .expect("standalone sidecar binds to the embedded pack bytes");
+
+        // wrong binding rejects for tooling
+        let other = b"different-bytes".to_vec();
+        assert!(SourcesSidecar::load_and_verify(&standalone_sidecar, &other).is_err());
+        // missing sidecar file rejects
+        assert!(
+            SourcesSidecar::load_and_verify(&dir.join("nope.sources.json"), &pack_bytes).is_err()
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

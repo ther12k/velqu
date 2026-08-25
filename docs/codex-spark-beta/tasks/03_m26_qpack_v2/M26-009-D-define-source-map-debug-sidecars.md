@@ -4,7 +4,7 @@ parent_task: M26-009
 milestone: M26
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -110,3 +110,50 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M26-009-D (PASS)
+
+Deliverable: the source-map/debug sidecar convention defined for BOTH
+deployment modes (ADR-0027 extended to standalone), with tooling
+helpers and a discoverable binding key.
+
+Changed files:
+
+- `crates/q-pack/src/lib.rs` (`sources_sidecar`) — `pack_sha256_of`
+  (binding key over exact pack bytes), `sidecar_path_for` (shared:
+  `<pack>.sources.json`; standalone: `<executable>.sources.json`
+  binding to the EMBEDDED pack bytes), `load_and_verify(path,
+  pack_bytes)` tooling entry (untrusted input; advisory; unknown
+  format versions fail closed for tooling).
+- `crates/q-runtime/src/lib.rs` — `print_fingerprint` restructured to
+  read the pack bytes ONCE per mode (no TOCTOU between verify and
+  hash; shared path now verifies via `verify_from_slice` over the
+  same buffer) and prints `packSha256` + the mode's sidecar name.
+- `docs/beta/DEBUGGING.md` — the full convention: sidecar shape,
+  per-mode location/binding table, how to obtain the binding key,
+  symbolization steps, ADR-0026/0027 trust boundaries.
+- `crates/q-runtime/tests/runtime_conformance.rs` +
+  `crates/q-pack/src/lib.rs` — tests below.
+- `benchmarks/manifest.json` — matched refresh (runtime source
+  changed; verify-remap rebuild via the sanctioned script).
+
+Tests:
+
+- `sidecar_convention_works_for_both_deployment_modes` (q-pack, 94
+  total) — path derivation for both modes; sidecar binds to the exact
+  pack bytes in each; wrong binding and missing files reject for
+  tooling.
+- `fingerprint_reports_sidecar_binding_key` (velqu-runtime, 30 total)
+  — `--fingerprint` prints `packSha256` equal to sha256 of the pack
+  bytes on disk plus the mode's sidecar name.
+
+Commands: q-pack 94+2; velqu-runtime 30; q-engine-quickjs 1+97; bun
+125 pass / 0 fail; typecheck, fmt, clippy -D warnings clean;
+`./scripts/verify` — ALL PASS (exit 0) including
+validate-benchmark-evidence.
+
+Guardrails: both modes identical (same lib helpers; fingerprint path
+shared by both binaries); standalone stays toolchain-free (docs +
+sidecar only; the executable never reads sidecars); shared-mode
+mismatch rejection unchanged; startup/RSS deltas already measured
+(M26-009-B).

@@ -257,7 +257,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-009-A](../tasks/03_m26_qpack_v2/M26-009-A-shared-mode-velqu-runtime-plus-app-qpack.md) | P1 | implement | PASS | M26-004-Z, M26-005-Z | Shared mode: `velqu-runtime` plus app.qpack |
 | [M26-009-B](../tasks/03_m26_qpack_v2/M26-009-B-standalone-mode-embedded-qpack-executable.md) | P1 | implement | PASS | M26-009-A | Standalone mode: embedded qpack executable |
 | [M26-009-C](../tasks/03_m26_qpack_v2/M26-009-C-ensure-exact-runtime-fingerprint.md) | P1 | implement | PASS | M26-009-B | Ensure exact runtime fingerprint |
-| [M26-009-D](../tasks/03_m26_qpack_v2/M26-009-D-define-source-map-debug-sidecars.md) | P1 | implement | TODO | M26-009-C | Define source-map/debug sidecars |
+| [M26-009-D](../tasks/03_m26_qpack_v2/M26-009-D-define-source-map-debug-sidecars.md) | P1 | implement | PASS | M26-009-C | Define source-map/debug sidecars |
 | [M26-009-V](../tasks/03_m26_qpack_v2/M26-009-V-verify-build-shared-runtime-and-standalone-deployment-artifacts.md) | P1 | verify | TODO | M26-009-A, M26-009-B, M26-009-C, M26-009-D | Verify Build shared-runtime and standalone deployment artifacts |
 | [M26-009-Z](../tasks/03_m26_qpack_v2/M26-009-Z-package-evidence-for-build-shared-runtime-and-standalone-deployment-artifacts.md) | P1 | evidence | TODO | M26-009-V | Package evidence for Build shared-runtime and standalone deployment artifacts |
 | [M26-010-A](../tasks/03_m26_qpack_v2/M26-010-A-measure-25-100-1-000-5-000-10-000-routes.md) | P1 | implement | TODO | M26-004-Z, M26-005-Z, M26-009-Z | Measure 25/100/1,000/5,000/10,000 routes |
