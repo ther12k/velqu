@@ -4,7 +4,7 @@ parent_task: M26-008
 milestone: M26
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M26.md
 commit_required: true
 ---
@@ -121,3 +121,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record (M26-008-V)
+
+Status: **PASS**. Verification closure only — no code changes. All four
+parent guardrails verified against source, tests, and live CLI behavior.
+
+### Guardrail → source → evidence
+
+1. **Current runtime path allocates no legacy structures.**
+   `q-runtime/src/main.rs:71` loads via `QPack::load_and_verify_with`
+   with an explicit `BytecodePolicy` — the current producer format IS
+   mode 1 (`PACK_FORMAT_CURRENT == PACK_FORMAT_LEGACY_V1`, pinned by
+   `current_mode_is_pinned_until_native_v2_lands`), so there is exactly
+   one allocation path and no adapter double-construction. The qpack2
+   zero-copy reader (`PackBytes::open`) returns borrowed/mmap views
+   (`Deref to &[u8]`) sharing no types with owned legacy `QPack` trees;
+   `legacy_v1` is the only funnel that builds them.
+2. **Supported v1 pack either migrates or loads through the adapter.**
+   Golden fixture loads through `legacy_v1::read_and_verify_bytes`
+   (`loads_committed_v1_fixture`); live end-to-end check this session:
+   `velqu pack migrate <golden>` exits 0 with rebuild guidance
+   (deterministic per M26-007).
+3. **Unsupported packs fail with actionable messages.**
+   `unsupported_version_message_is_actionable` + the M26-008-C/D matrix
+   (mixed-mode named rejections; determinism pinned byte-identical
+   across runs, no addresses/host state). Live check: missing file →
+   exit 1 "pack not found".
+4. **Migration does not change public contract.** `git diff 44fdaba..HEAD`
+   on q-pack shows zero removed public items (`detect_pack_format_mode`
+   moved, same signature); runtime and bytecode-tool call sites
+   unchanged; all new surface is additive (`legacy_v1`,
+   `reject_mixed_mode_bytes`, `MODE2_RESERVED_JSON_KEYS`, fixtures,
+   CLI command).
+
+### Command results (fresh on branch m26-008-v)
+
+- `cargo test -p q-pack` — 93 passed; `cargo test -p velqu-runtime` —
+  28 passed; `bun test` — 89 passed / 0 fail / 531 expect(); typecheck
+  clean. `./scripts/verify` — ALL PASS (exit 0).
