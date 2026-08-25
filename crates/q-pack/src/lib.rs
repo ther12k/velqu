@@ -105,6 +105,48 @@ pub fn detect_pack_format_mode(format_version: u32) -> Result<PackFormatMode, Pa
     }
 }
 
+/// Top-level JSON keys reserved for binary mode-2 containers. Their
+/// appearance inside a JSON pack is a mixed-mode artifact and is rejected
+/// by name (M26-008-C, ADR-0024: modes are exclusive).
+pub const MODE2_RESERVED_JSON_KEYS: [&str; 3] = ["sections", "sectionDirectory", "qpack2"];
+
+/// Reject mixed-mode artifacts before any adapter interprets them.
+///
+/// Two shapes are rejected by name:
+/// 1. bytes starting with the mode-2 magic — a binary container presented
+///    where a JSON pack must be parsed;
+/// 2. a JSON object carrying mode-2-reserved top-level fields — serde
+///    would otherwise silently ignore them, letting a hybrid artifact
+///    load as v1 while tooling reads different semantics.
+pub fn reject_mixed_mode_bytes(bytes: &[u8]) -> Result<(), PackError> {
+    if bytes.len() >= qpack2::MAGIC.len() && &bytes[..qpack2::MAGIC.len()] == qpack2::MAGIC {
+        return Err(PackError::Rejected(
+            "mixed-mode pack: binary mode-2 container (VELQUQPK magic) presented \
+             where a JSON pack is expected; modes are exclusive (ADR-0024) — \
+             rebuild the pack with the current compiler"
+                .into(),
+        ));
+    }
+    let value: serde_json::Value = match serde_json::from_slice(bytes) {
+        Ok(v) => v,
+        // Not JSON at all: leave the mode-specific error reporting to the
+        // caller's parser (the magic check above already spoke for mode 2).
+        Err(_) => return Ok(()),
+    };
+    if let Some(obj) = value.as_object() {
+        for key in MODE2_RESERVED_JSON_KEYS {
+            if obj.contains_key(key) {
+                return Err(PackError::Rejected(format!(
+                    "mixed-mode pack: mode-2-only field '{key}' inside a JSON pack; \
+                     modes are exclusive (ADR-0024) — rebuild the pack with the \
+                     current compiler or migrate it (see docs/specs/pack-format-v1.md)"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Mode-2 binary layout constants (ADR-0025,
 /// `docs/specs/pack-format-v2.md`). The encoder and native decoder land
 /// with M26-003; these constants exist so spec/code drift fails tests
@@ -3942,6 +3984,9 @@ impl QPack {
         policy: BytecodePolicy,
     ) -> Result<QPack, PackError> {
         let bytes = std::fs::read(path)?;
+        // M26-008-C: mixed-mode artifacts are rejected before any adapter
+        // interprets them (magic container or mode-2 keys inside JSON).
+        reject_mixed_mode_bytes(&bytes)?;
         let mut pack: QPack =
             serde_json::from_slice(&bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
         match policy {

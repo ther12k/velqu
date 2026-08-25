@@ -38,6 +38,7 @@ pub fn read_and_verify(path: &Path) -> Result<QPack, PackError> {
 /// Parse and verify a legacy v1 pack from raw bytes (fixtures, fuzzing,
 /// tooling). Disk IO is the caller's concern.
 pub fn read_and_verify_bytes(bytes: &[u8]) -> Result<QPack, PackError> {
+    crate::reject_mixed_mode_bytes(bytes)?;
     let pack: QPack =
         serde_json::from_slice(bytes).map_err(|e| PackError::Malformed(e.to_string()))?;
     pack.verify()?;
@@ -79,6 +80,30 @@ mod tests {
         assert!(
             err.contains("rebuild") && err.contains("migrate"),
             "message must name the way out: {err}"
+        );
+    }
+
+    /// M26-008-C: a v1 JSON pack carrying mode-2-reserved top-level
+    /// fields is a mixed-mode artifact and is rejected BY NAME — serde
+    /// would otherwise silently drop the unknown key.
+    #[test]
+    fn mixed_mode_sections_key_is_rejected() {
+        let raw = include_bytes!("../tests/fixtures/v1/mixed-mode-sections.json");
+        let err = read_and_verify_bytes(raw).unwrap_err().to_string();
+        assert!(err.contains("mixed-mode"), "{err}");
+        assert!(err.contains("'sections'"), "{err}");
+    }
+
+    /// M26-008-C: a binary mode-2 container presented as a JSON pack is
+    /// caught by magic before any parse attempt.
+    #[test]
+    fn binary_container_presented_as_json_is_rejected() {
+        let mut bytes = crate::qpack2::MAGIC.to_vec();
+        bytes.extend_from_slice(&[0u8; 64]);
+        let err = read_and_verify_bytes(&bytes).unwrap_err().to_string();
+        assert!(
+            err.contains("mixed-mode") && err.contains("VELQUQPK"),
+            "{err}"
         );
     }
 }

@@ -207,6 +207,12 @@ removal requires an explicit owner-track decision.
   compiler (`velqu build --project <dir>`) — deterministic output per
   the M26-007 reproducibility work, so a rebuild is byte-stable and
   behavior-neutral; (3) binary mode-2 migration guidance will be
-  reported by the same command once producers emit mode 2. Mixed-mode
-  packs are rejected (M26-008-C); unsupported legacy features fail
-  deterministically (M26-008-D).
+  reported by the same command once producers emit mode 2.
+- **Mixed-mode packs are rejected by name (M26-008-C).** Modes are
+  exclusive: a binary `VELQUQPK` container presented where a JSON pack
+  is parsed, or a JSON pack carrying mode-2-reserved top-level fields
+  (`sections`, `sectionDirectory`, `qpack2`), is rejected before any
+  adapter interprets it. Unknown JSON keys were previously dropped
+  silently by serde; the reserved-key gate closes that hole so a hybrid
+  artifact can never load as v1 while tooling reads different semantics.
+  Unsupported legacy features fail deterministically (M26-008-D).
