@@ -21,6 +21,8 @@ cmd_prepare() {
   fi
   echo "== real-world: starting pinned Postgres =="
   docker compose up -d --wait
+  echo "== real-world: pinned versions (versions.json) =="
+  bun -e "const v = await Bun.file('versions.json').json(); console.log(JSON.stringify(v, null, 2));"
   ./reset.sh
 }
 
