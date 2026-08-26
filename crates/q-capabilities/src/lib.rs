@@ -12,12 +12,16 @@
 
 pub mod identity;
 pub mod operations;
+pub mod shutdown;
 
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
 };
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
+pub use shutdown::{
+    begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
+};
 
 use std::fmt;
 

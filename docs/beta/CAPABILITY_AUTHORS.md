@@ -102,6 +102,25 @@ Every operation your capability starts is a `NativeOp` with:
   `NonCancellable`. Cancelling a non-cancellable operation is a
   typed rejection. There is no default class.
 
+## Shutdown and drain
+
+When the runtime shuts your capability down, the protocol is fixed
+(ADR-0031):
+
+1. **Drain begins** — new operations are refused from that instant.
+2. **Cancellable pending operations are cancelled immediately**;
+   non-cancellable ones form the await set and must complete on
+   their own.
+3. **The budget is 5 seconds, fail-closed.** Everything settled in
+   time → `Quiesced`, with an accounting report (cancelled /
+   settled / expired counts). Budget missed → stragglers are expired
+   **visibly** and the capability fails closed (`Failed`). A late
+   settlement for an expired operation is dropped; a failed
+   capability is never revived.
+
+Your module cannot opt out of the budget, hide pending work, or turn
+a late drain into a success.
+
 ## Errors
 
 Expected failures are typed values with declared statuses that cross
