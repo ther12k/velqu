@@ -39,6 +39,50 @@ impl EngineHealth {
     }
 }
 
+/// M27-003-A: closed vocabulary of QuickJS intrinsic profiles. The
+/// profile is selected at engine construction and can never change at
+/// runtime; `Full` (JS_NewContext, every standard builtin) is the
+/// default and matches all pre-M27 behavior exactly.
+///
+/// Profile contents (base objects are always present — rquickjs adds
+/// them for every context):
+/// - `Full` — JS_NewContext: Date, Eval, RegExp(+compiler), JSON,
+///   Proxy, Map/Set, TypedArrays, Promise, Performance, WeakRef.
+/// - `Web` — the Web-runtime reductions: everything except Date and
+///   Performance (measured candidate; selected only if meaningful).
+/// - `Minimal` — Eval + JSON + Promise + TypedArrays only: what the
+///   Velqu host bridge itself needs (request/response JSON, bytes,
+///   async ops). Apps touching Date/RegExp/Proxy/Map/Set see
+///   undefined and fail loudly — that visibility is the point of
+///   the later measurement packets (M27-011).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ContextProfile {
+    #[default]
+    Full,
+    Web,
+    Minimal,
+}
+
+impl ContextProfile {
+    /// Closed-vocabulary parser. Fail-closed: no guessing, no aliasing.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "full" => Some(ContextProfile::Full),
+            "web" => Some(ContextProfile::Web),
+            "minimal" => Some(ContextProfile::Minimal),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ContextProfile::Full => "full",
+            ContextProfile::Web => "web",
+            ContextProfile::Minimal => "minimal",
+        }
+    }
+}
+
 /// Engine configuration (limits are robustness controls, not a sandbox).
 #[derive(Debug, Clone)]
 pub struct QuickJsConfig {
@@ -59,6 +103,9 @@ pub struct QuickJsConfig {
     /// prelude and handler manifest, so startup performs zero prelude
     /// source evaluation — handles are collected after module eval.
     pub embedded_prelude: bool,
+    /// M27-003-A: intrinsic set for the worker's QuickJS context.
+    /// Default `Full` preserves all prior behavior byte-for-byte.
+    pub profile: ContextProfile,
 }
 
 impl Default for QuickJsConfig {
@@ -71,6 +118,7 @@ impl Default for QuickJsConfig {
             max_invocation_jobs: 100_000,
             request_slot_capacity: 256,
             embedded_prelude: false,
+            profile: ContextProfile::Full,
         }
     }
 }
