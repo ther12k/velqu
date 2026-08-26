@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-001-B (PASS)
+
+Deliverable: CapabilityId/version/dependencies defined (ADR-0029).
+
+### Changed files
+
+- `docs/okf/decisions/0029-capability-identity-versioning-and-requirements.md`
+  — new ADR: validated `namespace:name` grammar with a closed
+  namespace vocabulary (`runtime` only), charset/length bounds,
+  integer versions compared **exactly** (no implicit compatibility
+  until M27-009-D), `CapabilityRequirement`/`CapabilityDescriptor`
+  shapes, deterministic resolution, fail-before-ready integration
+  with ADR-0028, threat review.
+- `docs/okf/decisions/index.md` — ADR-0029 entry.
+- `crates/q-capabilities/src/identity.rs` — new module:
+  `CapabilityId::parse` (fail-closed typed errors, nothing
+  repaired), `CapabilityVersion` newtype, requirement/descriptor
+  types, `resolve_requirement` (exact match; `Missing` /
+  `VersionConflict` with both versions), `resolve_and_install`
+  (conflict routes the lifecycle to `Failed` before `Ready`).
+- `crates/q-capabilities/src/lib.rs` — `pub mod identity` + re-exports.
+- `docs/beta/CAPABILITY_AUTHORS.md` — "Identity and versions"
+  section added to the draft guide.
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests
+
+`cargo test -p q-capabilities` — 16 passed (7 lifecycle from A + 9
+identity): `ids_parse_and_round_trip`,
+`malformed_ids_fail_closed_with_typed_errors` (empty / missing
+separator / empty namespace / empty name / unknown namespace
+`node:fs` / uppercase / underscore / over-length name / over-length
+id / extra separator), `exact_version_match_satisfies_requirement`,
+`version_mismatch_conflicts_with_both_versions_named` (message
+carries required + linked), `unlinked_capability_is_missing`,
+`resolve_and_install_installs_on_success`,
+`resolve_and_install_conflict_fails_lifecycle_before_ready`
+(guardrail 3: Failed, activate rejected terminal),
+`resolve_and_install_missing_fails_lifecycle_before_ready`,
+`descriptors_carry_validated_dependencies`.
+
+### Commands (fresh worktree on M27-001-A HEAD aca4552)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 16 · `-p velqu-runtime` 30 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Dependency-graph construction and cycle rejection stay with the
+  compiler resolver (M27-002-B); this packet defines only the data
+  shapes and single-requirement resolution.
+- Linked-set uniqueness is upstream of this scan (M27-002-C
+  inventory hash), as documented in ADR-0029 §4.
