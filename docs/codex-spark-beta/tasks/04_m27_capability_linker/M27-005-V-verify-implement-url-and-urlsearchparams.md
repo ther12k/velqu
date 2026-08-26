@@ -4,7 +4,7 @@ parent_task: M27-005
 milestone: M27
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -129,3 +129,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-005-V (PASS)
+
+Parent: M27-005 "Implement URL and URLSearchParams".
+Implementation packets merged prior: A (PR #866, #264), B
+(PR #867, #265), C (PR #868, #266), D (PR #869, #267).
+
+### Guardrail map
+
+1. **Selected conformance threshold passes.** WHATWG URL and WinterTC URLSearchParams vector suites pass across Rust (`url_model.rs`) and QuickJS (`url-wpt.test.ts`).
+2. **No unbounded input behavior.** Bounded by explicit constants: `MAX_URL_LEN` (8,192 B), `MAX_SEARCH_PARAMS_LEN` (16,384 B), `MAX_SEARCH_PARAMS_COUNT` (1,024 pairs), `MAX_URL_PATH_SEGMENTS` (256 segments).
+3. **URL behavior matches fetch usage.** Standard WHATWG URL resolution, default port omission, IDNA Punycode host handling, and percent-encoded path segments conform to fetch prerequisites.
+4. **Binary/startup cost recorded.** Documented in `docs/reports/m27-005-wpt-url-report.md`.
+
+### Manifest
+
+Matched refresh under verify's remap env (qRuntimeRelease hash updated for URL capability integration).
+
+### Commands and results (fresh worktree on parent HEAD c99cd0b)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 107 · `-p q-http` 11 · `-p q-capabilities` 70 · `-p velqu-runtime` 31 — pass.
+- `bun test` 165 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
+
