@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -118,3 +118,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-004-B (PASS)
+
+Deliverable: define console levels, message bounds, and sensitive data redaction.
+
+### Changed files
+
+- `crates/q-capabilities/src/console.rs` (new):
+  - `ConsoleLevel`: closed vocabulary (`Debug`, `Info`, `Warn`, `Error`), default `Info`, parsing & display.
+  - `MAX_CONSOLE_MSG_LEN` (16,384 bytes) and `MAX_CONSOLE_ARGS` (32).
+  - `redact_sensitive_text`: automatic redaction of `Bearer ...`, `Basic ...`, `sk-live-...`, API keys, passwords, auth tokens, secrets.
+  - `ConsoleRecord`: structured log record rendering `{ level, event: "console.log", message, routeId, invocationId }` with bounded message length.
+- `crates/q-capabilities/src/lib.rs` & `Cargo.toml`: exposed `console` module and re-exports; added `serde` and `serde_json` dependencies.
+- `crates/q-engine-quickjs/src/prelude.rs`: defined `console` global (`debug`, `log`, `info`, `warn`, `error`) and `native.console` capability handle formatting up to 32 arguments.
+- `crates/q-engine-quickjs/src/worker.rs`: registered native `__velquConsoleLog` implementing redaction, bounding, and structured output; added unit test `console_capability_methods_and_redaction`.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 57 passed (+6 console level/redaction/bounds tests).
+- `cargo test -p q-engine-quickjs` — 104 passed (+1 console JS environment test).
+- `cargo test -p velqu-runtime` — 31 passed.
+- `bun test` — 152 passed, 0 failed.
+
+### Commands (fresh worktree on parent HEAD aeecfe1)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 104 · `-p q-capabilities` 57 · `-p velqu-runtime` 31 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Existing scheduler invariants remain: all scheduler/quarantine tests pass unchanged.
+  - No unbounded logging queue: message lengths are bounded by `MAX_CONSOLE_MSG_LEN` and args by `MAX_CONSOLE_ARGS`; sink buffering is in M27-004-C.
+  - Timers physically cancel: verified in M27-004-A and passing.
+

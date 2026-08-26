@@ -34,9 +34,32 @@ __velquContextPrototype.webRequest = function () {
   };
 };
 
+// Console capability (M27-004-B): structured log methods with formatting.
+function __velquFormatArgs(args) {
+  var parts = [];
+  for (var i = 0; i < args.length && i < 32; i++) {
+    var a = args[i];
+    if (typeof a === "object" && a !== null) {
+      try { parts.push(JSON.stringify(a)); } catch (e) { parts.push(String(a)); }
+    } else {
+      parts.push(String(a));
+    }
+  }
+  return parts.join(" ");
+}
+
+globalThis.console = {
+  debug: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("debug", __velquFormatArgs(arguments)); },
+  log: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("info", __velquFormatArgs(arguments)); },
+  info: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("info", __velquFormatArgs(arguments)); },
+  warn: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("warn", __velquFormatArgs(arguments)); },
+  error: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("error", __velquFormatArgs(arguments)); }
+};
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
-  timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) })
+  timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) }),
+  console: Object.freeze(globalThis.console)
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 

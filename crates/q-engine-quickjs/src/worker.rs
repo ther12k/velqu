@@ -2628,6 +2628,24 @@ fn install_natives(
         };
         globals.set("__velquTimerStart", Function::new(ctx.clone(), f)?)?;
     }
+
+    // M27-004-B: structured console logging with redaction and length bounds
+    {
+        let f = move |_ctx: rquickjs::Ctx, level: String, msg: String| -> rquickjs::Result<()> {
+            let lvl = q_capabilities::ConsoleLevel::parse(&level)
+                .unwrap_or(q_capabilities::ConsoleLevel::Info);
+            let invocation_id = CURRENT_INVOCATION.with(|c| c.get());
+            let inv_opt = if invocation_id != 0 {
+                Some(invocation_id)
+            } else {
+                None
+            };
+            let record = q_capabilities::ConsoleRecord::new(lvl, &msg, None, inv_opt);
+            eprintln!("{}", record.to_json_value());
+            Ok(())
+        };
+        globals.set("__velquConsoleLog", Function::new(ctx.clone(), f)?)?;
+    }
     Ok(())
 }
 
@@ -2844,5 +2862,40 @@ mod tests {
                 from: q_capabilities::CapabilityPhase::Failed,
             })
         );
+    }
+
+    /// M27-004-B: console logging and redaction in JS context.
+    #[test]
+    fn console_capability_methods_and_redaction() {
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Load prelude
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Test console functions exist and are callable
+            assert!(ctx
+                .eval::<bool, _>("typeof console.log === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof console.info === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof console.warn === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof console.error === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof console.debug === 'function'")
+                .unwrap());
+
+            // Test __velquNativeCapabilities.console alias
+            assert!(ctx
+                .eval::<bool, _>(
+                    "globalThis.__velquNativeCapabilities.console === globalThis.console"
+                )
+                .unwrap());
+        });
     }
 }
