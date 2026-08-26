@@ -11,6 +11,7 @@ bench-instrumentation = ["q-bridge/bench-instrumentation"]
 rquickjs = { workspace = true }
 q-engine = { workspace = true }
 q-bridge = { workspace = true }
+q-capabilities = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }

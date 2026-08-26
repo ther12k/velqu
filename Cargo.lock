@@ -1003,6 +1003,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "q-bridge",
+ "q-capabilities",
  "q-engine",
  "rquickjs",
  "serde_json",
