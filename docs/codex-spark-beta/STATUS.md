@@ -267,7 +267,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M27-001-A — Accept ADR](tasks/04_m27_capability_linker/M27-001-A-accept-adr.md)
 - [x] [M27-001-B — Define CapabilityId/version/dependencies](tasks/04_m27_capability_linker/M27-001-B-define-capabilityid-version-dependencies.md)
 - [x] [M27-001-C — Define native operation owner/deadline state](tasks/04_m27_capability_linker/M27-001-C-define-native-operation-owner-deadline-state.md)
-- [ ] [M27-001-D — Define lifecycle phases and bounded shutdown](tasks/04_m27_capability_linker/M27-001-D-define-lifecycle-phases-and-bounded-shutdown.md)
+- [x] [M27-001-D — Define lifecycle phases and bounded shutdown](tasks/04_m27_capability_linker/M27-001-D-define-lifecycle-phases-and-bounded-shutdown.md)
 - [ ] [M27-001-V — Verify Define capability ABI and lifecycle state machine](tasks/04_m27_capability_linker/M27-001-V-verify-define-capability-abi-and-lifecycle-state-machine.md)
 - [ ] [M27-001-Z — Package evidence for Define capability ABI and lifecycle state machine](tasks/04_m27_capability_linker/M27-001-Z-package-evidence-for-define-capability-abi-and-lifecycle-state-machine.md)
 - [ ] [M27-002-A — Build dependency DAG](tasks/04_m27_capability_linker/M27-002-A-build-dependency-dag.md)

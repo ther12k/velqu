@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-001-D (PASS)
+
+Deliverable: lifecycle phases and bounded shutdown defined
+(ADR-0031) — completing the M27-001 define set (A lifecycle, B
+identity, C operations, D shutdown).
+
+### Changed files
+
+- `docs/okf/decisions/0031-bounded-capability-shutdown-and-quiescence.md`
+  — new ADR: fail-closed 5,000 ms drain budget (ceiling moves only
+  by ADR), the deterministic begin/drain/finish protocol
+  (cancel pending cancellable; await non-cancellable; expire
+  stragglers on missed budget + `Failed`), accounted quiescence as
+  the only success outcome, no-honest-outcome rule for
+  pending-without-deadline, threat review.
+- `docs/okf/decisions/index.md` — ADR-0031 entry.
+- `crates/q-capabilities/src/shutdown.rs` — new module:
+  `SHUTDOWN_BUDGET_MS`, typed `ShutdownError`, `DrainOutcome`
+  (Quiesced{cancelled,settled,expired} | DeadlineExceeded{pending}),
+  `begin_shutdown`, `drain_step`, `finish_shutdown`.
+- `crates/q-capabilities/src/lib.rs` — `pub mod shutdown` +
+  re-exports.
+- `docs/beta/CAPABILITY_AUTHORS.md` — "Shutdown and drain" section.
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests
+
+`cargo test -p q-capabilities` — 30 passed (23 prior + 7 shutdown):
+`all_cancellable_operations_drain_to_quiesced`,
+`non_cancellable_operations_settle_within_budget` (await set = 2,
+accounting cancelled 1 / settled 2),
+`missed_budget_expires_stragglers_and_fails_closed` (Failed
+lifecycle, visible expiry, late settlement drops, quiesce
+terminally refused), `empty_operation_set_quiesces_immediately`,
+`draining_refuses_new_operations` (guardrail 1 on this path),
+`shutdown_requires_ready_lifecycle` (never-served and
+double-drain), `finish_with_pending_and_no_deadline_has_no_honest_outcome`
+(lifecycle unchanged).
+
+### Commands (fresh worktree on M27-001-C HEAD 6202356)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 30 · `-p velqu-runtime` 30 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: shutdown quiescence-or-fail-closed →
+  `finish_shutdown` both branches pinned by tests; no-work-outside-
+  phase reinforced via `draining_refuses_new_operations`.
+- The parent M27-001 acceptance is now fully covered by the four
+  define packets' combined test set (lifecycle 7 + identity 9 +
+  operations 7 + shutdown 7 = 30); M27-001-V maps the guardrails
+  across them.
