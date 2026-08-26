@@ -4,7 +4,7 @@ parent_task: M27-003
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -114,3 +114,57 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-003-B (PASS)
+
+Deliverable: the compiler now compiles each application's intrinsic
+requirement as deterministic diagnostic data.
+
+### Changed files
+
+- `packages/compiler/src/intrinsic-requirements.ts` (new) —
+  `compileIntrinsicRequirement(bundle)`: word-boundary scan of the
+  bundled output for builtins dropped by each profile boundary.
+  Fail-safe direction: any hit forces a stronger profile
+  (`full` > `web` > `minimal`). Documented limitation: regex
+  *literals* are lexically invisible; misses fail loudly at runtime,
+  never silently, and serving keeps its configured default until
+  measured selection lands.
+- `packages/compiler/src/index.ts` — requirement computed at build
+  and emitted into `capability-manifest.json` +
+  `build-report.json` as `intrinsicRequirement { requirement, used }`.
+- `packages/cli/src/intrinsic-requirements.test.ts` (new, 7 tests).
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Design boundaries (deliberate)
+
+- Diagnostic data only in B: the pack schema and the runtime's
+  serving profile are untouched; full-profile compatibility is
+  explicitly retained (M27-003-D's deliverable), and actual
+  reduction selection requires measurement (M27-011 / parent intent).
+- End-to-end on the proof app: requirement computes to `"web"`
+  (bundle touches Map via bundled helpers); emitted in both artifact
+  JSONs deterministically.
+
+### Tests
+
+7 TS tests: minimal-required clean bundle; each of Map/Set/Proxy/
+WeakRef/RegExp constructor usage forcing web; Date/performance
+forcing full; full-wins precedence; word-boundary non-over-matching
+(`UpdateFoo` ≠ `Date`); documented regex-literal limitation;
+determinism.
+
+### Commands (fresh worktree on M27-003-A HEAD 65fefcf)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 102 ·
+  `-p q-capabilities` 51 · `-p velqu-runtime` 30 — pass.
+- `bun test` 146 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Parent intent ("measure minimal/web/full") progresses A
+  (instrument) → B (per-app requirement data) → C (diagnostics of
+  what a reduction would break) → D (full-profile retention) with
+  the measured selection verdict at M27-011.

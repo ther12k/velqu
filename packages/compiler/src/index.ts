@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
 import { bundleApp, buildPack, contractDts, openapiFor, diffContracts } from "./emit";
+import { compileIntrinsicRequirement } from "./intrinsic-requirements";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
 
@@ -162,10 +163,16 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
       ),
     ),
   };
+  const intrinsicRequirement = compileIntrinsicRequirement(bundle);
   const capabilityManifest = {
     declared: [...new Set(app.routes.flatMap((r) => r.capabilities))],
     perRoute: Object.fromEntries(app.routes.map((r) => [r.id, r.capabilities])),
     nativeOps: { timer: "cancellable delay (ms) → Promise<number>" },
+    // M27-003-B: compiled application requirement — smallest context
+    // profile whose kept builtins cover everything the bundle touches.
+    // Diagnostic data for the M27-011 selection work; serving always
+    // uses the runtime's configured profile (default full).
+    intrinsicRequirement,
   };
 
   // contract lock (semantic diff base)
@@ -189,6 +196,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     routes: routeManifest,
     schemas: schemaManifest,
     capabilities: capabilityManifest,
+    intrinsicRequirement,
     strategies: strategyReport,
     nativeStages: app.routes.filter((r) => r.liveness).map((r) => ({ route: r.id, stage: "native-liveness" })),
     integrity: (pack as { integrity: unknown }).integrity,
