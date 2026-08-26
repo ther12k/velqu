@@ -4,6 +4,7 @@
  */
 import { build, contractDiff, CompileError } from "@velqu/compiler";
 import { assessPackMigrate } from "./pack-migrate";
+import { inspectCapabilities } from "./capability-inspect";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -67,11 +68,18 @@ async function main() {
         }
         console.log(JSON.stringify(r, null, 2));
       } else if (what === "capabilities") {
-        console.log("declared:", caps.declared.join(", ") || "(none)");
-        for (const [route, list] of Object.entries(caps.perRoute)) {
-          if ((list as string[]).length) console.log(`  ${route}: ${(list as string[]).join(", ")}`);
+        // M27-002-D: report the pack's hash-verified linked inventory too
+        const packPath = join(dist, "app.qpack");
+        let pack: Record<string, unknown> = {};
+        if (existsSync(packPath)) pack = JSON.parse(readFileSync(packPath, "utf8"));
+        for (const line of inspectCapabilities({
+          declared: caps.declared,
+          perRoute: caps.perRoute,
+          nativeOps: caps.nativeOps,
+          pack,
+        })) {
+          console.log(line);
         }
-        console.log("native ops:", JSON.stringify(caps.nativeOps));
       } else if (what === "fallbacks") {
         const report = JSON.parse(readFileSync(join(dist, "build-report.json"), "utf8"));
         const strategies = report.strategies || {};

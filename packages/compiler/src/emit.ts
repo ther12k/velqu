@@ -302,6 +302,44 @@ export function capabilityInventoryHash(entries: ReadonlyArray<{ id: string; ver
   return new Bun.CryptoHasher("sha256").update(joined).digest("hex");
 }
 
+/**
+ * M27-002-D: known capability grants. A route may only declare these;
+ * anything else is a build error (fail closed — an unknown authority
+ * request must never be silently dropped).
+ */
+export const KNOWN_GRANTS = ["timer"] as const;
+
+/** Grant -> linked-module requirement. Mirrors the builtin universe. */
+const GRANT_MODULES: Record<string, { id: string; version: number }> = {
+  timer: { id: "runtime:timers", version: 1 },
+};
+
+/**
+ * M27-002-D: prune unlinked modules. Maps route grants through the
+ * builtin module universe with exact-version semantics (the same
+ * closure rule as q_capabilities::resolver for this universe) and
+ * returns the sorted, deduped linked set that enters the artifact.
+ * Unknown grants throw: silently ignoring them would grant the build
+ * less authority than the application declared.
+ */
+export function resolveLinkedModules(
+  grants: ReadonlyArray<string>,
+): Array<{ id: string; version: number }> {
+  const out = new Map<string, number>();
+  for (const g of grants) {
+    const m = GRANT_MODULES[g];
+    if (!m) {
+      throw new Error(
+        `route declares unknown capability '${g}' (known: ${KNOWN_GRANTS.join(", ")})`,
+      );
+    }
+    out.set(m.id, m.version);
+  }
+  return [...out.entries()]
+    .map(([id, version]) => ({ id, version }))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
 export function buildPack(
   app: ExtractedApp,
   bundle: BundleResult,
@@ -330,7 +368,15 @@ export function buildPack(
       handlerId: policyHandlerIndex(app, key),
     });
   }
-  const capabilities = [...new Set(app.routes.flatMap((r) => r.capabilities))].filter((c) => c === "timer");
+  // M27-002-D: unknown grants fail the build; linked modules are the
+  // pruned resolver output — only capabilities some route actually
+  // uses enter the artifact (zero-cost for unrelated apps).
+  const declaredGrants = [...new Set(app.routes.flatMap((r) => r.capabilities))].sort();
+  const capabilities = declaredGrants.filter((c) => KNOWN_GRANTS.includes(c as (typeof KNOWN_GRANTS)[number]));
+  if (capabilities.length !== declaredGrants.length) {
+    const unknown = declaredGrants.filter((c) => !KNOWN_GRANTS.includes(c as (typeof KNOWN_GRANTS)[number]));
+    throw new Error(`unknown capability grant(s): ${unknown.join(", ")} (known: ${KNOWN_GRANTS.join(", ")})`);
+  }
 
   const policyHandlerMap = new Map<string, number>();
   for (let i = 0; i < app.policies.length; i++) {
@@ -585,13 +631,14 @@ export function buildPack(
     capabilities,
     // M26-002-A: capability-set hash (mirrors q-pack capability_hash)
     capabilityHash: capabilitySetHash(capabilities),
-    // M27-002-C: the resolved capability inventory (linked modules,
-    // id + exact version from the resolver). Empty until the linker
-    // integrates real capability modules (M27-004+ ports); the empty
-    // inventory is still emitted and hash-bound so the section's
-    // presence is a build-output invariant, not an accident.
-    capabilityInventory: [],
-    capabilityInventorySha256: capabilityInventoryHash([]),
+    // M27-002-C/D: the resolved capability inventory (linked modules,
+    // id + exact version). Pruned per application: grants some route
+    // declares -> linked modules; everything else stays out.
+    capabilityInventory: (() => {
+      const linked = resolveLinkedModules(capabilities);
+      return linked.map((m) => ({ id: m.id, version: m.version }));
+    })(),
+    capabilityInventorySha256: capabilityInventoryHash(resolveLinkedModules(capabilities)),
     functions,
     schemaManifest,
     headerNameTable,
