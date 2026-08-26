@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-004-V (PASS)
+
+Parent: M27-004 "Implement console and timer core capabilities".
+Implementation packets merged prior: A (PR #860, #258), B
+(PR #861, #259), C (PR #862, #260), D (PR #863, #261).
+
+### Guardrail map
+
+1. **Existing scheduler invariants remain.** All M2.2.1 scheduler/quarantine tests (invocation scopes, deadline scopes, job budgets, quarantine terminal sweep, interrupt handling) pass cleanly: 106 tests in `q-engine-quickjs`.
+2. **No unbounded logging queue.** Logging is bounded by message length `MAX_CONSOLE_MSG_LEN` (16,384 B), arg count `MAX_CONSOLE_ARGS` (32), and queue capacity `DEFAULT_LOG_SINK_CAP` (1024). Excess records increment `dropped` counter non-blockingly (`BoundedLogSink`).
+3. **Timers physically cancel.** Tokio sleep tasks are aborted via `abort_op_task` upon cancellation/quarantine/shutdown, and `NativeOp::cancel()` transitions state to `Cancelled`.
+4. **Capabilities absent when unused.** Capability resolver & pruning (M27-002) accurately link `runtime:timers` when declared and omit it otherwise.
+
+### Manifest
+
+Matched refresh under verify's remap env (qRuntimeRelease hash updated for console/timer capability bindings).
+
+### Commands and results (fresh worktree on parent HEAD 671a520)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 106 · `-p q-capabilities` 58 · `-p velqu-runtime` 31 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
+
