@@ -4,7 +4,7 @@ parent_task: M27-005
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-005-C (PASS)
+
+Deliverable: define and enforce host and path encoding behavior according to WHATWG standard rules.
+
+### Changed files
+
+- `crates/q-capabilities/src/url_model.rs`:
+  - Defined `PATH_PERCENT_ENCODE_SET` using `percent-encoding`.
+  - Added `encode_path_segment` (path percent-encode set encoding).
+  - Added `decode_path_segment` (UTF-8 lossy decoding).
+  - Added `normalize_host` (IDNA Punycode, IPv4/IPv6 host normalization with length limits).
+  - Added unit test `host_and_path_encoding_behavior`.
+- `crates/q-capabilities/src/lib.rs`: re-exported `encode_path_segment`, `decode_path_segment`, `normalize_host`.
+- `packages/cli/src/url-wpt.test.ts`: added test suite for path percent-encoding normalization, IDNA host normalization, and IPv4/IPv6 address normalization.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 69 passed (+1 host and path encoding test).
+- `cargo test -p q-engine-quickjs` — 107 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-http` — 11 passed.
+- `bun test` — 165 passed (+3 host/path tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD a564b89)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 107 · `-p q-http` 11 · `-p q-capabilities` 69 · `-p velqu-runtime` 31 — pass.
+- `bun test` 165 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Selected conformance threshold passes: IDNA Punycode and percent-encoded path segments normalize deterministically.
+  - No unbounded input behavior: `normalize_host` enforces `MAX_URL_LEN` limit.
+  - URL behavior matches fetch usage: path segments and host representations conform to WHATWG standard for outbound HTTP/fetch.
+

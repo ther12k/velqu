@@ -3,8 +3,47 @@
 //! Provides bounded, conformant URL parsing and manipulation for runtime capabilities,
 //! fetch, and application handlers.
 
+use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
 use std::fmt;
 use url::Url;
+
+/// The WHATWG path percent-encode set: CONTROLS + ' ' + '"' + '#' + '<' + '>' + '?' + '`' + '{' + '}'
+const PATH_PERCENT_ENCODE_SET: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'<')
+    .add(b'>')
+    .add(b'?')
+    .add(b'`')
+    .add(b'{')
+    .add(b'}');
+
+/// Encode a single path segment per the WHATWG path percent-encode set (M27-005-C).
+pub fn encode_path_segment(segment: &str) -> String {
+    utf8_percent_encode(segment, PATH_PERCENT_ENCODE_SET).to_string()
+}
+
+/// Decode a percent-encoded path segment to UTF-8 text with lossy fallback on invalid sequences.
+pub fn decode_path_segment(encoded: &str) -> String {
+    percent_decode_str(encoded).decode_utf8_lossy().to_string()
+}
+
+/// Normalize an IDNA/IPv4/IPv6 host string using WHATWG parsing rules (M27-005-C).
+pub fn normalize_host(host_input: &str) -> Result<String, UrlError> {
+    if host_input.is_empty() {
+        return Err(UrlError::EmptyInput);
+    }
+    if host_input.len() > MAX_URL_LEN {
+        return Err(UrlError::InputTooLong {
+            len: host_input.len(),
+            max: MAX_URL_LEN,
+        });
+    }
+    let dummy_url = format!("http://{host_input}/");
+    let parsed = Url::parse(&dummy_url).map_err(|e| UrlError::InvalidUrl(e.to_string()))?;
+    Ok(parsed.host_str().unwrap_or("").to_string())
+}
 
 /// Maximum length in bytes for a URL string input to prevent unbounded parser CPU/memory.
 pub const MAX_URL_LEN: usize = 8_192;
@@ -389,5 +428,30 @@ mod tests {
         let mut sp3 = ParsedSearchParams::parse("tag=rust&tag=js&tag=rust");
         sp3.delete("tag", Some("rust"));
         assert_eq!(sp3.get_all("tag"), vec!["js"]);
+    }
+
+    /// M27-005-C: host and path encoding behavior tests.
+    #[test]
+    fn host_and_path_encoding_behavior() {
+        // IDNA Punycode normalization
+        assert_eq!(
+            normalize_host("xn--bcher-kva.example").unwrap(),
+            "xn--bcher-kva.example"
+        );
+
+        // Path segment encoding
+        assert_eq!(encode_path_segment("hello world"), "hello%20world");
+        assert_eq!(encode_path_segment("foo#bar?baz"), "foo%23bar%3Fbaz");
+        assert_eq!(encode_path_segment("normal-path_123"), "normal-path_123");
+
+        // Path segment decoding
+        assert_eq!(decode_path_segment("hello%20world"), "hello world");
+        assert_eq!(decode_path_segment("foo%23bar%3Fbaz"), "foo#bar?baz");
+        assert_eq!(decode_path_segment("%C3%BCber"), "über");
+
+        // URL parser canonicalizes percent-encoded path and IDNA host
+        let u = ParsedUrl::parse("http://example.com/foo bar/baz#frag", None).unwrap();
+        assert_eq!(u.pathname, "/foo%20bar/baz");
+        assert_eq!(u.href, "http://example.com/foo%20bar/baz#frag");
     }
 }
