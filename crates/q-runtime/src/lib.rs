@@ -299,6 +299,10 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             "mode": mode,
             "engine": format!("{}/{}", q_pack::ENGINE_NAME, q_pack::ENGINE_VERSION),
             "runtimeAbi": q_pack::RUNTIME_ABI,
+            // M27-003-V: the serving context's profile identity is part
+            // of the startup identity block — every ready line self-
+            // describes which intrinsic set produced the measurements.
+            "contextProfile": profile.as_str(),
             "contractHash": pack.contract_hash,
             "startupMs": t0.elapsed().as_secs_f64() * 1000.0,
             "stages": stages.iter()
