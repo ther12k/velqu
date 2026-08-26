@@ -4,7 +4,7 @@ parent_task: M27-002
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -114,3 +114,69 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-002-D (PASS)
+
+Deliverable: unused capability modules stay out of the artifact —
+with two real defects found and fixed on the way.
+
+### Defects found (this packet's substance)
+
+1. **Silent grant loss**: `detectCapabilities` only recognized
+   `ctx.native.*`; the destructured style (`async ({ native }) =>
+   ...`) — the form the proof app itself uses — produced NO grants.
+   Timer routes were silently ungranted: declared `[]`, inventory
+   never linked. Fixed in extract.ts (detection covers `ctx.native`,
+   destructured, and aliased `{ native: n }`; 4 regression tests
+   including the pre-fix failing shape).
+2. **Unknown grants silently dropped**: the old hardcoded
+   `.filter((c) => c === "timer")` discarded unrecognized authority
+   requests. Now a build error naming the grant and the known set.
+
+### Changed files
+
+- `packages/compiler/src/emit.ts` — `KNOWN_GRANTS`,
+  `resolveLinkedModules(grants)` (builtin universe, exact-version,
+  sorted output, fail-closed on unknown), validated grant pipeline,
+  pruned `capabilityInventory` + hash emission.
+- `packages/compiler/src/extract.ts` — destructured-native detection fix.
+- `packages/cli/src/capability-inspect.ts` (new) +
+  `packages/cli/src/index.ts` — `velqu inspect capabilities` now
+  reports the pack's hash-verified linked inventory; recompute-hash
+  mismatch and unsorted inventories fail loud instead of lying;
+  pre-inventory packs reported honestly as "unknown".
+- `packages/cli/src/capability-inventory.test.ts` (+7),
+  `packages/cli/src/capability-detect.test.ts` (new, 4).
+- `docs/reports/m27-002-d-prune-deltas.md` — matched size/cold-start
+  evidence.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Required evidence
+
+- Resolver tests: q-capabilities 51 (A/B/C resolver + inventory
+  suites pass unchanged); TS-side prune/inspect/detect tests 21 new
+  total across the two test files (bun full suite 139 pass / 0 fail).
+- Binary-size delta report: proof pack 24,534 → 24,590 B (**+56 B**
+  for linking runtime:timers@1); zero-link apps unchanged
+  structurally (`[]` → count-prefix canonical bytes).
+- Cold-start delta report: n=10 matched fresh-process samples per
+  side, same release binary; p50/p95 distributions overlap —
+  **reported as statistically indistinguishable**, no capacity claim
+  (raw samples retained in the report).
+
+### Commands (fresh worktree → commits a160e35 / 074bebe)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 51 — pass.
+- `bun test` 139 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: zero-cost for unrelated apps → empty-grant
+  prune tests + before/after structural parity for `[]`;
+  deterministic graph → A/B determinism suites unchanged; missing
+  fails at build → C rules unchanged + unknown-grant build error;
+  `velqu inspect --capabilities` accuracy → hash-verified inspect
+  with loud-failure paths, tested.

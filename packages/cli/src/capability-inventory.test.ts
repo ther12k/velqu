@@ -23,3 +23,86 @@ describe("capability inventory hash (M27-002-C)", () => {
     expect(v1).not.toBe(v2);
   });
 });
+
+import { resolveLinkedModules, KNOWN_GRANTS } from "../../compiler/src/emit";
+import { inspectCapabilities } from "./capability-inspect";
+
+describe("capability pruning (M27-002-D)", () => {
+  test("no grants link zero modules", () => {
+    expect(resolveLinkedModules([])).toEqual([]);
+    expect(resolveLinkedModules(["timer"])).toEqual([{ id: "runtime:timers", version: 1 }]);
+  });
+
+  test("unknown grants fail closed naming the grant", () => {
+    expect(() => resolveLinkedModules(["fetch"])).toThrow(/unknown capability 'fetch'/);
+    expect(() => resolveLinkedModules(["node:fs"])).toThrow(/unknown capability 'node:fs'/);
+  });
+
+  test("grants dedupe to one module entry", () => {
+    expect(resolveLinkedModules(["timer", "timer"])).toEqual([
+      { id: "runtime:timers", version: 1 },
+    ]);
+    expect(KNOWN_GRANTS).toEqual(["timer"]);
+  });
+});
+
+describe("inspect capabilities accuracy (M27-002-D)", () => {
+  const base = { declared: ["timer"], perRoute: {}, nativeOps: {} };
+
+  test("linked line reflects the pack inventory with verified hash", () => {
+    const lines = inspectCapabilities({
+      ...base,
+      pack: {
+        capabilityInventory: [{ id: "runtime:timers", version: 1 }],
+        capabilityInventorySha256: capabilityInventoryHash([{ id: "runtime:timers", version: 1 }]),
+      },
+    });
+    expect(lines.join("\n")).toContain("linked: runtime:timers@1");
+    expect(lines.join("\n")).toContain("inventory sha256:");
+  });
+
+  test("empty inventory reports zero linked modules", () => {
+    const lines = inspectCapabilities({
+      ...base,
+      declared: [],
+      pack: { capabilityInventory: [], capabilityInventorySha256: capabilityInventoryHash([]) },
+    });
+    expect(lines.join("\n")).toContain("declared: (none)");
+    expect(lines.join("\n")).toContain("(none — zero linked modules)");
+  });
+
+  test("hash mismatch fails loud instead of lying", () => {
+    expect(() =>
+      inspectCapabilities({
+        ...base,
+        pack: {
+          capabilityInventory: [{ id: "runtime:timers", version: 1 }],
+          capabilityInventorySha256: "ab".repeat(32),
+        },
+      }),
+    ).toThrow(/hash mismatch/);
+  });
+
+  test("unsorted inventory fails loud", () => {
+    expect(() =>
+      inspectCapabilities({
+        ...base,
+        pack: {
+          capabilityInventory: [
+            { id: "runtime:text", version: 2 },
+            { id: "runtime:abort", version: 1 },
+          ],
+          capabilityInventorySha256: capabilityInventoryHash([
+            { id: "runtime:text", version: 2 },
+            { id: "runtime:abort", version: 1 },
+          ]),
+        },
+      }),
+    ).toThrow(/not sorted/);
+  });
+
+  test("pre-inventory packs report unknown honestly", () => {
+    const lines = inspectCapabilities({ ...base, pack: {} });
+    expect(lines.join("\n")).toContain("linked: unknown (pack predates capability inventory)");
+  });
+});

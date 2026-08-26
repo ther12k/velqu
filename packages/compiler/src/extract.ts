@@ -368,9 +368,26 @@ function literalValueDeep(node: ts.Node): unknown {
 // ---------------------------------------------------------------- capability detection
 
 function detectCapabilities(fnNode: ts.Node): string[] {
+  // Names the handler's context binds for the capability object:
+  // `ctx` (whole param), or a destructured alias like
+  // `({ native })` / `({ native: n })`. Any of these forms grants.
+  const aliases = new Set<string>(["ctx.native"]);
+  const walkParams = (n: ts.Node): void => {
+    if (ts.isParameter(n) && ts.isObjectBindingPattern(n.name)) {
+      for (const el of n.name.elements) {
+        if (ts.isBindingElement(el)) {
+          const bound = el.propertyName?.getText() ?? el.name.getText();
+          if (bound === "native") aliases.add(el.name.getText());
+        }
+      }
+    }
+    n.forEachChild(walkParams);
+  };
+  fnNode.forEachChild(walkParams);
+
   const caps = new Set<string>();
   const walk = (n: ts.Node): void => {
-    if (ts.isPropertyAccessExpression(n) && n.expression.getText() === "ctx.native") {
+    if (ts.isPropertyAccessExpression(n) && aliases.has(n.expression.getText())) {
       caps.add(n.name.text);
     }
     n.forEachChild(walk);

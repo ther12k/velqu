@@ -281,7 +281,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-002-A](../tasks/04_m27_capability_linker/M27-002-A-build-dependency-dag.md) | P0 | implement | PASS | M27-001-Z | Build dependency DAG |
 | [M27-002-B](../tasks/04_m27_capability_linker/M27-002-B-reject-cycles-missing-conflicting-versions.md) | P0 | implement | PASS | M27-002-A | Reject cycles/missing/conflicting versions |
 | [M27-002-C](../tasks/04_m27_capability_linker/M27-002-C-emit-capability-inventory-hash-into-qpack.md) | P0 | implement | PASS | M27-002-B | Emit capability inventory/hash into QPack |
-| [M27-002-D](../tasks/04_m27_capability_linker/M27-002-D-remove-unused-modules.md) | P0 | implement | TODO | M27-002-C | Remove unused modules |
+| [M27-002-D](../tasks/04_m27_capability_linker/M27-002-D-remove-unused-modules.md) | P0 | implement | PASS | M27-002-C | Remove unused modules |
 | [M27-002-V](../tasks/04_m27_capability_linker/M27-002-V-verify-implement-compile-time-capability-dependency-resolver.md) | P0 | verify | TODO | M27-002-A, M27-002-B, M27-002-C, M27-002-D | Verify Implement compile-time capability dependency resolver |
 | [M27-002-Z](../tasks/04_m27_capability_linker/M27-002-Z-package-evidence-for-implement-compile-time-capability-dependency-resolver.md) | P0 | evidence | TODO | M27-002-V | Package evidence for Implement compile-time capability dependency resolver |
 | [M27-003-A](../tasks/04_m27_capability_linker/M27-003-A-build-configurable-intrinsic-profiles.md) | P1 | implement | TODO | M27-002-Z | Build configurable intrinsic profiles |
