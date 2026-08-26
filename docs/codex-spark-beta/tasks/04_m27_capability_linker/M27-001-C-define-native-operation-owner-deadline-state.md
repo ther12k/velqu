@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,61 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-001-C (PASS)
+
+Deliverable: native operation owner/deadline/state defined
+(ADR-0030).
+
+### Changed files
+
+- `docs/okf/decisions/0030-native-operation-ownership-deadlines-and-cancellation.md`
+  — new ADR: single owner per operation (slot + generation, the
+  pair the request store validates), bounded fail-closed deadlines
+  (1..300,000 ms, typed rejections, ceiling moves only by ADR),
+  closed op-state vocabulary (`Pending → Settled | Cancelled |
+  Expired`, terminal-final), two cancellation classes enforced at
+  the data-model level, expected-outcome drops for expired
+  generations, threat review.
+- `docs/okf/decisions/index.md` — ADR-0030 entry.
+- `crates/q-capabilities/src/operations.rs` — new module:
+  `OpOwner`, `CancellationClass`, `OpState`, typed `OpError`,
+  `NativeOp::{start, settle, cancel, expire, deliver_or_drop}`;
+  `start` enforces the Ready phase and the deadline bounds.
+- `crates/q-capabilities/src/lib.rs` — `pub mod operations` +
+  re-exports.
+- `docs/beta/CAPABILITY_AUTHORS.md` — "Operations, deadlines, and
+  cancellation" section added.
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests
+
+`cargo test -p q-capabilities` — 23 passed (16 prior + 7
+operations): `start_requires_ready_phase` (all five non-Ready
+phases), `deadlines_are_bounded_fail_closed` (0 / ceiling+1
+rejected, ceiling accepted), `settle_only_by_owner_only_when_pending`
+(wrong slot and wrong generation are `NotOwner`; exactly-once),
+`cancel_only_cancellable_only_pending` (second cancel is a typed
+illegal transition; non-cancellable rejected and unchanged),
+`expiry_applies_to_both_classes`,
+`expired_generation_settlement_drops_as_expected_outcome` (drop is
+Ok(false); wrong owner still `NotOwner` on the drop path),
+`terminal_states_reject_every_state_change` (3×3, state unchanged).
+
+### Commands (fresh worktree on M27-001-B HEAD f49a9cd)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 23 · `-p velqu-runtime` 30 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: cancellable-or-declared → `CancellationClass`
+  enforced structurally in `cancel()`; invocation ownership →
+  `OpOwner` + `NotOwner` on both the settle and drop paths.
+- Drain applies cancel/expire per class through this model in
+  M27-001-D; the timer port (M27-004) replaces its ad-hoc op table
+  with `NativeOp` (recorded in the ADR's Consequences).

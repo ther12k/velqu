@@ -83,6 +83,25 @@ settlement arriving for an expired generation is dropped. You never
 freehand callbacks into the engine — you complete operations through
 the host's dispatch path.
 
+## Operations, deadlines, and cancellation
+
+Every operation your capability starts is a `NativeOp` with:
+
+- **One owner** — the invocation that started it (the same
+  slot/generation pair the request store checks). Settlements from
+  anyone else are typed `NotOwner` errors. Late settlements for an
+  expired generation are dropped as expected outcomes.
+- **A bounded deadline** — 1..300,000 ms. Zero and over-ceiling
+  values are typed rejections; the ceiling moves only by ADR.
+- **A state from a closed vocabulary** — `Pending → Settled |
+  Cancelled | Expired`, all terminal. Double settles, double
+  cancels, and cancel-after-settle are typed illegal transitions —
+  exactly-once is structural, and idempotency violations are visible
+  in tests and logs.
+- **A cancellation class chosen at start** — `Cancellable` or
+  `NonCancellable`. Cancelling a non-cancellable operation is a
+  typed rejection. There is no default class.
+
 ## Errors
 
 Expected failures are typed values with declared statuses that cross
