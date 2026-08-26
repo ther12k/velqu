@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -113,3 +113,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-004-D (PASS)
+
+Deliverable: support capability lifecycle transitions and bounded log flushing on shutdown and quarantine.
+
+### Changed files
+
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - `WorkerMsg::Shutdown`: cancels remaining `NativeOp`s, transitions `timer_lifecycle` (`Ready -> Draining -> Quiesced`), drains and flushes `log_sink`.
+  - `quarantine_runtime`: cancels remaining `NativeOp`s, transitions `timer_lifecycle` (`Ready -> Failed`), drains and flushes `log_sink`.
+  - Unit test `shutdown_and_quarantine_capability_lifecycle_transitions`.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-engine-quickjs` — 106 passed (+1 shutdown/quarantine lifecycle test).
+- `cargo test -p q-capabilities` — 58 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `bun test` — 152 passed, 0 failed.
+
+### Commands (fresh worktree on parent HEAD 9c0457e)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 106 · `-p q-capabilities` 58 · `-p velqu-runtime` 31 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Existing scheduler invariants remain: all M2.2.1 scheduler/quarantine invariants pass unchanged.
+  - Timers physically cancel: verified in M27-004-A and clean.
+  - No unbounded logging queue: flushed on message boundary, quarantine, and shutdown.
+

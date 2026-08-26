@@ -1461,6 +1461,11 @@ impl WorkerInner {
         //    invocation currently executing when the poison triggered); it is
         //    idempotent against the per-handle settles above.
         self.store.settle_all();
+
+        // Flush remaining console logs on quarantine
+        for record in self.ops.log_sink.drain() {
+            eprintln!("{}", record.to_json_value());
+        }
     }
 
     /// Drain queued QuickJS jobs under an explicit invocation-scoped budget.
@@ -2931,5 +2936,51 @@ mod tests {
         assert_eq!(drained[0].message, "test log message");
         assert_eq!(sink.stats().buffered, 0);
         assert_eq!(sink.stats().drained, 1);
+    }
+
+    /// M27-004-D: shutdown and quarantine capability lifecycle transitions and log flushing.
+    #[test]
+    fn shutdown_and_quarantine_capability_lifecycle_transitions() {
+        // 1. Shutdown lifecycle: Ready -> Draining -> Quiesced
+        let ops = OpRegistry::new(1024, Duration::from_millis(5000));
+        assert_eq!(
+            ops.timer_lifecycle.lock().unwrap().phase(),
+            q_capabilities::CapabilityPhase::Ready
+        );
+        ops.log_sink.try_push(q_capabilities::ConsoleRecord::new(
+            q_capabilities::ConsoleLevel::Info,
+            "pre-shutdown log",
+            None,
+            None,
+        ));
+        assert_eq!(ops.log_sink.stats().buffered, 1);
+
+        {
+            let mut lc = ops.timer_lifecycle.lock().unwrap();
+            assert_eq!(
+                lc.begin_drain(),
+                Ok(q_capabilities::CapabilityPhase::Draining)
+            );
+            assert_eq!(lc.quiesce(), Ok(q_capabilities::CapabilityPhase::Quiesced));
+        }
+        let drained = ops.log_sink.drain();
+        assert_eq!(drained.len(), 1);
+        assert_eq!(ops.log_sink.stats().buffered, 0);
+
+        // 2. Quarantine lifecycle: Ready -> Failed
+        let ops2 = OpRegistry::new(1024, Duration::from_millis(5000));
+        ops2.log_sink.try_push(q_capabilities::ConsoleRecord::new(
+            q_capabilities::ConsoleLevel::Error,
+            "crash reason",
+            None,
+            None,
+        ));
+        {
+            let mut lc = ops2.timer_lifecycle.lock().unwrap();
+            assert_eq!(lc.fail(), Ok(q_capabilities::CapabilityPhase::Failed));
+        }
+        let drained2 = ops2.log_sink.drain();
+        assert_eq!(drained2.len(), 1);
+        assert_eq!(ops2.log_sink.stats().buffered, 0);
     }
 }
