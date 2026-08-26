@@ -1,29 +1,29 @@
 # Next 25 Dependency-Safe Tasks
 
-The next dependency-ready implementation task is M27-002-C; this short queue lists the first 25 unchecked packets with their issue numbers.
+The next dependency-ready implementation task is M27-002-D; this short queue lists the first 25 unchecked packets with their issue numbers.
 
-1. [M27-002-C — Emit capability inventory/hash into QPack](tasks/04_m27_capability_linker/M27-002-C-emit-capability-inventory-hash-into-qpack.md) — deps: M27-002-B — #248
-2. [M27-002-D — Remove unused modules](tasks/04_m27_capability_linker/M27-002-D-remove-unused-modules.md) — deps: M27-002-C — #249
-3. [M27-002-V — Verify Implement compile-time capability dependency resolver](tasks/04_m27_capability_linker/M27-002-V-verify-implement-compile-time-capability-dependency-resolver.md) — deps: M27-002-A, M27-002-B, M27-002-C, M27-002-D — #250
-4. [M27-002-Z — Package evidence for Implement compile-time capability dependency resolver](tasks/04_m27_capability_linker/M27-002-Z-package-evidence-for-implement-compile-time-capability-dependency-resolver.md) — deps: M27-002-V — #251
-5. [M27-003-A — Build configurable intrinsic profiles](tasks/04_m27_capability_linker/M27-003-A-build-configurable-intrinsic-profiles.md) — deps: M27-002-Z — #252
-6. [M27-003-B — Compile application requirements](tasks/04_m27_capability_linker/M27-003-B-compile-application-requirements.md) — deps: M27-003-A — #253
-7. [M27-003-C — Report missing API/intrinsic diagnostics](tasks/04_m27_capability_linker/M27-003-C-report-missing-api-intrinsic-diagnostics.md) — deps: M27-003-B — #254
-8. [M27-003-D — Retain full profile for compatibility testing](tasks/04_m27_capability_linker/M27-003-D-retain-full-profile-for-compatibility-testing.md) — deps: M27-003-C — #255
-9. [M27-003-V — Verify Introduce custom QuickJS context profiles](tasks/04_m27_capability_linker/M27-003-V-verify-introduce-custom-quickjs-context-profiles.md) — deps: M27-003-A, M27-003-B, M27-003-C, M27-003-D — #256
-10. [M27-003-Z — Package evidence for Introduce custom QuickJS context profiles](tasks/04_m27_capability_linker/M27-003-Z-package-evidence-for-introduce-custom-quickjs-context-profiles.md) — deps: M27-003-V — #257
-11. [M27-004-A — Port timer cancellation/accounting](tasks/04_m27_capability_linker/M27-004-A-port-timer-cancellation-accounting.md) — deps: M27-001-Z, M27-002-Z — #258
-12. [M27-004-B — Define console levels and redaction](tasks/04_m27_capability_linker/M27-004-B-define-console-levels-and-redaction.md) — deps: M27-004-A — #259
-13. [M27-004-C — Keep logs asynchronous/bounded](tasks/04_m27_capability_linker/M27-004-C-keep-logs-asynchronous-bounded.md) — deps: M27-004-B — #260
-14. [M27-004-D — Support shutdown and quarantine](tasks/04_m27_capability_linker/M27-004-D-support-shutdown-and-quarantine.md) — deps: M27-004-C — #261
-15. [M27-004-V — Verify Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md) — deps: M27-004-A, M27-004-B, M27-004-C, M27-004-D — #262
-16. [M27-004-Z — Package evidence for Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md) — deps: M27-004-V — #263
-17. [M27-005-A — Adopt or adapt a proven implementation](tasks/04_m27_capability_linker/M27-005-A-adopt-or-adapt-a-proven-implementation.md) — deps: M27-001-Z, M27-003-Z — #264
-18. [M27-005-B — Run selected WPT/WinterTC cases](tasks/04_m27_capability_linker/M27-005-B-run-selected-wpt-wintertc-cases.md) — deps: M27-005-A — #265
-19. [M27-005-C — Define host/path encoding behavior](tasks/04_m27_capability_linker/M27-005-C-define-host-path-encoding-behavior.md) — deps: M27-005-B — #266
-20. [M27-005-D — Keep parser limits explicit](tasks/04_m27_capability_linker/M27-005-D-keep-parser-limits-explicit.md) — deps: M27-005-C — #267
-21. [M27-005-V — Verify Implement URL and URLSearchParams](tasks/04_m27_capability_linker/M27-005-V-verify-implement-url-and-urlsearchparams.md) — deps: M27-005-A, M27-005-B, M27-005-C, M27-005-D — #268
-22. [M27-005-Z — Package evidence for Implement URL and URLSearchParams](tasks/04_m27_capability_linker/M27-005-Z-package-evidence-for-implement-url-and-urlsearchparams.md) — deps: M27-005-V — #269
-23. [M27-006-A — Support UTF-8 baseline](tasks/04_m27_capability_linker/M27-006-A-support-utf-8-baseline.md) — deps: M27-001-Z, M27-003-Z — #270
-24. [M27-006-B — Define invalid sequence/replacement behavior](tasks/04_m27_capability_linker/M27-006-B-define-invalid-sequence-replacement-behavior.md) — deps: M27-006-A — #271
-25. [M27-006-C — Integrate TypedArray ownership](tasks/04_m27_capability_linker/M27-006-C-integrate-typedarray-ownership.md) — deps: M27-006-B — #272
+1. [M27-002-D — Remove unused modules](tasks/04_m27_capability_linker/M27-002-D-remove-unused-modules.md) — deps: M27-002-C — #249
+2. [M27-002-V — Verify Implement compile-time capability dependency resolver](tasks/04_m27_capability_linker/M27-002-V-verify-implement-compile-time-capability-dependency-resolver.md) — deps: M27-002-A, M27-002-B, M27-002-C, M27-002-D — #250
+3. [M27-002-Z — Package evidence for Implement compile-time capability dependency resolver](tasks/04_m27_capability_linker/M27-002-Z-package-evidence-for-implement-compile-time-capability-dependency-resolver.md) — deps: M27-002-V — #251
+4. [M27-003-A — Build configurable intrinsic profiles](tasks/04_m27_capability_linker/M27-003-A-build-configurable-intrinsic-profiles.md) — deps: M27-002-Z — #252
+5. [M27-003-B — Compile application requirements](tasks/04_m27_capability_linker/M27-003-B-compile-application-requirements.md) — deps: M27-003-A — #253
+6. [M27-003-C — Report missing API/intrinsic diagnostics](tasks/04_m27_capability_linker/M27-003-C-report-missing-api-intrinsic-diagnostics.md) — deps: M27-003-B — #254
+7. [M27-003-D — Retain full profile for compatibility testing](tasks/04_m27_capability_linker/M27-003-D-retain-full-profile-for-compatibility-testing.md) — deps: M27-003-C — #255
+8. [M27-003-V — Verify Introduce custom QuickJS context profiles](tasks/04_m27_capability_linker/M27-003-V-verify-introduce-custom-quickjs-context-profiles.md) — deps: M27-003-A, M27-003-B, M27-003-C, M27-003-D — #256
+9. [M27-003-Z — Package evidence for Introduce custom QuickJS context profiles](tasks/04_m27_capability_linker/M27-003-Z-package-evidence-for-introduce-custom-quickjs-context-profiles.md) — deps: M27-003-V — #257
+10. [M27-004-A — Port timer cancellation/accounting](tasks/04_m27_capability_linker/M27-004-A-port-timer-cancellation-accounting.md) — deps: M27-001-Z, M27-002-Z — #258
+11. [M27-004-B — Define console levels and redaction](tasks/04_m27_capability_linker/M27-004-B-define-console-levels-and-redaction.md) — deps: M27-004-A — #259
+12. [M27-004-C — Keep logs asynchronous/bounded](tasks/04_m27_capability_linker/M27-004-C-keep-logs-asynchronous-bounded.md) — deps: M27-004-B — #260
+13. [M27-004-D — Support shutdown and quarantine](tasks/04_m27_capability_linker/M27-004-D-support-shutdown-and-quarantine.md) — deps: M27-004-C — #261
+14. [M27-004-V — Verify Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md) — deps: M27-004-A, M27-004-B, M27-004-C, M27-004-D — #262
+15. [M27-004-Z — Package evidence for Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md) — deps: M27-004-V — #263
+16. [M27-005-A — Adopt or adapt a proven implementation](tasks/04_m27_capability_linker/M27-005-A-adopt-or-adapt-a-proven-implementation.md) — deps: M27-001-Z, M27-003-Z — #264
+17. [M27-005-B — Run selected WPT/WinterTC cases](tasks/04_m27_capability_linker/M27-005-B-run-selected-wpt-wintertc-cases.md) — deps: M27-005-A — #265
+18. [M27-005-C — Define host/path encoding behavior](tasks/04_m27_capability_linker/M27-005-C-define-host-path-encoding-behavior.md) — deps: M27-005-B — #266
+19. [M27-005-D — Keep parser limits explicit](tasks/04_m27_capability_linker/M27-005-D-keep-parser-limits-explicit.md) — deps: M27-005-C — #267
+20. [M27-005-V — Verify Implement URL and URLSearchParams](tasks/04_m27_capability_linker/M27-005-V-verify-implement-url-and-urlsearchparams.md) — deps: M27-005-A, M27-005-B, M27-005-C, M27-005-D — #268
+21. [M27-005-Z — Package evidence for Implement URL and URLSearchParams](tasks/04_m27_capability_linker/M27-005-Z-package-evidence-for-implement-url-and-urlsearchparams.md) — deps: M27-005-V — #269
+22. [M27-006-A — Support UTF-8 baseline](tasks/04_m27_capability_linker/M27-006-A-support-utf-8-baseline.md) — deps: M27-001-Z, M27-003-Z — #270
+23. [M27-006-B — Define invalid sequence/replacement behavior](tasks/04_m27_capability_linker/M27-006-B-define-invalid-sequence-replacement-behavior.md) — deps: M27-006-A — #271
+24. [M27-006-C — Integrate TypedArray ownership](tasks/04_m27_capability_linker/M27-006-C-integrate-typedarray-ownership.md) — deps: M27-006-B — #272
+25. [M27-006-D — Run WPT subset](tasks/04_m27_capability_linker/M27-006-D-run-wpt-subset.md) — deps: M27-006-C — #273
