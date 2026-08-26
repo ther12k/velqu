@@ -56,10 +56,140 @@ globalThis.console = {
   error: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("error", __velquFormatArgs(arguments)); }
 };
 
+// URLSearchParams implementation (M27-005-A)
+function URLSearchParams(init) {
+  this._entries = [];
+  if (typeof init === "string") {
+    var str = init.charAt(0) === "?" ? init.slice(1) : init;
+    if (str.length > 0) {
+      var pairs = str.split("&");
+      for (var i = 0; i < pairs.length; i++) {
+        var eq = pairs[i].indexOf("=");
+        if (eq === -1) {
+          this._entries.push([decodeURIComponent(pairs[i].split("+").join(" ")), ""]);
+        } else {
+          this._entries.push([
+            decodeURIComponent(pairs[i].slice(0, eq).split("+").join(" ")),
+            decodeURIComponent(pairs[i].slice(eq + 1).split("+").join(" "))
+          ]);
+        }
+      }
+    }
+  } else if (Array.isArray(init)) {
+    for (var i = 0; i < init.length; i++) {
+      this._entries.push([String(init[i][0]), String(init[i][1])]);
+    }
+  } else if (init && typeof init === "object") {
+    var keys = Object.keys(init);
+    for (var i = 0; i < keys.length; i++) {
+      this._entries.push([keys[i], String(init[keys[i]])]);
+    }
+  }
+}
+URLSearchParams.prototype.append = function(name, value) {
+  this._entries.push([String(name), String(value)]);
+};
+URLSearchParams.prototype.get = function(name) {
+  var n = String(name);
+  for (var i = 0; i < this._entries.length; i++) {
+    if (this._entries[i][0] === n) return this._entries[i][1];
+  }
+  return null;
+};
+URLSearchParams.prototype.getAll = function(name) {
+  var n = String(name), res = [];
+  for (var i = 0; i < this._entries.length; i++) {
+    if (this._entries[i][0] === n) res.push(this._entries[i][1]);
+  }
+  return res;
+};
+URLSearchParams.prototype.has = function(name, value) {
+  var n = String(name);
+  for (var i = 0; i < this._entries.length; i++) {
+    if (this._entries[i][0] === n) {
+      if (value === undefined || this._entries[i][1] === String(value)) return true;
+    }
+  }
+  return false;
+};
+URLSearchParams.prototype.set = function(name, value) {
+  var n = String(name), v = String(value), replaced = false, res = [];
+  for (var i = 0; i < this._entries.length; i++) {
+    if (this._entries[i][0] === n) {
+      if (!replaced) { res.push([n, v]); replaced = true; }
+    } else {
+      res.push(this._entries[i]);
+    }
+  }
+  if (!replaced) res.push([n, v]);
+  this._entries = res;
+};
+URLSearchParams.prototype.delete = function(name, value) {
+  var n = String(name);
+  this._entries = this._entries.filter(function(e) {
+    if (e[0] !== n) return true;
+    return value !== undefined && e[1] !== String(value);
+  });
+};
+URLSearchParams.prototype.sort = function() {
+  this._entries.sort(function(a, b) {
+    return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+  });
+};
+URLSearchParams.prototype.toString = function() {
+  var parts = [];
+  for (var i = 0; i < this._entries.length; i++) {
+    parts.push(encodeURIComponent(this._entries[i][0]) + "=" + encodeURIComponent(this._entries[i][1]));
+  }
+  return parts.join("&");
+};
+URLSearchParams.prototype.forEach = function(cb, thisArg) {
+  for (var i = 0; i < this._entries.length; i++) {
+    cb.call(thisArg, this._entries[i][1], this._entries[i][0], this);
+  }
+};
+URLSearchParams.prototype.entries = function*() {
+  for (var i = 0; i < this._entries.length; i++) yield [this._entries[i][0], this._entries[i][1]];
+};
+URLSearchParams.prototype.keys = function*() {
+  for (var i = 0; i < this._entries.length; i++) yield this._entries[i][0];
+};
+URLSearchParams.prototype.values = function*() {
+  for (var i = 0; i < this._entries.length; i++) yield this._entries[i][1];
+};
+URLSearchParams.prototype[Symbol.iterator] = URLSearchParams.prototype.entries;
+globalThis.URLSearchParams = URLSearchParams;
+
+// URL implementation (M27-005-A)
+function URL(url, base) {
+  if (typeof globalThis.__velquUrlParse !== "function") throw new TypeError("URL parser native unavailable");
+  var raw = globalThis.__velquUrlParse(String(url), base !== undefined ? String(base) : undefined);
+  var data = JSON.parse(raw);
+  this.href = data.href;
+  this.origin = data.origin;
+  this.protocol = data.protocol;
+  this.username = data.username;
+  this.password = data.password;
+  this.host = data.host;
+  this.hostname = data.hostname;
+  this.port = data.port;
+  this.pathname = data.pathname;
+  this.search = data.search;
+  this.hash = data.hash;
+  this.searchParams = new URLSearchParams(data.search);
+}
+URL.canParse = function(url, base) {
+  try { new URL(url, base); return true; } catch (e) { return false; }
+};
+URL.prototype.toString = function() { return this.href; };
+URL.prototype.toJSON = function() { return this.href; };
+globalThis.URL = URL;
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) }),
-  console: Object.freeze(globalThis.console)
+  console: Object.freeze(globalThis.console),
+  url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams })
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 

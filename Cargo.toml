@@ -46,6 +46,8 @@ ed25519-dalek = "2"
 thiserror = "2"
 sourcemap = "9"
 clap = { version = "4", features = ["derive"] }
+url = "2.5"
+percent-encoding = "2.3"
 
 [profile.release]
 opt-level = 3

@@ -984,9 +984,11 @@ dependencies = [
 name = "q-capabilities"
 version = "0.1.0"
 dependencies = [
+ "percent-encoding",
  "serde",
  "serde_json",
  "sha2",
+ "url",
 ]
 
 [[package]]

@@ -2661,6 +2661,41 @@ fn install_natives(
         };
         globals.set("__velquConsoleLog", Function::new(ctx.clone(), f)?)?;
     }
+
+    // M27-005-A: WHATWG URL parser native bridge
+    {
+        let f = move |ctx: rquickjs::Ctx,
+                      url_str: String,
+                      base_val: rquickjs::Value|
+              -> rquickjs::Result<String> {
+            let base_str = if base_val.is_string() {
+                base_val.as_string().and_then(|s| s.to_string().ok())
+            } else {
+                None
+            };
+            match q_capabilities::ParsedUrl::parse(&url_str, base_str.as_deref()) {
+                Ok(parsed) => serde_json::to_string(&serde_json::json!({
+                    "href": parsed.href,
+                    "origin": parsed.origin,
+                    "protocol": parsed.protocol,
+                    "username": parsed.username,
+                    "password": parsed.password,
+                    "host": parsed.host,
+                    "hostname": parsed.hostname,
+                    "port": parsed.port,
+                    "pathname": parsed.pathname,
+                    "search": parsed.search,
+                    "hash": parsed.hash,
+                }))
+                .map_err(|e| rquickjs::Exception::throw_message(&ctx, &e.to_string())),
+                Err(e) => Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    &format!("TypeError: {e}"),
+                )),
+            }
+        };
+        globals.set("__velquUrlParse", Function::new(ctx.clone(), f)?)?;
+    }
     Ok(())
 }
 
@@ -2982,5 +3017,41 @@ mod tests {
         let drained2 = ops2.log_sink.drain();
         assert_eq!(drained2.len(), 1);
         assert_eq!(ops2.log_sink.stats().buffered, 0);
+    }
+
+    /// M27-005-A: WHATWG URL and URLSearchParams in JS context.
+    #[test]
+    fn url_and_urlsearchparams_in_js_environment() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Install natives & prelude
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Test URL constructor and properties
+            let code1 = "const u = new URL(\"https://example.com:8080/path?a=1&b=2#frag\"); u.protocol === 'https:' && u.hostname === 'example.com' && u.port === '8080' && u.pathname === '/path' && u.search === '?a=1&b=2' && u.hash === '#frag' && u.searchParams.get('a') === '1' && u.searchParams.get('b') === '2'";
+            assert!(ctx.eval::<bool, _>(code1).unwrap());
+
+            // Test URL.canParse
+            assert!(ctx.eval::<bool, _>("URL.canParse('https://example.com') === true").unwrap());
+            assert!(ctx.eval::<bool, _>("URL.canParse('invalid') === false").unwrap());
+
+            // Test URLSearchParams
+            let code2 = "const sp = new URLSearchParams('foo=1&bar=2&foo=3'); sp.get('foo') === '1' && sp.getAll('foo').length === 2 && sp.has('bar') && !sp.has('baz')";
+            assert!(ctx.eval::<bool, _>(code2).unwrap());
+
+            // Test native.url
+            let code3 = "globalThis.__velquNativeCapabilities.url.URL === globalThis.URL && globalThis.__velquNativeCapabilities.url.URLSearchParams === globalThis.URLSearchParams";
+            assert!(ctx.eval::<bool, _>(code3).unwrap());
+        });
     }
 }
