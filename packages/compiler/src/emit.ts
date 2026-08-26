@@ -270,6 +270,38 @@ function capabilitySetHash(caps: string[]): string {
   return sha256Hex([...caps].sort().join("\n"));
 }
 
+/**
+ * M27-002-C: canonical capability-inventory hash — MUST equal
+ * q_capabilities::CapabilityInventory::sha256_hex(). Entries must be
+ * pre-sorted ascending by id. Encoding: u32-le count, then per entry
+ * u16-le id-length + utf-8 id bytes + u32-le version.
+ */
+export function capabilityInventoryHash(entries: ReadonlyArray<{ id: string; version: number }>): string {
+  const encoder = new TextEncoder();
+  const bufs: Uint8Array[] = [];
+  const count = new DataView(new ArrayBuffer(4));
+  count.setUint32(0, entries.length, true);
+  bufs.push(new Uint8Array(count.buffer));
+  for (const e of entries) {
+    const id = encoder.encode(e.id);
+    const lenPrefix = new DataView(new ArrayBuffer(2));
+    lenPrefix.setUint16(0, id.length, true);
+    const version = new DataView(new ArrayBuffer(4));
+    version.setUint32(0, e.version, true);
+    // canonical order: u16-le id-length, utf-8 id bytes, u32-le version
+    bufs.push(new Uint8Array(lenPrefix.buffer), id, new Uint8Array(version.buffer));
+  }
+  let total = 0;
+  for (const b of bufs) total += b.length;
+  const joined = new Uint8Array(total);
+  let off = 0;
+  for (const b of bufs) {
+    joined.set(b, off);
+    off += b.length;
+  }
+  return new Bun.CryptoHasher("sha256").update(joined).digest("hex");
+}
+
 export function buildPack(
   app: ExtractedApp,
   bundle: BundleResult,
@@ -553,6 +585,13 @@ export function buildPack(
     capabilities,
     // M26-002-A: capability-set hash (mirrors q-pack capability_hash)
     capabilityHash: capabilitySetHash(capabilities),
+    // M27-002-C: the resolved capability inventory (linked modules,
+    // id + exact version from the resolver). Empty until the linker
+    // integrates real capability modules (M27-004+ ports); the empty
+    // inventory is still emitted and hash-bound so the section's
+    // presence is a build-output invariant, not an accident.
+    capabilityInventory: [],
+    capabilityInventorySha256: capabilityInventoryHash([]),
     functions,
     schemaManifest,
     headerNameTable,

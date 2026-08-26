@@ -13,3 +13,4 @@ memmap2 = { workspace = true }
 ed25519-dalek = { workspace = true }
 thiserror = { workspace = true }
 q-schema-runtime = { workspace = true }
+q-capabilities = { workspace = true }
