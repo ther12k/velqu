@@ -3320,6 +3320,102 @@ fn no_bytecode_flag_recovers_cross_target_packs_from_source() {
     let _ = child.wait();
 }
 
+/// M27-003-D: the full context profile is always available and is the
+/// explicit compatibility baseline. The fixture bundle touches
+/// `Map`, so: (1) forcing `--context-profile full` serves normally;
+/// (2) an unknown profile name fails closed BEFORE serving with the
+/// known-set named; (3) forcing `minimal` on a Map-using bundle fails
+/// loudly at bundle load instead of silently misbehaving.
+#[test]
+fn full_profile_retained_for_compatibility_testing() {
+    let dir = temp_dir("ctxprofile");
+    let pack_path = write_pack(&dir);
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+
+    // 1. forced FULL serves: the compatibility baseline always works.
+    let port1 = free_port();
+    let mut child = Command::new(bin)
+        .args([
+            "--pack",
+            pack_path.to_str().unwrap(),
+            "--port",
+            &port1.to_string(),
+            "--context-profile",
+            "full",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port1, Duration::from_secs(10));
+    let r = http(port1, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "forced full profile must serve");
+    child.kill().unwrap();
+    let _ = child.wait();
+
+    // 2. unknown profile name fails closed before ready, naming the set.
+    let out = Command::new(bin)
+        .args([
+            "--pack",
+            pack_path.to_str().unwrap(),
+            "--context-profile",
+            "bogus",
+        ])
+        .output()
+        .expect("spawn runtime");
+    assert_eq!(out.status.code(), Some(2), "unknown profile must exit 2");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("unknown context profile 'bogus'"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("full, web, minimal"), "{stderr}");
+
+    // 3. forced MINIMAL on this bundle: startup SUCCEEDS (the Map use
+    //    is lazy inside users()), and the degraded route fails LOUDLY
+    //    per request as a redacted internal problem — never a silent
+    //    wrong answer. Full-profile retention (section 1) is what keeps
+    //    compatibility testing possible.
+    let port3 = free_port();
+    let mut child3 = Command::new(bin)
+        .args([
+            "--pack",
+            pack_path.to_str().unwrap(),
+            "--port",
+            &port3.to_string(),
+            "--context-profile",
+            "minimal",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port3, Duration::from_secs(10));
+    let r3 = http(port3, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(
+        r3.status, 200,
+        "minimal profile must still start and serve livez"
+    );
+    let r3b = http(
+        port3,
+        "GET /users/usr_1 HTTP/1.1\r\nhost: t\r\nauthorization: Bearer q-demo-token\r\n",
+        None,
+    );
+    assert_ne!(
+        r3b.status, 200,
+        "Map-using route must not silently succeed on minimal"
+    );
+    assert_eq!(r3b.status, 500);
+    assert_eq!(
+        r3b.json()["type"],
+        "https://velqu.dev/problems/internal",
+        "body: {}",
+        r3b.text()
+    );
+    child3.kill().unwrap();
+    let _ = child3.wait();
+}
+
 /// M25-005-D: the QuickJS stringify fallback stays retained and correct
 /// next to the direct encoder. Twin routes share one declared schema; the
 /// native route encodes through the generated program (declared property

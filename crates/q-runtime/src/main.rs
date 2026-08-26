@@ -41,6 +41,11 @@ struct Args {
     /// compatible, 2 when rejected.
     #[arg(long)]
     fingerprint: bool,
+    /// M27-003-D: force a context profile (full | web | minimal) for
+    /// compatibility testing; default full — the always-available
+    /// baseline.
+    #[arg(long)]
+    context_profile: Option<String>,
 }
 
 fn main() {
@@ -58,6 +63,7 @@ fn main() {
             log: args.log,
             log_sample: args.log_sample,
             no_bytecode: args.no_bytecode,
+            context_profile: args.context_profile,
         },
     );
     std::process::exit(code);
