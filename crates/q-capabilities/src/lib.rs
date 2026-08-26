@@ -18,7 +18,8 @@ pub mod resolver;
 pub mod shutdown;
 
 pub use console::{
-    redact_sensitive_text, ConsoleLevel, ConsoleRecord, MAX_CONSOLE_ARGS, MAX_CONSOLE_MSG_LEN,
+    redact_sensitive_text, BoundedLogSink, ConsoleLevel, ConsoleRecord, LogSinkStats,
+    DEFAULT_LOG_SINK_CAP, MAX_CONSOLE_ARGS, MAX_CONSOLE_MSG_LEN,
 };
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,

@@ -92,6 +92,8 @@ pub(crate) struct OpRegistry {
     pub job_watchdog: Duration,
     /// M27-004-A: capability ABI lifecycle for runtime:timers.
     pub timer_lifecycle: Mutex<q_capabilities::CapabilityLifecycle>,
+    /// M27-004-C: bounded asynchronous log sink for console logging.
+    pub log_sink: Arc<q_capabilities::BoundedLogSink>,
 }
 
 impl OpRegistry {
@@ -105,6 +107,7 @@ impl OpRegistry {
             op_clock: AtomicU64::new(1),
             job_watchdog,
             timer_lifecycle: Mutex::new(timer_lifecycle),
+            log_sink: Arc::new(q_capabilities::BoundedLogSink::default()),
         }
     }
 }
@@ -657,6 +660,9 @@ impl WorkerInner {
             let _ = lc.begin_drain();
             let _ = lc.quiesce();
         }
+        for record in self.ops.log_sink.drain() {
+            eprintln!("{}", record.to_json_value());
+        }
         // M24-003-C: shutdown is a terminal path — the worker-owned sweep
         // guarantees zero live slots even for slots no pending entry tracked.
         self.store.settle_all();
@@ -1170,6 +1176,9 @@ impl WorkerInner {
             if jobs_pending && !quarantined {
                 self.quarantine_runtime("QuickJS jobs escaped a worker message boundary");
             }
+        }
+        for record in self.ops.log_sink.drain() {
+            eprintln!("{}", record.to_json_value());
         }
     }
 
@@ -2629,8 +2638,9 @@ fn install_natives(
         globals.set("__velquTimerStart", Function::new(ctx.clone(), f)?)?;
     }
 
-    // M27-004-B: structured console logging with redaction and length bounds
+    // M27-004-B/C: structured console logging with redaction, bounds, and bounded async sink
     {
+        let log_sink = Arc::clone(&ops.log_sink);
         let f = move |_ctx: rquickjs::Ctx, level: String, msg: String| -> rquickjs::Result<()> {
             let lvl = q_capabilities::ConsoleLevel::parse(&level)
                 .unwrap_or(q_capabilities::ConsoleLevel::Info);
@@ -2641,7 +2651,7 @@ fn install_natives(
                 None
             };
             let record = q_capabilities::ConsoleRecord::new(lvl, &msg, None, inv_opt);
-            eprintln!("{}", record.to_json_value());
+            log_sink.try_push(record);
             Ok(())
         };
         globals.set("__velquConsoleLog", Function::new(ctx.clone(), f)?)?;
@@ -2897,5 +2907,29 @@ mod tests {
                 )
                 .unwrap());
         });
+    }
+
+    /// M27-004-C: bounded async log sink in OpRegistry drains records without blocking.
+    #[test]
+    fn bounded_log_sink_integration_in_worker() {
+        let ops = OpRegistry::new(1024, Duration::from_millis(5000));
+        let sink = &ops.log_sink;
+        assert_eq!(sink.stats().buffered, 0);
+
+        let rec = q_capabilities::ConsoleRecord::new(
+            q_capabilities::ConsoleLevel::Info,
+            "test log message",
+            Some("route.test".into()),
+            Some(1),
+        );
+        assert!(sink.try_push(rec));
+        assert_eq!(sink.stats().buffered, 1);
+        assert_eq!(sink.stats().enqueued, 1);
+
+        let drained = sink.drain();
+        assert_eq!(drained.len(), 1);
+        assert_eq!(drained[0].message, "test log message");
+        assert_eq!(sink.stats().buffered, 0);
+        assert_eq!(sink.stats().drained, 1);
     }
 }

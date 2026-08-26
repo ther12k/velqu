@@ -214,9 +214,120 @@ impl ConsoleRecord {
     }
 }
 
+/// Default capacity for the bounded log sink buffer.
+pub const DEFAULT_LOG_SINK_CAP: usize = 1024;
+
+/// Bounded log sink that never blocks the worker and never grows without limit (M27-004-C).
+/// Excess logs increment the `dropped` counter instead of allocating unboundedly.
+#[derive(Debug)]
+pub struct BoundedLogSink {
+    buffer: std::sync::Mutex<std::collections::VecDeque<ConsoleRecord>>,
+    capacity: usize,
+    enqueued: std::sync::atomic::AtomicU64,
+    dropped: std::sync::atomic::AtomicU64,
+    drained: std::sync::atomic::AtomicU64,
+}
+
+impl BoundedLogSink {
+    /// Create with a fixed capacity.
+    pub fn new(capacity: usize) -> Self {
+        let cap = if capacity == 0 {
+            DEFAULT_LOG_SINK_CAP
+        } else {
+            capacity
+        };
+        BoundedLogSink {
+            buffer: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(cap)),
+            capacity: cap,
+            enqueued: std::sync::atomic::AtomicU64::new(0),
+            dropped: std::sync::atomic::AtomicU64::new(0),
+            drained: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    /// Non-blocking enqueue. If capacity is exhausted, the record is dropped
+    /// and the `dropped` count incremented (fail-safe logging: log load cannot starve requests).
+    pub fn try_push(&self, record: ConsoleRecord) -> bool {
+        let mut buf = self.buffer.lock().unwrap();
+        if buf.len() < self.capacity {
+            buf.push_back(record);
+            self.enqueued
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            true
+        } else {
+            self.dropped
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            false
+        }
+    }
+
+    /// Drain all queued records into a Vec.
+    pub fn drain(&self) -> Vec<ConsoleRecord> {
+        let mut buf = self.buffer.lock().unwrap();
+        let records: Vec<ConsoleRecord> = buf.drain(..).collect();
+        self.drained
+            .fetch_add(records.len() as u64, std::sync::atomic::Ordering::Relaxed);
+        records
+    }
+
+    /// Snapshot buffer and dropped-log statistics.
+    pub fn stats(&self) -> LogSinkStats {
+        LogSinkStats {
+            enqueued: self.enqueued.load(std::sync::atomic::Ordering::Relaxed),
+            dropped: self.dropped.load(std::sync::atomic::Ordering::Relaxed),
+            drained: self.drained.load(std::sync::atomic::Ordering::Relaxed),
+            buffered: self.buffer.lock().unwrap().len(),
+        }
+    }
+}
+
+impl Default for BoundedLogSink {
+    fn default() -> Self {
+        Self::new(DEFAULT_LOG_SINK_CAP)
+    }
+}
+
+/// Statistics snapshot for a `BoundedLogSink`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogSinkStats {
+    pub enqueued: u64,
+    pub dropped: u64,
+    pub drained: u64,
+    pub buffered: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_log_sink_drops_on_overflow_without_blocking() {
+        let sink = BoundedLogSink::new(3);
+        assert!(sink.try_push(ConsoleRecord::new(ConsoleLevel::Info, "msg 1", None, None)));
+        assert!(sink.try_push(ConsoleRecord::new(ConsoleLevel::Info, "msg 2", None, None)));
+        assert!(sink.try_push(ConsoleRecord::new(ConsoleLevel::Info, "msg 3", None, None)));
+        // 4th push exceeds capacity: dropped
+        assert!(!sink.try_push(ConsoleRecord::new(ConsoleLevel::Info, "msg 4", None, None)));
+
+        let stats = sink.stats();
+        assert_eq!(stats.enqueued, 3);
+        assert_eq!(stats.dropped, 1);
+        assert_eq!(stats.buffered, 3);
+
+        // Drain records
+        let drained = sink.drain();
+        assert_eq!(drained.len(), 3);
+        assert_eq!(drained[0].message, "msg 1");
+        assert_eq!(drained[2].message, "msg 3");
+
+        let stats_after = sink.stats();
+        assert_eq!(stats_after.drained, 3);
+        assert_eq!(stats_after.buffered, 0);
+
+        // Can push again after drain
+        assert!(sink.try_push(ConsoleRecord::new(ConsoleLevel::Info, "msg 5", None, None)));
+        assert_eq!(sink.stats().buffered, 1);
+    }
 
     #[test]
     fn console_levels_parse_and_display() {
