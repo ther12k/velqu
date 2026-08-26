@@ -1,15 +1,15 @@
-//! Compile-time capability dependency DAG (M27-002-A).
+//! Compile-time capability dependency DAG (M27-002-A/B).
 //!
 //! Given the application's root requirements and the universe of
 //! linked capability descriptors, compute the transitive closure of
 //! required capabilities in a deterministic order (sorted by id).
 //! Every edge is resolved with ADR-0029 semantics: exact version
-//! match, typed `Missing`/`VersionConflict` failures. The walk is
-//! visited-once, so it always terminates; cycle *rejection* is
-//! M27-002-B's deliverable — this module builds the graph, it does
-//! not police its shape. An application with no capability
-//! requirements resolves to an empty closure: unrelated apps link
-//! nothing (guardrail: zero linked-capability cost).
+//! match, typed `Missing`/`VersionConflict` failures. Cycles are
+//! detected with an explicit path stack and rejected with a typed
+//! `Cycle` error naming the full path (M27-002-B). An application
+//! with no capability requirements resolves to an empty closure:
+//! unrelated apps link nothing (guardrail: zero linked-capability
+//! cost).
 
 use std::collections::BTreeMap;
 
@@ -50,10 +50,10 @@ impl DependencyDag {
 /// requirements against the linked universe.
 ///
 /// Deterministic: the result is sorted by id, so neither root order
-/// nor universe order can change it. Failures are the typed
-/// ADR-0029 errors, naming the exact capability (and versions on
-/// conflict) — a missing capability fails here, at build time,
-/// before any pack is produced.
+/// nor universe order can change it. Failures are typed ADR-0029
+/// errors naming the exact capability (and versions on conflict, or
+/// the full cycle path on a cycle). Every failure happens at build
+/// time, before any pack is produced.
 pub fn resolve_closure(
     roots: &[CapabilityRequirement],
     universe: &[CapabilityDescriptor],
@@ -66,29 +66,83 @@ pub fn resolve_closure(
         by_id.entry(&d.requirement.id).or_insert(d);
     }
 
-    // Visited-once walk: guarantees termination on any graph shape
-    // (cycles included) while collecting the closure.
-    let mut queue: Vec<&CapabilityRequirement> = roots.iter().collect();
-    let mut seen: BTreeMap<&CapabilityId, &CapabilityDescriptor> = BTreeMap::new();
-    while let Some(req) = queue.pop() {
-        if seen.contains_key(&req.id) {
-            continue;
-        }
-        let linked = match by_id.get(&req.id) {
-            Some(d) => *d,
-            None => return Err(ResolveError::Missing { id: req.id.clone() }),
-        };
-        resolve_requirement(std::slice::from_ref(linked), req)?;
-        seen.insert(&req.id, linked);
-        for dep in &linked.dependencies {
-            if !seen.contains_key(&dep.id) {
-                queue.push(dep);
+    let mut resolved: BTreeMap<&CapabilityId, &CapabilityDescriptor> = BTreeMap::new();
+
+    // Iterative DFS with an explicit path stack for cycle detection.
+    // Each frame holds the requirement being visited and the index of
+    // the next dependency to process. When we exhaust a descriptor's
+    // children we pop the frame and move it to `resolved`.
+    //
+    // `in_path` maps ids on the current DFS path to their position
+    // in `path_ids`, giving O(1) back-edge detection and a
+    // human-readable path for the Cycle error.
+    let mut in_path: BTreeMap<&CapabilityId, usize> = BTreeMap::new();
+    let mut path_ids: Vec<CapabilityId> = Vec::new();
+    // DFS stack: (requirement being visited, dep_index already processed)
+    let mut stack: Vec<(&CapabilityRequirement, usize)> = Vec::new();
+    // Roots to process; BTreeMap sort dominates final output order.
+    let mut pending: Vec<&CapabilityRequirement> = roots.iter().collect();
+
+    'outer: loop {
+        // Drain the pending queue until the DFS stack is non-empty.
+        while stack.is_empty() {
+            match pending.pop() {
+                None => break 'outer,
+                Some(req) => {
+                    if resolved.contains_key(&req.id) {
+                        continue;
+                    }
+                    if let Some(&idx) = in_path.get(&req.id) {
+                        let mut path = path_ids[idx..].to_vec();
+                        path.push(req.id.clone());
+                        return Err(ResolveError::Cycle { path });
+                    }
+                    // Resolve and version-check before pushing.
+                    let linked = match by_id.get(&req.id) {
+                        Some(d) => *d,
+                        None => return Err(ResolveError::Missing { id: req.id.clone() }),
+                    };
+                    resolve_requirement(std::slice::from_ref(linked), req)?;
+                    in_path.insert(&linked.requirement.id, path_ids.len());
+                    path_ids.push(linked.requirement.id.clone());
+                    stack.push((req, 0));
+                }
             }
+        }
+
+        let (req, dep_idx) = stack.last_mut().unwrap();
+        let req_id = req.id.clone();
+        let linked = *by_id.get(&req_id).unwrap(); // validated on push
+        if *dep_idx < linked.dependencies.len() {
+            let dep = &linked.dependencies[*dep_idx];
+            *dep_idx += 1;
+            if resolved.contains_key(&dep.id) {
+                continue;
+            }
+            if let Some(&idx) = in_path.get(&dep.id) {
+                let mut path = path_ids[idx..].to_vec();
+                path.push(dep.id.clone());
+                return Err(ResolveError::Cycle { path });
+            }
+            let dep_linked = match by_id.get(&dep.id) {
+                Some(d) => *d,
+                None => return Err(ResolveError::Missing { id: dep.id.clone() }),
+            };
+            resolve_requirement(std::slice::from_ref(dep_linked), dep)?;
+            in_path.insert(&dep_linked.requirement.id, path_ids.len());
+            path_ids.push(dep_linked.requirement.id.clone());
+            stack.push((dep, 0));
+        } else {
+            // All children of this node are committed; commit the node.
+            stack.pop();
+            resolved.insert(&linked.requirement.id, linked);
+            in_path.remove(&req_id);
+            path_ids.pop();
         }
     }
 
     Ok(DependencyDag {
-        resolved: seen.into_values().cloned().collect(),
+        resolved: resolved.into_values().cloned().collect(),
     })
 }
 
@@ -242,20 +296,60 @@ mod tests {
     }
 
     #[test]
-    fn walk_terminates_on_cycles() {
-        // a↔b mutual cycle: the closure walk must terminate
-        // (visited-once). Rejecting cycles as a build error is
-        // M27-002-B; this test pins termination so B has a precise
-        // anchor to flip when cycle rejection lands.
+    fn cycle_is_rejected_with_typed_error_naming_path() {
+        // a->b->a mutual cycle (was: walk_terminates_on_cycles in A,
+        // now flipped to a build error per M27-002-B)
         let universe = [
             desc("runtime:a", 1, &[("runtime:b", 1)]),
             desc("runtime:b", 1, &[("runtime:a", 1)]),
         ];
-        let dag = resolve_closure(&[req("runtime:a", 1)], &universe).unwrap();
-        assert_eq!(
-            dag.ids().iter().map(|i| i.as_str()).collect::<Vec<_>>(),
-            vec!["runtime:a", "runtime:b"]
+        let err = resolve_closure(&[req("runtime:a", 1)], &universe).unwrap_err();
+        assert!(
+            matches!(err, ResolveError::Cycle { .. }),
+            "expected Cycle, got {err:?}"
         );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("runtime:a") && msg.contains("runtime:b"),
+            "{msg}"
+        );
+    }
+
+    #[test]
+    fn self_cycle_is_rejected() {
+        let universe = [desc("runtime:a", 1, &[("runtime:a", 1)])];
+        let err = resolve_closure(&[req("runtime:a", 1)], &universe).unwrap_err();
+        assert!(matches!(err, ResolveError::Cycle { path } if !path.is_empty()));
+    }
+
+    #[test]
+    fn longer_cycle_path_names_all_members() {
+        // a -> b -> c -> a
+        let universe = [
+            desc("runtime:a", 1, &[("runtime:b", 1)]),
+            desc("runtime:b", 1, &[("runtime:c", 1)]),
+            desc("runtime:c", 1, &[("runtime:a", 1)]),
+        ];
+        let err = resolve_closure(&[req("runtime:a", 1)], &universe).unwrap_err();
+        if let ResolveError::Cycle { path } = &err {
+            let strs: Vec<&str> = path.iter().map(|i| i.as_str()).collect();
+            assert!(strs.contains(&"runtime:a"), "{strs:?}");
+            assert!(strs.contains(&"runtime:b"), "{strs:?}");
+        } else {
+            panic!("expected Cycle, got {err:?}");
+        }
+    }
+
+    #[test]
+    fn cycle_error_message_contains_arrow_path() {
+        let universe = [
+            desc("runtime:a", 1, &[("runtime:b", 1)]),
+            desc("runtime:b", 1, &[("runtime:a", 1)]),
+        ];
+        let msg = resolve_closure(&[req("runtime:a", 1)], &universe)
+            .unwrap_err()
+            .to_string();
+        assert!(msg.contains("->"), "expected -> in cycle message: {msg}");
     }
 
     #[test]

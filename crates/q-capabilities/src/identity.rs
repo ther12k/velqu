@@ -179,6 +179,13 @@ pub enum ResolveError {
         required: CapabilityVersion,
         linked: CapabilityVersion,
     },
+    /// A cycle was detected in the dependency graph. The `path`
+    /// names the ids on the cycle in traversal order; the last
+    /// entry is the id that was already on the stack when the
+    /// cycle edge was followed. Build errors must fail before any
+    /// pack is produced (ADR-0028: version conflicts fail before
+    /// ready; cycles are similarly a fatal build-time error).
+    Cycle { path: Vec<CapabilityId> },
 }
 
 impl fmt::Display for ResolveError {
@@ -193,6 +200,10 @@ impl fmt::Display for ResolveError {
                 f,
                 "capability {id} version conflict: required {required}, linked {linked}"
             ),
+            ResolveError::Cycle { path } => {
+                let ids: Vec<&str> = path.iter().map(|id| id.as_str()).collect();
+                write!(f, "capability dependency cycle: {}", ids.join(" -> "))
+            }
         }
     }
 }
