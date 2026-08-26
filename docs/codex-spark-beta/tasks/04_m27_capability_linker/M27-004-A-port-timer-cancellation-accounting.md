@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -112,3 +112,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-004-A (PASS)
+
+Deliverable: port existing timer cancellation and accounting under the capability ABI (`q-capabilities`).
+
+### Changed files
+
+- `crates/q-engine-quickjs/Cargo.toml` — added `q-capabilities` workspace dependency.
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - `OpRegistry`: added `timer_lifecycle: Mutex<q_capabilities::CapabilityLifecycle>` (initialized `Declared -> Installed -> Ready`).
+  - `PendingOp`: stores `pub op: q_capabilities::NativeOp`.
+  - `__velquTimerStart`: enforces `NativeOp::start` against `timer_lifecycle`, validates `OpOwner { slot: 0, generation: invocation_id }`, `CancellationClass::Cancellable`, and bounded deadline `ms.clamp(1, MAX_OP_DEADLINE_MS)`.
+  - `complete_timer`: settles `op.settle(owner)` on Ok or cancels `op.cancel()` on Err; drops late completions if not pending.
+  - `WorkerMsg::Shutdown`: transitions `timer_lifecycle` to `Draining -> Quiesced` and cancels remaining `NativeOp`s before aborting tasks.
+  - `quarantine_runtime`: transitions `timer_lifecycle` to `Failed` and cancels remaining `NativeOp`s before aborting tasks.
+  - Added unit test `timer_capability_lifecycle_and_accounting`.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-engine-quickjs` — 103 passed (+1 new lifecycle/accounting test; all 97 engine integration tests and worker unit tests pass).
+- `cargo test -p q-capabilities` — 51 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `bun test` — 152 passed, 0 failed.
+
+### Commands (fresh worktree on parent HEAD 5101acc)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 103 · `-p q-capabilities` 51 · `-p velqu-runtime` 31 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Existing scheduler invariants remain: all M2.2.1 scheduler/quarantine tests pass unchanged.
+  - Timers physically cancel: `abort_op_task` aborts the Tokio task handle and `NativeOp::cancel()` transitions state to `Cancelled`.
+  - Capabilities absent when unused: capabilities linker and pruning (M27-002) remain intact.
+

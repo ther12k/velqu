@@ -78,6 +78,7 @@ pub(crate) struct PendingOp {
     pub deadline: Instant,
     pub abort_handle: tokio::task::AbortHandle,
     pub state: Arc<AtomicU8>,
+    pub op: q_capabilities::NativeOp,
 }
 
 /// Bounded pending-op registry. Worker-thread only (holds Persistent JS
@@ -89,15 +90,21 @@ pub(crate) struct OpRegistry {
     /// Fallback watchdog budget for ops started outside any scoped execution
     /// (defense in depth; scoped paths always carry a real deadline).
     pub job_watchdog: Duration,
+    /// M27-004-A: capability ABI lifecycle for runtime:timers.
+    pub timer_lifecycle: Mutex<q_capabilities::CapabilityLifecycle>,
 }
 
 impl OpRegistry {
     fn new(op_cap: usize, job_watchdog: Duration) -> Self {
+        let mut timer_lifecycle = q_capabilities::CapabilityLifecycle::declared();
+        let _ = timer_lifecycle.install();
+        let _ = timer_lifecycle.activate();
         OpRegistry {
             ops: Mutex::new(HashMap::new()),
             op_cap,
             op_clock: AtomicU64::new(1),
             job_watchdog,
+            timer_lifecycle: Mutex::new(timer_lifecycle),
         }
     }
 }
@@ -642,9 +649,13 @@ impl WorkerInner {
                 .drain()
                 .map(|(_, v)| v)
                 .collect();
-            for op in ops {
+            for mut op in ops {
+                let _ = op.op.cancel();
                 abort_op_task(&op.state, &op.abort_handle);
             }
+            let mut lc = self.ops.timer_lifecycle.lock().unwrap();
+            let _ = lc.begin_drain();
+            let _ = lc.quiesce();
         }
         // M24-003-C: shutdown is a terminal path — the worker-owned sweep
         // guarantees zero live slots even for slots no pending entry tracked.
@@ -1177,12 +1188,24 @@ impl WorkerInner {
         result: Result<u64, String>,
     ) -> Option<(JobBudget, ExecutionPhase)> {
         let op = self.ops.ops.lock().unwrap().remove(&op_id);
-        let Some(op) = op else {
+        let Some(mut op) = op else {
             self.shared
                 .late_completions_dropped
                 .fetch_add(1, Ordering::Relaxed);
             return None;
         };
+        let owner = q_capabilities::OpOwner {
+            slot: 0,
+            generation: op.invocation_id,
+        };
+        match &result {
+            Ok(_) => {
+                let _ = op.op.settle(owner);
+            }
+            Err(_) => {
+                let _ = op.op.cancel();
+            }
+        }
         self.shared.pending_ops.fetch_sub(1, Ordering::Relaxed);
         self.shared
             .timer_ops_completed
@@ -1412,8 +1435,13 @@ impl WorkerInner {
             .map(|(_, v)| v)
             .collect();
         let removed = leftover_ops.len() as u64;
-        for op in &leftover_ops {
+        for mut op in leftover_ops {
+            let _ = op.op.cancel();
             abort_op_task(&op.state, &op.abort_handle);
+        }
+        {
+            let mut lc = self.ops.timer_lifecycle.lock().unwrap();
+            let _ = lc.fail();
         }
         // M2.2.1-r4.2.2: unconditionally swap(0) — the terminal gauge is zero
         // regardless of prior drift; unsigned fetch_sub could otherwise wrap.
@@ -2511,21 +2539,36 @@ fn install_natives(
                 }
             }
             let ops = &ops2;
-            let op_id = ops.op_clock.fetch_add(1, Ordering::SeqCst);
             let ms = ms.max(0.0) as u64;
+            let invocation_id = CURRENT_INVOCATION.with(|c| c.get());
+            let deadline = CURRENT_DEADLINE
+                .with(|c| c.get())
+                .unwrap_or_else(|| Instant::now() + ops.job_watchdog);
+
+            let lifecycle = ops.timer_lifecycle.lock().unwrap();
+            let native_op = match q_capabilities::NativeOp::start(
+                &lifecycle,
+                q_capabilities::OpOwner {
+                    slot: 0,
+                    generation: invocation_id,
+                },
+                q_capabilities::CancellationClass::Cancellable,
+                ms.clamp(1, q_capabilities::MAX_OP_DEADLINE_MS),
+            ) {
+                Ok(op) => op,
+                Err(e) => {
+                    return Err(rquickjs::Exception::throw_message(&ctx, &e.to_string()));
+                }
+            };
+            drop(lifecycle);
+
+            let op_id = ops.op_clock.fetch_add(1, Ordering::SeqCst);
             if ops.ops.lock().unwrap().len() >= ops.op_cap {
                 return Err(rquickjs::Exception::throw_message(
                     &ctx,
                     "pending operation limit reached",
                 ));
             }
-            // M2.2.1-r2: capture BOTH the owning invocation and its live
-            // deadline so the completion continuation drains under the right
-            // scope even when other invocations started meanwhile.
-            let invocation_id = CURRENT_INVOCATION.with(|c| c.get());
-            let deadline = CURRENT_DEADLINE
-                .with(|c| c.get())
-                .unwrap_or_else(|| Instant::now() + ops.job_watchdog);
             let tx = WORKER_TX.with(|c| c.borrow().clone());
             let Some(tx) = tx else {
                 return Err(rquickjs::Exception::throw_message(
@@ -2578,6 +2621,7 @@ fn install_natives(
                     deadline,
                     abort_handle: task.abort_handle(),
                     state,
+                    op: native_op,
                 },
             );
             Ok(op_id as f64)
@@ -2753,5 +2797,52 @@ mod tests {
             "swap(0) guarantees zero — fetch_sub(1) from 0 would wrap to u64::MAX"
         );
         assert_eq!(shared.boundary_violations.load(Ordering::Relaxed), 1);
+    }
+
+    /// M27-004-A: timer capability lifecycle and NativeOp cancellation accounting tests.
+    #[test]
+    fn timer_capability_lifecycle_and_accounting() {
+        let ops = OpRegistry::new(1024, Duration::from_millis(5000));
+        assert_eq!(
+            ops.timer_lifecycle.lock().unwrap().phase(),
+            q_capabilities::CapabilityPhase::Ready
+        );
+
+        // 1. NativeOp can start in Ready phase
+        let lc = ops.timer_lifecycle.lock().unwrap();
+        let mut op = q_capabilities::NativeOp::start(
+            &lc,
+            q_capabilities::OpOwner {
+                slot: 0,
+                generation: 1,
+            },
+            q_capabilities::CancellationClass::Cancellable,
+            100,
+        )
+        .expect("start op in ready");
+        drop(lc);
+        assert_eq!(op.state(), q_capabilities::OpState::Pending);
+
+        // 2. Cancellation transitions state to Cancelled
+        assert_eq!(op.cancel(), Ok(()));
+        assert_eq!(op.state(), q_capabilities::OpState::Cancelled);
+
+        // 3. Quarantining transitions timer lifecycle to Failed
+        let mut lc = ops.timer_lifecycle.lock().unwrap();
+        assert_eq!(lc.fail(), Ok(q_capabilities::CapabilityPhase::Failed));
+        assert_eq!(
+            q_capabilities::NativeOp::start(
+                &lc,
+                q_capabilities::OpOwner {
+                    slot: 0,
+                    generation: 2
+                },
+                q_capabilities::CancellationClass::Cancellable,
+                100,
+            ),
+            Err(q_capabilities::OpError::NotReady {
+                from: q_capabilities::CapabilityPhase::Failed,
+            })
+        );
     }
 }
