@@ -5,6 +5,7 @@ import * as ts from "typescript";
 import { extractApp, hash } from "./extract";
 import { bundleApp, buildPack, contractDts, openapiFor, diffContracts } from "./emit";
 import { compileIntrinsicRequirement } from "./intrinsic-requirements";
+import { reductionImpacts } from "./reduction-impact";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
 
@@ -173,6 +174,9 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     // Diagnostic data for the M27-011 selection work; serving always
     // uses the runtime's configured profile (default full).
     intrinsicRequirement,
+    // M27-003-C: per-profile reduction impact — what a downgrade to
+    // web/minimal would remove that the bundle touches.
+    reductionImpact: reductionImpacts(bundle.code),
   };
 
   // contract lock (semantic diff base)
