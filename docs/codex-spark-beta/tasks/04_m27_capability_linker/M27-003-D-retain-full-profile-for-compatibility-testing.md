@@ -4,7 +4,7 @@ parent_task: M27-003
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -114,3 +114,52 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-003-D (PASS)
+
+Deliverable: the full profile is retained as the explicit,
+always-available compatibility baseline, selectable for testing.
+
+### Changed files
+
+- `crates/q-runtime/src/lib.rs` — `RunConfig.context_profile:
+  Option<String>`; parsed through `ContextProfile::parse` (closed
+  vocabulary) before engine spawn. Default stays Full; unknown names
+  fail closed BEFORE ready (exit 2, stderr, known-set named) — never
+  a silent fallback.
+- `crates/q-runtime/src/main.rs` — `--context-profile full|web|
+  minimal` CLI flag on velqu-runtime.
+- `crates/q-runtime/tests/runtime_conformance.rs` —
+  `full_profile_retained_for_compatibility_testing` (new).
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### The test's honest semantics (a wrong assumption caught)
+
+The fixture bundle touches Map only LAZILY inside users(), so
+forcing minimal starts fine and serves livez — unlike a bundle with
+top-level dropped-API references (which fails at load, as the proof
+pack demonstrates under minimal via "RegExp are not supported"
+before ready). Section 3 therefore asserts per-request loudness:
+the degraded route returns a redacted internal problem (500,
+https://velqu.dev/problems/internal), never a silent wrong answer.
+Development note: the first draft of this test assumed startup
+failure for any dropped-builtin usage and hung waiting for an exit
+that was never coming; the hang surfaced the lazy-reference
+distinction now documented here and in C's diagnostics rationale.
+
+### Tests
+
+31 conformance tests pass (+1): forced FULL on the fixture serves
+(200 livez); unknown profile exits 2 pre-ready naming full, web,
+minimal; forced MINIMAL starts but the Map-using route yields 500
+internal-problem (auth-passed policy intact, business handler
+degraded loudly).
+
+### Commands (fresh worktree on M27-003-C HEAD da094eb)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 102 ·
+  `-p q-capabilities` 51 · `-p velqu-runtime` conformance 31 (+2 lib
+  suites unchanged) — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.

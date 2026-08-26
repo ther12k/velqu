@@ -41,6 +41,12 @@ pub struct RunConfig {
     pub log_sample: u64,
     /// M26-002-C: explicit source-rebuild recovery path.
     pub no_bytecode: bool,
+    /// M27-003-D: explicit context-profile override for compatibility
+    /// testing. `None` keeps the engine default (full) — the full
+    /// profile is always available and is the default; a value here
+    /// forces that exact profile. Unknown names fail closed at
+    /// startup (before serving), never fall back silently.
+    pub context_profile: Option<String>,
 }
 
 /// M26-009-C: print the runtime's exact fingerprint; when a pack is
@@ -176,12 +182,38 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         // ---- stage: engine.spawn + bundle.load (one QuickJS worker)
         let t = Instant::now();
         let mapper = source_map::mapper_for(&pack);
+        // M27-003-D: --context-profile overrides the engine default
+        // (full). Unknown values fail closed before the engine spawns.
+        let profile_override = cfg
+            .context_profile
+            .as_deref()
+            .map(|s| {
+                q_engine_quickjs::ContextProfile::parse(s).ok_or_else(|| {
+                    format!(
+                        "unknown context profile '{s}' (known: full, web, minimal)"
+                    )
+                })
+            })
+            .transpose();
+        let profile = match profile_override {
+            Ok(p) => p.unwrap_or_default(),
+            Err(msg) => {
+                let ready = serde_json::json!({
+                    "event": "ready",
+                    "ok": false,
+                    "error": msg,
+                });
+                eprintln!("{ready}");
+                return 2;
+            }
+        };
         let config = QuickJsConfig {
             request_slot_capacity: limits.max_queue.max(1),
             // M26-004-D: embedded-prelude bytecode skips host prelude eval;
             // the explicit source path always evaluates it.
             embedded_prelude: pack.bundle_prelude.as_deref() == Some("embedded")
                 && !cfg.no_bytecode,
+            profile,
             ..Default::default()
         };
         let mut engine =
