@@ -454,7 +454,8 @@ impl WorkerInner {
                 hit
             })));
         }
-        let ctx = Context::full(&rt).map_err(|e| format!("quickjs context: {e}"))?;
+        let ctx =
+            create_context(&rt, config.profile).map_err(|e| format!("quickjs context: {e}"))?;
         let ops = Arc::new(OpRegistry::new(
             config.pending_op_cap,
             Duration::from_millis(config.job_deadline_ms),
@@ -2594,9 +2595,143 @@ pub(crate) fn reset_pending_ops_after_quarantine(shared: &WorkerShared, removed:
     }
 }
 
+/// M27-003-A: the single context-construction point. `Full` uses
+/// JS_NewContext (all builtins); Web and Minimal use rquickjs's
+/// typed intrinsic tuples, so the set is explicit in source — no
+/// runtime feature flags, no guessing.
+pub(crate) fn create_context(
+    rt: &rquickjs::Runtime,
+    profile: crate::ContextProfile,
+) -> Result<rquickjs::Context, rquickjs::Error> {
+    type WebIntrinsics = (
+        rquickjs::context::intrinsic::Eval,
+        rquickjs::context::intrinsic::RegExpCompiler,
+        rquickjs::context::intrinsic::RegExp,
+        rquickjs::context::intrinsic::Json,
+        rquickjs::context::intrinsic::Proxy,
+        rquickjs::context::intrinsic::MapSet,
+        rquickjs::context::intrinsic::TypedArrays,
+        rquickjs::context::intrinsic::Promise,
+        rquickjs::context::intrinsic::WeakRef,
+    );
+    type MinimalIntrinsics = (
+        rquickjs::context::intrinsic::Eval,
+        rquickjs::context::intrinsic::Json,
+        rquickjs::context::intrinsic::Promise,
+        rquickjs::context::intrinsic::TypedArrays,
+    );
+    match profile {
+        crate::ContextProfile::Full => Context::full(rt),
+        crate::ContextProfile::Web => Context::custom::<WebIntrinsics>(rt),
+        crate::ContextProfile::Minimal => Context::custom::<MinimalIntrinsics>(rt),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ContextProfile;
+
+    /// M27-003-A: helper — fresh runtime + context under a profile,
+    /// eval a script, return (typeof_value, eval_ok).
+    fn profile_probe(profile: ContextProfile, expr: &str) -> Result<String, String> {
+        let rt = rquickjs::Runtime::new().map_err(|e| e.to_string())?;
+        let ctx = create_context(&rt, profile).map_err(|e| e.to_string())?;
+        ctx.with(|ctx| {
+            let v: rquickjs::Value<'_> = ctx.eval(expr).map_err(|e| e.to_string())?;
+            Ok(v.type_name().to_string())
+        })
+    }
+
+    #[test]
+    fn full_profile_has_all_standard_builtins() {
+        assert_eq!(
+            profile_probe(ContextProfile::Full, "Date.now() >= 0"),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Full, "new Map() instanceof Map"),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Full, "/a/.test('a')"),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Full, "typeof WeakRef !== 'undefined'"),
+            Ok("bool".into())
+        );
+    }
+
+    #[test]
+    fn web_profile_keeps_web_builtins_drops_date_and_performance() {
+        assert_eq!(
+            profile_probe(ContextProfile::Web, "new Map() instanceof Map"),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Web, r#"JSON.parse("[1,2]")[1] === 2"#),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Web, "Promise.resolve(1) instanceof Promise"),
+            Ok("bool".into())
+        );
+        // dropped: Date, Performance
+        assert_eq!(
+            profile_probe(ContextProfile::Web, "typeof Date === 'undefined'"),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Web, "typeof performance === 'undefined'"),
+            Ok("bool".into())
+        );
+        // honest negative control: the probe itself detects presence
+        assert_eq!(
+            profile_probe(ContextProfile::Web, "typeof Map !== 'undefined'"),
+            Ok("bool".into())
+        );
+    }
+
+    #[test]
+    fn minimal_profile_is_host_bridge_only() {
+        // host-bridge needs survive
+        assert_eq!(
+            profile_probe(
+                ContextProfile::Minimal,
+                r#"JSON.stringify({a:1}) === '{"a":1}'"#
+            ),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(
+                ContextProfile::Minimal,
+                "(async () => 1)() instanceof Promise"
+            ),
+            Ok("bool".into())
+        );
+        assert_eq!(
+            profile_probe(ContextProfile::Minimal, "1 + 1 === 2"),
+            Ok("bool".into())
+        );
+        // everything else is visibly absent
+        for gone in ["Date", "Proxy", "Map", "Set", "WeakRef", "RegExp"] {
+            assert_eq!(
+                profile_probe(
+                    ContextProfile::Minimal,
+                    &format!("typeof {gone} === 'undefined'")
+                ),
+                Ok("bool".into()),
+                "{gone} must be absent"
+            );
+        }
+    }
+
+    #[test]
+    fn config_default_profile_is_full() {
+        let cfg = crate::QuickJsConfig::default();
+        assert_eq!(cfg.profile, ContextProfile::Full);
+    }
 
     /// M2.2.1-r4.2.2: deliberate accounting drift — the op MAP has 1 entry
     /// while the pending_ops GAUGE reads 0. Quarantine must still end with
