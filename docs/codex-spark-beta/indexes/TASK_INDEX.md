@@ -294,7 +294,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-004-B](../tasks/04_m27_capability_linker/M27-004-B-define-console-levels-and-redaction.md) | P0 | implement | PASS | M27-004-A | Define console levels and redaction |
 | [M27-004-C](../tasks/04_m27_capability_linker/M27-004-C-keep-logs-asynchronous-bounded.md) | P0 | implement | PASS | M27-004-B | Keep logs asynchronous/bounded |
 | [M27-004-D](../tasks/04_m27_capability_linker/M27-004-D-support-shutdown-and-quarantine.md) | P0 | implement | PASS | M27-004-C | Support shutdown and quarantine |
-| [M27-004-V](../tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md) | P0 | verify | TODO | M27-004-A, M27-004-B, M27-004-C, M27-004-D | Verify Implement console and timer core capabilities |
+| [M27-004-V](../tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md) | P0 | verify | PASS | M27-004-A, M27-004-B, M27-004-C, M27-004-D | Verify Implement console and timer core capabilities |
 | [M27-004-Z](../tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md) | P0 | evidence | TODO | M27-004-V | Package evidence for Implement console and timer core capabilities |
 | [M27-005-A](../tasks/04_m27_capability_linker/M27-005-A-adopt-or-adapt-a-proven-implementation.md) | P1 | implement | TODO | M27-001-Z, M27-003-Z | Adopt or adapt a proven implementation |
 | [M27-005-B](../tasks/04_m27_capability_linker/M27-005-B-run-selected-wpt-wintertc-cases.md) | P1 | implement | TODO | M27-005-A | Run selected WPT/WinterTC cases |
