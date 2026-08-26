@@ -11,11 +11,13 @@
 //! M27-001-B).
 
 pub mod identity;
+pub mod operations;
 
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
 };
+pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
 
 use std::fmt;
 
