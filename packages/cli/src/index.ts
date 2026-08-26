@@ -76,6 +76,8 @@ async function main() {
           declared: caps.declared,
           perRoute: caps.perRoute,
           nativeOps: caps.nativeOps,
+          intrinsicRequirement: caps.intrinsicRequirement,
+          reductionImpact: caps.reductionImpact,
           pack,
         })) {
           console.log(line);

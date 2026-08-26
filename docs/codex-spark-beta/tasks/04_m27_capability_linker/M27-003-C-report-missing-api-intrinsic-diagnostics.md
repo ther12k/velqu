@@ -4,7 +4,7 @@ parent_task: M27-003
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -117,3 +117,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-003-C (PASS)
+
+Deliverable: missing-API/intrinsic diagnostics for context-profile
+reductions — builders now see exactly what a downgrade to web or
+minimal would remove, before choosing it.
+
+### Changed files
+
+- `packages/compiler/src/reduction-impact.ts` (new) —
+  `reductionImpacts(code)`: per reduced profile (web, minimal), the
+  builtins the bundle touches that the profile drops; and
+  `missingApisFor(profile, code)` for point queries. Derived from
+  B's lexical scan; same documented regex-literal limitation.
+- `packages/compiler/src/index.ts` — capability-manifest.json gains
+  `reductionImpact` alongside B's requirement.
+- `packages/cli/src/capability-inspect.ts` +
+  `packages/cli/src/index.ts` — `velqu inspect capabilities` renders
+  `context requirement:` plus per-profile lines: "nothing the bundle
+  uses would be lost" or an explicit dropped-builtin list.
+- `packages/cli/src/reduction-impact.test.ts` (new, 6 tests).
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+6 TS tests: clean bundle loses nothing under both reductions;
+Date-usage impact per profile (sorted minimal list); web-only
+builtin misses only minimal; deterministic sort across boundaries;
+CLI rendering of both diagnostic shapes; absent-diagnostics output
+unchanged. End-to-end: proof app reports reduction to 'web' loses
+nothing / to 'minimal' would drop Map.
+
+### Commands (fresh worktree on M27-003-B HEAD 2c0360f)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 102 ·
+  `-p q-capabilities` 51 · `-p velqu-runtime` 30 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.

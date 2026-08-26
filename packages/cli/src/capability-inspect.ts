@@ -10,6 +10,9 @@ export function inspectCapabilities(input: {
   declared: string[];
   perRoute: Record<string, string[]>;
   nativeOps: Record<string, string>;
+  // M27-003-C: reduction diagnostics from the capability manifest
+  reductionImpact?: Array<{ profile: string; missing: string[] }>;
+  intrinsicRequirement?: { requirement: string };
   pack: {
     capabilityInventory?: Array<{ id: string; version: number }>;
     capabilityInventorySha256?: string;
@@ -45,6 +48,20 @@ export function inspectCapabilities(input: {
       `linked: ${inv.map((e) => `${e.id}@${e.version}`).join(", ") || "(none — zero linked modules)"}`,
     );
     lines.push(`inventory sha256: ${declared}`);
+  }
+
+  // M27-003-C: missing-API diagnostics for context reductions.
+  if (input.intrinsicRequirement) {
+    lines.push(`context requirement: ${input.intrinsicRequirement.requirement}`);
+  }
+  if (input.reductionImpact?.length) {
+    for (const impact of input.reductionImpact) {
+      const label =
+        impact.missing.length === 0
+          ? "nothing the bundle uses would be lost"
+          : `bundle uses dropped builtin(s): ${impact.missing.join(", ")}`;
+      lines.push(`reduction to '${impact.profile}': ${label}`);
+    }
   }
   return lines;
 }
