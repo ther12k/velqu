@@ -77,4 +77,27 @@ describe("WPT / WinterTC URL and URLSearchParams test suite (M27-005-B)", () => 
       expect([...sp.values()]).toEqual(["1", "2"]);
     });
   });
+
+  describe("Host and path encoding behavior (M27-005-C)", () => {
+    test("path percent encoding normalizes spaces and special characters", () => {
+      const u = new URL("https://example.com/hello world/path#frag");
+      expect(u.pathname).toBe("/hello%20world/path");
+      expect(u.href).toBe("https://example.com/hello%20world/path#frag");
+    });
+
+    test("IDNA host normalization", () => {
+      const u = new URL("https://bücher.example/test");
+      expect(u.hostname).toBe("xn--bcher-kva.example");
+      expect(u.origin).toBe("https://xn--bcher-kva.example");
+    });
+
+    test("IPv4 and IPv6 host normalizations", () => {
+      const u1 = new URL("http://127.0.0.1:3000/api");
+      expect(u1.hostname).toBe("127.0.0.1");
+
+      const u2 = new URL("http://[::1]:8080/api");
+      expect(u2.hostname).toBe("[::1]");
+      expect(u2.host).toBe("[::1]:8080");
+    });
+  });
 });

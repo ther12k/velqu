@@ -32,7 +32,10 @@ pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
 };
-pub use url_model::{ParsedSearchParams, ParsedUrl, UrlError, MAX_URL_LEN};
+pub use url_model::{
+    decode_path_segment, encode_path_segment, normalize_host, ParsedSearchParams, ParsedUrl,
+    UrlError, MAX_URL_LEN,
+};
 
 use std::fmt;
 
