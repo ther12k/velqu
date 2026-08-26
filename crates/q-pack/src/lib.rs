@@ -3954,6 +3954,15 @@ pub struct Integrity {
     pub bytecode_sha256: Option<String>,
 }
 
+/// M27-002-C: one entry of the capability inventory section
+/// (id + exact version). Order on the wire must be sorted ascending
+/// by id with no duplicates; verify() enforces it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CapabilityInventoryEntryWire {
+    pub id: String,
+    pub version: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QPack {
@@ -4009,6 +4018,18 @@ pub struct QPack {
     /// with the dimension named.
     #[serde(default)]
     pub capability_hash: String,
+    /// M27-002-C: the resolved capability inventory (linked modules,
+    /// id + exact version). Distinct from `capabilities` (route-level
+    /// grants, names only). Must appear together with
+    /// `capability_inventory_sha256`; verify() proves order, hygiene,
+    /// id validity, and the hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capability_inventory: Option<Vec<CapabilityInventoryEntryWire>>,
+    /// sha256 hex over the canonical inventory encoding
+    /// (q-capabilities::inventory). Absent inventory = unchecked
+    /// (pre-M27 packs).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capability_inventory_sha256: Option<String>,
     #[serde(default)]
     pub functions: Vec<FunctionDecl>,
     #[serde(default)]
@@ -4938,6 +4959,54 @@ impl QPack {
                 capability_hash(&self.capabilities)
             ));
         }
+        // M27-002-C: the capability inventory section is hash-bound and
+        // canonical. Both fields must appear together; entries must be
+        // sorted ascending, unique, carry valid ids, and hash to the
+        // declared value (canonical encoding lives in q-capabilities).
+        match (
+            &self.capability_inventory,
+            &self.capability_inventory_sha256,
+        ) {
+            (None, None) => {} // pre-M27 pack: no inventory declared
+            (Some(_), None) => {
+                return reject(
+                    "capability inventory present without capabilityInventorySha256".to_string(),
+                )
+            }
+            (None, Some(_)) => {
+                return reject(
+                    "capabilityInventorySha256 present without capability inventory".to_string(),
+                )
+            }
+            (Some(entries), Some(declared)) => {
+                for w in entries.windows(2) {
+                    if w[0].id == w[1].id {
+                        return reject(format!(
+                            "capability inventory lists {} more than once",
+                            w[0].id
+                        ));
+                    }
+                    if w[0].id > w[1].id {
+                        return reject(format!(
+                            "capability inventory is not sorted ascending by id: {} before {}",
+                            w[0].id, w[1].id
+                        ));
+                    }
+                }
+                let pairs: Vec<(String, u32)> =
+                    entries.iter().map(|e| (e.id.clone(), e.version)).collect();
+                let inv = match q_capabilities::CapabilityInventory::from_pairs(&pairs) {
+                    Ok(inv) => inv,
+                    Err(e) => return reject(format!("capability inventory invalid: {e}")),
+                };
+                let computed = inv.sha256_hex();
+                if *declared != computed {
+                    return reject(format!(
+                        "capability inventory hash mismatch: pack declares {declared}, computed {computed}"
+                    ));
+                }
+            }
+        }
         for route in &self.routes {
             // M25-007-B: a raw-response route's handler bypasses response
             // validation by design — a declared response schema would be a
@@ -5285,6 +5354,8 @@ pub fn minimal_pack_public() -> QPack {
         policies: BTreeMap::new(),
         capabilities: vec![],
         capability_hash: String::new(),
+        capability_inventory: None,
+        capability_inventory_sha256: None,
         functions: vec![],
         schema_manifest: vec![],
         policy_manifest: vec![],
@@ -5384,6 +5455,8 @@ mod tests {
             policies: BTreeMap::new(),
             capabilities: vec![],
             capability_hash: String::new(),
+        capability_inventory: None,
+        capability_inventory_sha256: None,
             functions: vec![],
             schema_manifest: vec![],
             policy_manifest: vec![],
@@ -5679,6 +5752,129 @@ mod tests {
         assert!(err
             .to_string()
             .contains("incompatible dimension: capabilities"));
+    }
+
+    #[test]
+    fn capability_inventory_section_is_hash_bound_and_canonical() {
+        // absent inventory (pre-M27 pack): loads unchecked
+        let p = minimal_pack();
+        assert!(p.capability_inventory.is_none() && p.capability_inventory_sha256.is_none());
+        p.verify()
+            .expect("absent inventory keeps pre-M27 packs loading");
+
+        // valid inventory (sorted, unique, valid ids, correct hash) verifies
+        let mut p = minimal_pack();
+        let inv = q_capabilities::CapabilityInventory::from_pairs(&[
+            ("runtime:text".to_string(), 2),
+            ("runtime:abort".to_string(), 1),
+        ])
+        .unwrap();
+        p.capability_inventory = Some(
+            inv.entries()
+                .iter()
+                .map(|e| CapabilityInventoryEntryWire {
+                    id: e.id.to_string(),
+                    version: e.version.0,
+                })
+                .collect(),
+        );
+        p.capability_inventory_sha256 = Some(inv.sha256_hex());
+        p.verify().expect("correct inventory verifies");
+
+        // wrong hash: rejects naming both values
+        let mut p2 = p.clone();
+        p2.capability_inventory_sha256 = Some("ab".repeat(32));
+        let err = p2.verify().unwrap_err().to_string();
+        assert!(err.contains("capability inventory hash mismatch"), "{err}");
+        assert!(err.contains("declares abababab"), "{err}");
+
+        // duplicate ids: reject with the id named
+        let mut p3 = p.clone();
+        p3.capability_inventory = Some(vec![
+            CapabilityInventoryEntryWire {
+                id: "runtime:text".into(),
+                version: 1,
+            },
+            CapabilityInventoryEntryWire {
+                id: "runtime:text".into(),
+                version: 2,
+            },
+        ]);
+        let err = p3.verify().unwrap_err().to_string();
+        assert!(err.contains("runtime:text more than once"), "{err}");
+
+        // unsorted: reject naming the inversion
+        let mut p4 = p.clone();
+        p4.capability_inventory = Some(vec![
+            CapabilityInventoryEntryWire {
+                id: "runtime:text".into(),
+                version: 2,
+            },
+            CapabilityInventoryEntryWire {
+                id: "runtime:abort".into(),
+                version: 1,
+            },
+        ]);
+        let err = p4.verify().unwrap_err().to_string();
+        assert!(err.contains("not sorted ascending"), "{err}");
+
+        // invalid id: reject through the ADR-0029 parser
+        let mut p5 = p.clone();
+        let bad_inv =
+            q_capabilities::CapabilityInventory::from_pairs(&[("node:fs".to_string(), 1)])
+                .unwrap_err();
+        assert!(bad_inv.to_string().contains("node"));
+        p5.capability_inventory = Some(vec![CapabilityInventoryEntryWire {
+            id: "node:fs".into(),
+            version: 1,
+        }]);
+        p5.capability_inventory_sha256 = Some("00".repeat(32));
+        let err = p5.verify().unwrap_err().to_string();
+        assert!(err.contains("capability inventory invalid"), "{err}");
+        assert!(err.contains("node"), "{err}");
+
+        // inventory without hash rejects; hash without inventory rejects
+        let mut p6 = p.clone();
+        p6.capability_inventory_sha256 = None;
+        assert!(p6
+            .verify()
+            .unwrap_err()
+            .to_string()
+            .contains("without capabilityInventorySha256"));
+        let mut p7 = minimal_pack();
+        p7.capability_inventory_sha256 = Some("00".repeat(32));
+        assert!(p7
+            .verify()
+            .unwrap_err()
+            .to_string()
+            .contains("without capability inventory"));
+    }
+
+    #[test]
+    fn capability_inventory_round_trips_through_json() {
+        let mut p = minimal_pack();
+        p.capability_inventory = Some(vec![
+            CapabilityInventoryEntryWire {
+                id: "runtime:abort".into(),
+                version: 1,
+            },
+            CapabilityInventoryEntryWire {
+                id: "runtime:text".into(),
+                version: 2,
+            },
+        ]);
+        let inv = q_capabilities::CapabilityInventory::from_pairs(&[
+            ("runtime:abort".to_string(), 1),
+            ("runtime:text".to_string(), 2),
+        ])
+        .unwrap();
+        p.capability_inventory_sha256 = Some(inv.sha256_hex());
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("\"capabilityInventory\""));
+        let back: QPack = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.capability_inventory, p.capability_inventory);
+        back.verify()
+            .expect("round-tripped inventory still verifies");
     }
 
     #[test]

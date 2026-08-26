@@ -11,6 +11,7 @@
 //! M27-001-B).
 
 pub mod identity;
+pub mod inventory;
 pub mod operations;
 pub mod resolver;
 pub mod shutdown;
@@ -19,6 +20,7 @@ pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
 };
+pub use inventory::{CapabilityInventory, InventoryEntry, InventoryError};
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
 pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{

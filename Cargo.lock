@@ -983,6 +983,9 @@ dependencies = [
 [[package]]
 name = "q-capabilities"
 version = "0.1.0"
+dependencies = [
+ "sha2",
+]
 
 [[package]]
 name = "q-engine"
@@ -1026,6 +1029,7 @@ version = "0.1.0"
 dependencies = [
  "ed25519-dalek",
  "memmap2",
+ "q-capabilities",
  "q-engine",
  "q-schema-runtime",
  "serde",

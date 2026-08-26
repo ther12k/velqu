@@ -662,6 +662,8 @@ fn fixture_pack() -> q_pack::QPack {
         )]),
         capabilities: vec!["timer".into()],
         capability_hash: q_pack::capability_hash(&["timer".to_string()]),
+        capability_inventory: None,
+        capability_inventory_sha256: None,
         functions,
         schema_manifest: vec![],
         policy_manifest: vec![],
