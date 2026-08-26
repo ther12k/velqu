@@ -4,7 +4,7 @@ parent_task: M27-002
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -114,3 +114,68 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-002-A (PASS)
+
+Deliverable: the capability dependency DAG builder.
+
+### Changed files
+
+- `crates/q-capabilities/src/resolver.rs` — new module:
+  `resolve_closure(roots, universe) -> DependencyDag`. Transitive
+  closure over descriptors; every edge resolved with ADR-0029
+  semantics (exact version, typed `Missing`/`VersionConflict`
+  naming id + both versions); output sorted by capability id so
+  root order and universe order cannot change it; visited-once
+  walk guarantees termination on any graph shape (cycle *rejection*
+  is M27-002-B — the termination test is B's flip anchor);
+  first-descriptor-wins duplicate rule pinned per ADR-0029 §4.
+- `crates/q-capabilities/src/lib.rs` — `pub mod resolver` +
+  re-exports (`resolve_closure`, `DependencyDag`).
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests (resolver evidence)
+
+`cargo test -p q-capabilities` — 40 passed (30 prior + 10
+resolver): `transitive_closure_includes_all_levels` (unreachable
+capabilities excluded), `closure_is_deterministic_regardless_of_input_order`
+(shuffled roots + reversed universe → byte-identical result),
+`diamond_dependency_resolves_to_one_entry`, `duplicate_roots_dedupe`,
+`empty_roots_resolve_to_empty_closure` (guardrail: unrelated app
+links nothing), `missing_root_capability_fails_typed`,
+`missing_transitive_dependency_fails_typed`,
+`version_conflict_on_any_edge_fails_typed_with_versions` (root and
+transitive edges), `walk_terminates_on_cycles`,
+`deterministic_first_descriptor_wins_on_duplicate_ids`.
+
+### Size / cold-start delta reports
+
+None produced in A, by construction: `q-capabilities` is not yet a
+dependency of any production binary (verified: no crate in the
+workspace depends on it), so the release artifacts are
+byte-identical and startup behavior is unchanged. Measured delta
+reports belong to the packets that change real artifacts — C
+(inventory hash into the pack) and D (unused-module removal). No
+zero-filled report files are fabricated for A.
+
+### Commands (fresh worktree on M27-001-Z HEAD ed268f2)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 40 — pass.
+- `bun test` 125 pass / 0 fail (after worktree setup: release
+  velqu-runtime, velqu-bytecode, proof pack, baseline installs);
+  `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy -p q-capabilities --all-targets
+  -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: deterministic graph →
+  `closure_is_deterministic_regardless_of_input_order` +
+  id-sorted output; missing capability fails at build →
+  `missing_root_capability_fails_typed` /
+  `missing_transitive_dependency_fails_typed`; zero-cost for
+  unrelated apps → `empty_roots_resolve_to_empty_closure`. The
+  `velqu inspect --capabilities` guardrail is delivered with the
+  inventory emission (C).

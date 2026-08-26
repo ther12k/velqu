@@ -12,6 +12,7 @@
 
 pub mod identity;
 pub mod operations;
+pub mod resolver;
 pub mod shutdown;
 
 pub use identity::{
@@ -19,6 +20,7 @@ pub use identity::{
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
 };
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
+pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
 };
