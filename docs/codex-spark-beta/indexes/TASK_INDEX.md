@@ -291,7 +291,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-003-V](../tasks/04_m27_capability_linker/M27-003-V-verify-introduce-custom-quickjs-context-profiles.md) | P1 | verify | PASS | M27-003-A, M27-003-B, M27-003-C, M27-003-D | Verify Introduce custom QuickJS context profiles |
 | [M27-003-Z](../tasks/04_m27_capability_linker/M27-003-Z-package-evidence-for-introduce-custom-quickjs-context-profiles.md) | P1 | evidence | PASS | M27-003-V | Package evidence for Introduce custom QuickJS context profiles |
 | [M27-004-A](../tasks/04_m27_capability_linker/M27-004-A-port-timer-cancellation-accounting.md) | P0 | implement | PASS | M27-001-Z, M27-002-Z | Port timer cancellation/accounting |
-| [M27-004-B](../tasks/04_m27_capability_linker/M27-004-B-define-console-levels-and-redaction.md) | P0 | implement | TODO | M27-004-A | Define console levels and redaction |
+| [M27-004-B](../tasks/04_m27_capability_linker/M27-004-B-define-console-levels-and-redaction.md) | P0 | implement | PASS | M27-004-A | Define console levels and redaction |
 | [M27-004-C](../tasks/04_m27_capability_linker/M27-004-C-keep-logs-asynchronous-bounded.md) | P0 | implement | TODO | M27-004-B | Keep logs asynchronous/bounded |
 | [M27-004-D](../tasks/04_m27_capability_linker/M27-004-D-support-shutdown-and-quarantine.md) | P0 | implement | TODO | M27-004-C | Support shutdown and quarantine |
 | [M27-004-V](../tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md) | P0 | verify | TODO | M27-004-A, M27-004-B, M27-004-C, M27-004-D | Verify Implement console and timer core capabilities |

@@ -10,12 +10,16 @@
 //! versioning, and requirements live in [`identity`] (ADR-0029,
 //! M27-001-B).
 
+pub mod console;
 pub mod identity;
 pub mod inventory;
 pub mod operations;
 pub mod resolver;
 pub mod shutdown;
 
+pub use console::{
+    redact_sensitive_text, ConsoleLevel, ConsoleRecord, MAX_CONSOLE_ARGS, MAX_CONSOLE_MSG_LEN,
+};
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
