@@ -4,7 +4,7 @@ parent_task: M27-002
 milestone: M27
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -129,3 +129,78 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-002-V (PASS)
+
+Parent: M27-002 "Implement compile-time capability dependency
+resolver". All four implementation packets merged before this
+branch: M27-002-A (PR #848, #246), M27-002-B (PR #849, #247),
+M27-002-C (PR #850, #248), M27-002-D (PR #851, #249).
+
+### Acceptance criterion mapping (parent guardrails)
+
+1. **Unrelated app pays zero linked capability cost.**
+   `resolveLinkedModules([])` → `[]` and `empty_roots_resolve_to_
+   empty_closure`; an app with no capability-granting routes emits a
+   count-prefix-only canonical inventory (`00000000`, hash-pinned)
+   whose section presence is structurally identical to pre-M27
+   packs; measured before/after (m27-002-d-prune-deltas.md): the
+   zero-link side's bytes unchanged, +56 B only when a module is
+   actually linked.
+
+2. **Dependency graph is deterministic.** Rust:
+   `closure_is_deterministic_regardless_of_input_order`,
+   `diamond_dependency_resolves_to_one_entry`, id-sorted output;
+   TS: resolver-mirroring prune is Map+sort based with pinned
+   vectors; cross-language hash equality pinned on both sides
+   (`canonical_hash_matches_cross_language_vectors` /
+   capability-inventory.test.ts) — which caught and fixed a real
+   encoding-order bug in C.
+
+3. **Missing capability fails at build or startup.** Build time:
+   typed `Missing`/`VersionConflict` on root and transitive edges,
+   cycles rejected with full path (B), unknown grants fail the
+   build naming the grant (D). Runtime side stays fail-closed via
+   q-pack verify() rejecting hash-bound inventory mismatches
+   (`capability_inventory_section_is_hash_bound_and_canonical`).
+
+4. **`velqu inspect --capabilities` is accurate.** Reads the pack's
+   actual inventory, recomputes the canonical hash, fails loud on
+   mismatch/unsorted, reports pre-inventory packs honestly
+   (`unknown`); 5 dedicated tests in
+   capability-inventory.test.ts.
+
+### Required evidence
+
+- Resolver tests: 51 in q-capabilities (lifecycle 7 + identity 9 +
+  operations 7 + shutdown 7 + resolver 13 + inventory 8), plus 16
+  TS-side (prune 3, inspect accuracy 5, vectors 2, detection 4, C
+  suite 2 existing).
+- Binary-size delta report:
+  `docs/reports/m27-002-d-prune-deltas.md`.
+- Cold-start delta report: same document, raw samples retained.
+
+### Manifest refresh (matched evidence)
+
+First verify run failed validate-benchmark-evidence exactly as it
+should: C/D changed the compiled proof pack (timers inventory now
+present — compare-builds confirms byte-identical independent
+rebuilds at 5329b73…) so the recorded proofPack/qRuntimeRelease
+hashes were stale. Refreshed per the established procedure under
+verify's exact remap environment; diff is two artifact hashes +
+generatedAt/commit metadata, zero raw-data changes.
+
+### Changed files
+
+- This task record; `benchmarks/manifest.json` (matched refresh
+  above). No defects found in A–D beyond those fixed within them.
+
+### Commands and results (fresh worktree on parent HEAD 17d4491)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 51 · `-p velqu-runtime` 30 — pass.
+- `bun test` 139 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0) after the matched manifest
+  refresh.
