@@ -277,7 +277,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-001-C](../tasks/04_m27_capability_linker/M27-001-C-define-native-operation-owner-deadline-state.md) | P0 | implement | PASS | M27-001-B | Define native operation owner/deadline state |
 | [M27-001-D](../tasks/04_m27_capability_linker/M27-001-D-define-lifecycle-phases-and-bounded-shutdown.md) | P0 | implement | PASS | M27-001-C | Define lifecycle phases and bounded shutdown |
 | [M27-001-V](../tasks/04_m27_capability_linker/M27-001-V-verify-define-capability-abi-and-lifecycle-state-machine.md) | P0 | verify | PASS | M27-001-A, M27-001-B, M27-001-C, M27-001-D | Verify Define capability ABI and lifecycle state machine |
-| [M27-001-Z](../tasks/04_m27_capability_linker/M27-001-Z-package-evidence-for-define-capability-abi-and-lifecycle-state-machine.md) | P0 | evidence | TODO | M27-001-V | Package evidence for Define capability ABI and lifecycle state machine |
+| [M27-001-Z](../tasks/04_m27_capability_linker/M27-001-Z-package-evidence-for-define-capability-abi-and-lifecycle-state-machine.md) | P0 | evidence | PASS | M27-001-V | Package evidence for Define capability ABI and lifecycle state machine |
 | [M27-002-A](../tasks/04_m27_capability_linker/M27-002-A-build-dependency-dag.md) | P0 | implement | TODO | M27-001-Z | Build dependency DAG |
 | [M27-002-B](../tasks/04_m27_capability_linker/M27-002-B-reject-cycles-missing-conflicting-versions.md) | P0 | implement | TODO | M27-002-A | Reject cycles/missing/conflicting versions |
 | [M27-002-C](../tasks/04_m27_capability_linker/M27-002-C-emit-capability-inventory-hash-into-qpack.md) | P0 | implement | TODO | M27-002-B | Emit capability inventory/hash into QPack |

@@ -58,7 +58,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M26-009 | P1 | PASS | M26-004, M26-005 | M26 | Build shared-runtime and standalone deployment artifacts |
 | M26-010 | P1 | PASS | M26-004, M26-005, M26-009 | M26 | Close route-count cold-start evidence |
 | M26-GATE | P0 | PASS | M26-001, M26-002, M26-003, M26-004, M26-005, M26-006, M26-007, M26-008, M26-009, M26-010 | M26 | M2.6 — Binary QPack v2 and Reproducible Artifact ABI exit gate |
-| M27-001 | P0 | TODO | M26-GATE | M27 | Define capability ABI and lifecycle state machine |
+| M27-001 | P0 | PASS | M26-GATE | M27 | Define capability ABI and lifecycle state machine |
 | M27-002 | P0 | TODO | M27-001 | M27 | Implement compile-time capability dependency resolver |
 | M27-003 | P1 | TODO | M27-002 | M27 | Introduce custom QuickJS context profiles |
 | M27-004 | P0 | TODO | M27-001, M27-002 | M27 | Implement console and timer core capabilities |
