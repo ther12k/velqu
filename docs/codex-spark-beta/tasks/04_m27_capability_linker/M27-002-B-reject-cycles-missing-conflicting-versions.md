@@ -4,7 +4,7 @@ parent_task: M27-002
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -117,3 +117,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-002-B (PASS)
+
+Deliverable: cycle rejection in the capability dependency resolver,
+alongside the already-typed missing/conflicting-version failures
+(M27-002-A).
+
+### Changed files
+
+- `crates/q-capabilities/src/resolver.rs` — `resolve_closure` now
+  runs an iterative DFS with an explicit path stack
+  (`in_path`/`path_ids`): O(1) back-edge detection and a
+  human-readable cycle path in the error. Nodes commit to the
+  resolved set only after all children commit, preserving the
+  deterministic id-sorted output. The A-era termination-only test
+  was flipped to rejection as planned (it was B's designated
+  anchor).
+- `crates/q-capabilities/src/identity.rs` — `ResolveError::Cycle {
+  path }` variant: typed, carries the full id path in traversal
+  order, Display renders `a -> b -> a`.
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests
+
+`cargo test -p q-capabilities` — 43 passed (40 prior + 4 new; one
+flipped):
+`cycle_is_rejected_with_typed_error_naming_path` (flipped from
+`walk_terminates_on_cycles`),
+`self_cycle_is_rejected`,
+`longer_cycle_path_names_all_members` (a→b→c→a),
+`cycle_error_message_contains_arrow_path`.
+Missing/conflicting-version rejection was already pinned in A
+(`missing_root_capability_fails_typed`,
+`missing_transitive_dependency_fails_typed`,
+`version_conflict_on_any_edge_fails_typed_with_versions`) and still
+passes unchanged against the new DFS.
+
+### Commands (fresh worktree on M27-002-A HEAD 0ea56de)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 43 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: dependency graph deterministic → A's
+  order-shuffle determinism tests still pass against the DFS;
+  missing capability fails at build → typed Missing on root and
+  transitive edges (unchanged); cycles now fail at build the same
+  way. Zero-cost/inspect guardrails land with C/D.

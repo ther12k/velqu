@@ -279,7 +279,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-001-V](../tasks/04_m27_capability_linker/M27-001-V-verify-define-capability-abi-and-lifecycle-state-machine.md) | P0 | verify | PASS | M27-001-A, M27-001-B, M27-001-C, M27-001-D | Verify Define capability ABI and lifecycle state machine |
 | [M27-001-Z](../tasks/04_m27_capability_linker/M27-001-Z-package-evidence-for-define-capability-abi-and-lifecycle-state-machine.md) | P0 | evidence | PASS | M27-001-V | Package evidence for Define capability ABI and lifecycle state machine |
 | [M27-002-A](../tasks/04_m27_capability_linker/M27-002-A-build-dependency-dag.md) | P0 | implement | PASS | M27-001-Z | Build dependency DAG |
-| [M27-002-B](../tasks/04_m27_capability_linker/M27-002-B-reject-cycles-missing-conflicting-versions.md) | P0 | implement | TODO | M27-002-A | Reject cycles/missing/conflicting versions |
+| [M27-002-B](../tasks/04_m27_capability_linker/M27-002-B-reject-cycles-missing-conflicting-versions.md) | P0 | implement | PASS | M27-002-A | Reject cycles/missing/conflicting versions |
 | [M27-002-C](../tasks/04_m27_capability_linker/M27-002-C-emit-capability-inventory-hash-into-qpack.md) | P0 | implement | TODO | M27-002-B | Emit capability inventory/hash into QPack |
 | [M27-002-D](../tasks/04_m27_capability_linker/M27-002-D-remove-unused-modules.md) | P0 | implement | TODO | M27-002-C | Remove unused modules |
 | [M27-002-V](../tasks/04_m27_capability_linker/M27-002-V-verify-implement-compile-time-capability-dependency-resolver.md) | P0 | verify | TODO | M27-002-A, M27-002-B, M27-002-C, M27-002-D | Verify Implement compile-time capability dependency resolver |
