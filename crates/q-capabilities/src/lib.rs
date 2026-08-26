@@ -34,7 +34,7 @@ pub use shutdown::{
 };
 pub use url_model::{
     decode_path_segment, encode_path_segment, normalize_host, ParsedSearchParams, ParsedUrl,
-    UrlError, MAX_URL_LEN,
+    UrlError, MAX_SEARCH_PARAMS_COUNT, MAX_SEARCH_PARAMS_LEN, MAX_URL_LEN, MAX_URL_PATH_SEGMENTS,
 };
 
 use std::fmt;

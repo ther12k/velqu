@@ -4,7 +4,7 @@ parent_task: M27-005
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-005-D (PASS)
+
+Deliverable: keep parser limits explicit and bounded for URL and URLSearchParams parsing.
+
+### Changed files
+
+- `crates/q-capabilities/src/url_model.rs`:
+  - Defined explicit constants: `MAX_URL_LEN` (8,192 B), `MAX_SEARCH_PARAMS_LEN` (16,384 B), `MAX_SEARCH_PARAMS_COUNT` (1,024 pairs), `MAX_URL_PATH_SEGMENTS` (256 segments).
+  - Added fail-closed `UrlError` variants (`ParamsTooLong`, `TooManyParams`, `TooManyPathSegments`).
+  - `ParsedUrl::from_url` validates path segment count against `MAX_URL_PATH_SEGMENTS`.
+  - `ParsedSearchParams::try_parse` enforces query string length and parameter count limits.
+  - Added unit test `url_and_search_params_parser_limits_enforced`.
+- `crates/q-capabilities/src/lib.rs`: re-exported limit constants.
+- `crates/q-engine-quickjs/src/prelude.rs`: `URLSearchParams` constructor enforces maximum input string length (16,384 B) and maximum entry count (1,024) fail-closed with `RangeError`.
+- `crates/q-engine-quickjs/src/worker.rs`: tested QuickJS-level URL / URLSearchParams limit enforcement.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 70 passed (+1 parser limits test).
+- `cargo test -p q-engine-quickjs` — 107 passed (including QuickJS limit tests).
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-http` — 11 passed.
+- `bun test` — 165 passed, 0 failed.
+
+### Commands (fresh worktree on parent HEAD f91fad3)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 107 · `-p q-http` 11 · `-p q-capabilities` 70 · `-p velqu-runtime` 31 — pass.
+- `bun test` 165 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - No unbounded input behavior: explicit byte length, entry count, and segment limits prevent HashDoS / parser DoS.
+

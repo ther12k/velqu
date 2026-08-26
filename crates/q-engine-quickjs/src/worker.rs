@@ -3052,6 +3052,10 @@ mod tests {
             // Test native.url
             let code3 = "globalThis.__velquNativeCapabilities.url.URL === globalThis.URL && globalThis.__velquNativeCapabilities.url.URLSearchParams === globalThis.URLSearchParams";
             assert!(ctx.eval::<bool, _>(code3).unwrap());
+
+            // Test limits in QuickJS (M27-005-D)
+            assert!(ctx.eval::<(), _>("new URL('https://example.com/' + 'a'.repeat(9000))").is_err());
+            assert!(ctx.eval::<(), _>("new URLSearchParams('k=' + 'v'.repeat(17000))").is_err());
         });
     }
 }

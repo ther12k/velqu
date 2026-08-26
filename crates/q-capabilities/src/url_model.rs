@@ -45,14 +45,23 @@ pub fn normalize_host(host_input: &str) -> Result<String, UrlError> {
     Ok(parsed.host_str().unwrap_or("").to_string())
 }
 
-/// Maximum length in bytes for a URL string input to prevent unbounded parser CPU/memory.
+/// Maximum length in bytes for a URL string input to prevent unbounded parser CPU/memory (M27-005-D).
 pub const MAX_URL_LEN: usize = 8_192;
+/// Maximum length in bytes for a URLSearchParams query string input (M27-005-D).
+pub const MAX_SEARCH_PARAMS_LEN: usize = 16_384;
+/// Maximum number of search parameter key-value pairs (M27-005-D).
+pub const MAX_SEARCH_PARAMS_COUNT: usize = 1_024;
+/// Maximum number of path segments in a URL path (M27-005-D).
+pub const MAX_URL_PATH_SEGMENTS: usize = 256;
 
-/// Typed URL parse errors.
+/// Typed URL parse errors (M27-005-D).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UrlError {
     EmptyInput,
     InputTooLong { len: usize, max: usize },
+    ParamsTooLong { len: usize, max: usize },
+    TooManyParams { count: usize, max: usize },
+    TooManyPathSegments { count: usize, max: usize },
     InvalidUrl(String),
     InvalidBase(String),
 }
@@ -63,6 +72,24 @@ impl fmt::Display for UrlError {
             UrlError::EmptyInput => f.write_str("URL input is empty"),
             UrlError::InputTooLong { len, max } => {
                 write!(f, "URL length {len} exceeds maximum allowed limit {max}")
+            }
+            UrlError::ParamsTooLong { len, max } => {
+                write!(
+                    f,
+                    "URLSearchParams input length {len} exceeds maximum limit {max}"
+                )
+            }
+            UrlError::TooManyParams { count, max } => {
+                write!(
+                    f,
+                    "URLSearchParams entry count {count} exceeds maximum limit {max}"
+                )
+            }
+            UrlError::TooManyPathSegments { count, max } => {
+                write!(
+                    f,
+                    "URL path segments count {count} exceeds maximum limit {max}"
+                )
             }
             UrlError::InvalidUrl(err) => write!(f, "invalid URL: {err}"),
             UrlError::InvalidBase(err) => write!(f, "invalid base URL: {err}"),
@@ -130,6 +157,15 @@ impl ParsedUrl {
     }
 
     fn from_url(url: Url) -> Result<Self, UrlError> {
+        if let Some(segments) = url.path_segments() {
+            let count = segments.count();
+            if count > MAX_URL_PATH_SEGMENTS {
+                return Err(UrlError::TooManyPathSegments {
+                    count,
+                    max: MAX_URL_PATH_SEGMENTS,
+                });
+            }
+        }
         let href = url.to_string();
         let origin = url.origin().unicode_serialization();
         let protocol = format!("{}:", url.scheme());
@@ -174,16 +210,34 @@ pub struct ParsedSearchParams {
 }
 
 impl ParsedSearchParams {
-    /// Parse from query string (with or without leading '?').
-    pub fn parse(query: &str) -> Self {
+    /// Parse from query string with fail-closed limit enforcement (M27-005-D).
+    pub fn try_parse(query: &str) -> Result<Self, UrlError> {
         let clean = query.strip_prefix('?').unwrap_or(query);
         if clean.is_empty() {
-            return ParsedSearchParams { params: Vec::new() };
+            return Ok(ParsedSearchParams { params: Vec::new() });
         }
-        let pairs = url::form_urlencoded::parse(clean.as_bytes())
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
-            .collect();
-        ParsedSearchParams { params: pairs }
+        if clean.len() > MAX_SEARCH_PARAMS_LEN {
+            return Err(UrlError::ParamsTooLong {
+                len: clean.len(),
+                max: MAX_SEARCH_PARAMS_LEN,
+            });
+        }
+        let mut pairs = Vec::new();
+        for (k, v) in url::form_urlencoded::parse(clean.as_bytes()) {
+            if pairs.len() >= MAX_SEARCH_PARAMS_COUNT {
+                return Err(UrlError::TooManyParams {
+                    count: pairs.len() + 1,
+                    max: MAX_SEARCH_PARAMS_COUNT,
+                });
+            }
+            pairs.push((k.into_owned(), v.into_owned()));
+        }
+        Ok(ParsedSearchParams { params: pairs })
+    }
+
+    /// Parse from query string (with or without leading '?').
+    pub fn parse(query: &str) -> Self {
+        Self::try_parse(query).unwrap_or_default()
     }
 
     pub fn from_pairs(pairs: Vec<(String, String)>) -> Self {
@@ -453,5 +507,42 @@ mod tests {
         let u = ParsedUrl::parse("http://example.com/foo bar/baz#frag", None).unwrap();
         assert_eq!(u.pathname, "/foo%20bar/baz");
         assert_eq!(u.href, "http://example.com/foo%20bar/baz#frag");
+    }
+
+    /// M27-005-D: explicit parser limits enforcement.
+    #[test]
+    fn url_and_search_params_parser_limits_enforced() {
+        // Query string length limit
+        let huge_query = format!("key={}", "v".repeat(MAX_SEARCH_PARAMS_LEN + 10));
+        assert_eq!(
+            ParsedSearchParams::try_parse(&huge_query),
+            Err(UrlError::ParamsTooLong {
+                len: huge_query.len(),
+                max: MAX_SEARCH_PARAMS_LEN,
+            })
+        );
+
+        // Query param entry count limit
+        let mut pairs_query = String::new();
+        for i in 0..=MAX_SEARCH_PARAMS_COUNT {
+            if i > 0 {
+                pairs_query.push('&');
+            }
+            pairs_query.push_str(&format!("k{i}=v"));
+        }
+        assert!(matches!(
+            ParsedSearchParams::try_parse(&pairs_query),
+            Err(UrlError::TooManyParams { .. })
+        ));
+
+        // URL path segments count limit
+        let mut deep_path = String::from("http://example.com");
+        for _ in 0..=MAX_URL_PATH_SEGMENTS {
+            deep_path.push_str("/seg");
+        }
+        assert!(matches!(
+            ParsedUrl::parse(&deep_path, None),
+            Err(UrlError::TooManyPathSegments { .. })
+        ));
     }
 }

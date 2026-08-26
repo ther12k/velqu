@@ -56,13 +56,17 @@ globalThis.console = {
   error: function () { if (typeof globalThis.__velquConsoleLog === "function") globalThis.__velquConsoleLog("error", __velquFormatArgs(arguments)); }
 };
 
-// URLSearchParams implementation (M27-005-A)
+// URLSearchParams implementation (M27-005-A/D)
 function URLSearchParams(init) {
   this._entries = [];
+  var MAX_SEARCH_PARAMS_LEN = 16384;
+  var MAX_SEARCH_PARAMS_COUNT = 1024;
   if (typeof init === "string") {
     var str = init.charAt(0) === "?" ? init.slice(1) : init;
+    if (str.length > MAX_SEARCH_PARAMS_LEN) throw new RangeError("URLSearchParams input exceeds maximum length limit");
     if (str.length > 0) {
       var pairs = str.split("&");
+      if (pairs.length > MAX_SEARCH_PARAMS_COUNT) throw new RangeError("URLSearchParams entry count exceeds maximum limit");
       for (var i = 0; i < pairs.length; i++) {
         var eq = pairs[i].indexOf("=");
         if (eq === -1) {
@@ -76,11 +80,13 @@ function URLSearchParams(init) {
       }
     }
   } else if (Array.isArray(init)) {
+    if (init.length > MAX_SEARCH_PARAMS_COUNT) throw new RangeError("URLSearchParams entry count exceeds maximum limit");
     for (var i = 0; i < init.length; i++) {
       this._entries.push([String(init[i][0]), String(init[i][1])]);
     }
   } else if (init && typeof init === "object") {
     var keys = Object.keys(init);
+    if (keys.length > MAX_SEARCH_PARAMS_COUNT) throw new RangeError("URLSearchParams entry count exceeds maximum limit");
     for (var i = 0; i < keys.length; i++) {
       this._entries.push([keys[i], String(init[keys[i]])]);
     }
