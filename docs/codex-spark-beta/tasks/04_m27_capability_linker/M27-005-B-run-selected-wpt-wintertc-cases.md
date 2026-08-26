@@ -4,7 +4,7 @@ parent_task: M27-005
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-005-B (PASS)
+
+Deliverable: run selected Web Platform Tests (WPT) and WinterTC URL / URLSearchParams test cases.
+
+### Changed files
+
+- `crates/q-capabilities/src/url_model.rs`:
+  - Added WPT relative URL resolution test vectors (`wpt_relative_url_resolution_vectors`).
+  - Added WPT default port and special scheme normalizations test vectors (`wpt_special_schemes_and_default_ports`).
+  - Added WPT IPv6 and host serialization test vectors (`wpt_ipv6_host_parsing`).
+  - Added WinterTC URLSearchParams compliance test cases (`wintertc_urlsearchparams_vectors`).
+- `packages/cli/src/url-wpt.test.ts` (new):
+  - 10 WPT and WinterTC test cases covering relative paths, dot-segments, port normalizations, canParse, URLSearchParams mutations, encoding, and iterators.
+- `docs/reports/m27-005-wpt-url-report.md` (new):
+  - Conformance report documenting WPT/WinterTC test vectors, pass rates, and module costs.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 68 passed (+4 WPT/WinterTC vector tests).
+- `cargo test -p q-engine-quickjs` — 107 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-http` — 11 passed.
+- `bun test` — 162 passed (+10 new WPT/WinterTC tests in `url-wpt.test.ts`), 0 failed.
+
+### Commands (fresh worktree on parent HEAD f5494a4)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 107 · `-p q-http` 11 · `-p q-capabilities` 68 · `-p velqu-runtime` 31 — pass.
+- `bun test` 162 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Selected conformance threshold passes: all WPT / WinterTC vector tests pass.
+  - URL behavior matches fetch usage: standard WHATWG URL resolution and search param encoding.
+  - Binary/startup cost recorded: detailed in `docs/reports/m27-005-wpt-url-report.md`.
+
