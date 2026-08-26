@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -126,3 +126,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-004-V merged in PR #864
+  at commit `f0cd4bfe7d224ee9b44842cf3276892b25888607`; issue #262
+  is closed. Based on clean parent HEAD `2fda05d` (queue-regen).
+- Parent acceptance matrix: `M27-004-V` maps all four guardrails
+  (scheduler invariants preserved; bounded log sink preventing unbounded
+  memory inflation; physical timer task cancellation + `NativeOp` state
+  tracking; capability resolver & pruning verified).
+- Source-backed implementation records:
+  - `M27-004-A` (PR #860, #258 closed): timer cancellation & accounting
+    ported under `q-capabilities` ABI (`NativeOp`, `CapabilityLifecycle`).
+  - `M27-004-B` (PR #861, #259 closed): `ConsoleLevel` closed vocabulary,
+    message bounds `MAX_CONSOLE_MSG_LEN`, token redaction
+    (`Bearer`, `Basic`, `sk-live-...`, API keys, passwords).
+  - `M27-004-C` (PR #862, #260 closed): `BoundedLogSink` asynchronous
+    non-blocking buffering with atomic `LogSinkStats`.
+  - `M27-004-D` (PR #863, #261 closed): shutdown & quarantine lifecycle
+    transitions and log flushing.
+  - `M27-004-V` (PR #864, #262 closed): verification closure + matched
+    manifest refresh.
+- Canonical evidence artifacts:
+  - Tests: `q-engine-quickjs` 106 passed (+4 new timer/console/sink/shutdown tests),
+    `q-capabilities` 58 passed, `velqu-runtime` 31 passed, `bun test` 152 passed.
+  - Manifest: `benchmarks/manifest.json` matched refresh under verify remap environment.
+- Exact verification (fresh on this branch): `cargo test` across all crates passes;
+  `bun test` 152/0; typecheck, fmt --check, clippy `-D warnings` clean;
+  `./scripts/verify` — ALL PASS (exit 0).
+- Status bookkeeping: ledger marks M27-004 PASS; TASK_INDEX marks M27-004-Z PASS.
+  Queues expose M27-005-A next.
+- Remaining scope: M27-005+ (URL & URLSearchParams), M27-GATE.

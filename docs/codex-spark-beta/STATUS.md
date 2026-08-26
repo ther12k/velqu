@@ -287,7 +287,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M27-004-C — Keep logs asynchronous/bounded](tasks/04_m27_capability_linker/M27-004-C-keep-logs-asynchronous-bounded.md)
 - [x] [M27-004-D — Support shutdown and quarantine](tasks/04_m27_capability_linker/M27-004-D-support-shutdown-and-quarantine.md)
 - [x] [M27-004-V — Verify Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md)
-- [ ] [M27-004-Z — Package evidence for Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md)
+- [x] [M27-004-Z — Package evidence for Implement console and timer core capabilities](tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md)
 - [ ] [M27-005-A — Adopt or adapt a proven implementation](tasks/04_m27_capability_linker/M27-005-A-adopt-or-adapt-a-proven-implementation.md)
 - [ ] [M27-005-B — Run selected WPT/WinterTC cases](tasks/04_m27_capability_linker/M27-005-B-run-selected-wpt-wintertc-cases.md)
 - [ ] [M27-005-C — Define host/path encoding behavior](tasks/04_m27_capability_linker/M27-005-C-define-host-path-encoding-behavior.md)
