@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -132,3 +132,77 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-001-V (PASS)
+
+Parent: M27-001 "Define capability ABI and lifecycle state
+machine". All four define packets merged before this branch:
+M27-001-A (PR #842, #240), M27-001-B (PR #843, #241), M27-001-C
+(PR #844, #242), M27-001-D (PR #845, #243).
+
+### Acceptance criterion mapping (parent guardrails)
+
+1. **No capability can start work outside allowed phase.**
+   Lifecycle: `start_op()` guard + `ops_start_only_in_ready` (all
+   six phases). Operations: `NativeOp::start` refuses with typed
+   `NotReady` in every non-Ready phase
+   (`start_requires_ready_phase`) and again while Draining
+   (`draining_refuses_new_operations`). Identity: `resolve_and_install`
+   only reaches `Installed` after resolution — nothing links, let
+   alone serves, before that.
+
+2. **Every op is physically cancellable or explicitly
+   non-cancellable.** `CancellationClass` is chosen at start with no
+   default (ADR-0030 §4); `cancel()` on a non-cancellable op is a
+   typed `NotCancellable` rejection leaving state unchanged
+   (`cancel_only_cancellable_only_pending`); drain applies the class
+   structurally (`drain_step` cancels only cancellable; the await
+   set is counted).
+
+3. **Version conflicts fail before ready.**
+   `resolve_and_install` routes `Missing`/`VersionConflict` to
+   `Failed` before `Ready` — pinned by
+   `resolve_and_install_conflict_fails_before_ready` and
+   `resolve_and_install_missing_fails_lifecycle_before_ready`
+   (activate terminally refused). Exact version matching only
+   (ADR-0029 §2).
+
+4. **Shutdown reaches quiescence or fails closed.**
+   `finish_shutdown` has exactly two success/failure outcomes:
+   accounted `Quiesced` when nothing is pending;
+   `DeadlineExceeded` on a missed budget — stragglers visibly
+   `Expired`, lifecycle `Failed`, late settlements drop, quiesce
+   terminally refused
+   (`missed_budget_expires_stragglers_and_fails_closed`,
+   `all_cancellable_operations_drain_to_quiesced`,
+   `non_cancellable_operations_settle_within_budget`). The
+   pending-without-deadline state has no invented outcome
+   (`finish_with_pending_and_no_deadline_has_no_honest_outcome`).
+
+### Required evidence
+
+- Lifecycle state tests: 30 in `q-capabilities` (7 lifecycle + 9
+  identity + 7 operations + 7 shutdown), including the exhaustive
+  6×6 transition matrix and 3×3 terminal matrix.
+- Capability author guide draft: `docs/beta/CAPABILITY_AUTHORS.md`
+  (lifecycle, identity/versions, operations/deadlines/cancellation,
+  shutdown/drain, errors, review checklist).
+- Threat reviews: ADR-0028, ADR-0029, ADR-0030, ADR-0031 each carry
+  one; closed namespaces, exact versions, owner checks, bounded
+  deadlines, visible abandonment.
+
+### Changed files
+
+- This task record only. No defects found; no follow-up tasks
+  needed. The existing timer capability stays worker-owned until
+  the M27-004 port (documented in ADR-0028 Consequences).
+
+### Commands and results (fresh worktree on parent HEAD 7c690fd)
+
+- `cargo test -p q-pack` 96 · `-p q-router` 15 ·
+  `-p q-engine-quickjs` 98 · `-p q-capabilities` 30 ·
+  `-p velqu-runtime` 30 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck`,
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
