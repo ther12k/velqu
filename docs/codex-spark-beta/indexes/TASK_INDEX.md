@@ -264,7 +264,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M26-010-B](../tasks/03_m26_qpack_v2/M26-010-B-at-least-100-fresh-processes-for-release-evidence.md) | P1 | implement | PASS | M26-010-A | At least 100 fresh processes for release evidence |
 | [M26-010-C](../tasks/03_m26_qpack_v2/M26-010-C-randomize-source-bytecode-competitor-order.md) | P1 | implement | PASS | M26-010-B | Randomize source/bytecode/competitor order |
 | [M26-010-D](../tasks/03_m26_qpack_v2/M26-010-D-record-p50-p95-p99-rss-stage-timings-and-hashes.md) | P1 | implement | PASS | M26-010-C | Record p50/p95/p99, RSS, stage timings, and hashes |
-| [M26-010-V](../tasks/03_m26_qpack_v2/M26-010-V-verify-close-route-count-cold-start-evidence.md) | P1 | verify | TODO | M26-010-A, M26-010-B, M26-010-C, M26-010-D | Verify Close route-count cold-start evidence |
+| [M26-010-V](../tasks/03_m26_qpack_v2/M26-010-V-verify-close-route-count-cold-start-evidence.md) | P1 | verify | PASS | M26-010-A, M26-010-B, M26-010-C, M26-010-D | Verify Close route-count cold-start evidence |
 | [M26-010-Z](../tasks/03_m26_qpack_v2/M26-010-Z-package-evidence-for-close-route-count-cold-start-evidence.md) | P1 | evidence | TODO | M26-010-V | Package evidence for Close route-count cold-start evidence |
 | [M26-GATE](../gates/M26-GATE.md) | P0 | gate | TODO | M26-001-Z, M26-002-Z, M26-003-Z, M26-004-Z, M26-005-Z, M26-006-Z, M26-007-Z, M26-008-Z, M26-009-Z, M26-010-Z | M2.6 — Binary QPack v2 and Reproducible Artifact ABI exit gate |
 
