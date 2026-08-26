@@ -149,8 +149,9 @@ Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMP
 
 Parent: M26-010 "Close route-count cold-start evidence". All four
 implementation dependencies merged before this branch: M26-010-A
-(PR #835, #233), M26-010-B (PR #836, #234), M26-010-C (PR #837,
-#236), M26-010-D (PR #838, #237).
+(PR #835, #234), M26-010-B (PR #836, #235), M26-010-C (PR #837,
+#236), M26-010-D (PR #838, #237). (Issue refs corrected in
+M26-010-Z; the original record cited #233/#234 for A/B.)
 
 ### Acceptance criterion mapping
 
