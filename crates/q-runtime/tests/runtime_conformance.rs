@@ -3350,8 +3350,16 @@ fn full_profile_retained_for_compatibility_testing() {
     wait_tcp(port1, Duration::from_secs(10));
     let r = http(port1, "GET /health/live HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 200, "forced full profile must serve");
+    // M27-003-V: profile identity enters the runtime startup identity
+    // block — the ready line names the serving profile. Drain the
+    // piped stdout only after kill (a serving process never EOFs).
     child.kill().unwrap();
-    let _ = child.wait();
+    let out1 = child.wait_with_output().unwrap();
+    let stdout1 = String::from_utf8_lossy(&out1.stdout);
+    assert!(
+        stdout1.contains("\"contextProfile\":\"full\""),
+        "ready line must carry the serving profile: {stdout1}"
+    );
 
     // 2. unknown profile name fails closed before ready, naming the set.
     let out = Command::new(bin)

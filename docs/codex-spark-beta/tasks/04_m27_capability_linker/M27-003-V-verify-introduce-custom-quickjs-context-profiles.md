@@ -4,7 +4,7 @@ parent_task: M27-003
 milestone: M27
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -129,3 +129,60 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-003-V (PASS)
+
+Parent: M27-003 "Introduce custom QuickJS context profiles".
+Implementation packets merged prior: A (PR #854, #252), B
+(PR #855, #253), C (PR #856, #254), D (PR #857, #255).
+
+### Guardrail map
+
+1. **Chosen profile has measurable startup/RSS benefit or feature
+   is deferred.** Measured (5 fresh-process samples/profile, same
+   binary+pack): full p50 3.929 ms / 7,144 kB; web 3.879 ms /
+   7,012 kB — inside noise; minimal rejects the proof app outright
+   (top-level RegExp → fail-closed at load). No demonstrated
+   benefit ⇒ **selection DEFERRED to M27-011**; production serving
+   stays Full. Report: docs/reports/m27-003-context-profiles-compat.md.
+
+2. **No silent missing intrinsic.** Positive/negative probes pin
+   every profile's kept/dropped sets (`web_profile_keeps…`,
+   `minimal_profile_is_host_bridge_only`, regex-eval failure probe);
+   unknown `--context-profile` names exit 2 pre-ready; degraded
+   routes under lazy references return redacted internal problems,
+   never silent wrong answers
+   (`full_profile_retained_for_compatibility_testing`).
+
+3. **Conformance passes for selected profile.** The only profile
+   selected for production is the default Full: full gates pass —
+   q-pack 98, q-engine-quickjs 102, q-capabilities 51, conformance
+   31, bun 152/0, typecheck/fmt/clippy clean,
+   `./scripts/verify` ALL PASS (exit 0) after the matched manifest
+   refresh below.
+
+4. **Profile identity enters runtime fingerprint/identity block.**
+   Found missing during this verification and fixed here as a parent-
+   necessary defect fix: the ready line now carries
+   `"contextProfile":"<name>"` in its startup identity block (pinned
+   by an assertion in the compat test). RuntimeFingerprint (the pack
+   compatibility tuple) intentionally unchanged — profile is a run-
+   time selection, not a pack-compatibility dimension; documented in
+   the report.
+
+### Changed files (defect fix)
+
+- `crates/q-runtime/src/lib.rs` — ready-line contextProfile.
+- `crates/q-runtime/tests/runtime_conformance.rs` — assertion.
+- `docs/reports/m27-003-context-profiles-compat.md` (new) —
+  context benchmark + compatibility report (required evidence).
+- `benchmarks/manifest.json` — matched refresh (qRuntimeRelease
+  hash changed because the binary now self-describes its profile;
+  zero raw-data changes).
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Commands and results (fresh worktree on parent HEAD 33b391b)
+
+All targeted commands pass; first verify failed benchmark validation
+exactly as it should (binary changed), matched refresh applied, then
+ALL PASS exit 0.
