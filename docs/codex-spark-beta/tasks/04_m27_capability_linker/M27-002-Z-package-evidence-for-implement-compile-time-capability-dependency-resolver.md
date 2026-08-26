@@ -4,7 +4,7 @@ parent_task: M27-002
 milestone: M27
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -117,3 +117,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-002-V merged in PR #852
+  at commit `511e813dbf88d0beba9b66b2e480da2454ea9e85`; issue #250
+  is closed. Based on clean parent HEAD `17d4491` (queue-regen)
+  plus this packet's bookkeeping.
+- Parent acceptance matrix: `M27-002-V` maps all four guardrails to
+  source and named tests (zero-cost empty-link structural parity +
+  measured +56 B when linking; deterministic id-sorted closure with
+  cross-language pinned vectors; typed Missing/VersionConflict/Cycle
+  and unknown-grant failures at build time with runtime-side
+  hash-bound verification; hash-recomputing accurate inspect).
+- Source-backed implementation records:
+  - `M27-002-A` (PR #848, #246 closed): dependency DAG builder —
+    transitive closure, id-sorted deterministic output,
+    visited-once termination anchor for B.
+  - `M27-002-B` (PR #849, #247 closed): cycle rejection — DFS path
+    stack, `ResolveError::Cycle` naming the full traversal path;
+    A's termination test flipped as designed.
+  - `M27-002-C` (PR #850, #248 closed): inventory section in qpack —
+    canonical encoding hash-bound across Rust/TS/Python
+    implementations; cross-language vectors caught a real TS
+    encoding-order bug pre-merge.
+  - `M27-002-D` (PR #851, #249 closed): pruning + two real defect
+    fixes (destructured-native grant detection silently losing
+    timer grants; unknown grants silently dropped). Measured size/
+    cold-start deltas with retained raw samples.
+  - `M27-002-V` (PR #852, #250 closed): verification closure;
+    matched manifest refresh after C/D legitimately changed the
+    compiled proof pack.
+- Canonical evidence artifacts:
+  - Tests: q-capabilities 51 (resolver 13 + inventory 8 + M27-001's
+    30); TS capability suites 21+2 vectors inside bun's 139/0.
+  - Reports: `docs/reports/m27-002-d-prune-deltas.md`.
+  - Benchmarks: `benchmarks/manifest.json` refreshed under verify's
+    remap environment at V (proofPack 5329b73…, byte-identical
+    independent rebuilds via compare-builds).
+- Exact verification (fresh on this branch): q-pack 98,
+  q-engine-quickjs 98, q-capabilities 51, velqu-runtime 30 passed;
+  `bun test` 139 pass / 0 fail; typecheck, fmt --check, clippy
+  `-D warnings` clean. `./scripts/verify`: first attempt FAILED
+  validate-benchmark-evidence (documented environmental race: the
+  prior plain `-p velqu-runtime` debug-env build landed a
+  non-remapped binary before verify's remapped rebuild); two
+  consecutive clean reruns from identical state — ALL PASS exit 0.
+  No test weakened, no evidence altered.
+- Status bookkeeping: ledger marks M27-002 PASS; TASK_INDEX marks
+  M27-002-Z PASS. Queues expose M27-003-A next.
+- Remaining scope: M27-003+ (QuickJS context profiles), M27-GATE.
