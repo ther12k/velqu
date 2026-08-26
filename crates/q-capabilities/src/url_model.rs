@@ -314,4 +314,80 @@ mod tests {
         assert_eq!(sp.get("key"), Some("hello world&more=yes"));
         assert_eq!(sp.to_query_string(), "key=hello+world%26more%3Dyes");
     }
+
+    /// WPT URL resolution test vectors (Web Platform Tests suite subset).
+    #[test]
+    fn wpt_relative_url_resolution_vectors() {
+        let base = "http://example.org/a/b/c?orig=1#hash";
+
+        // Relative path
+        let u1 = ParsedUrl::parse("../d", Some(base)).unwrap();
+        assert_eq!(u1.href, "http://example.org/a/d");
+        assert_eq!(u1.pathname, "/a/d");
+
+        // Root-relative path
+        let u2 = ParsedUrl::parse("/root", Some(base)).unwrap();
+        assert_eq!(u2.href, "http://example.org/root");
+
+        // Query only
+        let u3 = ParsedUrl::parse("?new=2", Some(base)).unwrap();
+        assert_eq!(u3.href, "http://example.org/a/b/c?new=2");
+
+        // Hash only
+        let u4 = ParsedUrl::parse("#newhash", Some(base)).unwrap();
+        assert_eq!(u4.href, "http://example.org/a/b/c?orig=1#newhash");
+
+        // Protocol-relative
+        let u5 = ParsedUrl::parse("//other.com/path", Some(base)).unwrap();
+        assert_eq!(u5.href, "http://other.com/path");
+    }
+
+    /// WPT default port and special scheme normalizations.
+    #[test]
+    fn wpt_special_schemes_and_default_ports() {
+        let u1 = ParsedUrl::parse("http://example.com:80/path", None).unwrap();
+        assert_eq!(u1.port, "");
+        assert_eq!(u1.host, "example.com");
+        assert_eq!(u1.href, "http://example.com/path");
+
+        let u2 = ParsedUrl::parse("https://example.com:443/path", None).unwrap();
+        assert_eq!(u2.port, "");
+        assert_eq!(u2.host, "example.com");
+
+        let u3 = ParsedUrl::parse("http://example.com:8080/path", None).unwrap();
+        assert_eq!(u3.port, "8080");
+        assert_eq!(u3.host, "example.com:8080");
+    }
+
+    /// WPT IPv6 and host serialization.
+    #[test]
+    fn wpt_ipv6_host_parsing() {
+        let u = ParsedUrl::parse("http://[2001:db8::1]:8080/test", None).unwrap();
+        assert_eq!(u.hostname, "[2001:db8::1]");
+        assert_eq!(u.host, "[2001:db8::1]:8080");
+        assert_eq!(u.origin, "http://[2001:db8::1]:8080");
+
+        let u_local = ParsedUrl::parse("http://[::1]/", None).unwrap();
+        assert_eq!(u_local.hostname, "[::1]");
+        assert_eq!(u_local.origin, "http://[::1]");
+    }
+
+    /// WinterTC URLSearchParams compliance test cases.
+    #[test]
+    fn wintertc_urlsearchparams_vectors() {
+        // Empty values vs absent values
+        let sp = ParsedSearchParams::parse("a=&b");
+        assert_eq!(sp.get("a"), Some(""));
+        assert_eq!(sp.get("b"), Some(""));
+
+        // Special characters in keys and values
+        let sp2 = ParsedSearchParams::parse("a+b=c%26d&email=user%2Btag%40example.com");
+        assert_eq!(sp2.get("a b"), Some("c&d"));
+        assert_eq!(sp2.get("email"), Some("user+tag@example.com"));
+
+        // Delete with specific value
+        let mut sp3 = ParsedSearchParams::parse("tag=rust&tag=js&tag=rust");
+        sp3.delete("tag", Some("rust"));
+        assert_eq!(sp3.get_all("tag"), vec!["js"]);
+    }
 }
