@@ -16,6 +16,7 @@ pub mod inventory;
 pub mod operations;
 pub mod resolver;
 pub mod shutdown;
+pub mod url_model;
 
 pub use console::{
     redact_sensitive_text, BoundedLogSink, ConsoleLevel, ConsoleRecord, LogSinkStats,
@@ -31,6 +32,7 @@ pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
 };
+pub use url_model::{ParsedSearchParams, ParsedUrl, UrlError, MAX_URL_LEN};
 
 use std::fmt;
 
