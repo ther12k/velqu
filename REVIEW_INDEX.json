@@ -1,63 +1,71 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-08-23T05:20:00Z",
+  "generatedAt": "2026-08-26T09:20:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M25-SCHEMA-SPECIALIZED-CODECS",
+  "milestone": "M26-BINARY-QPACK-V2-REPRODUCIBLE-ARTIFACT-ABI",
   "status": "PASS",
-  "reviewedImplementationCommit": "d61096c660189bf0b5899251ee34730f7e2271fc",
-  "evidenceCheckpoint": "d61096c660189bf0b5899251ee34730f7e2271fc",
+  "reviewedImplementationCommit": "9aa16be40a3cb42d0901bd44b6ea22e6a48dfb8c",
+  "evidenceCheckpoint": "9aa16be40a3cb42d0901bd44b6ea22e6a48dfb8c",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "M25 package dependency closure",
+      "gate": "M26 package dependency closure",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/02_m25_schema_codecs/*-Z-*.md"
+        "docs/codex-spark-beta/tasks/03_m26_qpack_v2/*-Z-*.md"
       ],
       "tests": [
         "scripts/spark-queue"
       ],
-      "evidence": "M25-001-Z through M25-010-Z status PASS"
+      "evidence": "M26-001-Z a61e6c4, M26-002-Z 70ada0d, M26-003-Z 6d3860c, M26-004-Z 742c5d1, M26-005-Z 5f55113, M26-006-Z 36419e4, M26-007-Z a548568, M26-008-Z 3f7fd2c, M26-009-Z bcae745, M26-010-Z 0f2eb01 \u2014 all status PASS"
     },
     {
-      "gate": "Canonical Schema IR, generated codecs, explicit fallbacks, Treaty/OpenAPI/lock unification, fuzz conformance, performance evidence",
+      "gate": "Binary QPack v2 format + ADR, fingerprint, section encoding, raw bytecode, bounded reader, integrity/authenticity, reproducible packs, v1 migration, deployment modes, cold-start evidence",
       "status": "PASS",
       "source": [
-        "crates/q-schema-runtime/src/lib.rs",
-        "crates/q-engine-quickjs/src/convert.rs",
-        "packages/schema/src/index.ts",
-        "packages/compiler/src/emit.ts",
         "crates/q-pack/src/lib.rs",
-        "conformance/schema/schema.conformance.test.ts"
+        "crates/q-bytecode-tool/src/main.rs",
+        "crates/q-runtime/src/main.rs",
+        "crates/q-runtime/src/bin/velqu-standalone.rs",
+        "crates/q-runtime/src/lib.rs",
+        "packages/compiler/src/emit.ts",
+        "crates/q-pack/tests/fuzz_pack.rs",
+        "docs/specs/pack-format-v1.md",
+        "docs/okf/decisions/0024-qpack-v2-numeric-mode-and-legacy-v1-adapter.md",
+        "docs/okf/decisions/0025-qpack-v2-section-directory-and-bounds.md",
+        "docs/okf/decisions/0026-integrity-is-not-authenticity.md",
+        "docs/okf/decisions/0027-debug-source-sidecar-policy.md"
       ],
       "tests": [
-        "cargo test -p q-schema-runtime",
         "cargo test -p q-pack",
+        "cargo test -p velqu-runtime",
         "cargo test -p q-engine-quickjs",
         "bun test"
       ],
-      "evidence": "Packet-local acceptance matrices plus docs/reports/m25-010-a-codec-workloads.md, m25-010-b-size.md, m25-010-c-cold-start-delta.md, m25-010-d-cpu-rss.md"
+      "evidence": "Packet-local acceptance matrices; docs/reports/m26-010-a-route-count-ladder.md (canonical m26-010-d run: 4x5x100 fresh processes, zero failures); docs/reports/m26-009-a-shared-mode-artifacts.md and m26-009-b-standalone-mode.md (cross-mode n=10 each)"
     },
     {
-      "gate": "Clean full verification, reproducible artifact parity, and owner-dispositioned cold-start limitation",
+      "gate": "Clean full verification, raw-to-report parity, artifact parity, and disclosed carried-forward limitation",
       "status": "PASS",
       "source": [
         "scripts/verify",
         "benchmarks/manifest.json",
-        "docs/reports/m25-gate-review.md"
+        "docs/reports/m26-gate-review.md"
       ],
       "tests": [
         "./scripts/verify",
         "python3 scripts/validate-benchmark-evidence.py"
       ],
-      "evidence": "ALL PASS at candidate d61096c; raw-to-report parity recomputed fresh; 1,000-route cold-start regression owner-approved as documented limitation mitigated by M2.6 QPack v2"
+      "evidence": "ALL PASS at candidate 9aa16be; 20/20 route-count cells x 5 metrics recomputed exactly from raw JSONL (nearest-rank); 12/12 manifest artifact hashes match files; 10/10 summary pack hashes match. Open item (owner-visible, not waived): PACK_FORMAT_CURRENT remains pinned to v1 (test-enforced), so the production default load path still parses JSON packs and the M25-escalated route-count cold-start limitation is not yet mitigated in the default path; the v2 native reader/encoder exist and are test-pinned (ADR-0024 rule 2 anticipated the flip landing with M26-003; it did not). Requires an owner-authorized follow-up packet; not patchable inside the gate review."
     }
   ],
-  "openItems": [],
+  "openItems": [
+    "PACK_FORMAT_CURRENT pinned to v1: compiler emits formatVersion 1 and runtime loads JSON packs by default; v2 binary sections/reader/bytecode path exist behind tests but are not the default production path. The M25 cold-start limitation (super-linear route-count startup, ~90%+ pack.load JSON parsing) therefore remains in the default path; M26-010 ladder quantifies it honestly (25-route p50 6.143 ms preserved; 10,000-route p50 926.3 ms with pack.load 901.1 ms). Mitigation requires flipping the pinned constant + producer/runtime adapter per ADR-0024 rule 2 in an owner-authorized packet."
+  ],
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — exit 0 at candidate commit",
-    "typescriptTests": 81
+    "result": "PASS \u2014 exit 0 at candidate commit 9aa16be",
+    "typescriptTests": 125
   }
 }

@@ -1,53 +1,48 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-08-23T05:20:00Z",
+  "generatedAt": "2026-08-26T09:20:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M25-SCHEMA-SPECIALIZED-CODECS",
-  "reviewedImplementationCommit": "d61096c660189bf0b5899251ee34730f7e2271fc",
+  "milestone": "M26-BINARY-QPACK-V2-REPRODUCIBLE-ARTIFACT-ABI",
+  "reviewedImplementationCommit": "9aa16be40a3cb42d0901bd44b6ea22e6a48dfb8c",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — clean candidate-commit verification, artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
-    "rustTests": "workspace tests PASS (q-pack 43, q-engine-quickjs 97, q-http 11, q-bridge 11, q-schema-runtime 67, velqu-runtime 24)",
-    "typescriptTests": 81,
+    "result": "PASS \u2014 clean candidate-commit verification (9aa16be), artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
+    "rustTests": "workspace tests PASS (q-pack 96, q-engine-quickjs 98, q-schema-runtime 67, velqu-runtime 30, q-router 15)",
+    "typescriptTests": 125,
     "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS"
   },
   "benchmarks": {
-    "coldStart": "benchmarks/raw/cold-start/summary.json",
-    "coldStartRaw": "benchmarks/raw/cold-start/g0-cold-1787214119.jsonl",
     "routeCount": "benchmarks/raw/route-count/summary.json",
-    "routeCountRaw": "benchmarks/raw/route-count/route-count-1787452753541.jsonl",
-    "codecWorkloads": "benchmarks/raw/codec-m25-010-a/codec-summary.json",
-    "codecCpuRss": "benchmarks/raw/codec-m25-010-d/codec-summary.json",
-    "packSizes": "benchmarks/raw/sizes-m25-010-b/sizes.json",
+    "routeCountRaw": "benchmarks/raw/route-count/route-count-1787685374497.jsonl",
+    "routeCountPacks": "benchmarks/raw/packs/app-{25,100,1000,5000,10000}.qpack (+ -bc bytecode variants)",
+    "coldStart": "benchmarks/raw/cold-start/summary.json",
     "warm": "benchmarks/raw/warm/summary.json",
     "startupProfile": "benchmarks/raw/profiles/startup-10000.json",
     "allocationProfile": "benchmarks/raw/profiles/startup-10000.alloc.json",
     "manifest": "benchmarks/manifest.json",
     "environment": "benchmarks/manifest.json",
     "protocol": {
+      "routeCount": "4 candidates x 5 sizes (25/100/1000/5000/10000) x 100 fresh processes = 2000 spawns, per-sample global LCG shuffle of (candidate, size, sample), zero failures; every velqu row carries ready-line startup stages; p50/p95/p99 + rssP50/rssP95 nearest-rank per cell; summary embeds sha256 of the measured binary and all ten packs",
+      "coldStart": "5 fresh-process samples per Velqu route class, 7 classes, 35 rows, zero failures/timeouts",
       "warm": "5 independent randomized repetitions, concurrency 1/10/50, 240 raw cells, 1 second per cell, zero errors",
-      "cold": "5 fresh-process samples per Velqu route class, 7 classes, 35 rows, zero failures/timeouts",
-      "routeCount": "40 fresh processes per candidate/route-size cell, randomized candidate/size order (m25-010-c), zero failures",
-      "codec": "2000 iters x 3 candidates x 10 corpus cases after 200 warmup; allocator tracer captured in m25-010-d",
-      "startup": "ready-line-bounded wall-clock profile for the generated 10,001-route fixture; perf counters denied by perf_event_paranoid=4",
-      "allocation": "captured with scripts/alloc-tracer.c; counts are instrumentation deltas, not a general allocator benchmark"
+      "crossMode": "shared vs standalone: n=10 fresh processes per mode over the same pack (docs/reports/m26-009-b-standalone-mode.md), overlapping distributions",
+      "hashing": "summary binaryHashes self-identify the benchmark-run build; benchmarks/manifest.json remains the canonical release record (verify-rebuilt, remap-flag-reproducible) \u2014 the two intentionally differ and the division is documented in the M26-010-D record"
     }
   },
   "reports": [
-    "docs/reports/m25-gate-review.md",
-    "docs/reports/m25-010-c-cold-start-delta.md",
-    "docs/reports/m25-010-d-cpu-rss.md",
-    "docs/reports/m25-010-a-codec-workloads.md",
-    "docs/reports/m25-010-b-size.md"
+    "docs/reports/m26-gate-review.md",
+    "docs/reports/m26-010-a-route-count-ladder.md",
+    "docs/reports/m26-009-a-shared-mode-artifacts.md",
+    "docs/reports/m26-009-b-standalone-mode.md"
   ],
   "reportGenerator": "scripts/generate-benchmark-reports.py",
   "taskLedger": {
     "file": "TASKS.production.json",
     "synchronizedFile": "docs/production/TASKS.json",
     "validator": "scripts/validate-production-plan",
-    "result": "PASS — production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
+    "result": "PASS \u2014 production ledger and synchronized beta ledger validate; packet-local indexes bind the exact clean HEAD"
   },
   "release": {
     "script": "scripts/release-packet",
@@ -55,7 +50,7 @@
     "checksums": "sha256sum -c release/SHA256SUMS.txt"
   },
   "openItems": [
-    "Owner-approved documented limitation: 1,000-route cold-start regression (~3-4x vs G0 smoke, ~90% pack.load) accepted for the beta track; mitigation carried by M2.6 binary QPack v2 (M26-001). See docs/reports/m25-010-c-cold-start-delta.md and gates/M25-GATE.md."
+    "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path (producer emit + runtime default load through the native reader) is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. ADR-0024 rule 2 defines the atomic flip (constant + native adapter + tests) but it must land in an owner-authorized packet; the M26 gate does not waive or hide it. Canonical measurement: docs/reports/m26-010-a-route-count-ladder.md (25-route p50 6.143 ms; 10,000-route p50 926.3 ms, pack.load 97%)."
   ],
   "gates": []
 }
