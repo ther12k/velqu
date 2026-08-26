@@ -273,7 +273,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
 | [M27-001-A](../tasks/04_m27_capability_linker/M27-001-A-accept-adr.md) | P0 | implement | PASS | M26-GATE | Accept ADR |
-| [M27-001-B](../tasks/04_m27_capability_linker/M27-001-B-define-capabilityid-version-dependencies.md) | P0 | implement | TODO | M27-001-A | Define CapabilityId/version/dependencies |
+| [M27-001-B](../tasks/04_m27_capability_linker/M27-001-B-define-capabilityid-version-dependencies.md) | P0 | implement | PASS | M27-001-A | Define CapabilityId/version/dependencies |
 | [M27-001-C](../tasks/04_m27_capability_linker/M27-001-C-define-native-operation-owner-deadline-state.md) | P0 | implement | TODO | M27-001-B | Define native operation owner/deadline state |
 | [M27-001-D](../tasks/04_m27_capability_linker/M27-001-D-define-lifecycle-phases-and-bounded-shutdown.md) | P0 | implement | TODO | M27-001-C | Define lifecycle phases and bounded shutdown |
 | [M27-001-V](../tasks/04_m27_capability_linker/M27-001-V-verify-define-capability-abi-and-lifecycle-state-machine.md) | P0 | verify | TODO | M27-001-A, M27-001-B, M27-001-C, M27-001-D | Verify Define capability ABI and lifecycle state machine |

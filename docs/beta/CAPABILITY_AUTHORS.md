@@ -43,6 +43,24 @@ Rules that apply to every capability, enforced by typed errors in
    non-cancellable ones run to completion. Reaching `Quiesced` within
    the deadline is the only success path — missing it fails closed.
 
+## Identity and versions
+
+Your capability's id is a validated `namespace:name` string:
+
+- The namespace vocabulary is closed — `runtime` is the only member
+  today. `node:fs` is not a typo we repair; it is a typed rejection.
+- Names use `[a-z0-9-]`, are non-empty, ≤ 48 bytes; the whole id is
+  ≤ 64 bytes.
+- Versions are integers compared **exactly**. A requirement for
+  version 1 is not satisfied by version 2 — upgrades are explicit
+  requirement bumps, never silent compatibility.
+
+A pack states `CapabilityRequirement { id, version }`; the runtime
+resolves it against the linked descriptors at install. `Missing` and
+`VersionConflict` are typed failures that route the capability to
+`Failed` before it can serve — your module will never observe
+`Ready` with a wrong-version dependency (ADR-0029).
+
 ## Cancellation classes
 
 Every operation you expose declares one of exactly two classes:

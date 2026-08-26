@@ -30,3 +30,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 26. [ADR-0026 — Integrity Is Not Authenticity](0026-integrity-is-not-authenticity.md) (accepted; runtime enforces in-band integrity only — authenticity is out-of-band deployment policy; M26-001-C)
 27. [ADR-0027 — Debug Source Sidecar Policy](0027-debug-source-sidecar-policy.md) (accepted; production packs carry no sources/maps — debug material lives in an untrusted runtime-ignored sidecar; M26-001-D)
 28. [ADR-0028 — Capability ABI and Lifecycle State Machine](0028-capability-abi-and-lifecycle.md) (accepted; freezes the capability phase vocabulary, ready-only operation starts, cancellation classes, and fail-closed shutdown; M27-001-A)
+29. [ADR-0029 — Capability Identity, Versioning, and Requirements](0029-capability-identity-versioning-and-requirements.md) (accepted; closed namespace vocabulary, exact version matching, typed fail-before-ready resolution; M27-001-B)

@@ -6,7 +6,16 @@
 //! a typed error — never a panic, never a silent no-op. Detailed
 //! identity/version rules (M27-001-B), per-operation owner/deadline
 //! state (M27-001-C), and bounded-shutdown semantics (M27-001-D) build
-//! on this skeleton without changing its phase vocabulary.
+//! on this skeleton without changing its phase vocabulary. Identity,
+//! versioning, and requirements live in [`identity`] (ADR-0029,
+//! M27-001-B).
+
+pub mod identity;
+
+pub use identity::{
+    resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
+    CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
+};
 
 use std::fmt;
 
