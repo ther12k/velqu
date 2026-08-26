@@ -4,7 +4,7 @@ parent_task: M27-004
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -118,3 +118,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-004-C (PASS)
+
+Deliverable: keep logs asynchronous and bounded via `BoundedLogSink`.
+
+### Changed files
+
+- `crates/q-capabilities/src/console.rs`:
+  - Added `BoundedLogSink` with fixed capacity (`DEFAULT_LOG_SINK_CAP` = 1024), non-blocking `try_push`, `drain`, and atomic `LogSinkStats` tracking (`enqueued`, `dropped`, `drained`, `buffered`).
+  - Unit test `bounded_log_sink_drops_on_overflow_without_blocking`.
+- `crates/q-capabilities/src/lib.rs`: re-exported `BoundedLogSink`, `LogSinkStats`, `DEFAULT_LOG_SINK_CAP`.
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - `OpRegistry`: added `log_sink: Arc<BoundedLogSink>`.
+  - `__velquConsoleLog`: pushes records non-blockingly into `log_sink.try_push(record)` without synchronous I/O blocking JS execution.
+  - `check_message_boundary` & `WorkerMsg::Shutdown`: drain and emit records asynchronously.
+  - Unit test `bounded_log_sink_integration_in_worker`.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 58 passed (+1 bounded sink unit test).
+- `cargo test -p q-engine-quickjs` — 105 passed (+1 worker log sink integration test).
+- `cargo test -p velqu-runtime` — 31 passed.
+- `bun test` — 152 passed, 0 failed.
+
+### Commands (fresh worktree on parent HEAD a349aaf)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 105 · `-p q-capabilities` 58 · `-p velqu-runtime` 31 — pass.
+- `bun test` 152 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - No unbounded logging queue: queue size is bounded by `DEFAULT_LOG_SINK_CAP`; excess log entries increment the `dropped` counter non-blockingly.
+  - Existing scheduler invariants remain: message boundaries drain the sink cleanly without leaking across boundaries.
+
