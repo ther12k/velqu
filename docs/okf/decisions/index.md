@@ -29,3 +29,4 @@ These records convert the reviewed design into explicit proposed decisions. They
 25. [ADR-0025 — QPack v2 Section Directory, Alignment, Bounds, and Versioning](0025-qpack-v2-section-directory-and-bounds.md) (accepted; freezes the normative mode-2 layout in `docs/specs/pack-format-v2.md`; M26-001-B)
 26. [ADR-0026 — Integrity Is Not Authenticity](0026-integrity-is-not-authenticity.md) (accepted; runtime enforces in-band integrity only — authenticity is out-of-band deployment policy; M26-001-C)
 27. [ADR-0027 — Debug Source Sidecar Policy](0027-debug-source-sidecar-policy.md) (accepted; production packs carry no sources/maps — debug material lives in an untrusted runtime-ignored sidecar; M26-001-D)
+28. [ADR-0028 — Capability ABI and Lifecycle State Machine](0028-capability-abi-and-lifecycle.md) (accepted; freezes the capability phase vocabulary, ready-only operation starts, cancellation classes, and fail-closed shutdown; M27-001-A)

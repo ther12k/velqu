@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,66 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-001-A (PASS)
+
+Deliverable: ADR-0028 accepted — the capability ABI and lifecycle
+state machine decision.
+
+### Changed files
+
+- `docs/okf/decisions/0028-capability-abi-and-lifecycle.md` — new
+  ADR: closed phase vocabulary (`Declared → Installed → Ready →
+  Draining → Quiesced`, `Failed` from any non-terminal phase),
+  ready-only operation starts, version conflicts fail before ready,
+  lazy init (nothing at build/pack load, G-004), single-owner
+  operations with generation-checked settlement, exactly two
+  cancellation classes (cancellable / explicitly non-cancellable),
+  bounded drain reaching quiescence or failing closed, typed errors,
+  and a threat review section. Details deferred to the sibling
+  packets: identity/versioning (M27-001-B), op owner/deadline state
+  (M27-001-C), bounded-shutdown mechanics (M27-001-D).
+- `docs/okf/decisions/index.md` — ADR-0028 entry.
+- `crates/q-capabilities/src/lib.rs` — replaces the M1 placeholder
+  with the normative `CapabilityPhase` / `CapabilityLifecycle`
+  transition table + `LifecycleError` typed enum; transitions never
+  mutate on failure; `start_op()` guards the allowed phase.
+- `docs/beta/CAPABILITY_AUTHORS.md` — capability author guide draft
+  (lifecycle rules, cancellation classes, ownership, errors, review
+  checklist; SDK surface deferred to M27-009).
+- `docs/codex-spark-beta/STATUS.md`, `indexes/TASK_INDEX.md` — this
+  packet PASS.
+
+### Tests (lifecycle state evidence)
+
+`cargo test -p q-capabilities` — 7 passed, 0 failed:
+
+- `happy_path_declared_to_quiesced`
+- `ops_start_only_in_ready` (guardrail 1: every non-Ready phase
+  rejects operation starts)
+- `illegal_transitions_reject_without_mutation` (exhaustive 6×6
+  matrix; terminal sources yield typed `Terminal`, others
+  `IllegalTransition`; state unchanged on failure)
+- `terminal_phases_reject_everything`
+- `fail_is_reachable_from_every_non_terminal_phase`
+- `drain_requires_ready_no_shortcut_from_installed`
+- `version_conflict_fails_before_ready` (guardrail 3)
+
+### Commands (fresh worktree on M26-GATE HEAD 27de9ef)
+
+- `cargo test -p q-pack` 96 · `-p q-engine-quickjs` 98 ·
+  `-p q-capabilities` 7 · `-p velqu-runtime` 30 — pass.
+- `bun test` 125 pass / 0 fail; `bun run typecheck` clean.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --
+  -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping: no-work-outside-phase → `start_op` guard +
+  `ops_start_only_in_ready`; cancellable-or-declared → ADR-0028 §5 +
+  author-guide checklist (op-level enforcement lands with
+  M27-001-C/D); version conflicts fail before ready →
+  `version_conflict_fails_before_ready`; shutdown quiescence-or-
+  fail-closed → ADR-0028 §6 (mechanics in M27-001-D).
+- The existing timer capability stays worker-owned until M27-004
+  ports it onto this lifecycle (recorded in the ADR's Consequences).
