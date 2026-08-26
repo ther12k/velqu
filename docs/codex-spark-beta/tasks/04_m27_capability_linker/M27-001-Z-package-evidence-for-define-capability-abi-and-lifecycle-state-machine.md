@@ -4,7 +4,7 @@ parent_task: M27-001
 milestone: M27
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -126,3 +126,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-001-V merged in PR #846
+  at commit `998a995381a4bdf21086c44a81b4095a3df1133c`; issue #244
+  is closed. This package is based on clean parent HEAD (queue-regen
+  commit `069e1ad`) before this commit.
+- Parent acceptance matrix: `M27-001-V` maps all four guardrails to
+  source and named tests (ready-only operation starts at both the
+  lifecycle and operation layers; two enforced cancellation classes;
+  exact-version resolution failing before ready; two-outcome bounded
+  shutdown with accounted quiescence or visible fail-closure).
+- Source-backed implementation records:
+  - `M27-001-A` (PR #842, #240 closed): ADR-0028 — capability ABI
+    and lifecycle state machine; `q-capabilities` placeholder
+    replaced by the normative phase vocabulary and transition table;
+    author guide draft created.
+  - `M27-001-B` (PR #843, #241 closed): ADR-0029 — closed
+    `runtime:` namespace, exact version matching, requirement/
+    descriptor shapes, `resolve_and_install` fail-before-ready.
+  - `M27-001-C` (PR #844, #242 closed): ADR-0030 — `OpOwner`
+    (slot/generation), bounded fail-closed deadlines, closed
+    op-state vocabulary, cancellation classes in the data model.
+  - `M27-001-D` (PR #845, #243 closed): ADR-0031 — 5,000 ms
+    fail-closed drain budget, begin/drain/finish protocol, accounted
+    quiescence.
+  - `M27-001-V` (PR #846, #244 closed): verification closure; no
+    defects found.
+- Canonical evidence artifacts (committed):
+  - Tests: 30 in `crates/q-capabilities` (lifecycle 7, identity 9,
+    operations 7, shutdown 7) including the exhaustive 6×6
+    transition matrix and 3×3 terminal matrix.
+  - ADRs: `docs/okf/decisions/0028…0031` with threat reviews.
+  - Guide: `docs/beta/CAPABILITY_AUTHORS.md` (draft; SDK surface
+    deferred to M27-009).
+- Exact verification (fresh on this branch): q-pack 96,
+  q-engine-quickjs 98, q-capabilities 30, velqu-runtime 30 passed;
+  `bun test` 125 pass / 0 fail; typecheck, `cargo fmt --check`,
+  clippy `-D warnings` clean. `./scripts/verify` — ALL PASS
+  (exit 0).
+- Status bookkeeping: `docs/beta/04_TASK_LEDGER.md` marks M27-001
+  PASS; TASK_INDEX marks M27-001-Z PASS. The generated Spark queues
+  expose M27-002-A next.
+- Remaining scope: M27-002+ (compile-time capability dependency
+  resolver and the rest of M27) remain TODO.
