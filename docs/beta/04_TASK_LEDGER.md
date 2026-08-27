@@ -63,7 +63,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M27-003 | P1 | PASS | M27-002 | M27 | Introduce custom QuickJS context profiles |
 | M27-004 | P0 | PASS | M27-001, M27-002 | M27 | Implement console and timer core capabilities |
 | M27-005 | P1 | PASS | M27-001, M27-003 | M27 | Implement URL and URLSearchParams |
-| M27-006 | P1 | TODO | M27-001, M27-003 | M27 | Implement TextEncoder and TextDecoder |
+| M27-006 | P1 | PASS | M27-001, M27-003 | M27 | Implement TextEncoder and TextDecoder |
 | M27-007 | P0 | TODO | M27-001, M27-003 | M27 | Implement AbortController and AbortSignal |
 | M27-008 | P0 | TODO | M27-001, M27-003 | M27 | Implement crypto random subset |
 | M27-009 | P1 | TODO | M27-001, M27-002 | M27 | Publish capability SDK and inspection surface |
