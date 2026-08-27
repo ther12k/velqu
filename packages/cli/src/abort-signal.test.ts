@@ -119,4 +119,35 @@ describe("AbortController and AbortSignal conformance (M27-007-A)", () => {
       expect(anySignal.reason).toBe("first aborted");
     });
   });
+
+  describe("Idempotency and race resilience (M27-007-D)", () => {
+    test("rapid sequential abort calls are strictly idempotent", () => {
+      const ctrl = new AbortController();
+      let count = 0;
+      ctrl.signal.addEventListener("abort", () => {
+        count++;
+      });
+      for (let i = 0; i < 20; i++) {
+        ctrl.abort(`reason-${i}`);
+      }
+      expect(count).toBe(1);
+      expect(ctrl.signal.reason).toBe("reason-0");
+    });
+
+    test("concurrent Promise.all abort calls resolve idempotently", async () => {
+      const ctrl = new AbortController();
+      let callCount = 0;
+      ctrl.signal.addEventListener("abort", () => {
+        callCount++;
+      });
+      await Promise.all(
+        Array.from({ length: 50 }, (_, i) =>
+          Promise.resolve().then(() => ctrl.abort(`concurrent-${i}`)),
+        ),
+      );
+      expect(callCount).toBe(1);
+      expect(ctrl.signal.aborted).toBe(true);
+      expect(typeof ctrl.signal.reason).toBe("string");
+    });
+  });
 });

@@ -268,4 +268,38 @@ mod tests {
             Err("maximum abort listeners limit exceeded (1024)")
         );
     }
+
+    /// M27-007-D: concurrent race test proving abort idempotency and exactly-once execution.
+    #[test]
+    fn concurrent_abort_race_notifies_exactly_once() {
+        let controller = Arc::new(AbortControllerModel::new());
+        let fired_count = Arc::new(AtomicUsize::new(0));
+
+        let fc = Arc::clone(&fired_count);
+        controller.signal().add_listener(move |_| {
+            fc.fetch_add(1, Ordering::SeqCst);
+        });
+
+        let mut handles = Vec::new();
+        for i in 0..50 {
+            let ctrl = Arc::clone(&controller);
+            handles.push(std::thread::spawn(move || {
+                ctrl.abort(Some(&format!("thread-{i}")))
+            }));
+        }
+
+        let mut won = 0;
+        for h in handles {
+            if h.join().unwrap() {
+                won += 1;
+            }
+        }
+
+        // Exactly one thread won the race
+        assert_eq!(won, 1);
+        assert!(controller.signal().is_aborted());
+        // Listener executed exactly once
+        assert_eq!(fired_count.load(Ordering::SeqCst), 1);
+        assert!(controller.signal().reason().unwrap().starts_with("thread-"));
+    }
 }
