@@ -132,4 +132,13 @@ mod tests {
         let variant_char = uuid1.chars().nth(19).unwrap();
         assert!(matches!(variant_char, '8' | '9' | 'a' | 'b'));
     }
+
+    /// M27-008-C: fail-closed error formatting when entropy is unavailable.
+    #[test]
+    fn entropy_unavailable_error_formatting_and_fail_closed() {
+        let err = CryptoError::EntropyUnavailable("OS CSPRNG kernel syscall failed".into());
+        let err_str = err.to_string();
+        assert!(err_str.contains("entropy source unavailable"));
+        assert!(err_str.contains("OS CSPRNG kernel syscall failed"));
+    }
 }
