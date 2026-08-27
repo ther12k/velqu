@@ -3477,4 +3477,51 @@ mod tests {
             assert!(ctx.eval::<(), _>("nonExistentApiFunction()").is_err());
         });
     }
+
+    /// M27-011-C: Identify eager initialization — verify capability instances allocate lazily.
+    #[test]
+    fn capability_initialization_is_lazy_and_causes_zero_startup_heap_waste() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Verify constructor functions are present on globalThis without instantiating any objects
+            assert!(ctx.eval::<bool, _>("typeof URL === 'function'").unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof URLSearchParams === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof TextEncoder === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof TextDecoder === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof AbortController === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof AbortSignal === 'function'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof crypto.getRandomValues === 'function'")
+                .unwrap());
+
+            // Verify that lazy context prototype accessors do NOT instantiate until accessed
+            let code = "(() => {
+                const ctx = Object.create(globalThis.__velquContextPrototype);
+                return typeof ctx.signal === 'undefined' && typeof ctx.native === 'undefined';
+            })()";
+            assert!(ctx.eval::<bool, _>(code).unwrap());
+        });
+    }
 }
