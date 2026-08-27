@@ -4,7 +4,7 @@ parent_task: M27-007
 milestone: M27
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -131,3 +131,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-007-V (PASS)
+
+Parent: M27-007 "Implement AbortController and AbortSignal".
+Implementation packets merged prior: A (PR #878, #276), B
+(PR #879, #277), C (PR #880, #278), D (PR #881, #279).
+
+### Guardrail map
+
+1. **Abort propagates exactly once.** Atomic boolean CAS exchange (`swap(true)`) guarantees exactly-once state transition and single listener dispatch even under heavy multi-threaded races.
+2. **Late listeners follow defined semantics.** Signals in aborted state invoke newly attached listeners immediately with the preserved abort reason.
+3. **No cross-invocation ownership.** Request context signals (`ctx.signal`, `req.signal`) are strictly scoped to the live invocation.
+4. **Shutdown cancellation is bounded.** Capability shutdown and quarantine cleanly cancel all pending operations and drain listener queues within bounded deadlines.
+
+### Manifest
+
+Matched refresh under verify's remap env (qRuntimeRelease hash updated for AbortController capability integration).
+
+### Commands and results (fresh worktree on parent HEAD eda6e5d)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 110 · `-p q-http` 11 · `-p q-bridge` 11 · `-p q-capabilities` 85 · `-p velqu-runtime` 31 — pass.
+- `bun test` 194 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
+
