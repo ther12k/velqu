@@ -10,6 +10,7 @@
 //! versioning, and requirements live in [`identity`] (ADR-0029,
 //! M27-001-B).
 
+pub mod abort;
 pub mod console;
 pub mod identity;
 pub mod inventory;
@@ -19,6 +20,7 @@ pub mod shutdown;
 pub mod text_encoding;
 pub mod url_model;
 
+pub use abort::{AbortControllerModel, AbortSignalModel, SignalState};
 pub use console::{
     redact_sensitive_text, BoundedLogSink, ConsoleLevel, ConsoleRecord, LogSinkStats,
     DEFAULT_LOG_SINK_CAP, MAX_CONSOLE_ARGS, MAX_CONSOLE_MSG_LEN,
