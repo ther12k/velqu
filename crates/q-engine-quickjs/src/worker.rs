@@ -2696,6 +2696,104 @@ fn install_natives(
         };
         globals.set("__velquUrlParse", Function::new(ctx.clone(), f)?)?;
     }
+
+    // M27-006-A: TextEncoder & TextDecoder native bridges
+    {
+        // __velquTextEncodeLen(str) -> number
+        let f_encode_len = move |ctx: rquickjs::Ctx, input: String| -> rquickjs::Result<f64> {
+            let bytes = input.as_bytes();
+            if bytes.len() > q_capabilities::MAX_TEXT_BUFFER_LEN {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    &format!(
+                        "RangeError: input length {} exceeds limit {}",
+                        bytes.len(),
+                        q_capabilities::MAX_TEXT_BUFFER_LEN
+                    ),
+                ));
+            }
+            Ok(bytes.len() as f64)
+        };
+        globals.set(
+            "__velquTextEncodeLen",
+            Function::new(ctx.clone(), f_encode_len)?,
+        )?;
+
+        // __velquTextEncodeFill(str, uint8Array) -> void
+        let f_encode_fill = move |ctx: rquickjs::Ctx,
+                                  source: String,
+                                  target: rquickjs::TypedArray<u8>|
+              -> rquickjs::Result<()> {
+            let bytes = source.as_bytes();
+            if let Some(buf) = target.as_bytes() {
+                let n = bytes.len().min(buf.len());
+                if n > 0 {
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(bytes.as_ptr(), buf.as_ptr() as *mut u8, n);
+                    }
+                }
+                Ok(())
+            } else {
+                Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "TypeError: target buffer is detached or invalid",
+                ))
+            }
+        };
+        globals.set(
+            "__velquTextEncodeFill",
+            Function::new(ctx.clone(), f_encode_fill)?,
+        )?;
+
+        // __velquTextEncodeInto(str, uint8Array) -> [read, written]
+        let f_encode_into = move |ctx: rquickjs::Ctx,
+                                  source: String,
+                                  target: rquickjs::TypedArray<u8>|
+              -> rquickjs::Result<Vec<f64>> {
+            if let Some(buf) = target.as_bytes() {
+                let slice =
+                    unsafe { std::slice::from_raw_parts_mut(buf.as_ptr() as *mut u8, buf.len()) };
+                let (read, written) = q_capabilities::TextEncoderModel::encode_into(&source, slice);
+                Ok(vec![read as f64, written as f64])
+            } else {
+                Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "TypeError: destination buffer is detached or invalid",
+                ))
+            }
+        };
+        globals.set(
+            "__velquTextEncodeInto",
+            Function::new(ctx.clone(), f_encode_into)?,
+        )?;
+
+        // __velquTextDecode(uint8Array, fatal, ignore_bom) -> String
+        let f_decode = move |ctx: rquickjs::Ctx,
+                             input: rquickjs::TypedArray<u8>,
+                             fatal: bool,
+                             ignore_bom: bool|
+              -> rquickjs::Result<String> {
+            let slice = input.as_bytes().ok_or_else(|| {
+                rquickjs::Exception::throw_message(&ctx, "TypeError: input must be a Uint8Array")
+            })?;
+            let decoder = match q_capabilities::TextDecoderModel::new(
+                Some("utf-8"),
+                q_capabilities::TextDecoderOptions { fatal, ignore_bom },
+            ) {
+                Ok(d) => d,
+                Err(e) => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        &format!("RangeError: {e}"),
+                    ))
+                }
+            };
+            decoder
+                .decode(slice)
+                .map_err(|e| rquickjs::Exception::throw_message(&ctx, &format!("TypeError: {e}")))
+        };
+        globals.set("__velquTextDecode", Function::new(ctx.clone(), f_decode)?)?;
+    }
     Ok(())
 }
 
@@ -3056,6 +3154,64 @@ mod tests {
             // Test limits in QuickJS (M27-005-D)
             assert!(ctx.eval::<(), _>("new URL('https://example.com/' + 'a'.repeat(9000))").is_err());
             assert!(ctx.eval::<(), _>("new URLSearchParams('k=' + 'v'.repeat(17000))").is_err());
+        });
+    }
+
+    /// M27-006-A: TextEncoder and TextDecoder in JS context.
+    #[test]
+    fn text_encoder_and_decoder_in_js_environment() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Install natives & prelude
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Test TextEncoder encode
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => { const enc = new TextEncoder(); const bytes = enc.encode('hello'); return bytes instanceof Uint8Array && bytes.length === 5 && bytes[0] === 104; })()"
+                )
+                .unwrap());
+
+            // Test TextEncoder encodeInto
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => { const enc = new TextEncoder(); const dest = new Uint8Array(10); const res = enc.encodeInto('abc', dest); return res.read === 3 && res.written === 3 && dest[0] === 97 && dest[2] === 99; })()"
+                )
+                .unwrap());
+
+            // Test TextDecoder decode
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => { const dec = new TextDecoder(); const text = dec.decode(new Uint8Array([104, 101, 108, 108, 111])); return text === 'hello'; })()"
+                )
+                .unwrap());
+
+            // Test TextDecoder fatal mode throws on invalid UTF-8
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => { try { const dec = new TextDecoder('utf-8', { fatal: true }); dec.decode(new Uint8Array([255, 254])); return false; } catch (e) { return true; } })()"
+                )
+                .unwrap());
+
+            // Test native.text
+            assert!(ctx
+                .eval::<bool, _>(
+                    r#"
+                globalThis.__velquNativeCapabilities.text.TextEncoder === globalThis.TextEncoder &&
+                globalThis.__velquNativeCapabilities.text.TextDecoder === globalThis.TextDecoder
+            "#
+                )
+                .unwrap());
         });
     }
 }

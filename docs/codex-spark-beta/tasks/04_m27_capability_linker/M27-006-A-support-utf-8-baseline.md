@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -121,3 +121,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-006-A (PASS)
+
+Deliverable: support UTF-8 baseline for `TextEncoder` and `TextDecoder` according to the Encoding Standard.
+
+### Changed files
+
+- `crates/q-capabilities/src/text_encoding.rs` (new):
+  - `TextEncoderModel`: encode, encode_into, bounded input length `MAX_TEXT_BUFFER_LEN` (16 MB).
+  - `TextDecoderModel`: UTF-8 decoding, BOM handling, fatal mode, error types (`TextEncodingError`).
+- `crates/q-capabilities/src/lib.rs`: exposed `pub mod text_encoding;` and re-exports.
+- `crates/q-engine-quickjs/src/prelude.rs`:
+  - Defined `TextEncoder` (`encode`, `encodeInto`) and `TextDecoder` (`decode`, `fatal`, `ignoreBOM`) globals and `native.text` capability.
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - Registered `__velquTextEncodeLen`, `__velquTextEncodeFill`, `__velquTextEncodeInto`, and `__velquTextDecode` native bridges.
+  - Added unit test `text_encoder_and_decoder_in_js_environment`.
+- `packages/cli/src/text-encoding.test.ts` (new):
+  - 6 conformance tests for TextEncoder / TextDecoder.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 77 passed (+7 text encoding/decoding tests).
+- `cargo test -p q-engine-quickjs` — 108 passed (+1 JS TextEncoder/TextDecoder integration test).
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-schema-runtime` — 67 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 171 passed (+6 new text encoding tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD ec39672)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 108 · `-p q-schema-runtime` 67 · `-p q-capabilities` 77 · `-p velqu-runtime` 31 — pass.
+- `bun test` 171 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Encoding semantics match selected standard cases: verified via WPT baseline vectors.
+  - Large buffers are bounded: bounded by `MAX_TEXT_BUFFER_LEN` (16 MB).
+  - No duplicate full-buffer copies: `encodeInto` and `fill` write directly to destination buffers.
+
