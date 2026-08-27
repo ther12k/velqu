@@ -4,7 +4,7 @@ parent_task: M27-008
 milestone: M27
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -128,3 +128,31 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-008-V merged in PR #888
+  at commit `27fdf8236a63c02d9463906ceb3bcafecf1a04fc`; issue #286
+  is closed. Based on clean parent HEAD `bb895a7` (queue-regen).
+- Parent acceptance matrix: `M27-008-V` maps all four guardrails
+  (fail-closed random API, Web Crypto standard limits, no predictable
+  fallback to custom algorithms, and security review passing).
+- Source-backed implementation records:
+  - `M27-008-A` (PR #884, #282 closed): `CryptoRandom::get_random_values`
+    and `random_uuid` backed by OS CSPRNG (`getrandom = "0.2"`).
+  - `M27-008-B` (PR #885, #283 closed): typed-array constraints rejecting
+    Float/DataView with `TypeError`, enforcing 64 KiB quota.
+  - `M27-008-C` (PR #886, #284 closed): fail-closed entropy failure behavior.
+  - `M27-008-D` (PR #887, #285 closed): no custom cryptography implemented;
+    interface restricted to standard methods only.
+  - `M27-008-V` (PR #888, #286 closed): verification closure + matched manifest refresh.
+- Canonical evidence artifacts:
+  - Tests: `q-capabilities` 90 passed (+5 crypto tests), `q-engine-quickjs` 111 passed
+    (+2 JS crypto integration tests), `bun test` 200 passed (+7 crypto tests).
+  - Manifest: `benchmarks/manifest.json` matched refresh under verify remap environment.
+- Exact verification (fresh on this branch): `cargo test` across all crates passes;
+  `bun test` 200/0; typecheck, fmt --check, clippy `-D warnings` clean;
+  `./scripts/verify` — ALL PASS (exit 0).
+- Status bookkeeping: ledger marks M27-008 PASS; TASK_INDEX marks M27-008-Z PASS.
+  Queues expose M27-009-A next.
+- Remaining scope: M27-009+ (capability SDK & inspection surface), M27-GATE.
