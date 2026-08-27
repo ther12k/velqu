@@ -191,11 +191,61 @@ URL.prototype.toString = function() { return this.href; };
 URL.prototype.toJSON = function() { return this.href; };
 globalThis.URL = URL;
 
+// TextEncoder implementation (M27-006-A)
+function TextEncoder() {
+  this.encoding = "utf-8";
+}
+TextEncoder.prototype.encode = function(input) {
+  if (typeof globalThis.__velquTextEncodeLen !== "function" || typeof globalThis.__velquTextEncodeFill !== "function") {
+    throw new TypeError("TextEncoder native unavailable");
+  }
+  var str = input !== undefined ? String(input) : "";
+  var len = globalThis.__velquTextEncodeLen(str);
+  var u = new Uint8Array(len);
+  if (len > 0) globalThis.__velquTextEncodeFill(str, u);
+  return u;
+};
+TextEncoder.prototype.encodeInto = function(source, destination) {
+  if (typeof globalThis.__velquTextEncodeInto !== "function") throw new TypeError("TextEncoder native unavailable");
+  var res = globalThis.__velquTextEncodeInto(String(source), destination);
+  return { read: res[0], written: res[1] };
+};
+globalThis.TextEncoder = TextEncoder;
+
+// TextDecoder implementation (M27-006-A)
+function TextDecoder(label, options) {
+  var enc = label !== undefined ? String(label).trim().toLowerCase() : "utf-8";
+  if (enc !== "utf-8" && enc !== "utf8" && enc !== "unicode-1-1-utf-8") {
+    throw new RangeError("The encoding label provided ('" + label + "') is invalid.");
+  }
+  this.encoding = "utf-8";
+  this.fatal = options && options.fatal ? Boolean(options.fatal) : false;
+  this.ignoreBOM = options && options.ignoreBOM ? Boolean(options.ignoreBOM) : false;
+}
+TextDecoder.prototype.decode = function(input, options) {
+  if (typeof globalThis.__velquTextDecode !== "function") throw new TypeError("TextDecoder native unavailable");
+  var buf;
+  if (input === undefined) {
+    buf = new Uint8Array(0);
+  } else if (input instanceof Uint8Array) {
+    buf = input;
+  } else if (ArrayBuffer.isView(input)) {
+    buf = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  } else if (input instanceof ArrayBuffer) {
+    buf = new Uint8Array(input);
+  } else {
+    throw new TypeError("Failed to execute 'decode' on 'TextDecoder': The provided value is not of type '(ArrayBuffer or ArrayBufferView)'");
+  }
+  return globalThis.__velquTextDecode(buf, this.fatal, this.ignoreBOM);
+};
+globalThis.TextDecoder = TextDecoder;
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) }),
   console: Object.freeze(globalThis.console),
-  url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams })
+  url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams }),
+  text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder })
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 

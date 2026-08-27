@@ -302,7 +302,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-005-D](../tasks/04_m27_capability_linker/M27-005-D-keep-parser-limits-explicit.md) | P1 | implement | PASS | M27-005-C | Keep parser limits explicit |
 | [M27-005-V](../tasks/04_m27_capability_linker/M27-005-V-verify-implement-url-and-urlsearchparams.md) | P1 | verify | PASS | M27-005-A, M27-005-B, M27-005-C, M27-005-D | Verify Implement URL and URLSearchParams |
 | [M27-005-Z](../tasks/04_m27_capability_linker/M27-005-Z-package-evidence-for-implement-url-and-urlsearchparams.md) | P1 | evidence | PASS | M27-005-V | Package evidence for Implement URL and URLSearchParams |
-| [M27-006-A](../tasks/04_m27_capability_linker/M27-006-A-support-utf-8-baseline.md) | P1 | implement | TODO | M27-001-Z, M27-003-Z | Support UTF-8 baseline |
+| [M27-006-A](../tasks/04_m27_capability_linker/M27-006-A-support-utf-8-baseline.md) | P1 | implement | PASS | M27-001-Z, M27-003-Z | Support UTF-8 baseline |
 | [M27-006-B](../tasks/04_m27_capability_linker/M27-006-B-define-invalid-sequence-replacement-behavior.md) | P1 | implement | TODO | M27-006-A | Define invalid sequence/replacement behavior |
 | [M27-006-C](../tasks/04_m27_capability_linker/M27-006-C-integrate-typedarray-ownership.md) | P1 | implement | TODO | M27-006-B | Integrate TypedArray ownership |
 | [M27-006-D](../tasks/04_m27_capability_linker/M27-006-D-run-wpt-subset.md) | P1 | implement | TODO | M27-006-C | Run WPT subset |

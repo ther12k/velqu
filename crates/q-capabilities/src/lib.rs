@@ -16,6 +16,7 @@ pub mod inventory;
 pub mod operations;
 pub mod resolver;
 pub mod shutdown;
+pub mod text_encoding;
 pub mod url_model;
 
 pub use console::{
@@ -31,6 +32,9 @@ pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX
 pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
+};
+pub use text_encoding::{
+    TextDecoderModel, TextDecoderOptions, TextEncoderModel, TextEncodingError, MAX_TEXT_BUFFER_LEN,
 };
 pub use url_model::{
     decode_path_segment, encode_path_segment, normalize_host, ParsedSearchParams, ParsedUrl,
