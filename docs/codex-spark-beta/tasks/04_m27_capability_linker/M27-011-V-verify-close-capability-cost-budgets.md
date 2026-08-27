@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -132,3 +132,30 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-V) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-v (squash-merged; see git log for final hash)
+- Closes: #304
+
+### Acceptance-criterion mapping (parent M27-011 guardrails)
+
+1. **Core app remains near approved baseline** — verified: Cold-start p50 = 4.16 ms (full) / 4.08 ms (web), delta vs M26 baseline is +0.33 ms (within noise), well under the 10 ms budget.
+2. **Each capability cost is visible** — verified: Binary size delta (+120 KB, +2.2%), capability footprint breakdown (total ~138.7 KB), and idle RSS (+176 kB) explicitly measured and attributed in `docs/reports/m27-011-capability-cost-budget-report.md`.
+3. **Unused capability cost is zero or explained** — verified: Zero heap allocation for unlinked capabilities at idle; `capability_initialization_is_lazy_and_causes_zero_startup_heap_waste` (`worker.rs`) tests that constructor functions exist as static properties without pre-allocating instances, and `__velquContextPrototype.native` avoids per-request wrapper allocations.
+4. **Budget failures trigger split/defer decisions** — verified: All measurements pass within declared budgets; out-of-scope/expensive features (SubtleCrypto, general Node compat, WebSockets/SSE) remain explicitly deferred.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 107 unit tests + 7 integration tests passed
+- `cargo test -p q-engine-quickjs` → 16 unit tests + 97 worker tests passed
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

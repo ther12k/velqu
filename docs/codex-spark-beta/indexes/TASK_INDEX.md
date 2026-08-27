@@ -336,7 +336,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-011-B](../tasks/04_m27_capability_linker/M27-011-B-record-binary-startup-and-idle-rss-deltas.md) | P1 | implement | PASS | M27-011-A | Record binary, startup, and idle RSS deltas |
 | [M27-011-C](../tasks/04_m27_capability_linker/M27-011-C-identify-eager-initialization.md) | P1 | implement | PASS | M27-011-B | Identify eager initialization |
 | [M27-011-D](../tasks/04_m27_capability_linker/M27-011-D-make-expensive-modules-lazy-when-safe.md) | P1 | implement | PASS | M27-011-C | Make expensive modules lazy when safe |
-| [M27-011-V](../tasks/04_m27_capability_linker/M27-011-V-verify-close-capability-cost-budgets.md) | P1 | verify | TODO | M27-011-A, M27-011-B, M27-011-C, M27-011-D | Verify Close capability cost budgets |
+| [M27-011-V](../tasks/04_m27_capability_linker/M27-011-V-verify-close-capability-cost-budgets.md) | P1 | verify | PASS | M27-011-A, M27-011-B, M27-011-C, M27-011-D | Verify Close capability cost budgets |
 | [M27-011-Z](../tasks/04_m27_capability_linker/M27-011-Z-package-evidence-for-close-capability-cost-budgets.md) | P1 | evidence | TODO | M27-011-V | Package evidence for Close capability cost budgets |
 | [M27-GATE](../gates/M27-GATE.md) | P0 | gate | TODO | M27-001-Z, M27-002-Z, M27-003-Z, M27-004-Z, M27-005-Z, M27-006-Z, M27-007-Z, M27-008-Z, M27-009-Z, M27-010-Z, M27-011-Z | M2.7 — Capability Linker and Minimal Web Runtime exit gate |
 
