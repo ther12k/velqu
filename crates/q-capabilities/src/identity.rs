@@ -4,8 +4,9 @@
 //! A capability is identified by a validated `namespace:name` string
 //! with a closed namespace vocabulary (`runtime:` for built-ins — no
 //! `node:`, no arbitrary prefixes). A requirement is satisfied only by
-//! an exact version match: there is no implicit compatibility until a
-//! semver ABI policy is defined (M27-009-D). Resolution failures are
+//! an exact version match; the opt-in relaxed policy is defined and
+//! tested in [`crate::compat`] (M27-009-D) and never applies implicitly.
+//! Resolution failures are
 //! typed and route the capability to `Failed` before it can reach
 //! `Ready` (ADR-0028 rule 1).
 
