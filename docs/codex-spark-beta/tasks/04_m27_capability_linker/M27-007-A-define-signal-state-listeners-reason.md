@@ -4,7 +4,7 @@ parent_task: M27-007
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -121,3 +121,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-007-A (PASS)
+
+Deliverable: define `AbortController` and `AbortSignal` cancellation primitives with exactly-once abort propagation, late-listener invocation, and reason preservation.
+
+### Changed files
+
+- `crates/q-capabilities/src/abort.rs` (new):
+  - `AbortSignalModel`: exactly-once atomic abort transition (`swap(true)`), late listener execution, `reason` mutex, `throw_if_aborted()`.
+  - `AbortControllerModel`: owns and aborts `AbortSignalModel`.
+  - Unit tests covering exactly-once abort propagation, listener firing, late listener execution, and `throwIfAborted`.
+- `crates/q-capabilities/src/lib.rs`: exposed `pub mod abort;` and re-exported types.
+- `crates/q-engine-quickjs/src/prelude.rs`:
+  - Defined standard WHATWG `AbortController` and `AbortSignal` classes (`aborted`, `reason`, `onabort`, `addEventListener`, `removeEventListener`, `dispatchEvent`, `throwIfAborted`, `AbortSignal.abort()`, `AbortSignal.timeout()`, `AbortSignal.any()`) and `native.abort` capability handle.
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - Unit test `abort_controller_and_signal_in_js_environment`.
+- `packages/cli/src/abort-signal.test.ts` (new):
+  - 6 conformance tests for `AbortController`, `AbortSignal`, `throwIfAborted`, `abort()`, `timeout()`, and `any()`.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 83 passed (+4 AbortSignal/Controller tests).
+- `cargo test -p q-engine-quickjs` — 109 passed (+1 JS AbortController/Signal test).
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-http` — 11 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 187 passed (+6 new AbortSignal/Controller tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD adfd318)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 109 · `-p q-http` 11 · `-p q-capabilities` 83 · `-p velqu-runtime` 31 — pass.
+- `bun test` 187 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Abort propagates exactly once: atomic boolean swap prevents duplicate notifications.
+  - Late listeners follow defined semantics: already-aborted signals immediately invoke newly added listeners.
+  - No cross-invocation ownership: signals are scoped to invocation contexts.
+

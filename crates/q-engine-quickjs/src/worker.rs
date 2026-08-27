@@ -3238,4 +3238,60 @@ mod tests {
                 .unwrap());
         });
     }
+
+    /// M27-007-A: AbortController and AbortSignal in JS context.
+    #[test]
+    fn abort_controller_and_signal_in_js_environment() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Install natives & prelude
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Test AbortController basic abort & signal state
+            let code1 = "(() => {
+                const ctrl = new AbortController();
+                if (ctrl.signal.aborted) return false;
+                let fired = 0;
+                ctrl.signal.addEventListener('abort', () => { fired++; });
+                ctrl.abort('custom-reason');
+                // repeated abort is a no-op (exactly once propagation)
+                ctrl.abort('second');
+                return ctrl.signal.aborted === true && ctrl.signal.reason === 'custom-reason' && fired === 1;
+            })()";
+            assert!(ctx.eval::<bool, _>(code1).unwrap());
+
+            // Test AbortSignal.abort()
+            let code2 = "(() => {
+                const sig = AbortSignal.abort('pre-aborted');
+                return sig.aborted === true && sig.reason === 'pre-aborted';
+            })()";
+            assert!(ctx.eval::<bool, _>(code2).unwrap());
+
+            // Test throwIfAborted
+            let code3 = "(() => {
+                const sig = AbortSignal.abort('boom');
+                try {
+                    sig.throwIfAborted();
+                    return false;
+                } catch (e) {
+                    return e === 'boom';
+                }
+            })()";
+            assert!(ctx.eval::<bool, _>(code3).unwrap());
+
+            // Test native.abort
+            let code4 = "globalThis.__velquNativeCapabilities.abort.AbortController === globalThis.AbortController && globalThis.__velquNativeCapabilities.abort.AbortSignal === globalThis.AbortSignal";
+            assert!(ctx.eval::<bool, _>(code4).unwrap());
+        });
+    }
 }

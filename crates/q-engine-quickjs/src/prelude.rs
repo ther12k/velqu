@@ -240,12 +240,108 @@ TextDecoder.prototype.decode = function(input, options) {
 };
 globalThis.TextDecoder = TextDecoder;
 
+// AbortSignal implementation (M27-007-A)
+function AbortSignal() {
+  this._aborted = false;
+  this._reason = undefined;
+  this._listeners = [];
+  this.onabort = null;
+}
+Object.defineProperty(AbortSignal.prototype, "aborted", {
+  get: function() { return this._aborted; },
+  enumerable: true
+});
+Object.defineProperty(AbortSignal.prototype, "reason", {
+  get: function() { return this._reason; },
+  enumerable: true
+});
+AbortSignal.prototype.addEventListener = function(type, listener, options) {
+  if (type !== "abort" || typeof listener !== "function") return;
+  var once = options && typeof options === "object" && options.once;
+  var self = this;
+  var wrap = once ? function(evt) { self.removeEventListener("abort", wrap); listener.call(self, evt); } : listener;
+  wrap._orig = listener;
+  if (this._aborted) {
+    var evt = { type: "abort", target: self, currentTarget: self };
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(function() { wrap(evt); });
+    } else {
+      wrap(evt);
+    }
+    return;
+  }
+  this._listeners.push(wrap);
+};
+AbortSignal.prototype.removeEventListener = function(type, listener) {
+  if (type !== "abort" || typeof listener !== "function") return;
+  this._listeners = this._listeners.filter(function(l) { return l !== listener && l._orig !== listener; });
+};
+AbortSignal.prototype.dispatchEvent = function(evt) {
+  if (evt && evt.type === "abort") {
+    var ls = this._listeners.slice();
+    for (var i = 0; i < ls.length; i++) {
+      try { ls[i].call(this, evt); } catch (e) { if (console && console.error) console.error(e); }
+    }
+    if (typeof this.onabort === "function") {
+      try { this.onabort.call(this, evt); } catch (e) { if (console && console.error) console.error(e); }
+    }
+  }
+  return true;
+};
+AbortSignal.prototype.throwIfAborted = function() {
+  if (this._aborted) throw this._reason;
+};
+AbortSignal.abort = function(reason) {
+  var s = new AbortSignal();
+  s._aborted = true;
+  s._reason = reason !== undefined ? reason : new Error("This operation was aborted");
+  return s;
+};
+AbortSignal.timeout = function(ms) {
+  var ctrl = new AbortController();
+  var delay = Number(ms) || 0;
+  if (typeof globalThis.__velquTimerP === "function") {
+    globalThis.__velquTimerP(delay).then(function() {
+      ctrl.abort(new Error("TimeoutError: The operation timed out"));
+    });
+  }
+  return ctrl.signal;
+};
+AbortSignal.any = function(signals) {
+  var ctrl = new AbortController();
+  var sigs = Array.from(signals || []);
+  for (var i = 0; i < sigs.length; i++) {
+    var s = sigs[i];
+    if (s.aborted) {
+      ctrl.abort(s.reason);
+      return ctrl.signal;
+    }
+    s.addEventListener("abort", function() { ctrl.abort(this.reason); }, { once: true });
+  }
+  return ctrl.signal;
+};
+globalThis.AbortSignal = AbortSignal;
+
+// AbortController implementation (M27-007-A)
+function AbortController() {
+  this.signal = new AbortSignal();
+}
+AbortController.prototype.abort = function(reason) {
+  if (this.signal._aborted) return;
+  this.signal._aborted = true;
+  this.signal._reason = reason !== undefined ? reason : new Error("This operation was aborted");
+  var evt = { type: "abort", target: this.signal, currentTarget: this.signal };
+  this.signal.dispatchEvent(evt);
+};
+globalThis.AbortController = AbortController;
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) }),
   console: Object.freeze(globalThis.console),
   url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams }),
-  text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder })
+  text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder }),
+  abort: Object.freeze({ AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal })
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 
