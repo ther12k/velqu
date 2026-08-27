@@ -13,6 +13,7 @@
 pub mod abort;
 pub mod console;
 pub mod crypto;
+pub mod harness;
 pub mod identity;
 pub mod inventory;
 pub mod operations;
@@ -28,6 +29,7 @@ pub use console::{
     DEFAULT_LOG_SINK_CAP, MAX_CONSOLE_ARGS, MAX_CONSOLE_MSG_LEN,
 };
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
+pub use harness::{run_expired_drain, run_full_lifecycle, LifecycleReport};
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
     CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,

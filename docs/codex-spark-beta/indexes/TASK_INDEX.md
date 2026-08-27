@@ -321,7 +321,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-008-V](../tasks/04_m27_capability_linker/M27-008-V-verify-implement-crypto-random-subset.md) | P0 | verify | PASS | M27-008-A, M27-008-B, M27-008-C, M27-008-D | Verify Implement crypto random subset |
 | [M27-008-Z](../tasks/04_m27_capability_linker/M27-008-Z-package-evidence-for-implement-crypto-random-subset.md) | P0 | evidence | PASS | M27-008-V | Package evidence for Implement crypto random subset |
 | [M27-009-A](../tasks/04_m27_capability_linker/M27-009-A-define-rust-side-sdk-traits-and-metadata.md) | P1 | implement | PASS | M27-001-Z, M27-002-Z | Define Rust-side SDK traits and metadata |
-| [M27-009-B](../tasks/04_m27_capability_linker/M27-009-B-provide-test-harness-and-example-capability.md) | P1 | implement | TODO | M27-009-A | Provide test harness and example capability |
+| [M27-009-B](../tasks/04_m27_capability_linker/M27-009-B-provide-test-harness-and-example-capability.md) | P1 | implement | PASS | M27-009-A | Provide test harness and example capability |
 | [M27-009-C](../tasks/04_m27_capability_linker/M27-009-C-expose-build-inspect-diagnostics.md) | P1 | implement | TODO | M27-009-B | Expose build/inspect diagnostics |
 | [M27-009-D](../tasks/04_m27_capability_linker/M27-009-D-define-semver-abi-compatibility.md) | P1 | implement | TODO | M27-009-C | Define semver/ABI compatibility |
 | [M27-009-V](../tasks/04_m27_capability_linker/M27-009-V-verify-publish-capability-sdk-and-inspection-surface.md) | P1 | verify | TODO | M27-009-A, M27-009-B, M27-009-C, M27-009-D | Verify Publish capability SDK and inspection surface |
