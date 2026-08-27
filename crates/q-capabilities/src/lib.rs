@@ -9,6 +9,13 @@
 //! on this skeleton without changing its phase vocabulary. Identity,
 //! versioning, and requirements live in [`identity`] (ADR-0029,
 //! M27-001-B).
+//!
+//! # Trust model
+//!
+//! Same-process QuickJS runs **trusted application code only**; it is
+//! never a hostile-code sandbox (ADR-0035, AGENTS.md constraint 14).
+//! The security policy in [`fetch_policy`] addresses the network, not
+//! the process interior.
 
 pub mod abort;
 pub mod compat;
@@ -41,7 +48,7 @@ pub use fetch_policy::{
     is_untrusted_forward_header, AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError,
     RedirectPolicy, TimeoutPolicy, TrustMode, ALLOWED_SCHEMES, FETCH_CAPABILITY_ID,
     FETCH_CAPABILITY_VERSION, MAX_FETCH_DEADLINE_MS, MAX_FETCH_REQUEST_BODY_BYTES,
-    MAX_FETCH_RESPONSE_BODY_BYTES, MAX_REDIRECT_HOPS, METADATA_ENDPOINTS,
+    MAX_FETCH_RESPONSE_BODY_BYTES, MAX_REDIRECT_HOPS, METADATA_ENDPOINTS, TRUSTED_CODE_ASSUMPTION,
     UNTRUSTED_FORWARD_HEADERS,
 };
 pub use harness::{run_expired_drain, run_full_lifecycle, LifecycleReport};

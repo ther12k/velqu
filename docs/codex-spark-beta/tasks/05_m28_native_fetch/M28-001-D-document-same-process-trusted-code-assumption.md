@@ -4,7 +4,7 @@ parent_task: M28-001
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -125,3 +125,32 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-001-D) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-001-d (squash-merged; see git log for final hash)
+- Closes: #309
+
+### Changed files
+- `docs/okf/decisions/0035-same-process-trusted-code-assumption.md` (new): **ADR-0035** — elevates AGENTS.md constraint 14 into a first-class decision: the QuickJS worker executes trusted, pack-compiled, owner-built application code only (trust derives from the build pipeline: ADR-0004 static discovery, ADR-0014 version-pinned bytecode, ADR-0026 integrity hooks). The process interior is inside the trust boundary — the security model protects the host network (ADR-0033) and the client (redaction), not the process from the application. Fetch is a network control, never an isolation boundary. Unsupported deployment modes named explicitly (user-uploaded packs, third-party-registry bundles, multi-tenant execution). Naming rule: no doc may call the engine/capability system/fetch policy a "sandbox" for untrusted code. Six-row threat model separating mitigated vs not-mitigated vs out-of-scope.
+- `crates/q-capabilities/src/fetch_policy.rs`: added `TRUSTED_CODE_ASSUMPTION` — the canonical pinned statement — plus test `trusted_code_assumption_is_pinned` enforcing its three load-bearing properties (names trusted code, denies the sandbox framing, names the network as the adversary) and the process-interior scope clause.
+- `crates/q-capabilities/src/lib.rs`: crate-root rustdoc gains a `# Trust model` section cross-referencing ADR-0035/AGENTS.md constraint 14; `TRUSTED_CODE_ASSUMPTION` re-exported.
+- `docs/okf/decisions/index.md`: ADR-0035 entry.
+
+### Command results
+- `cargo test -p q-capabilities` → 132 unit + 8 integration passed (was 131+8)
+- `cargo test -p q-pack` 96+2 · `-p q-engine-quickjs` 16+97 · `-p q-http` 4+6+1 · `-p q-schema-runtime` 58+5+4 · `-p velqu-runtime` 31 — all pass
+- `bun test` → 215 pass / 0 fail; `bun run typecheck` → clean
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/validate-okf` → exit 0 (ADR-0035 accepted)
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Security defaults fail closed** — unchanged; this packet adds no behavior, only the frozen trust statement that keeps future docs honest.
+- **Private/link-local/metadata behavior is explicit** — ADR-0035 §2 anchors ADR-0033 §2 as network protection, explicitly not process isolation.
+- **Redirect revalidation is required** — unchanged (ADR-0033 §4).
+- **Direct TLS policy is documented** — ADR-0035 §3: fetch/TLS policy is a network control, never isolation evidence.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
