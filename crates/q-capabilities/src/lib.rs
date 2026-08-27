@@ -15,6 +15,7 @@ pub mod compat;
 pub mod console;
 pub mod crypto;
 pub mod diagnostics;
+pub mod fetch_policy;
 pub mod harness;
 pub mod identity;
 pub mod inventory;
@@ -36,6 +37,11 @@ pub use console::{
 };
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
+pub use fetch_policy::{
+    AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError, RedirectPolicy, TimeoutPolicy,
+    TrustMode, ALLOWED_SCHEMES, MAX_FETCH_DEADLINE_MS, MAX_FETCH_REQUEST_BODY_BYTES,
+    MAX_FETCH_RESPONSE_BODY_BYTES, MAX_REDIRECT_HOPS, METADATA_ENDPOINTS,
+};
 pub use harness::{run_expired_drain, run_full_lifecycle, LifecycleReport};
 pub use identity::{
     resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
