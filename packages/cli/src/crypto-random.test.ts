@@ -51,4 +51,11 @@ describe("Web Crypto getRandomValues and randomUUID conformance (M27-008-A)", ()
       expect(outer[1]).toBe(0);
     });
   });
+
+  describe("Security constraints (M27-008-D)", () => {
+    test("crypto capability exposes standard getRandomValues and randomUUID methods", () => {
+      expect(typeof crypto.getRandomValues).toBe("function");
+      expect(typeof crypto.randomUUID).toBe("function");
+    });
+  });
 });

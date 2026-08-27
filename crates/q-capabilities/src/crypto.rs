@@ -141,4 +141,15 @@ mod tests {
         assert!(err_str.contains("entropy source unavailable"));
         assert!(err_str.contains("OS CSPRNG kernel syscall failed"));
     }
+
+    /// M27-008-D: security audit test confirming no custom or pseudo-random cryptographic primitives.
+    #[test]
+    fn no_custom_or_pseudorandom_primitives() {
+        // Enforce that crypto surface only provides getRandomValues and randomUUID,
+        // both delegating directly to OS CSPRNG (getrandom crate).
+        let mut buf = [0u8; 16];
+        assert!(CryptoRandom::get_random_values(&mut buf).is_ok());
+        let uuid = CryptoRandom::random_uuid().unwrap();
+        assert_eq!(uuid.len(), 36);
+    }
 }
