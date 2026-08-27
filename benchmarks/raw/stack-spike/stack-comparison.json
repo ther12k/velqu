@@ -1,0 +1,71 @@
+{
+  "format": "velqu-stack-spike-v1",
+  "generatedAt": "2026-08-27T20:09:56Z",
+  "protocol": "standalone minimal binaries, identical exercise: lazy client construction + loopback plain-HTTP GET + bounded prefix read + early drop; TLS (rustls/webpki-roots) compiled into both; release profile, n=20 fresh-process spawns each, wall-clock ms via perf_counter",
+  "candidates": {
+    "reqwest": {
+      "binaryBytes": 4662200,
+      "uniqueCrateCount": 84,
+      "startupP50Ms": 3.1235,
+      "startupP95Ms": 4.843050000000002,
+      "startupP99Ms": 6.242209999999997,
+      "rawStartupMs": [
+        2.193,
+        2.269,
+        2.354,
+        2.453,
+        2.462,
+        2.498,
+        2.504,
+        2.6,
+        3.046,
+        3.081,
+        3.166,
+        3.167,
+        3.185,
+        3.408,
+        3.485,
+        3.628,
+        4.606,
+        4.722,
+        4.751,
+        6.592
+      ],
+      "functionalCheckPassed": true
+    },
+    "hyper": {
+      "binaryBytes": 3664544,
+      "uniqueCrateCount": 43,
+      "startupP50Ms": 2.8890000000000002,
+      "startupP95Ms": 3.31815,
+      "startupP99Ms": 3.3204300000000004,
+      "rawStartupMs": [
+        2.008,
+        2.264,
+        2.302,
+        2.326,
+        2.427,
+        2.597,
+        2.699,
+        2.711,
+        2.765,
+        2.861,
+        2.917,
+        3.002,
+        3.04,
+        3.048,
+        3.049,
+        3.054,
+        3.091,
+        3.101,
+        3.318,
+        3.321
+      ],
+      "functionalCheckPassed": true
+    }
+  },
+  "productionBaseline": {
+    "velquRuntimeBytes": 5553128,
+    "note": "production already depends on hyper 1 + hyper-util 0.1 (http1, server features) for ingress; outbound reuse shares these crates"
+  }
+}
