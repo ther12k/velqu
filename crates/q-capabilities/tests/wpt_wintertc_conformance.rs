@@ -1,10 +1,14 @@
-//! WPT / WinterTC Conformance Integration Suite (M27-010-A).
+//! WPT / WinterTC Conformance Integration Suite (M27-010-A, M28-001-C).
 //!
 //! Evaluates `q-capabilities` models directly against the pinned WPT/WinterTC
 //! test subset defined in `conformance/web-api/wpt-manifest.json`.
 
+use std::net::IpAddr;
+use std::path::Path;
+
 use q_capabilities::abort::{AbortControllerModel, AbortSignalModel};
 use q_capabilities::crypto::{CryptoRandom, MAX_RANDOM_BYTES_LEN};
+use q_capabilities::fetch_policy::FetchPolicy;
 use q_capabilities::text_encoding::{TextDecoderModel, TextDecoderOptions, TextEncoderModel};
 use q_capabilities::url_model::{ParsedSearchParams, ParsedUrl};
 
@@ -185,4 +189,58 @@ fn wpt_crypto_random_pinned_subset() {
         matches!(variant_first, '8' | '9' | 'a' | 'b'),
         "variant bits must be 10xx"
     );
+}
+
+/// M28-001-C: execute the pinned fetch security-policy vectors from
+/// `conformance/web-api/wpt-manifest.json` against the compiled policy.
+#[test]
+fn fetch_policy_manifest_vectors_execute_against_compiled_policy() {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/web-api/wpt-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let fetch = manifest["capabilities"]["fetch"]
+        .as_object()
+        .expect("fetch capability pinned in manifest");
+    let subset = fetch["pinnedSubsets"]
+        .as_array()
+        .expect("fetch subsets")
+        .iter()
+        .find(|s| s["id"] == "fetch-policy-security")
+        .expect("fetch-policy-security subset");
+
+    let policy = FetchPolicy::default();
+    let mut allowed = 0usize;
+    let mut denied = 0usize;
+    for case in subset["cases"].as_array().expect("cases") {
+        let expect = case["expect"].as_str().expect("expect");
+        let result = match case["check"].as_str().expect("check") {
+            "scheme" => policy.check_scheme(case["input"].as_str().expect("input")),
+            "address" => {
+                let addr: IpAddr = case["input"].as_str().expect("input").parse().expect("ip");
+                policy.check_address(addr)
+            }
+            "redirect" => policy.check_redirect_hop(
+                case["from"].as_str().expect("from"),
+                case["to"].as_str().expect("to"),
+                case["hop"].as_u64().expect("hop") as u32,
+            ),
+            other => panic!("unknown fetch policy check kind: {other}"),
+        };
+        match (result, expect) {
+            (Ok(()), "allow") => allowed += 1,
+            (Err(_), "deny") => denied += 1,
+            (r, e) => panic!(
+                "fetch policy vector mismatch: check {} input {:?} expected {e}, got {:?}",
+                case["check"],
+                case["input"],
+                r.map_err(|err| err.to_string())
+            ),
+        }
+    }
+    // The subset must exercise both directions — a one-sided matrix proves
+    // nothing.
+    assert!(allowed >= 4, "expected allow vectors, got {allowed}");
+    assert!(denied >= 15, "expected deny vectors, got {denied}");
+    assert_eq!(allowed + denied, subset["cases"].as_array().unwrap().len());
 }

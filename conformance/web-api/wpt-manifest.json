@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "velqu-wpt-wintertc-subset-manifest",
-  "version": "1.0.0",
-  "description": "Pinned Web Platform Tests (WPT) and WinterTC test subset vectors for Velqu M27 capabilities",
+  "version": "1.1.0",
+  "description": "Pinned Web Platform Tests (WPT) and WinterTC test subset vectors for Velqu M27 capabilities and the M28 fetch security policy",
   "milestone": "M27",
   "capabilities": {
     "url": {
@@ -13,33 +13,110 @@
           "id": "wpt-url-resolution",
           "description": "Relative URL resolution against base URL",
           "cases": [
-            { "base": "https://example.com/a/b/c", "input": "../d", "expected": "https://example.com/a/d" },
-            { "base": "https://example.com/a/b/c", "input": "../../d", "expected": "https://example.com/d" },
-            { "base": "https://example.com/a/b/c", "input": "./d", "expected": "https://example.com/a/b/d" },
-            { "base": "https://example.com/a/b/c", "input": "/root", "expected": "https://example.com/root" },
-            { "base": "https://example.com/a/b/c", "input": "?query=1", "expected": "https://example.com/a/b/c?query=1" },
-            { "base": "https://example.com/a/b/c", "input": "#hash", "expected": "https://example.com/a/b/c#hash" }
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "../d",
+              "expected": "https://example.com/a/d"
+            },
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "../../d",
+              "expected": "https://example.com/d"
+            },
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "./d",
+              "expected": "https://example.com/a/b/d"
+            },
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "/root",
+              "expected": "https://example.com/root"
+            },
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "?query=1",
+              "expected": "https://example.com/a/b/c?query=1"
+            },
+            {
+              "base": "https://example.com/a/b/c",
+              "input": "#hash",
+              "expected": "https://example.com/a/b/c#hash"
+            }
           ]
         },
         {
           "id": "wpt-url-normalization",
           "description": "Default port, host bracket, and percent-encoding normalization",
           "cases": [
-            { "input": "http://example.com:80/path", "expectedOrigin": "http://example.com", "expectedPort": "" },
-            { "input": "https://example.com:443/path", "expectedOrigin": "https://example.com", "expectedPort": "" },
-            { "input": "http://[::1]:8080/path", "expectedHost": "[::1]:8080", "expectedHostname": "[::1]" },
-            { "input": "http://[2001:db8::1]:9000/path", "expectedHost": "[2001:db8::1]:9000", "expectedHostname": "[2001:db8::1]" },
-            { "input": "https://example.com/path with spaces/", "expectedPathname": "/path%20with%20spaces/" }
+            {
+              "input": "http://example.com:80/path",
+              "expectedOrigin": "http://example.com",
+              "expectedPort": ""
+            },
+            {
+              "input": "https://example.com:443/path",
+              "expectedOrigin": "https://example.com",
+              "expectedPort": ""
+            },
+            {
+              "input": "http://[::1]:8080/path",
+              "expectedHost": "[::1]:8080",
+              "expectedHostname": "[::1]"
+            },
+            {
+              "input": "http://[2001:db8::1]:9000/path",
+              "expectedHost": "[2001:db8::1]:9000",
+              "expectedHostname": "[2001:db8::1]"
+            },
+            {
+              "input": "https://example.com/path with spaces/",
+              "expectedPathname": "/path%20with%20spaces/"
+            }
           ]
         },
         {
           "id": "wintertc-urlsearchparams",
           "description": "URLSearchParams mutations, querying, sorting, and iteration",
           "cases": [
-            { "init": "a=1&b=2&a=3", "get": { "key": "a", "expected": "1" }, "getAll": { "key": "a", "expected": ["1", "3"] }, "has": { "key": "b", "expected": true } },
-            { "init": "key=val", "append": { "key": "key", "value": "val2" }, "expectedString": "key=val&key=val2" },
-            { "init": "z=9&a=1&m=5", "sort": true, "expectedString": "a=1&m=5&z=9" },
-            { "init": "k=v1&k=v2", "delete": { "key": "k" }, "expectedString": "" }
+            {
+              "init": "a=1&b=2&a=3",
+              "get": {
+                "key": "a",
+                "expected": "1"
+              },
+              "getAll": {
+                "key": "a",
+                "expected": [
+                  "1",
+                  "3"
+                ]
+              },
+              "has": {
+                "key": "b",
+                "expected": true
+              }
+            },
+            {
+              "init": "key=val",
+              "append": {
+                "key": "key",
+                "value": "val2"
+              },
+              "expectedString": "key=val&key=val2"
+            },
+            {
+              "init": "z=9&a=1&m=5",
+              "sort": true,
+              "expectedString": "a=1&m=5&z=9"
+            },
+            {
+              "init": "k=v1&k=v2",
+              "delete": {
+                "key": "k"
+              },
+              "expectedString": ""
+            }
           ]
         }
       ],
@@ -70,21 +147,120 @@
           "id": "wpt-textencoder-utf8",
           "description": "UTF-8 byte sequence encoding across ASCII, Latin, CJK, and Astral planes",
           "cases": [
-            { "input": "hello", "expectedBytes": [104, 101, 108, 108, 111] },
-            { "input": "café", "expectedBytes": [99, 97, 102, 195, 169] },
-            { "input": "こんにちは", "expectedBytes": [227, 129, 147, 227, 130, 147, 227, 129, 171, 227, 129, 161, 227, 129, 175] },
-            { "input": "🚀", "expectedBytes": [240, 159, 154, 128] }
+            {
+              "input": "hello",
+              "expectedBytes": [
+                104,
+                101,
+                108,
+                108,
+                111
+              ]
+            },
+            {
+              "input": "café",
+              "expectedBytes": [
+                99,
+                97,
+                102,
+                195,
+                169
+              ]
+            },
+            {
+              "input": "こんにちは",
+              "expectedBytes": [
+                227,
+                129,
+                147,
+                227,
+                130,
+                147,
+                227,
+                129,
+                171,
+                227,
+                129,
+                161,
+                227,
+                129,
+                175
+              ]
+            },
+            {
+              "input": "🚀",
+              "expectedBytes": [
+                240,
+                159,
+                154,
+                128
+              ]
+            }
           ]
         },
         {
           "id": "wpt-textdecoder-utf8",
           "description": "UTF-8 byte decoding with BOM handling, replacement mode, and fatal mode",
           "cases": [
-            { "bytes": [104, 101, 108, 108, 111], "options": {}, "expected": "hello" },
-            { "bytes": [239, 187, 191, 104, 105], "options": { "ignoreBOM": false }, "expected": "hi" },
-            { "bytes": [239, 187, 191, 104, 105], "options": { "ignoreBOM": true }, "expected": "\uFEFFhi" },
-            { "bytes": [104, 255, 105], "options": { "fatal": false }, "expected": "h\uFFFDi" },
-            { "bytes": [104, 255, 105], "options": { "fatal": true }, "expectedError": "TypeError" }
+            {
+              "bytes": [
+                104,
+                101,
+                108,
+                108,
+                111
+              ],
+              "options": {},
+              "expected": "hello"
+            },
+            {
+              "bytes": [
+                239,
+                187,
+                191,
+                104,
+                105
+              ],
+              "options": {
+                "ignoreBOM": false
+              },
+              "expected": "hi"
+            },
+            {
+              "bytes": [
+                239,
+                187,
+                191,
+                104,
+                105
+              ],
+              "options": {
+                "ignoreBOM": true
+              },
+              "expected": "﻿hi"
+            },
+            {
+              "bytes": [
+                104,
+                255,
+                105
+              ],
+              "options": {
+                "fatal": false
+              },
+              "expected": "h�i"
+            },
+            {
+              "bytes": [
+                104,
+                255,
+                105
+              ],
+              "options": {
+                "fatal": true
+              },
+              "expectedError": "TypeError"
+            }
           ]
         }
       ],
@@ -115,16 +291,34 @@
           "id": "wpt-abortcontroller-basic",
           "description": "AbortController creation, abort signaling, and signal state",
           "cases": [
-            { "action": "abort", "customReason": "test-reason", "expectedAborted": true, "expectedReason": "test-reason" },
-            { "action": "abort-default", "expectedAborted": true, "expectedReasonName": "AbortError" }
+            {
+              "action": "abort",
+              "customReason": "test-reason",
+              "expectedAborted": true,
+              "expectedReason": "test-reason"
+            },
+            {
+              "action": "abort-default",
+              "expectedAborted": true,
+              "expectedReasonName": "AbortError"
+            }
           ]
         },
         {
           "id": "wpt-abortsignal-static",
           "description": "AbortSignal.abort() and AbortSignal.timeout() factory semantics",
           "cases": [
-            { "factory": "AbortSignal.abort", "reason": "fast-abort", "expectedImmediateAborted": true },
-            { "factory": "AbortSignal.timeout", "delayMs": 50, "expectedAsyncAborted": true, "expectedReasonName": "TimeoutError" }
+            {
+              "factory": "AbortSignal.abort",
+              "reason": "fast-abort",
+              "expectedImmediateAborted": true
+            },
+            {
+              "factory": "AbortSignal.timeout",
+              "delayMs": 50,
+              "expectedAsyncAborted": true,
+              "expectedReasonName": "TimeoutError"
+            }
           ]
         }
       ],
@@ -155,18 +349,42 @@
           "id": "wpt-crypto-getrandomvalues",
           "description": "crypto.getRandomValues on supported ArrayBufferViews and quota bounds",
           "cases": [
-            { "typedArray": "Uint8Array", "length": 16, "expectedFilled": true },
-            { "typedArray": "Int32Array", "length": 8, "expectedFilled": true },
-            { "typedArray": "Uint8Array", "length": 65537, "expectedError": "RangeError" },
-            { "typedArray": "Float32Array", "length": 4, "expectedError": "TypeError" },
-            { "typedArray": "DataView", "length": 16, "expectedError": "TypeError" }
+            {
+              "typedArray": "Uint8Array",
+              "length": 16,
+              "expectedFilled": true
+            },
+            {
+              "typedArray": "Int32Array",
+              "length": 8,
+              "expectedFilled": true
+            },
+            {
+              "typedArray": "Uint8Array",
+              "length": 65537,
+              "expectedError": "RangeError"
+            },
+            {
+              "typedArray": "Float32Array",
+              "length": 4,
+              "expectedError": "TypeError"
+            },
+            {
+              "typedArray": "DataView",
+              "length": 16,
+              "expectedError": "TypeError"
+            }
           ]
         },
         {
           "id": "wpt-crypto-randomuuid",
           "description": "crypto.randomUUID RFC 4122 v4 UUID generation and uniqueness",
           "cases": [
-            { "format": "RFC4122-v4", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "expectedUnique": true }
+            {
+              "format": "RFC4122-v4",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+              "expectedUnique": true
+            }
           ]
         }
       ],
@@ -186,6 +404,243 @@
           "reasonCode": "SPEC_MANDATED_TYPE_ERROR",
           "reason": "Web Crypto specification mandates TypeError for floating-point and non-integer views; rejected fail-closed.",
           "deferredTo": "OUT_OF_SCOPE"
+        }
+      ]
+    },
+    "fetch": {
+      "standard": "WHATWG Fetch Standard (https://fetch.spec.whatwg.org/) — frozen security policy subset (ADR-0033/0034)",
+      "profile": "WinterTC Minimal Web Runtime — outbound fetch (M28)",
+      "pinnedSubsets": [
+        {
+          "id": "fetch-policy-security",
+          "description": "Frozen outbound security policy vectors (ADR-0033): schemes, SSRF address classes, redirect downgrade. Executed against q_capabilities::fetch_policy in Rust.",
+          "verifiedIn": "crates/q-capabilities/tests/wpt_wintertc_conformance.rs",
+          "cases": [
+            {
+              "check": "scheme",
+              "input": "http",
+              "expect": "allow"
+            },
+            {
+              "check": "scheme",
+              "input": "https",
+              "expect": "allow"
+            },
+            {
+              "check": "scheme",
+              "input": "HTTP",
+              "expect": "allow"
+            },
+            {
+              "check": "scheme",
+              "input": "file",
+              "expect": "deny"
+            },
+            {
+              "check": "scheme",
+              "input": "data",
+              "expect": "deny"
+            },
+            {
+              "check": "scheme",
+              "input": "ws",
+              "expect": "deny"
+            },
+            {
+              "check": "scheme",
+              "input": "wss",
+              "expect": "deny"
+            },
+            {
+              "check": "scheme",
+              "input": "ftp",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "8.8.8.8",
+              "expect": "allow"
+            },
+            {
+              "check": "address",
+              "input": "2001:4860::8888",
+              "expect": "allow"
+            },
+            {
+              "check": "address",
+              "input": "10.0.0.1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "172.16.0.1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "192.168.1.1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "127.0.0.1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "::1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "169.254.169.254",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "fd00:ec2::235",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "fd00::1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "0.0.0.0",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "224.0.0.1",
+              "expect": "deny"
+            },
+            {
+              "check": "address",
+              "input": "::ffff:10.0.0.1",
+              "expect": "deny"
+            },
+            {
+              "check": "redirect",
+              "from": "https",
+              "to": "https",
+              "hop": 1,
+              "expect": "allow"
+            },
+            {
+              "check": "redirect",
+              "from": "https",
+              "to": "http",
+              "hop": 1,
+              "expect": "deny"
+            },
+            {
+              "check": "redirect",
+              "from": "https",
+              "to": "file",
+              "hop": 1,
+              "expect": "deny"
+            }
+          ]
+        }
+      ],
+      "explicitSkips": [
+        {
+          "id": "wpt-fetch-websockets",
+          "name": "WebSocket API and ws:/wss: schemes",
+          "standardReference": "RFC 6455 / WHATWG HTML §9.1",
+          "reasonCode": "NO_WEBSOCKET_BETA",
+          "reason": "WebSocket is out of the beta scope entirely (AGENTS.md constraint 15, ADR-0018); fetch stays request/response only.",
+          "deferredTo": "POST_BETA"
+        },
+        {
+          "id": "wpt-fetch-sse",
+          "name": "Server-Sent Events / EventSource",
+          "standardReference": "WHATWG HTML §9.2.4",
+          "reasonCode": "NO_SSE_BETA",
+          "reason": "SSE requires a long-lived downstream connection per request; excluded from beta alongside WebSocket by AGENTS.md constraint 15.",
+          "deferredTo": "POST_BETA"
+        },
+        {
+          "id": "wpt-fetch-request-streaming",
+          "name": "Duplex streaming request bodies (ReadableStream)",
+          "standardReference": "WHATWG Fetch §2.2.3 (duplex option)",
+          "reasonCode": "NO_STREAMING_REQUEST_BODIES",
+          "reason": "Request bodies are bounded in-memory buffers in beta; response streaming lands in M28-006 but request bodies stay bounded.",
+          "deferredTo": "POST_M28"
+        },
+        {
+          "id": "wpt-fetch-formdata",
+          "name": "FormData / multipart/form-data construction",
+          "standardReference": "WHATWG XMLHttpRequest §5.6 (FormData)",
+          "reasonCode": "NO_FORMDATA_MULTIPART",
+          "reason": "No FormData constructor or multipart encoder ships in beta; bodies are strings, bytes, or JSON.",
+          "deferredTo": "POST_M28"
+        },
+        {
+          "id": "wpt-fetch-blob-file",
+          "name": "Blob/File request and response body types",
+          "standardReference": "WHATWG File API",
+          "reasonCode": "NO_BLOB_FILE_TYPES",
+          "reason": "Server runtime has no Blob store (consistent with the url capability skip); Blob/File bodies fail closed at the policy layer.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-fetch-serviceworkers",
+          "name": "Service Workers and CacheStorage",
+          "standardReference": "W3C Service Workers",
+          "reasonCode": "NO_SERVICE_WORKERS",
+          "reason": "Service Workers are a browser lifecycle concept with no meaning in a compiled server runtime.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-fetch-xhr",
+          "name": "XMLHttpRequest",
+          "standardReference": "WHATWG XMLHttpRequest",
+          "reasonCode": "NO_XHR",
+          "reason": "fetch supersedes XHR; WinterTC minimal profile excludes XHR and no compatibility layer ships.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-fetch-http2",
+          "name": "HTTP/2 upstream and server push",
+          "standardReference": "RFC 9113",
+          "reasonCode": "NO_HTTP2_UPSTREAM",
+          "reason": "Outbound requests speak HTTP/1.1 in beta (ADR-0033 non-goals); HTTP/2 upstream is a GA-track evaluation.",
+          "deferredTo": "GA_TRACK"
+        },
+        {
+          "id": "wpt-fetch-client-certs",
+          "name": "Mutual TLS client certificates",
+          "standardReference": "RFC 8446 §4.4.2 / Web TLS transport",
+          "reasonCode": "NO_CLIENT_CERTS",
+          "reason": "Client certificates are an ADR-0033 §6 non-goal for beta; only server-verified TLS with bundled roots ships.",
+          "deferredTo": "GA_TRACK"
+        },
+        {
+          "id": "wpt-fetch-socks-proxy",
+          "name": "SOCKS4/5 and HTTP proxy tunneling",
+          "standardReference": "RFC 1928 / RFC 7230 CONNECT",
+          "reasonCode": "NO_SOCKS_PROXY",
+          "reason": "No ambient or explicit proxy support in beta (ADR-0033 §5); a proxy would move the trust boundary off the address classifier.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-fetch-cookies",
+          "name": "Cookie jar / credential management",
+          "standardReference": "RFC 6265bis",
+          "reasonCode": "NO_COOKIE_JAR",
+          "reason": "No persistent cookie store ships; cross-origin redirect credential stripping IS enforced, but cookie persistence is deferred.",
+          "deferredTo": "POST_M28"
+        },
+        {
+          "id": "wpt-fetch-br-zstd",
+          "name": "brotli and zstd content encodings",
+          "standardReference": "RFC 7932 / RFC 8878",
+          "reasonCode": "NO_BR_ZSTD",
+          "reason": "Only opt-in gzip is negotiated and decompressed, bounded by the response body limit (ADR-0033 §8).",
+          "deferredTo": "POST_M28"
         }
       ]
     }

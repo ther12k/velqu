@@ -18,11 +18,12 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
 describe("Web API Standards Conformance (M27-010)", () => {
   describe("Pinned Manifest Structure", () => {
-    test("manifest declares all four M27 capability subsets", () => {
+    test("manifest declares all M27 + M28 capability subsets", () => {
       expect(manifest.capabilities.url).toBeDefined();
       expect(manifest.capabilities.text_encoding).toBeDefined();
       expect(manifest.capabilities.abort).toBeDefined();
       expect(manifest.capabilities.crypto).toBeDefined();
+      expect(manifest.capabilities.fetch).toBeDefined();
     });
 
     test("manifest declares valid WinterTC profiles", () => {
@@ -202,7 +203,7 @@ describe("Web API Standards Conformance (M27-010)", () => {
     });
   });
 
-  describe("Unsupported APIs Enforcement (M27-010-D)", () => {
+  describe("Unsupported APIs Enforcement (M27-010-D, M28-001-C)", () => {
     test("unsupported Web API skips are all classified with valid reason codes", () => {
       const validCodes = new Set([
         "BROWSER_ONLY_FEATURE",
@@ -213,11 +214,60 @@ describe("Web API Standards Conformance (M27-010)", () => {
         "MINIMAL_EVENT_TARGET",
         "UNSUPPORTED_CRYPTO_SUBTLE",
         "SPEC_MANDATED_TYPE_ERROR",
+        "NO_WEBSOCKET_BETA",
+        "NO_SSE_BETA",
+        "NO_STREAMING_REQUEST_BODIES",
+        "NO_FORMDATA_MULTIPART",
+        "NO_BLOB_FILE_TYPES",
+        "NO_SERVICE_WORKERS",
+        "NO_XHR",
+        "NO_HTTP2_UPSTREAM",
+        "NO_CLIENT_CERTS",
+        "NO_SOCKS_PROXY",
+        "NO_COOKIE_JAR",
+        "NO_BR_ZSTD",
       ]);
       for (const cap of Object.values(manifest.capabilities) as any[]) {
         for (const skip of cap.explicitSkips) {
           expect(validCodes.has(skip.reasonCode)).toBe(true);
         }
+      }
+    });
+  });
+
+  describe("Fetch Security Policy Manifest (M28-001-C)", () => {
+    test("fetch capability pins an executable security-policy subset", () => {
+      const fetch = manifest.capabilities.fetch;
+      expect(fetch.pinnedSubsets.length).toBeGreaterThan(0);
+      const subset = fetch.pinnedSubsets.find((s: any) => s.id === "fetch-policy-security");
+      expect(subset).toBeDefined();
+      // The vectors execute in Rust against q_capabilities::fetch_policy,
+      // not against Bun globals (engine divergence) — the pointer must be
+      // explicit so the report cannot imply a Bun-side run.
+      expect(subset.verifiedIn).toBe("crates/q-capabilities/tests/wpt_wintertc_conformance.rs");
+      expect(subset.cases.length).toBeGreaterThanOrEqual(23);
+      const checks = new Set(subset.cases.map((c: any) => c.check));
+      expect(checks.has("scheme")).toBe(true);
+      expect(checks.has("address")).toBe(true);
+      expect(checks.has("redirect")).toBe(true);
+      for (const c of subset.cases) {
+        expect(c.expect === "allow" || c.expect === "deny").toBe(true);
+      }
+      // Both directions present.
+      expect(subset.cases.some((c: any) => c.expect === "allow")).toBe(true);
+      expect(subset.cases.some((c: any) => c.expect === "deny")).toBe(true);
+    });
+
+    test("fetch unsupported features are frozen with deferral targets", () => {
+      const fetch = manifest.capabilities.fetch;
+      const byId = new Map(fetch.explicitSkips.map((s: any) => [s.id, s]));
+      // The headline non-goals from the M28 evidence list.
+      expect(byId.has("wpt-fetch-websockets")).toBe(true);
+      expect(byId.has("wpt-fetch-sse")).toBe(true);
+      for (const skip of fetch.explicitSkips) {
+        expect(skip.standardReference).toBeDefined();
+        expect(skip.reason.length).toBeGreaterThan(10);
+        expect(["OUT_OF_SCOPE", "POST_M28", "POST_BETA", "GA_TRACK"]).toContain(skip.deferredTo);
       }
     });
   });
