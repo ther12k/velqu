@@ -103,7 +103,7 @@ pub fn run_expired_drain<C: CancellableCapability>(cap: &C) -> Result<LifecycleR
     let outcome =
         shutdown::finish_shutdown(&mut lc, &mut ops, true).map_err(|e| fail("finish", e))?;
     match outcome {
-        DrainOutcome::DeadlineExceeded { pending } if pending == 1 => {}
+        DrainOutcome::DeadlineExceeded { pending: 1 } => {}
         other => {
             return Err(format!(
                 "SDK harness: expired drain must exceed the deadline with 1 pending op, got {}",

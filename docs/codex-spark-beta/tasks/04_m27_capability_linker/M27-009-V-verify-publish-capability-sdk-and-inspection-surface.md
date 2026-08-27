@@ -4,7 +4,7 @@ parent_task: M27-009
 milestone: M27
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -129,3 +129,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-009-V) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-009-v (squash-merged; see git log for final hash)
+- Closes: #292
+
+### Acceptance-criterion mapping (parent M27-009 guardrails)
+
+1. **Capability does not receive arbitrary mutable app state** — source: `crates/q-capabilities/src/sdk.rs` (`CapabilitySdk`/`CancellableCapability` take only `&self` + `&mut CapabilityLifecycle`; `LifecycleContext` is a read-only wrapper); negative proof: `assert_ops_gate_fails_closed` / `ops_gate_rejects_start_outside_ready` (typed `NotReady`, never mutated state).
+2. **SDK tests lifecycle/cancel/shutdown** — `full_lifecycle_battery_reports_quiesced`, `expired_drain_battery_fails_closed` (`DeadlineExceeded{pending:1}` + `Failed` terminal, never a late Quiesced), `cancellable_capability_drains_to_quiesced` (all in `harness.rs` / `sdk.rs`).
+3. **Versioning is explicit** — `example_capability_metadata_is_explicit`, `invalid_id_in_metadata_fails_closed`, diagnostics `version_mismatch_fails_closed` / `missing_metadata_fails_closed`, compat `sdk_abi_revision_is_explicit` + selector policy tests (`crates/q-capabilities/src/{sdk,diagnostics,compat}.rs`), ADR-0032.
+4. **Example capability remains outside core** — `crates/q-capabilities/examples/example_capability.rs` is a cargo example target only; no core/runtime path references it; re-ran green in this packet (see output below).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 107 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 14+97 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 200 pass / 0 fail
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `./scripts/verify` → **ALL PASS (exit 0)** — includes workspace clippy `-D warnings`, independent-build reproducibility (12 artifacts byte-identical, app.qpack 5329b73d…), benchmark artifact validation with no errors.
+
+### Example run (re-verified)
+```
+graceful: LifecycleReport { id: "runtime:example", version: 1, ready_phase: Ready, drain_outcome: "quiesced", terminal_phase: Quiesced }
+expired:  LifecycleReport { id: "runtime:example", version: 1, ready_phase: Ready, drain_outcome: "deadline-exceeded", terminal_phase: Failed }
+ops gate: fails closed outside Ready ✓
+inspect: 1 capabilities linked
+inspect: runtime:example@1 — example greeter capability
+```
+
+### Defect fixed in this packet (disclosed)
+- `crates/q-capabilities/src/harness.rs:106`: clippy `redundant_guards` (`if pending == 1` → pattern `{ pending: 1 }`). First `./scripts/verify` run on this branch failed `FAIL: cargo clippy`; after the one-line fix the full verify passes. Root cause of the earlier miss: the per-packet gate command piped clippy through `tail`, so the shell saw `tail`'s exit status and masked clippy failures in B/C/D local runs. This V packet caught it through the full verify gate; going forward clippy exit status is checked explicitly (`set -o pipefail`). No test or fixture was weakened.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
