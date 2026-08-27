@@ -328,7 +328,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-009-Z](../tasks/04_m27_capability_linker/M27-009-Z-package-evidence-for-publish-capability-sdk-and-inspection-surface.md) | P1 | evidence | PASS | M27-009-V | Package evidence for Publish capability SDK and inspection surface |
 | [M27-010-A](../tasks/04_m27_capability_linker/M27-010-A-pin-wpt-wintertc-subsets.md) | P1 | implement | PASS | M27-005-Z, M27-006-Z, M27-007-Z, M27-008-Z | Pin WPT/WinterTC subsets |
 | [M27-010-B](../tasks/04_m27_capability_linker/M27-010-B-record-skips-and-reasons.md) | P1 | implement | PASS | M27-010-A | Record skips and reasons |
-| [M27-010-C](../tasks/04_m27_capability_linker/M27-010-C-automate-regression-reports.md) | P1 | implement | TODO | M27-010-B | Automate regression reports |
+| [M27-010-C](../tasks/04_m27_capability_linker/M27-010-C-automate-regression-reports.md) | P1 | implement | PASS | M27-010-B | Automate regression reports |
 | [M27-010-D](../tasks/04_m27_capability_linker/M27-010-D-keep-unsupported-apis-explicit.md) | P1 | implement | TODO | M27-010-C | Keep unsupported APIs explicit |
 | [M27-010-V](../tasks/04_m27_capability_linker/M27-010-V-verify-establish-web-api-conformance-program.md) | P1 | verify | TODO | M27-010-A, M27-010-B, M27-010-C, M27-010-D | Verify Establish Web API conformance program |
 | [M27-010-Z](../tasks/04_m27_capability_linker/M27-010-Z-package-evidence-for-establish-web-api-conformance-program.md) | P1 | evidence | TODO | M27-010-V | Package evidence for Establish Web API conformance program |
