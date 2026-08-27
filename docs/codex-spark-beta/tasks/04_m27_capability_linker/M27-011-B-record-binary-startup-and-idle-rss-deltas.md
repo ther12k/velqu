@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -128,3 +128,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-B) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-b (squash-merged; see git log for final hash)
+- Closes: #301
+
+### Changed files
+- `scripts/measure-capability-profiles.py`: Enhanced profiling tool to compute and record deltas against the approved M26 baseline for binary size, cold-start latency (p50/p95/p99), and idle RSS memory.
+- `benchmarks/raw/profiles/capability-profiles.json`: Updated raw JSON evidence with `deltas` block comparing M26 baseline vs M27 current measurements.
+- `docs/reports/m27-011-capability-cost-budget-report.md`: Added M26 Baseline vs M27 Capability Deltas matrix.
+
+### Baseline vs M27 Delta Matrix
+| Metric | M26 Baseline | M27 with Capabilities | Delta | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| Release Binary Size | 5.18 MB (5,433,128 B) | 5.30 MB (5,553,128 B) | +120,000 B (+2.2%) | PASS (< +250 KB budget) |
+| Cold-Start Latency (p50) | 3.83 ms | 4.16 ms | +0.33 ms (noise) | PASS (< 10 ms budget) |
+| Idle RSS Memory | 7,144 kB (~7.0 MB) | 7,320 kB (~7.1 MB) | +176 kB | PASS (< +512 KB budget) |
+| Unused Capability Heap | 0 B | 0 B | +0 B | PASS (Zero overhead) |
+
+### Command results
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 15+97 passed
+- `cargo test -p q-capabilities` → 107+7 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

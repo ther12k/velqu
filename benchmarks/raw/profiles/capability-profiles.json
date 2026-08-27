@@ -1,7 +1,7 @@
 {
   "format": "velqu-capability-profiles-v1",
-  "generatedAt": "2026-08-27T16:30:35Z",
-  "commit": "7b88c69",
+  "generatedAt": "2026-08-27T16:39:00Z",
+  "commit": "c986184",
   "binarySizeBytes": 5553128,
   "capabilitySizesBytes": {
     "q-capabilities (total)": 142000,
@@ -15,40 +15,58 @@
     "full": {
       "description": "All-Beta profile (all M27 Web APIs + full QuickJS globals)",
       "samplesCount": 10,
-      "startupP50Ms": 3.966806,
-      "startupP95Ms": 5.0877165,
-      "startupP99Ms": 5.0885265,
+      "startupP50Ms": 4.156699,
+      "startupP95Ms": 5.2375029,
+      "startupP99Ms": 5.24979258,
       "rawStartupMs": [
-        3.142821,
-        3.225847,
-        3.870058,
-        3.876204,
-        3.9292019999999996,
-        4.00441,
-        4.101172,
-        4.791973,
-        5.086479,
-        5.088729
+        2.954891,
+        3.567049,
+        4.131554,
+        4.149097,
+        4.149191,
+        4.164206999999999,
+        4.535371,
+        4.978808000000001,
+        5.218727,
+        5.252865
       ]
     },
     "web": {
       "description": "Web-Minimal profile (WinterTC core, no Date/performance intrinsics)",
       "samplesCount": 10,
-      "startupP50Ms": 4.777858,
-      "startupP95Ms": 8.69809055,
-      "startupP99Ms": 8.97794771,
+      "startupP50Ms": 4.0757435,
+      "startupP95Ms": 4.6533149,
+      "startupP99Ms": 4.9194981800000015,
       "rawStartupMs": [
-        3.901227,
-        4.090695999999999,
-        4.140391,
-        4.218358,
-        4.745525,
-        4.8101910000000005,
-        5.836948,
-        6.2858,
-        8.270531,
-        9.047912
+        3.1424790000000002,
+        3.464861,
+        3.844842,
+        3.9107730000000003,
+        4.005288,
+        4.146198999999999,
+        4.1525549999999996,
+        4.179742,
+        4.246646,
+        4.986044000000001
       ]
+    }
+  },
+  "deltas": {
+    "binarySize": {
+      "m26BaselineBytes": 5433128,
+      "m27CurrentBytes": 5553128,
+      "deltaBytes": 120000,
+      "deltaPercent": 2.208672425902721
+    },
+    "startupColdP50": {
+      "m26BaselineMs": 3.828,
+      "m27CurrentMs": 4.156699,
+      "deltaMs": 0.32869899999999985
+    },
+    "idleRss": {
+      "m26BaselineKb": 7144,
+      "m27CurrentKb": 7320,
+      "deltaKb": 176
     }
   }
 }
