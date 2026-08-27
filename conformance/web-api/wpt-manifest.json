@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "velqu-wpt-wintertc-subset-manifest",
+  "version": "1.0.0",
+  "description": "Pinned Web Platform Tests (WPT) and WinterTC test subset vectors for Velqu M27 capabilities",
+  "milestone": "M27",
+  "capabilities": {
+    "url": {
+      "standard": "WHATWG URL Standard (https://url.spec.whatwg.org/)",
+      "profile": "WinterTC Minimum Common Web Platform API",
+      "pinnedSubsets": [
+        {
+          "id": "wpt-url-resolution",
+          "description": "Relative URL resolution against base URL",
+          "cases": [
+            { "base": "https://example.com/a/b/c", "input": "../d", "expected": "https://example.com/a/d" },
+            { "base": "https://example.com/a/b/c", "input": "../../d", "expected": "https://example.com/d" },
+            { "base": "https://example.com/a/b/c", "input": "./d", "expected": "https://example.com/a/b/d" },
+            { "base": "https://example.com/a/b/c", "input": "/root", "expected": "https://example.com/root" },
+            { "base": "https://example.com/a/b/c", "input": "?query=1", "expected": "https://example.com/a/b/c?query=1" },
+            { "base": "https://example.com/a/b/c", "input": "#hash", "expected": "https://example.com/a/b/c#hash" }
+          ]
+        },
+        {
+          "id": "wpt-url-normalization",
+          "description": "Default port, host bracket, and percent-encoding normalization",
+          "cases": [
+            { "input": "http://example.com:80/path", "expectedOrigin": "http://example.com", "expectedPort": "" },
+            { "input": "https://example.com:443/path", "expectedOrigin": "https://example.com", "expectedPort": "" },
+            { "input": "http://[::1]:8080/path", "expectedHost": "[::1]:8080", "expectedHostname": "[::1]" },
+            { "input": "http://[2001:db8::1]:9000/path", "expectedHost": "[2001:db8::1]:9000", "expectedHostname": "[2001:db8::1]" },
+            { "input": "https://example.com/path with spaces/", "expectedPathname": "/path%20with%20spaces/" }
+          ]
+        },
+        {
+          "id": "wintertc-urlsearchparams",
+          "description": "URLSearchParams mutations, querying, sorting, and iteration",
+          "cases": [
+            { "init": "a=1&b=2&a=3", "get": { "key": "a", "expected": "1" }, "getAll": { "key": "a", "expected": ["1", "3"] }, "has": { "key": "b", "expected": true } },
+            { "init": "key=val", "append": { "key": "key", "value": "val2" }, "expectedString": "key=val&key=val2" },
+            { "init": "z=9&a=1&m=5", "sort": true, "expectedString": "a=1&m=5&z=9" },
+            { "init": "k=v1&k=v2", "delete": { "key": "k" }, "expectedString": "" }
+          ]
+        }
+      ]
+    },
+    "text_encoding": {
+      "standard": "WHATWG Encoding Standard (https://encoding.spec.whatwg.org/)",
+      "profile": "WinterTC Minimum Common Web Platform API (UTF-8 subset)",
+      "pinnedSubsets": [
+        {
+          "id": "wpt-textencoder-utf8",
+          "description": "UTF-8 byte sequence encoding across ASCII, Latin, CJK, and Astral planes",
+          "cases": [
+            { "input": "hello", "expectedBytes": [104, 101, 108, 108, 111] },
+            { "input": "café", "expectedBytes": [99, 97, 102, 195, 169] },
+            { "input": "こんにちは", "expectedBytes": [227, 129, 147, 227, 130, 147, 227, 129, 171, 227, 129, 161, 227, 129, 175] },
+            { "input": "🚀", "expectedBytes": [240, 159, 154, 128] }
+          ]
+        },
+        {
+          "id": "wpt-textdecoder-utf8",
+          "description": "UTF-8 byte decoding with BOM handling, replacement mode, and fatal mode",
+          "cases": [
+            { "bytes": [104, 101, 108, 108, 111], "options": {}, "expected": "hello" },
+            { "bytes": [239, 187, 191, 104, 105], "options": { "ignoreBOM": false }, "expected": "hi" },
+            { "bytes": [239, 187, 191, 104, 105], "options": { "ignoreBOM": true }, "expected": "\uFEFFhi" },
+            { "bytes": [104, 255, 105], "options": { "fatal": false }, "expected": "h\uFFFDi" },
+            { "bytes": [104, 255, 105], "options": { "fatal": true }, "expectedError": "TypeError" }
+          ]
+        }
+      ]
+    },
+    "abort": {
+      "standard": "WHATWG DOM Standard — AbortController & AbortSignal (https://dom.spec.whatwg.org/)",
+      "profile": "WinterTC Minimum Common Web Platform API",
+      "pinnedSubsets": [
+        {
+          "id": "wpt-abortcontroller-basic",
+          "description": "AbortController creation, abort signaling, and signal state",
+          "cases": [
+            { "action": "abort", "customReason": "test-reason", "expectedAborted": true, "expectedReason": "test-reason" },
+            { "action": "abort-default", "expectedAborted": true, "expectedReasonName": "AbortError" }
+          ]
+        },
+        {
+          "id": "wpt-abortsignal-static",
+          "description": "AbortSignal.abort() and AbortSignal.timeout() factory semantics",
+          "cases": [
+            { "factory": "AbortSignal.abort", "reason": "fast-abort", "expectedImmediateAborted": true },
+            { "factory": "AbortSignal.timeout", "delayMs": 50, "expectedAsyncAborted": true, "expectedReasonName": "TimeoutError" }
+          ]
+        }
+      ]
+    },
+    "crypto": {
+      "standard": "W3C Web Cryptography API — Random Subset (https://www.w3.org/TR/WebCryptoAPI/)",
+      "profile": "WinterTC Minimal Web Crypto Subset",
+      "pinnedSubsets": [
+        {
+          "id": "wpt-crypto-getrandomvalues",
+          "description": "crypto.getRandomValues on supported ArrayBufferViews and quota bounds",
+          "cases": [
+            { "typedArray": "Uint8Array", "length": 16, "expectedFilled": true },
+            { "typedArray": "Int32Array", "length": 8, "expectedFilled": true },
+            { "typedArray": "Uint8Array", "length": 65537, "expectedError": "RangeError" },
+            { "typedArray": "Float32Array", "length": 4, "expectedError": "TypeError" },
+            { "typedArray": "DataView", "length": 16, "expectedError": "TypeError" }
+          ]
+        },
+        {
+          "id": "wpt-crypto-randomuuid",
+          "description": "crypto.randomUUID RFC 4122 v4 UUID generation and uniqueness",
+          "cases": [
+            { "format": "RFC4122-v4", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "expectedUnique": true }
+          ]
+        }
+      ]
+    }
+  }
+}
