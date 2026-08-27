@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-006-C (PASS)
+
+Deliverable: integrate TypedArray ownership semantics for `TextEncoder.encodeInto` and `TextDecoder.decode` over ArrayBuffers, sub-arrays, and DataViews without duplicate full-buffer copies.
+
+### Changed files
+
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - Added unit test `text_decoder_and_encoder_typedarray_views_and_subarrays` verifying ArrayBuffer view slicing and `encodeInto` on destination sub-arrays.
+- `packages/cli/src/text-encoding.test.ts`:
+  - Added test suite `TypedArray ownership and view slicing` covering:
+    - Decoding from `ArrayBufferView` with non-zero `byteOffset` and `byteLength`.
+    - Decoding directly from raw `ArrayBuffer`.
+    - Decoding from `DataView`.
+    - `encodeInto` into subarray views (`dest.subarray(2, 6)`).
+    - `decode` with undefined defaulting to empty string.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-engine-quickjs` — 108 passed.
+- `cargo test -p q-capabilities` — 78 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-schema-runtime` — 67 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 179 passed (+5 TypedArray ownership/view slicing tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD a61654f)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 108 · `-p q-schema-runtime` 67 · `-p q-capabilities` 78 · `-p velqu-runtime` 31 — pass.
+- `bun test` 179 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - No duplicate full-buffer copies: `encodeInto` and `__velquTextEncodeFill` write directly to destination pointer buffers without intermediate `Vec<u8>` allocation.
+  - Large buffers are bounded: bounded by `MAX_TEXT_BUFFER_LEN` (16 MB).
+
