@@ -3425,4 +3425,56 @@ mod tests {
             "#).unwrap());
         });
     }
+
+    /// M27-010-D: Keep unsupported APIs explicit — non-advertised APIs are strictly undefined, never stubbed.
+    #[test]
+    fn unsupported_web_apis_are_strictly_absent_and_never_stubbed() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Web Crypto SubtleCrypto is NOT implemented in M27; must be undefined (never a mock/stub)
+            assert!(ctx
+                .eval::<bool, _>("typeof crypto.subtle === 'undefined'")
+                .unwrap());
+
+            // Broad Web APIs outside M27 scope must be undefined
+            assert!(ctx.eval::<bool, _>("typeof fetch === 'undefined'").unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof WebSocket === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof EventSource === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof localStorage === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof sessionStorage === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof document === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof window === 'undefined'")
+                .unwrap());
+            assert!(ctx
+                .eval::<bool, _>("typeof Worker === 'undefined'")
+                .unwrap());
+            assert!(ctx.eval::<bool, _>("typeof Blob === 'undefined'").unwrap());
+
+            // Evaluation of undeclared identifiers throws ReferenceError
+            assert!(ctx.eval::<(), _>("nonExistentApiFunction()").is_err());
+        });
+    }
 }

@@ -1,7 +1,8 @@
 /**
- * Web API Standards Conformance Suite (M27-010-A, M27-010-B).
+ * Web API Standards Conformance Suite (M27-010-A, M27-010-B, M27-010-D).
  *
- * Validates pinned WPT / WinterTC test vectors and records explicit skips/reasons for:
+ * Validates pinned WPT / WinterTC test vectors, records explicit skips/reasons,
+ * and verifies unsupported/unadvertised APIs are documented and tracked:
  * 1. WHATWG URL / URLSearchParams
  * 2. WHATWG TextEncoder / TextDecoder (UTF-8)
  * 3. WHATWG AbortController / AbortSignal
@@ -198,6 +199,26 @@ describe("Web API Standards Conformance (M27-010)", () => {
         set.add(id);
       }
       expect(set.size).toBe(50);
+    });
+  });
+
+  describe("Unsupported APIs Enforcement (M27-010-D)", () => {
+    test("unsupported Web API skips are all classified with valid reason codes", () => {
+      const validCodes = new Set([
+        "BROWSER_ONLY_FEATURE",
+        "POSIX_RUNTIME_TARGET",
+        "WINTERTC_UTF8_ONLY",
+        "STREAMING_DEFERRED",
+        "ASYNC_COMBINATOR_DEFERRED",
+        "MINIMAL_EVENT_TARGET",
+        "UNSUPPORTED_CRYPTO_SUBTLE",
+        "SPEC_MANDATED_TYPE_ERROR",
+      ]);
+      for (const cap of Object.values(manifest.capabilities) as any[]) {
+        for (const skip of cap.explicitSkips) {
+          expect(validCodes.has(skip.reasonCode)).toBe(true);
+        }
+      }
     });
   });
 });
