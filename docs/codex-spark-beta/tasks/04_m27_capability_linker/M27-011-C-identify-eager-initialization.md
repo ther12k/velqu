@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -123,3 +123,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-C) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-c (squash-merged; see git log for final hash)
+- Closes: #302
+
+### Changed files
+- `crates/q-engine-quickjs/src/worker.rs`: Added test `capability_initialization_is_lazy_and_causes_zero_startup_heap_waste` verifying constructor functions attach to `globalThis` statically without pre-allocating capability instances, while request context (`ctx.signal`, `ctx.native`) and capability objects materialize strictly on first access.
+
+### Eager vs Lazy Initialization Audit Summary
+- **Eager (Zero Persistent Heap Growth)**: Native bridge function pointers (`__velqu*`) and JS constructor definitions in `PRELUDE` are registered on `globalThis` during worker boot.
+- **Lazy (On-Demand Heap Allocation)**:
+  - Capability object instances (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `AbortController`) allocate only upon user code `new Class()` invocation.
+  - Native buffers and entropy streams allocate only during active operations.
+  - Context properties (`ctx.signal`, `ctx.native`, `req.url`, `req.headers`, `req.body`) use `__velquContextPrototype` lazy getters and unread fields are never materialized.
+  - Stale handles generation-checked and expired at settlement.
+
+### Command results
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 16 unit + 97 worker passed
+- `cargo test -p q-capabilities` → 107+7 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
