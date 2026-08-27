@@ -344,7 +344,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
-| [M28-001-A](../tasks/05_m28_native_fetch/M28-001-A-define-url-schemes-redirect-policy-dns-rebinding-controls-proxy-behavior-tls-roo.md) | P0 | implement | TODO | M27-GATE | Define URL schemes, redirect policy, DNS rebinding controls, proxy behavior, TLS roots, timeout layers, compression, and body limits |
+| [M28-001-A](../tasks/05_m28_native_fetch/M28-001-A-define-url-schemes-redirect-policy-dns-rebinding-controls-proxy-behavior-tls-roo.md) | P0 | implement | PASS | M27-GATE | Define URL schemes, redirect policy, DNS rebinding controls, proxy behavior, TLS roots, timeout layers, compression, and body limits |
 | [M28-001-B](../tasks/05_m28_native_fetch/M28-001-B-specify-reverse-proxy-and-outbound-trust.md) | P0 | implement | TODO | M28-001-A | Specify reverse-proxy and outbound trust |
 | [M28-001-C](../tasks/05_m28_native_fetch/M28-001-C-define-unsupported-web-features.md) | P0 | implement | TODO | M28-001-B | Define unsupported Web features |
 | [M28-001-D](../tasks/05_m28_native_fetch/M28-001-D-document-same-process-trusted-code-assumption.md) | P0 | implement | TODO | M28-001-C | Document same-process trusted-code assumption |
