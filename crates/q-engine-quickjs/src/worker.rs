@@ -3212,6 +3212,30 @@ mod tests {
             "#
                 )
                 .unwrap());
+
+            // M27-006-C: Test TypedArray view slicing and sub-array encodeInto in QuickJS
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => {
+                        const buf = new Uint8Array([0, 0, 72, 105, 0]).buffer;
+                        const view = new Uint8Array(buf, 2, 2);
+                        const dec = new TextDecoder();
+                        return dec.decode(view) === 'Hi';
+                    })()"
+                )
+                .unwrap());
+
+            assert!(ctx
+                .eval::<bool, _>(
+                    "(() => {
+                        const enc = new TextEncoder();
+                        const dest = new Uint8Array(10);
+                        const sub = dest.subarray(2, 5);
+                        const r = enc.encodeInto('xyz', sub);
+                        return r.read === 3 && r.written === 3 && dest[2] === 120 && dest[4] === 122 && dest[0] === 0;
+                    })()"
+                )
+                .unwrap());
         });
     }
 }
