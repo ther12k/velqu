@@ -18,6 +18,7 @@ step "OKF bundle structural validation"
 ./scripts/validate-okf || fail "validate-okf"
 ./scripts/validate-production-plan || fail "validate-production-plan"
 python3 scripts/generate-benchmark-reports.py --check || fail "benchmark-reports"
+python3 scripts/generate-conformance-report.py --check || fail "conformance-reports"
 
 step "Rust workspace formatting"
 cargo fmt --all --check 2>&1 | tail -3 || fail "cargo fmt"

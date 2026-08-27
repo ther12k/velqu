@@ -4,7 +4,7 @@ parent_task: M27-010
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -116,3 +116,29 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-010-C) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-010-c (squash-merged; see git log for final hash)
+- Closes: #296
+
+### Changed files
+- `scripts/generate-conformance-report.py` (new): Deterministic generator and synchronization checker for `docs/reports/m27-010-wpt-wintertc-conformance.md` from `conformance/web-api/wpt-manifest.json`; generates standards mapping, pinned vector tables, explicit skips with reason codes, manifest SHA-256 hash, and exact git commit hash; provides `--check` mode to fail on report desynchronization.
+- `scripts/verify`: Added `python3 scripts/generate-conformance-report.py --check || fail "conformance-reports"` to standard verification suite, ensuring conformance reports can never silently drift.
+- `docs/reports/m27-010-wpt-wintertc-conformance.md`: Re-generated deterministically via automated script with manifest SHA-256 binding.
+
+### Command results
+- `cargo test -p q-capabilities` → 107 unit tests + 7 integration tests passed
+- `cargo test -p q-engine-quickjs` → 14+97 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 212 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `python3 scripts/generate-conformance-report.py --check` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
