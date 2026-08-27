@@ -17,6 +17,7 @@ pub mod identity;
 pub mod inventory;
 pub mod operations;
 pub mod resolver;
+pub mod sdk;
 pub mod shutdown;
 pub mod text_encoding;
 pub mod url_model;
