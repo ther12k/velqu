@@ -1,0 +1,54 @@
+{
+  "format": "velqu-capability-profiles-v1",
+  "generatedAt": "2026-08-27T16:30:35Z",
+  "commit": "7b88c69",
+  "binarySizeBytes": 5553128,
+  "capabilitySizesBytes": {
+    "q-capabilities (total)": 142000,
+    "url_model (WHATWG URL + SearchParams)": 68000,
+    "text_encoding (TextEncoder / TextDecoder)": 28000,
+    "abort (AbortController / Signal)": 18000,
+    "crypto (getRandomValues / randomUUID)": 16000,
+    "identity / resolver / inventory": 12000
+  },
+  "profiles": {
+    "full": {
+      "description": "All-Beta profile (all M27 Web APIs + full QuickJS globals)",
+      "samplesCount": 10,
+      "startupP50Ms": 3.966806,
+      "startupP95Ms": 5.0877165,
+      "startupP99Ms": 5.0885265,
+      "rawStartupMs": [
+        3.142821,
+        3.225847,
+        3.870058,
+        3.876204,
+        3.9292019999999996,
+        4.00441,
+        4.101172,
+        4.791973,
+        5.086479,
+        5.088729
+      ]
+    },
+    "web": {
+      "description": "Web-Minimal profile (WinterTC core, no Date/performance intrinsics)",
+      "samplesCount": 10,
+      "startupP50Ms": 4.777858,
+      "startupP95Ms": 8.69809055,
+      "startupP99Ms": 8.97794771,
+      "rawStartupMs": [
+        3.901227,
+        4.090695999999999,
+        4.140391,
+        4.218358,
+        4.745525,
+        4.8101910000000005,
+        5.836948,
+        6.2858,
+        8.270531,
+        9.047912
+      ]
+    }
+  }
+}
