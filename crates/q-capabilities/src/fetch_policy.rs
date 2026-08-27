@@ -26,6 +26,16 @@ pub const METADATA_ENDPOINTS: [IpAddr; 2] = [
     )),
 ];
 
+/// Canonical same-process trusted-code statement (ADR-0035, AGENTS.md
+/// constraint 14). Pinned as code so the wording cannot drift: the engine
+/// runs trusted application code only, is never a hostile-code sandbox,
+/// and the network — not the process interior — is the adversary.
+pub const TRUSTED_CODE_ASSUMPTION: &str =
+    "The QuickJS worker executes trusted, pack-compiled application code only. \
+It is not a sandbox for untrusted code: the process interior is inside the trust \
+boundary, and the adversary the security policy addresses is the network, never \
+the process itself.";
+
 /// Outbound fetch is a declared capability under the ADR-0029 identity
 /// system (ADR-0034 §1): `runtime:fetch@1`. No ambient global exists for
 /// routes without the grant.
@@ -822,6 +832,28 @@ mod tests {
         assert_eq!(p.trust_mode(), TrustMode::Default);
         // Ambient proxy trust stays off regardless of construction path.
         assert!(!p.ambient_proxy_enabled());
+    }
+
+    // --- ADR-0035 trusted-code assumption (M28-001-D) -------------------------
+
+    #[test]
+    fn trusted_code_assumption_is_pinned() {
+        let a = TRUSTED_CODE_ASSUMPTION;
+        // The three load-bearing properties (ADR-0035 §5).
+        assert!(a.contains("trusted"), "must name trusted code");
+        assert!(a.contains("not a sandbox"), "must deny the sandbox framing");
+        assert!(
+            a.contains("network"),
+            "must name the network as the adversary"
+        );
+        // The forbidden claim must not appear anywhere in the statement.
+        let lower = a.to_ascii_lowercase();
+        assert!(
+            !lower.contains("sandbox for untrusted") || a.contains("not a sandbox"),
+            "wording must never admit untrusted-code sandboxing"
+        );
+        // Multi-tenant / hostile-bundle framing is out of scope by name.
+        assert!(a.contains("process interior"));
     }
 
     #[test]
