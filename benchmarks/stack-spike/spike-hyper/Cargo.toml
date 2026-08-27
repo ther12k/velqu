@@ -1,0 +1,17 @@
+# M28-002-A spike: standalone, intentionally NOT part of the Velqu workspace.
+[workspace]
+
+[package]
+name = "spike-hyper"
+version = "0.1.0"
+edition = "2021"
+
+# Lower-level stack: hyper client + hyper-util pooling + hyper-rustls with
+# webpki roots. No reqwest wrapper, no ambient compression, no h2.
+[dependencies]
+hyper = { version = "1", features = ["http1", "client"] }
+hyper-util = { version = "0.1", features = ["tokio", "client", "client-legacy", "http1"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "webpki-tokio", "tls12"] }
+http-body-util = "0.1"
+bytes = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }

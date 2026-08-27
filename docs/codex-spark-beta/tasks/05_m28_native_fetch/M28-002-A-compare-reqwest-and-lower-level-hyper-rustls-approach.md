@@ -4,7 +4,7 @@ parent_task: M28-002
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-002-A) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-002-a (squash-merged; see git log for final hash)
+- Closes: #312
+
+### Changed files
+- `benchmarks/stack-spike/spike-reqwest/` (new): standalone spike crate (own workspace — production graph untouched) exercising reqwest 0.12 (`default-features = false`, `rustls-tls-webpki-roots` only) through lazy client construction, loopback plain-HTTP GET, bounded streaming prefix read, and early-drop cancellation.
+- `benchmarks/stack-spike/spike-hyper/` (new): equivalent spike for hyper 1 (`http1`,`client`) + hyper-util 0.1 (`client`,`client-legacy`,`http1`,`tokio`) + hyper-rustls 0.27 (ring, webpki, TLS 1.2) — identical exercise, identical policy-shaped features.
+- `benchmarks/raw/stack-spike/stack-comparison.json` (new): raw measurements — 40 fresh-process spawn samples (20 per candidate, all functional checks 20/20 pass), binary sizes, unique-crate counts, percentiles, production baseline.
+- `docs/reports/m28-002-a-stack-comparison.md` (new): spike report + qualitative matrix + decision record + fallback strategy.
+
+### Decision record (evidence-backed)
+**Select: hyper 1 + hyper-util (client-legacy) + hyper-rustls (webpki-roots).**
+Measured: −997,656 B binary (−21.4%), 43 vs 84 unique crates (−48.8%), spawn p95 3.318 ms vs 4.843 ms, p99 3.320 ms vs 6.242 ms; production already ships hyper+hyper-util for ingress, so outbound shares those crates. Qualitative: ADR-0033 policy applies directly with zero duplicated policy surfaces (reqwest conveniences are all "must disable" bypass traps), hyper-util exposes the pool knobs M28-003 needs (idle/active bounds, keepalive), both stacks drop-cancel and stream. No single benchmark decided — full matrix in the report. **Fallback**: reqwest with the same policy-shaped features, contained behind the policy object if the legacy client cannot be bounded as required.
+
+### Command results
+- `cargo test -p q-engine-quickjs` 16+97 · `-p q-http` 4+6+1 · `-p q-capabilities` 132+8 · `-p velqu-runtime` 31 — all pass
+- `bun test` → 215 pass / 0 fail; `bun run typecheck` → clean
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0 (spikes live in standalone workspaces; production graph unchanged)
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Decision is evidence-backed** — raw JSON + report above.
+- **No framework benchmark alone determines choice** — qualitative matrix (policy fit, pooling control, cancellation, maintainability, dependency risk) carries the decision with measurements as one input.
+- **Selected stack supports cancellation/backpressure** — proven functionally in both spikes (early drop mid-body); selected stack confirmed.
+- **Fallback strategy documented** — reqwest behind the policy object, in the report.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
