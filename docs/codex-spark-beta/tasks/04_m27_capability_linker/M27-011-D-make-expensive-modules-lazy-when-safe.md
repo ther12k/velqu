@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -123,3 +123,28 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-D) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-d (squash-merged; see git log for final hash)
+- Closes: #303
+
+### Changed files
+- `crates/q-engine-quickjs/src/prelude.rs`: Optimized `__velquContextPrototype` so `c.native` is inherited directly from the shared prototype (`__velquContextPrototype.native = __velquNativeCapabilities`), eliminating per-request wrapper allocations on every handler invocation; lazy request properties (`signal`, `params`, `query`, `headers`, `body`) remain strictly on-demand.
+- `crates/q-engine-quickjs/src/worker.rs`: Updated lazy initialization tests to assert prototype-level inheritance without own-property allocation.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` SHA-256 hash for the updated prelude binary.
+
+### Command results
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 16 unit + 97 worker passed
+- `cargo test -p q-capabilities` → 107+7 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
