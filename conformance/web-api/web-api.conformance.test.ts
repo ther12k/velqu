@@ -1,7 +1,7 @@
 /**
- * Web API Standards Conformance Suite (M27-010-A).
+ * Web API Standards Conformance Suite (M27-010-A, M27-010-B).
  *
- * Validates pinned WPT / WinterTC test vectors for:
+ * Validates pinned WPT / WinterTC test vectors and records explicit skips/reasons for:
  * 1. WHATWG URL / URLSearchParams
  * 2. WHATWG TextEncoder / TextDecoder (UTF-8)
  * 3. WHATWG AbortController / AbortSignal
@@ -15,7 +15,7 @@ import { join } from "path";
 const manifestPath = join(import.meta.dir, "wpt-manifest.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
-describe("Web API Standards Conformance (M27-010-A)", () => {
+describe("Web API Standards Conformance (M27-010)", () => {
   describe("Pinned Manifest Structure", () => {
     test("manifest declares all four M27 capability subsets", () => {
       expect(manifest.capabilities.url).toBeDefined();
@@ -29,6 +29,21 @@ describe("Web API Standards Conformance (M27-010-A)", () => {
         expect(cap.standard).toBeDefined();
         expect(cap.profile).toContain("WinterTC");
         expect(cap.pinnedSubsets.length).toBeGreaterThan(0);
+      }
+    });
+
+    test("manifest records explicit skips with standard reasons (M27-010-B)", () => {
+      for (const [key, cap] of Object.entries(manifest.capabilities) as [string, any][]) {
+        expect(cap.explicitSkips).toBeDefined();
+        expect(cap.explicitSkips.length).toBeGreaterThan(0);
+        for (const skip of cap.explicitSkips) {
+          expect(skip.id).toBeDefined();
+          expect(skip.name).toBeDefined();
+          expect(skip.standardReference).toBeDefined();
+          expect(skip.reasonCode).toBeDefined();
+          expect(skip.reason.length).toBeGreaterThan(10);
+          expect(skip.deferredTo).toBeDefined();
+        }
       }
     });
   });

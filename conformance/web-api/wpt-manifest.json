@@ -42,6 +42,24 @@
             { "init": "k=v1&k=v2", "delete": { "key": "k" }, "expectedString": "" }
           ]
         }
+      ],
+      "explicitSkips": [
+        {
+          "id": "wpt-url-blob-scheme",
+          "name": "Blob URL Scheme",
+          "standardReference": "WHATWG File API / URL Standard §4.3",
+          "reasonCode": "BROWSER_ONLY_FEATURE",
+          "reason": "Blob URLs require client-side Blob store; server-side POSIX runtime does not expose Blob storage.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-url-file-windows-drive",
+          "name": "Windows Drive File URLs",
+          "standardReference": "WHATWG URL Standard §4.4",
+          "reasonCode": "POSIX_RUNTIME_TARGET",
+          "reason": "Velqu targets POSIX/Linux execution; Windows file drive letters are excluded from URL normalization.",
+          "deferredTo": "OUT_OF_SCOPE"
+        }
       ]
     },
     "text_encoding": {
@@ -69,6 +87,24 @@
             { "bytes": [104, 255, 105], "options": { "fatal": true }, "expectedError": "TypeError" }
           ]
         }
+      ],
+      "explicitSkips": [
+        {
+          "id": "wpt-encoding-legacy-labels",
+          "name": "Non-UTF-8 Legacy Encodings",
+          "standardReference": "WHATWG Encoding Standard §5",
+          "reasonCode": "WINTERTC_UTF8_ONLY",
+          "reason": "WinterTC minimal web runtime profile specifies UTF-8 only; legacy multi-byte encodings fail closed with TypeError.",
+          "deferredTo": "OUT_OF_SCOPE"
+        },
+        {
+          "id": "wpt-encoding-streaming",
+          "name": "Chunked Streaming Decoder",
+          "standardReference": "WHATWG Encoding Standard §8",
+          "reasonCode": "STREAMING_DEFERRED",
+          "reason": "Request bodies in M27 are bounded memory buffers; chunked streaming reassembly is deferred to streaming milestones.",
+          "deferredTo": "POST_M27"
+        }
       ]
     },
     "abort": {
@@ -90,6 +126,24 @@
             { "factory": "AbortSignal.abort", "reason": "fast-abort", "expectedImmediateAborted": true },
             { "factory": "AbortSignal.timeout", "delayMs": 50, "expectedAsyncAborted": true, "expectedReasonName": "TimeoutError" }
           ]
+        }
+      ],
+      "explicitSkips": [
+        {
+          "id": "wpt-abort-signal-any",
+          "name": "AbortSignal.any() Combinator",
+          "standardReference": "WHATWG DOM Standard §3.2.1",
+          "reasonCode": "ASYNC_COMBINATOR_DEFERRED",
+          "reason": "Multiple signal composition is deferred to M28 native fetch and async combinator track.",
+          "deferredTo": "M28"
+        },
+        {
+          "id": "wpt-abort-event-bubbling",
+          "name": "DOM Event Bubbling/Capturing Graph",
+          "standardReference": "WHATWG DOM Standard §2.7",
+          "reasonCode": "MINIMAL_EVENT_TARGET",
+          "reason": "Lightweight single-target event listener dispatch; hierarchical event propagation is not supported in minimal runtime.",
+          "deferredTo": "OUT_OF_SCOPE"
         }
       ]
     },
@@ -114,6 +168,24 @@
           "cases": [
             { "format": "RFC4122-v4", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "expectedUnique": true }
           ]
+        }
+      ],
+      "explicitSkips": [
+        {
+          "id": "wpt-crypto-subtle",
+          "name": "SubtleCrypto Key Derivation & Operations",
+          "standardReference": "W3C Web Cryptography API §14",
+          "reasonCode": "UNSUPPORTED_CRYPTO_SUBTLE",
+          "reason": "ADR-0018 / M27-008-D: Do not implement custom or complex cryptography; M27 provides only OS CSPRNG entropy.",
+          "deferredTo": "GA_TRACK"
+        },
+        {
+          "id": "wpt-crypto-float-typedarray",
+          "name": "Float32/Float64Array getRandomValues",
+          "standardReference": "W3C Web Cryptography API §10.1.1",
+          "reasonCode": "SPEC_MANDATED_TYPE_ERROR",
+          "reason": "Web Crypto specification mandates TypeError for floating-point and non-integer views; rejected fail-closed.",
+          "deferredTo": "OUT_OF_SCOPE"
         }
       ]
     }
