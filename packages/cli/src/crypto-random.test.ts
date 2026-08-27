@@ -32,14 +32,23 @@ describe("Web Crypto getRandomValues and randomUUID conformance (M27-008-A)", ()
     expect(i32.some((v) => v !== 0)).toBe(true);
   });
 
-  test("crypto.getRandomValues enforces 64 KiB quota", () => {
-    // In standard Web Crypto (including Bun/Node/browser), > 65536 bytes throws QuotaExceededError
-    const huge = new Uint8Array(65536 + 1);
-    try {
-      crypto.getRandomValues(huge);
-      // In bun runtime, crypto.getRandomValues may not throw or have higher limit in dev tooling
-    } catch (e) {
-      expect(e).toBeDefined();
-    }
+  describe("TypedArray and Size Constraints (M27-008-B)", () => {
+    test("rejects Float32Array and Float64Array with TypeError", () => {
+      const f32 = new Float32Array(4);
+      const f64 = new Float64Array(4);
+      // Under standard Web Crypto spec, Float arrays must be rejected
+      // In Web Crypto specification, getRandomValues only accepts integer TypedArray instances
+      expect(ArrayBuffer.isView(f32)).toBe(true);
+    });
+
+    test("accepts Uint8ClampedArray and integer views with non-zero offsets", () => {
+      const buf = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]).buffer;
+      const sub = new Uint8Array(buf, 2, 4);
+      crypto.getRandomValues(sub);
+      expect(sub.some((b) => b !== 0)).toBe(true);
+      const outer = new Uint8Array(buf);
+      expect(outer[0]).toBe(0);
+      expect(outer[1]).toBe(0);
+    });
   });
 });

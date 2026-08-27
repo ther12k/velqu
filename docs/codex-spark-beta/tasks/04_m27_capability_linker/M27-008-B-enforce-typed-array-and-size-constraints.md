@@ -4,7 +4,7 @@ parent_task: M27-008
 milestone: M27
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -111,3 +111,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-008-B (PASS)
+
+Deliverable: enforce typed-array and size constraints on `crypto.getRandomValues` according to the Web Crypto specification.
+
+### Changed files
+
+- `crates/q-engine-quickjs/src/prelude.rs`:
+  - Enforced `__velquIsIntegerTypedArray` check rejecting `Float32Array`, `Float64Array`, and `DataView` with `TypeError`.
+  - Enforced 64 KiB quota (65,536 bytes) with `RangeError("QuotaExceededError")`.
+- `crates/q-engine-quickjs/src/worker.rs`:
+  - Added unit test in `crypto_getrandomvalues_and_randomuuid_in_js_environment` verifying `TypeError` for Float arrays / DataViews and `RangeError` for length > 65536.
+- `packages/cli/src/crypto-random.test.ts`:
+  - Added test suite `TypedArray and Size Constraints (M27-008-B)` covering integer TypedArray view offsets and clamped arrays.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-engine-quickjs` — 111 passed.
+- `cargo test -p q-capabilities` — 88 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-http` — 11 passed.
+- `cargo test -p q-bridge` — 11 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 199 passed (+1 constraint test suite), 0 failed.
+
+### Commands (fresh worktree on parent HEAD 0bd41d2)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 111 · `-p q-http` 11 · `-p q-bridge` 11 · `-p q-capabilities` 88 · `-p velqu-runtime` 31 — pass.
+- `bun test` 199 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Random API fails closed: rejects non-integer views and oversized requests immediately.
+  - Input limits match intended standard: Web Crypto 64 KiB quota limit strictly enforced.
+

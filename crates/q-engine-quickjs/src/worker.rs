@@ -3410,6 +3410,19 @@ mod tests {
             // Test native.crypto
             let code3 = "globalThis.__velquNativeCapabilities.crypto.getRandomValues === globalThis.crypto.getRandomValues && globalThis.__velquNativeCapabilities.crypto.randomUUID === globalThis.crypto.randomUUID";
             assert!(ctx.eval::<bool, _>(code3).unwrap());
+
+            // M27-008-B: Test type constraints (Float arrays and non-ArrayBuffer views throw TypeError; > 64 KiB throws RangeError)
+            assert!(ctx.eval::<bool, _>(r#"
+                (() => {
+                    let caughtFloat = false;
+                    try { crypto.getRandomValues(new Float32Array(4)); } catch (e) { if (e instanceof TypeError) caughtFloat = true; }
+                    let caughtQuota = false;
+                    try { crypto.getRandomValues(new Uint8Array(65537)); } catch (e) { if (e instanceof RangeError) caughtQuota = true; }
+                    let caughtDataView = false;
+                    try { crypto.getRandomValues(new DataView(new ArrayBuffer(16))); } catch (e) { if (e instanceof TypeError) caughtDataView = true; }
+                    return caughtFloat && caughtQuota && caughtDataView;
+                })()
+            "#).unwrap());
         });
     }
 }
