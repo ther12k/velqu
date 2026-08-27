@@ -269,7 +269,6 @@ mod tests {
     /// M27-006-D: WPT multi-byte and astral-plane test vectors.
     #[test]
     fn wpt_text_encoding_utf8_multibyte_and_edge_cases() {
-        let encoder = TextEncoderModel;
         let decoder = TextDecoderModel::default();
 
         // 1-byte ASCII: 'A' -> [0x41]

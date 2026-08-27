@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -129,3 +129,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-006-V (PASS)
+
+Parent: M27-006 "Implement TextEncoder and TextDecoder".
+Implementation packets merged prior: A (PR #872, #270), B
+(PR #873, #271), C (PR #874, #272), D (PR #875, #273).
+
+### Guardrail map
+
+1. **Encoding semantics match selected standard cases.** Full UTF-8 standard coverage (1-byte ASCII, 2-byte Latin-1/Greek/Cyrillic, 3-byte CJK, 4-byte astral plane emojis), U+FFFD replacement on invalid sequences, and fatal mode rejection.
+2. **Large buffers are bounded.** `MAX_TEXT_BUFFER_LEN` (16 MB) strictly enforced on both encode and decode.
+3. **No duplicate full-buffer copies without evidence.** Direct memory slice pointer access for `encodeInto`, `fill`, and `decode` over ArrayBuffers and TypedArray views.
+4. **Capability can be tree-linked.** Available through `native.text` capability and global `TextEncoder`/`TextDecoder`.
+
+### Manifest
+
+Matched refresh under verify's remap env (qRuntimeRelease hash updated).
+
+### Commands and results (fresh worktree on parent HEAD 8f89d25)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 108 · `-p q-schema-runtime` 67 · `-p q-capabilities` 79 · `-p velqu-runtime` 31 — pass.
+- `bun test` 181 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
+
