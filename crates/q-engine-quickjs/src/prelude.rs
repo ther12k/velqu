@@ -356,11 +356,23 @@ AbortController.prototype.abort = function(reason) {
 };
 globalThis.AbortController = AbortController;
 
-// Crypto capability (M27-008-A): getRandomValues and randomUUID
+// Crypto capability (M27-008-A/B): getRandomValues and randomUUID
+function __velquIsIntegerTypedArray(arr) {
+  return arr instanceof Int8Array ||
+         arr instanceof Uint8Array ||
+         arr instanceof Uint8ClampedArray ||
+         arr instanceof Int16Array ||
+         arr instanceof Uint16Array ||
+         arr instanceof Int32Array ||
+         arr instanceof Uint32Array ||
+         (typeof BigInt64Array !== "undefined" && arr instanceof BigInt64Array) ||
+         (typeof BigUint64Array !== "undefined" && arr instanceof BigUint64Array);
+}
+
 globalThis.crypto = {
   getRandomValues: function(array) {
     if (typeof globalThis.__velquCryptoGetRandomValues !== "function") throw new TypeError("crypto.getRandomValues native unavailable");
-    if (!array || !ArrayBuffer.isView(array) || array instanceof DataView) {
+    if (!array || !ArrayBuffer.isView(array) || array instanceof DataView || !__velquIsIntegerTypedArray(array)) {
       throw new TypeError("Failed to execute 'getRandomValues' on 'Crypto': parameter 1 is not an Integer Array");
     }
     var byteLen = array.byteLength;
