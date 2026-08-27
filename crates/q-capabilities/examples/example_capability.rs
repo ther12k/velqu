@@ -61,4 +61,17 @@ fn main() {
     q_capabilities::harness::assert_ops_gate_fails_closed()
         .expect("operations outside Ready must fail typed");
     println!("ops gate: fails closed outside Ready ✓");
+
+    // M27-009-C: build/inspect diagnostics — join the resolved inventory
+    // with SDK metadata into a read-only snapshot; no runtime mutation.
+    let inventory =
+        q_capabilities::CapabilityInventory::from_pairs(&[("runtime:example".to_string(), 1)])
+            .expect("valid example inventory");
+    let registry = vec![cap.metadata().clone()];
+    let diag = q_capabilities::CapabilityDiagnostics::collect(&inventory, &registry)
+        .expect("inspect surface resolves");
+    println!("inspect: {}", diag.summary());
+    for line in diag.lines() {
+        println!("inspect: {line}");
+    }
 }
