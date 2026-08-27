@@ -2794,6 +2794,41 @@ fn install_natives(
         };
         globals.set("__velquTextDecode", Function::new(ctx.clone(), f_decode)?)?;
     }
+
+    // M27-008-A: Web Crypto getRandomValues & randomUUID native bridges
+    {
+        // __velquCryptoGetRandomValues(uint8Array) -> void
+        let f_get_random = move |ctx: rquickjs::Ctx,
+                                 target: rquickjs::TypedArray<u8>|
+              -> rquickjs::Result<()> {
+            if let Some(buf) = target.as_bytes() {
+                let slice =
+                    unsafe { std::slice::from_raw_parts_mut(buf.as_ptr() as *mut u8, buf.len()) };
+                q_capabilities::CryptoRandom::get_random_values(slice).map_err(|e| {
+                    rquickjs::Exception::throw_message(&ctx, &format!("RangeError: {e}"))
+                })
+            } else {
+                Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "TypeError: target buffer is detached or invalid",
+                ))
+            }
+        };
+        globals.set(
+            "__velquCryptoGetRandomValues",
+            Function::new(ctx.clone(), f_get_random)?,
+        )?;
+
+        // __velquCryptoRandomUUID() -> String
+        let f_uuid = move |ctx: rquickjs::Ctx| -> rquickjs::Result<String> {
+            q_capabilities::CryptoRandom::random_uuid()
+                .map_err(|e| rquickjs::Exception::throw_message(&ctx, &format!("Error: {e}")))
+        };
+        globals.set(
+            "__velquCryptoRandomUUID",
+            Function::new(ctx.clone(), f_uuid)?,
+        )?;
+    }
     Ok(())
 }
 
@@ -3334,6 +3369,46 @@ mod tests {
                 p.catch(() => {});
                 return p instanceof Promise && sig.aborted === true && sig.reason === 'already-aborted';
             })()";
+            assert!(ctx.eval::<bool, _>(code3).unwrap());
+        });
+    }
+
+    /// M27-008-A: Web Crypto getRandomValues and randomUUID in JS context.
+    #[test]
+    fn crypto_getrandomvalues_and_randomuuid_in_js_environment() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Install natives & prelude
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // Test crypto.getRandomValues fills array
+            let code1 = "(() => {
+                const u = new Uint8Array(16);
+                crypto.getRandomValues(u);
+                return u.some(b => b !== 0);
+            })()";
+            assert!(ctx.eval::<bool, _>(code1).unwrap());
+
+            // Test crypto.randomUUID generates valid RFC 4122 v4 UUID
+            let code2 = "(() => {
+                const uuid = crypto.randomUUID();
+                const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+                return regex.test(uuid);
+            })()";
+            assert!(ctx.eval::<bool, _>(code2).unwrap());
+
+            // Test native.crypto
+            let code3 = "globalThis.__velquNativeCapabilities.crypto.getRandomValues === globalThis.crypto.getRandomValues && globalThis.__velquNativeCapabilities.crypto.randomUUID === globalThis.crypto.randomUUID";
             assert!(ctx.eval::<bool, _>(code3).unwrap());
         });
     }

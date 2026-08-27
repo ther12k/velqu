@@ -356,13 +356,35 @@ AbortController.prototype.abort = function(reason) {
 };
 globalThis.AbortController = AbortController;
 
+// Crypto capability (M27-008-A): getRandomValues and randomUUID
+globalThis.crypto = {
+  getRandomValues: function(array) {
+    if (typeof globalThis.__velquCryptoGetRandomValues !== "function") throw new TypeError("crypto.getRandomValues native unavailable");
+    if (!array || !ArrayBuffer.isView(array) || array instanceof DataView) {
+      throw new TypeError("Failed to execute 'getRandomValues' on 'Crypto': parameter 1 is not an Integer Array");
+    }
+    var byteLen = array.byteLength;
+    if (byteLen > 65536) {
+      throw new RangeError("QuotaExceededError: The requested length exceeds 65536 bytes");
+    }
+    var u = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+    globalThis.__velquCryptoGetRandomValues(u);
+    return array;
+  },
+  randomUUID: function() {
+    if (typeof globalThis.__velquCryptoRandomUUID !== "function") throw new TypeError("crypto.randomUUID native unavailable");
+    return globalThis.__velquCryptoRandomUUID();
+  }
+};
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms, options) => globalThis.__velquTimerP(ms, options) }),
   console: Object.freeze(globalThis.console),
   url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams }),
   text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder }),
-  abort: Object.freeze({ AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal })
+  abort: Object.freeze({ AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal }),
+  crypto: Object.freeze(globalThis.crypto)
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 
