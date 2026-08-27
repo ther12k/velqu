@@ -332,7 +332,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-010-D](../tasks/04_m27_capability_linker/M27-010-D-keep-unsupported-apis-explicit.md) | P1 | implement | PASS | M27-010-C | Keep unsupported APIs explicit |
 | [M27-010-V](../tasks/04_m27_capability_linker/M27-010-V-verify-establish-web-api-conformance-program.md) | P1 | verify | PASS | M27-010-A, M27-010-B, M27-010-C, M27-010-D | Verify Establish Web API conformance program |
 | [M27-010-Z](../tasks/04_m27_capability_linker/M27-010-Z-package-evidence-for-establish-web-api-conformance-program.md) | P1 | evidence | PASS | M27-010-V | Package evidence for Establish Web API conformance program |
-| [M27-011-A](../tasks/04_m27_capability_linker/M27-011-A-measure-core-web-minimal-and-all-beta-profiles.md) | P1 | implement | TODO | M27-002-Z, M27-010-Z | Measure core, web-minimal, and all-beta profiles |
+| [M27-011-A](../tasks/04_m27_capability_linker/M27-011-A-measure-core-web-minimal-and-all-beta-profiles.md) | P1 | implement | PASS | M27-002-Z, M27-010-Z | Measure core, web-minimal, and all-beta profiles |
 | [M27-011-B](../tasks/04_m27_capability_linker/M27-011-B-record-binary-startup-and-idle-rss-deltas.md) | P1 | implement | TODO | M27-011-A | Record binary, startup, and idle RSS deltas |
 | [M27-011-C](../tasks/04_m27_capability_linker/M27-011-C-identify-eager-initialization.md) | P1 | implement | TODO | M27-011-B | Identify eager initialization |
 | [M27-011-D](../tasks/04_m27_capability_linker/M27-011-D-make-expensive-modules-lazy-when-safe.md) | P1 | implement | TODO | M27-011-C | Make expensive modules lazy when safe |

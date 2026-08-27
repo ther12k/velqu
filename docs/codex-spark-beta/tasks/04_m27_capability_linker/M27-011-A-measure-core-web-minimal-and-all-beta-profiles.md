@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -130,3 +130,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-A) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-a (squash-merged; see git log for final hash)
+- Closes: #300
+
+### Changed files
+- `scripts/measure-capability-profiles.py` (new): Automated profiling driver benchmarking cold-start (`startupMs` p50/p95/p99) and RSS across profiles (`full` vs `web`), attributing binary size per capability subsystem, emitting raw JSON evidence, and generating the markdown cost budget report.
+- `benchmarks/raw/profiles/capability-profiles.json` (new): Raw JSON benchmark evidence containing sample measurements, percentiles, binary size, and capability size breakdown.
+- `docs/reports/m27-011-capability-cost-budget-report.md` (new): Capability cost budget and profile measurement report.
+
+### Measured Results Summary (n=10 fresh processes)
+- **Release binary footprint**: `velqu-runtime` = 5.30 MB (5,553,128 bytes); `q-capabilities` footprint is ~138.7 KB total.
+- **Cold-start latency**:
+  - `full` profile (all M27 Web APIs + full globals): p50 = 3.97 ms, p95 = 5.09 ms (PASS, < 10 ms budget)
+  - `web` profile (WinterTC web minimal): p50 = 4.78 ms, p95 = 8.70 ms (PASS, < 10 ms budget)
+- **Idle heap overhead for unused capabilities**: 0 KB (lazy / static).
+
+### Command results
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 15+97 passed
+- `cargo test -p q-capabilities` → 107+7 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
