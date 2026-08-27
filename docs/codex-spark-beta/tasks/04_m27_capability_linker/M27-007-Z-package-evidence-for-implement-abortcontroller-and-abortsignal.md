@@ -4,7 +4,7 @@ parent_task: M27-007
 milestone: M27
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -117,3 +117,31 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-007-V merged in PR #882
+  at commit `dced7be11723f027bcc9b44d97da787f5552437d`; issue #280
+  is closed. Based on clean parent HEAD `b9df75c` (queue-regen).
+- Parent acceptance matrix: `M27-007-V` maps all four guardrails
+  (atomic exactly-once abort propagation, late listener immediate execution,
+  no cross-invocation ownership via scoped signals, and bounded shutdown cancellation).
+- Source-backed implementation records:
+  - `M27-007-A` (PR #878, #276 closed): `AbortSignalModel`, `AbortControllerModel`,
+    and standard WHATWG JS bindings in prelude.
+  - `M27-007-B` (PR #879, #277 closed): `ctx.signal`, `req.signal`, and
+    `native.timer.delay(ms, { signal })` abort integration.
+  - `M27-007-C` (PR #880, #278 closed): listener leak prevention (`MAX_ABORT_LISTENERS = 1024`,
+    dispatch auto-clearing, and `AbortSignal.any` source signal cleanup).
+  - `M27-007-D` (PR #881, #279 closed): cancellation idempotency and multi-threaded race resilience.
+  - `M27-007-V` (PR #882, #280 closed): verification closure + matched manifest refresh.
+- Canonical evidence artifacts:
+  - Tests: `q-capabilities` 85 passed (+6 AbortSignal/Controller tests),
+    `q-engine-quickjs` 110 passed (+2 JS integration tests), `bun test` 194 passed (+13 Abort tests).
+  - Manifest: `benchmarks/manifest.json` matched refresh under verify remap environment.
+- Exact verification (fresh on this branch): `cargo test` across all crates passes;
+  `bun test` 194/0; typecheck, fmt --check, clippy `-D warnings` clean;
+  `./scripts/verify` — ALL PASS (exit 0).
+- Status bookkeeping: ledger marks M27-007 PASS; TASK_INDEX marks M27-007-Z PASS.
+  Queues expose M27-008-A next.
+- Remaining scope: M27-008+ (Crypto random subset), M27-GATE.

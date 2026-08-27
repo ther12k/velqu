@@ -313,7 +313,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-007-C](../tasks/04_m27_capability_linker/M27-007-C-prevent-listener-leaks.md) | P0 | implement | PASS | M27-007-B | Prevent listener leaks |
 | [M27-007-D](../tasks/04_m27_capability_linker/M27-007-D-make-cancellation-idempotent.md) | P0 | implement | PASS | M27-007-C | Make cancellation idempotent |
 | [M27-007-V](../tasks/04_m27_capability_linker/M27-007-V-verify-implement-abortcontroller-and-abortsignal.md) | P0 | verify | PASS | M27-007-A, M27-007-B, M27-007-C, M27-007-D | Verify Implement AbortController and AbortSignal |
-| [M27-007-Z](../tasks/04_m27_capability_linker/M27-007-Z-package-evidence-for-implement-abortcontroller-and-abortsignal.md) | P0 | evidence | TODO | M27-007-V | Package evidence for Implement AbortController and AbortSignal |
+| [M27-007-Z](../tasks/04_m27_capability_linker/M27-007-Z-package-evidence-for-implement-abortcontroller-and-abortsignal.md) | P0 | evidence | PASS | M27-007-V | Package evidence for Implement AbortController and AbortSignal |
 | [M27-008-A](../tasks/04_m27_capability_linker/M27-008-A-implement-getrandomvalues-and-randomuuid-through-os-csprng.md) | P0 | implement | TODO | M27-001-Z, M27-003-Z | Implement `getRandomValues` and `randomUUID` through OS CSPRNG |
 | [M27-008-B](../tasks/04_m27_capability_linker/M27-008-B-enforce-typed-array-and-size-constraints.md) | P0 | implement | TODO | M27-008-A | Enforce typed-array and size constraints |
 | [M27-008-C](../tasks/04_m27_capability_linker/M27-008-C-define-unavailable-entropy-failure.md) | P0 | implement | TODO | M27-008-B | Define unavailable-entropy failure |
