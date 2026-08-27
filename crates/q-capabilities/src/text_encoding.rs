@@ -228,4 +228,41 @@ mod tests {
         );
         assert!(TextDecoderModel::new(Some("utf-16"), TextDecoderOptions::default()).is_err());
     }
+
+    /// M27-006-B: invalid sequence replacement behavior tests.
+    #[test]
+    fn invalid_sequence_replacement_patterns() {
+        let decoder = TextDecoderModel::default();
+
+        // 1. Lone continuation byte (0x80..0xBF)
+        assert_eq!(decoder.decode(&[0x80]).unwrap(), "\u{FFFD}");
+
+        // 2. Overlong 2-byte sequence (0xC0, 0xAF)
+        assert_eq!(decoder.decode(&[0xC0, 0xAF]).unwrap(), "\u{FFFD}\u{FFFD}");
+
+        // 3. Truncated 2-byte sequence (0xC2 without continuation)
+        let mut truncated = b"hello".to_vec();
+        truncated.push(0xC2);
+        assert_eq!(decoder.decode(&truncated).unwrap(), "hello\u{FFFD}");
+
+        // 4. Interleaved valid and invalid bytes
+        let mut mixed = b"foo".to_vec();
+        mixed.push(0xFF);
+        mixed.extend_from_slice(b"bar");
+        assert_eq!(decoder.decode(&mixed).unwrap(), "foo\u{FFFD}bar");
+
+        // 5. Fatal mode reports exact error offset
+        let fatal_decoder = TextDecoderModel::new(
+            Some("utf-8"),
+            TextDecoderOptions {
+                fatal: true,
+                ignore_bom: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            fatal_decoder.decode(&mixed),
+            Err(TextEncodingError::FatalDecodeError { offset: 3 })
+        );
+    }
 }
