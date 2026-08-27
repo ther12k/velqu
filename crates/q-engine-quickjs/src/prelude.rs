@@ -399,6 +399,7 @@ const __velquNativeCapabilities = Object.freeze({
   crypto: Object.freeze(globalThis.crypto)
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
+__velquContextPrototype.native = __velquNativeCapabilities;
 
 globalThis.__velquMakeReq = function (slot, gen) {
   const req = Object.create(__velquRequestPrototype);
@@ -484,7 +485,6 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
       };
     }
   }
-  c.native = __velquNativeCapabilities;
   return c;
 };
 

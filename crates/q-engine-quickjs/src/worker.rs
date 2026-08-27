@@ -3516,10 +3516,13 @@ mod tests {
                 .eval::<bool, _>("typeof crypto.getRandomValues === 'function'")
                 .unwrap());
 
-            // Verify that lazy context prototype accessors do NOT instantiate until accessed
+            // Verify that lazy context prototype accessors do NOT instantiate until accessed,
+            // and native capabilities are inherited from the shared prototype without per-request allocation.
             let code = "(() => {
                 const ctx = Object.create(globalThis.__velquContextPrototype);
-                return typeof ctx.signal === 'undefined' && typeof ctx.native === 'undefined';
+                return typeof ctx.signal === 'undefined' &&
+                    ctx.native === globalThis.__velquNativeCapabilities &&
+                    !Object.prototype.hasOwnProperty.call(ctx, 'native');
             })()";
             assert!(ctx.eval::<bool, _>(code).unwrap());
         });
