@@ -65,7 +65,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M27-005 | P1 | PASS | M27-001, M27-003 | M27 | Implement URL and URLSearchParams |
 | M27-006 | P1 | PASS | M27-001, M27-003 | M27 | Implement TextEncoder and TextDecoder |
 | M27-007 | P0 | PASS | M27-001, M27-003 | M27 | Implement AbortController and AbortSignal |
-| M27-008 | P0 | TODO | M27-001, M27-003 | M27 | Implement crypto random subset |
+| M27-008 | P0 | PASS | M27-001, M27-003 | M27 | Implement crypto random subset |
 | M27-009 | P1 | TODO | M27-001, M27-002 | M27 | Publish capability SDK and inspection surface |
 | M27-010 | P1 | TODO | M27-005, M27-006, M27-007, M27-008 | M27 | Establish Web API conformance program |
 | M27-011 | P1 | TODO | M27-002, M27-010 | M27 | Close capability cost budgets |
