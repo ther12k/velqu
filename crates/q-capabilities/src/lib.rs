@@ -38,9 +38,11 @@ pub use console::{
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
 pub use fetch_policy::{
-    AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError, RedirectPolicy, TimeoutPolicy,
-    TrustMode, ALLOWED_SCHEMES, MAX_FETCH_DEADLINE_MS, MAX_FETCH_REQUEST_BODY_BYTES,
+    is_untrusted_forward_header, AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError,
+    RedirectPolicy, TimeoutPolicy, TrustMode, ALLOWED_SCHEMES, FETCH_CAPABILITY_ID,
+    FETCH_CAPABILITY_VERSION, MAX_FETCH_DEADLINE_MS, MAX_FETCH_REQUEST_BODY_BYTES,
     MAX_FETCH_RESPONSE_BODY_BYTES, MAX_REDIRECT_HOPS, METADATA_ENDPOINTS,
+    UNTRUSTED_FORWARD_HEADERS,
 };
 pub use harness::{run_expired_drain, run_full_lifecycle, LifecycleReport};
 pub use identity::{

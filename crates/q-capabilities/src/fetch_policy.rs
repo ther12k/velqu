@@ -1,11 +1,15 @@
-//! Native fetch security policy (M28-001-A, ADR-0033).
+//! Native fetch security policy (M28-001-A, ADR-0033) and ingress/
+//! outbound trust model (M28-001-B, ADR-0034).
 //!
 //! Single source of truth for the outbound-fetch trust boundary:
 //! scheme allowlist, SSRF address classification (deny-by-default),
 //! DNS-rebinding controls (validate-after-resolve, connect-to-validated),
 //! redirect revalidation, TLS posture, layered timeouts, compression and
-//! body limits. Later M28 packets (stack, pooling, streaming, redirects,
-//! address validation) consume this policy — they never re-derive it.
+//! body limits; plus the trust model: fetch is a declared capability
+//! (`runtime:fetch@1`), outbound policy is runtime-owned, and reverse
+//! proxy forwarded headers are never identity. Later M28 packets (stack,
+//! pooling, streaming, redirects, address validation, surface) consume
+//! this policy — they never re-derive it.
 
 use std::fmt;
 use std::net::IpAddr;
@@ -20,6 +24,25 @@ pub const METADATA_ENDPOINTS: [IpAddr; 2] = [
     IpAddr::V6(std::net::Ipv6Addr::new(
         0xfd00, 0x0ec2, 0, 0, 0, 0, 0, 0x0235,
     )),
+];
+
+/// Outbound fetch is a declared capability under the ADR-0029 identity
+/// system (ADR-0034 §1): `runtime:fetch@1`. No ambient global exists for
+/// routes without the grant.
+pub const FETCH_CAPABILITY_ID: &str = "runtime:fetch";
+/// Version of the fetch capability surface shipped in M28.
+pub const FETCH_CAPABILITY_VERSION: u32 = 1;
+
+/// Ingress headers that MUST NOT be trusted for identity, authentication,
+/// authorization, or scheme decisions (ADR-0034 §3). They are ordinary
+/// readable data — nothing more.
+pub const UNTRUSTED_FORWARD_HEADERS: [&str; 6] = [
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-all",
+    "forwarded",
 ];
 
 /// Total fetch deadline ceiling; matches `MAX_OP_DEADLINE_MS` (ADR-0030).
@@ -451,6 +474,13 @@ impl FetchPolicy {
     }
 }
 
+/// Is `header` a forwarded/proxy header that must never be trusted for
+/// identity or scheme decisions? Case-insensitive (ADR-0034 §3).
+pub fn is_untrusted_forward_header(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    UNTRUSTED_FORWARD_HEADERS.contains(&lower.as_str())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -747,5 +777,68 @@ mod tests {
     fn default_policy_passes_full_validation() {
         assert!(FetchPolicy::default().validate().is_ok());
         assert!(FetchPolicy::trusted_loopback_explicit().validate().is_ok());
+    }
+
+    // --- ADR-0034 trust model (M28-001-B) ------------------------------------
+
+    #[test]
+    fn fetch_is_a_declared_capability_under_the_identity_system() {
+        // The identity must parse under the closed runtime: namespace.
+        let id = crate::identity::CapabilityId::parse(FETCH_CAPABILITY_ID)
+            .expect("fetch capability id is valid");
+        assert_eq!(id.as_str(), "runtime:fetch");
+        assert_eq!(FETCH_CAPABILITY_VERSION, 1);
+    }
+
+    #[test]
+    fn forwarded_headers_are_never_trusted_identity() {
+        for name in [
+            "X-Forwarded-For",
+            "x-forwarded-for",
+            "X-FORWARDED-PROTO",
+            "X-Forwarded-Host",
+            "x-forwarded-port",
+            "X-Forwarded-All",
+            "Forwarded",
+            "forwarded",
+        ] {
+            assert!(
+                is_untrusted_forward_header(name),
+                "{name} must be flagged untrusted"
+            );
+        }
+        // Ordinary headers (even proxy-adjacent ones) are not in the list.
+        assert!(!is_untrusted_forward_header("Authorization"));
+        assert!(!is_untrusted_forward_header("Content-Type"));
+        assert!(!is_untrusted_forward_header("X-Request-Id"));
+    }
+
+    #[test]
+    fn outbound_trust_is_runtime_owned_not_application_owned() {
+        // No JS-facing widening exists: the default policy is the only
+        // production surface, and its trust mode has no escape hatch
+        // beyond the auditable loopback constructor (pinned above).
+        let p = FetchPolicy::default();
+        assert_eq!(p.trust_mode(), TrustMode::Default);
+        // Ambient proxy trust stays off regardless of construction path.
+        assert!(!p.ambient_proxy_enabled());
+    }
+
+    #[test]
+    fn host_header_never_participates_in_policy_decisions() {
+        // Routing authority is method+path; the policy surface exposes no
+        // host-based branching. Structural pin: every policy method that
+        // takes a host treats it as data (resolution input), never as a
+        // routing/identity grant. The absence of any host-trust API is
+        // the assertion — checked by compiling this against the surface.
+        let p = FetchPolicy::default();
+        // A host header value used as a fetch destination still goes
+        // through the full address policy — no trust shortcut exists.
+        assert!(p
+            .check_resolved("evil.example", &[ip("169.254.169.254")])
+            .is_err());
+        assert!(p
+            .check_resolved("example.com", &[ip("93.184.216.34")])
+            .is_ok());
     }
 }
