@@ -4,7 +4,7 @@ parent_task: M27-011
 milestone: M27
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -135,3 +135,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-011-Z) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-011-z (squash-merged; see git log for final hash)
+- Closes: #305
+
+### Parent closure — M27-011 Close capability cost budgets
+
+Parent intent: prove modular capabilities preserve the cold-start and memory thesis. Status: **PASS**.
+
+Packet commits (squash merges):
+- M27-011-A — 17f25df (#902, Closes #300): Measured cold-start, RSS, and capability footprints across runtime profiles (`scripts/measure-capability-profiles.py`, `benchmarks/raw/profiles/capability-profiles.json`, `docs/reports/m27-011-capability-cost-budget-report.md`)
+- M27-011-B — 7d87fa1 (#903, Closes #301): Recorded M26 baseline vs M27 capability deltas matrix (binary size +120 KB, cold-start +0.33 ms noise, idle RSS +176 kB, 0 B heap overhead for unlinked capabilities)
+- M27-011-C — f495ba9 (#904, Closes #302): Eager vs lazy initialization audit and tests in `crates/q-engine-quickjs/src/worker.rs`
+- M27-011-D — 65ab8cf (#905, Closes #303): Made `c.native` inherited from `__velquContextPrototype.native` to eliminate per-request object wrapper allocations
+- M27-011-V — 894ea97 (#906, Closes #304): Verification closure mapping all 4 acceptance guardrails
+
+### Evidence ledger (required microtask evidence)
+- **Cost matrix & Cold/RSS raw data**: `docs/reports/m27-011-capability-cost-budget-report.md` + `benchmarks/raw/profiles/capability-profiles.json`.
+- **Capability ABI**: Versioned, bounded, cancellable, and testable (ADR-0028..0032).
+- **Zero cost for unused capabilities**: 0 bytes persistent heap overhead, 0 extra bridge invocations.
+- **CI output / Local gates**: All suites re-run green on this branch (q-capabilities 107+7, q-pack 96+2, q-engine-quickjs 16+97, velqu-runtime 31, bun test 213/213, ./scripts/verify ALL PASS).
+
+### Command results (this branch)
+- `cargo test -p q-capabilities` → 107 unit tests + 7 integration tests passed
+- `cargo test -p q-engine-quickjs` → 16 unit tests + 97 worker tests passed
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Ledger update
+- `docs/beta/04_TASK_LEDGER.md`: M27-011 flipped TODO -> PASS.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
