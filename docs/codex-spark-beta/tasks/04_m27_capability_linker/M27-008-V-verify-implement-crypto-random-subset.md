@@ -4,7 +4,7 @@ parent_task: M27-008
 milestone: M27
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -131,3 +131,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Verification record — M27-008-V (PASS)
+
+Parent: M27-008 "Implement crypto random subset".
+Implementation packets merged prior: A (PR #884, #282), B
+(PR #885, #283), C (PR #886, #284), D (PR #887, #285).
+
+### Guardrail map
+
+1. **Random API fails closed.** `CryptoError::EntropyUnavailable` is a typed error; OS CSPRNG failure throws with no fallback to pseudo-random or predictable seeds. Unit test `entropy_unavailable_error_formatting_and_fail_closed`.
+2. **Input limits match intended standard.** Web Crypto 64 KiB quota strictly enforced on `getRandomValues` (`MAX_RANDOM_BYTES_LEN`). Unit test `get_random_values_quota_limit` plus prelude-level `RangeError("QuotaExceededError")`.
+3. **No predictable fallback.** Every byte sourced directly from `getrandom` (OS CSPRNG); no intermediary seeding or custom algorithms. Unit test `no_custom_or_pseudorandom_primitives`.
+4. **Security review passes.** Typed-array constraint check rejects Float arrays and DataViews (`TypeError`); interface restricted to standard methods only.
+
+### Manifest
+
+Matched refresh under verify's remap env (qRuntimeRelease hash updated for Crypto capability integration).
+
+### Commands and results (fresh worktree on parent HEAD bb895a7)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 111 · `-p q-http` 11 · `-p q-schema-runtime` 67 · `-p q-capabilities` 90 · `-p velqu-runtime` 31 — pass.
+- `bun test` 200 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+- `./scripts/verify` — ALL PASS (exit 0).
+
