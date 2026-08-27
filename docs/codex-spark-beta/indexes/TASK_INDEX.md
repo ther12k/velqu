@@ -349,7 +349,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-001-C](../tasks/05_m28_native_fetch/M28-001-C-define-unsupported-web-features.md) | P0 | implement | PASS | M28-001-B | Define unsupported Web features |
 | [M28-001-D](../tasks/05_m28_native_fetch/M28-001-D-document-same-process-trusted-code-assumption.md) | P0 | implement | PASS | M28-001-C | Document same-process trusted-code assumption |
 | [M28-001-V](../tasks/05_m28_native_fetch/M28-001-V-verify-accept-fetch-tls-redirect-and-ssrf-security-adr.md) | P0 | verify | PASS | M28-001-A, M28-001-B, M28-001-C, M28-001-D | Verify Accept fetch, TLS, redirect, and SSRF security ADR |
-| [M28-001-Z](../tasks/05_m28_native_fetch/M28-001-Z-package-evidence-for-accept-fetch-tls-redirect-and-ssrf-security-adr.md) | P0 | evidence | TODO | M28-001-V | Package evidence for Accept fetch, TLS, redirect, and SSRF security ADR |
+| [M28-001-Z](../tasks/05_m28_native_fetch/M28-001-Z-package-evidence-for-accept-fetch-tls-redirect-and-ssrf-security-adr.md) | P0 | evidence | PASS | M28-001-V | Package evidence for Accept fetch, TLS, redirect, and SSRF security ADR |
 | [M28-002-A](../tasks/05_m28_native_fetch/M28-002-A-compare-reqwest-and-lower-level-hyper-rustls-approach.md) | P1 | implement | TODO | M28-001-Z | Compare reqwest and lower-level Hyper/Rustls approach |
 | [M28-002-B](../tasks/05_m28_native_fetch/M28-002-B-measure-dependency-binary-startup-cost.md) | P1 | implement | TODO | M28-002-A | Measure dependency/binary/startup cost |
 | [M28-002-C](../tasks/05_m28_native_fetch/M28-002-C-test-dns-tls-pool-behavior.md) | P1 | implement | TODO | M28-002-B | Test DNS/TLS/pool behavior |
