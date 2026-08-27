@@ -337,7 +337,7 @@ globalThis.AbortController = AbortController;
 
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
-  timer: Object.freeze({ delay: (ms) => globalThis.__velquTimerP(ms) }),
+  timer: Object.freeze({ delay: (ms, options) => globalThis.__velquTimerP(ms, options) }),
   console: Object.freeze(globalThis.console),
   url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams }),
   text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder }),
@@ -347,11 +347,12 @@ globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 
 globalThis.__velquMakeReq = function (slot, gen) {
   const req = Object.create(__velquRequestPrototype);
-  let headers, params, query;
+  let headers, params, query, signal;
   Object.defineProperty(req, "headers", { enumerable: true, get() { return (headers ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "headers"))); } });
   Object.defineProperty(req, "params", { enumerable: true, get() { return (params ??= globalThis.__velquMakeLazyParams(slot, gen)); } });
   Object.defineProperty(req, "query", { enumerable: true, get() { return (query ??= JSON.parse(globalThis.__velquReqRaw(slot, gen, "query"))); } });
   Object.defineProperty(req, "text", { enumerable: true, value: () => globalThis.__velquReqBodyText(slot, gen) });
+  Object.defineProperty(req, "signal", { enumerable: true, get() { return (signal ??= new AbortController().signal); } });
   return req;
 };
 
@@ -411,6 +412,7 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
     // access through the store (declared set unless the route declared
     // the full-request capability, which materializes everything)
     lazy("request", () => globalThis.__velquMakeReq(slot, gen));
+    lazy("signal", () => new AbortController().signal);
     if (pre.params != null) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
     if (pre.query != null) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
     if (pre.headers != null) c.headers = pre.headers; else lazy("headers", () => globalThis.__velquMakeLazyHeaders(slot, gen));
@@ -434,10 +436,18 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
 // Timer capability: promise callbacks live in a JS-side op table keyed by
 // op id; the host resolves/rejects through the two dispatch functions below.
 globalThis.__velquOps = Object.create(null);
-globalThis.__velquTimerP = function (ms) {
+globalThis.__velquTimerP = function (ms, options) {
   return new Promise((resolve, reject) => {
+    if (options && options.signal && options.signal.aborted) {
+      return reject(options.signal.reason);
+    }
     const opId = globalThis.__velquTimerStart(ms);
     globalThis.__velquOps[opId] = { resolve, reject };
+    if (options && options.signal && typeof options.signal.addEventListener === "function") {
+      options.signal.addEventListener("abort", function() {
+        globalThis.__velquOpReject(opId, options.signal.reason);
+      }, { once: true });
+    }
   });
 };
 globalThis.__velquOpResolve = function (opId, value) {

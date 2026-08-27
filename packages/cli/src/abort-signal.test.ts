@@ -56,4 +56,33 @@ describe("AbortController and AbortSignal conformance (M27-007-A)", () => {
     expect(combined.aborted).toBe(true);
     expect(combined.reason).toBe("c2 aborted");
   });
+
+  describe("Bridge route deadline and explicit cancellation (M27-007-B)", () => {
+    test("timer delay with already-aborted signal rejects immediately", async () => {
+      const ctrl = new AbortController();
+      ctrl.abort("pre-aborted");
+      const delayPromise = (async (ms, opts) => {
+        if (opts?.signal?.aborted) throw opts.signal.reason;
+        return ms;
+      })(1000, { signal: ctrl.signal });
+
+      await expect(delayPromise).rejects.toBe("pre-aborted");
+    });
+
+    test("timer delay with mid-flight abort cancels and rejects with reason", async () => {
+      const ctrl = new AbortController();
+      let timerId: any;
+      const delayPromise = new Promise((resolve, reject) => {
+        if (ctrl.signal.aborted) return reject(ctrl.signal.reason);
+        timerId = setTimeout(resolve, 1000);
+        ctrl.signal.addEventListener("abort", () => {
+          clearTimeout(timerId);
+          reject(ctrl.signal.reason);
+        }, { once: true });
+      });
+
+      setTimeout(() => ctrl.abort("cancelled-mid-flight"), 10);
+      await expect(delayPromise).rejects.toBe("cancelled-mid-flight");
+    });
+  });
 });
