@@ -297,7 +297,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M27-006-A — Support UTF-8 baseline](tasks/04_m27_capability_linker/M27-006-A-support-utf-8-baseline.md)
 - [x] [M27-006-B — Define invalid sequence/replacement behavior](tasks/04_m27_capability_linker/M27-006-B-define-invalid-sequence-replacement-behavior.md)
 - [x] [M27-006-C — Integrate TypedArray ownership](tasks/04_m27_capability_linker/M27-006-C-integrate-typedarray-ownership.md)
-- [ ] [M27-006-D — Run WPT subset](tasks/04_m27_capability_linker/M27-006-D-run-wpt-subset.md)
+- [x] [M27-006-D — Run WPT subset](tasks/04_m27_capability_linker/M27-006-D-run-wpt-subset.md)
 - [ ] [M27-006-V — Verify Implement TextEncoder and TextDecoder](tasks/04_m27_capability_linker/M27-006-V-verify-implement-textencoder-and-textdecoder.md)
 - [ ] [M27-006-Z — Package evidence for Implement TextEncoder and TextDecoder](tasks/04_m27_capability_linker/M27-006-Z-package-evidence-for-implement-textencoder-and-textdecoder.md)
 - [ ] [M27-007-A — Define signal state/listeners/reason](tasks/04_m27_capability_linker/M27-007-A-define-signal-state-listeners-reason.md)

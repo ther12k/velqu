@@ -265,4 +265,37 @@ mod tests {
             Err(TextEncodingError::FatalDecodeError { offset: 3 })
         );
     }
+
+    /// M27-006-D: WPT multi-byte and astral-plane test vectors.
+    #[test]
+    fn wpt_text_encoding_utf8_multibyte_and_edge_cases() {
+        let encoder = TextEncoderModel;
+        let decoder = TextDecoderModel::default();
+
+        // 1-byte ASCII: 'A' -> [0x41]
+        assert_eq!(TextEncoderModel::encode("A").unwrap(), vec![0x41]);
+        assert_eq!(decoder.decode(&[0x41]).unwrap(), "A");
+
+        // 2-byte Latin/Greek/Cyrillic: 'é' (U+00E9) -> [0xC3, 0xA9]
+        assert_eq!(TextEncoderModel::encode("é").unwrap(), vec![0xC3, 0xA9]);
+        assert_eq!(decoder.decode(&[0xC3, 0xA9]).unwrap(), "é");
+
+        // 3-byte CJK / symbols: '日' (U+65E5) -> [0xE6, 0x97, 0xA5]
+        assert_eq!(
+            TextEncoderModel::encode("日").unwrap(),
+            vec![0xE6, 0x97, 0xA5]
+        );
+        assert_eq!(decoder.decode(&[0xE6, 0x97, 0xA5]).unwrap(), "日");
+
+        // 4-byte astral plane emojis: '🚀' (U+1F680) -> [0xF0, 0x9F, 0x9A, 0x80]
+        assert_eq!(
+            TextEncoderModel::encode("🚀").unwrap(),
+            vec![0xF0, 0x9F, 0x9A, 0x80]
+        );
+        assert_eq!(decoder.decode(&[0xF0, 0x9F, 0x9A, 0x80]).unwrap(), "🚀");
+
+        // Empty string
+        assert_eq!(TextEncoderModel::encode("").unwrap(), Vec::<u8>::new());
+        assert_eq!(decoder.decode(&[]).unwrap(), "");
+    }
 }

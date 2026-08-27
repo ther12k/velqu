@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-006-D (PASS)
+
+Deliverable: run WPT encoding and decoding subset vectors across ASCII, Latin-1, multi-byte CJK, astral-plane emojis, and encodeInto exact-fit cases.
+
+### Changed files
+
+- `crates/q-capabilities/src/text_encoding.rs`:
+  - Added unit test `wpt_text_encoding_utf8_multibyte_and_edge_cases` covering 1-byte ASCII, 2-byte Latin-1, 3-byte CJK, 4-byte astral plane emojis, and empty inputs.
+- `packages/cli/src/text-encoding.test.ts`:
+  - Added test suite `WPT multi-byte and edge-case vectors` for multi-byte roundtrip and exact-fit `encodeInto` buffer operations.
+- `docs/reports/m27-006-wpt-text-encoding-report.md` (new):
+  - WPT text encoding conformance report covering vector results, throughput, and memory bounds.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 79 passed (+1 multi-byte WPT vector test).
+- `cargo test -p q-engine-quickjs` — 108 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-schema-runtime` — 67 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 181 passed (+2 WPT multi-byte tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD c3988f1)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 108 · `-p q-schema-runtime` 67 · `-p q-capabilities` 79 · `-p velqu-runtime` 31 — pass.
+- `bun test` 181 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Encoding semantics match selected standard cases: verified via WPT multi-byte / astral plane test vectors.
+  - Large buffers are bounded: bounded by `MAX_TEXT_BUFFER_LEN` (16 MB).
+  - No duplicate full-buffer copies: direct zero-copy pointer slice operations.
+
