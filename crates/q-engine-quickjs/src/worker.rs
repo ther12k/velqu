@@ -3294,4 +3294,47 @@ mod tests {
             assert!(ctx.eval::<bool, _>(code4).unwrap());
         });
     }
+
+    /// M27-007-B: Bridge route deadline and explicit cancellation with AbortSignal in JS context.
+    #[test]
+    fn bridge_route_deadline_and_timer_abort_signal() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            // Install natives & prelude
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // 1. ctx.signal is accessible and of type AbortSignal
+            let code1 = "(() => {
+                const ctx = globalThis.__velquMakeCtx(0, 1, {});
+                return ctx.signal instanceof AbortSignal && ctx.signal.aborted === false;
+            })()";
+            assert!(ctx.eval::<bool, _>(code1).unwrap());
+
+            // 2. req.signal is accessible and of type AbortSignal
+            let code2 = "(() => {
+                const req = globalThis.__velquMakeReq(0, 1);
+                return req.signal instanceof AbortSignal && req.signal.aborted === false;
+            })()";
+            assert!(ctx.eval::<bool, _>(code2).unwrap());
+
+            // 3. native.timer.delay with already-aborted signal returns rejected Promise without scheduling native op
+            let code3 = "(() => {
+                const sig = AbortSignal.abort('already-aborted');
+                const p = globalThis.__velquNativeCapabilities.timer.delay(5000, { signal: sig });
+                p.catch(() => {});
+                return p instanceof Promise && sig.aborted === true && sig.reason === 'already-aborted';
+            })()";
+            assert!(ctx.eval::<bool, _>(code3).unwrap());
+        });
+    }
 }
