@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -126,3 +126,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Evidence package
+
+- Status: **PASS**. Parent verification M27-006-V merged in PR #876
+  at commit `b66fa4c2c825b94890a667642616f40317d90156`; issue #274
+  is closed. Based on clean parent HEAD `066f6e1` (queue-regen).
+- Parent acceptance matrix: `M27-006-V` maps all four guardrails
+  (full UTF-8 standard encoding/decoding semantics, buffer length bounding
+  at 16 MB, zero-copy pointer slice access for `encodeInto`/`decode`, and
+  `native.text` capability tree linking).
+- Source-backed implementation records:
+  - `M27-006-A` (PR #872, #270 closed): UTF-8 baseline for `TextEncoder`
+    and `TextDecoder` under `q-capabilities` and QuickJS globals.
+  - `M27-006-B` (PR #873, #271 closed): invalid sequence U+FFFD replacement
+    and fatal decode error handling.
+  - `M27-006-C` (PR #874, #272 closed): `TypedArray` ownership, `ArrayBufferView`
+    slicing with non-zero offset, and `encodeInto` subarray support.
+  - `M27-006-D` (PR #875, #273 closed): WPT multi-byte & astral plane vectors +
+    `docs/reports/m27-006-wpt-text-encoding-report.md`.
+  - `M27-006-V` (PR #876, #274 closed): verification closure + matched manifest refresh.
+- Canonical evidence artifacts:
+  - Tests: `q-capabilities` 79 passed (+9 text encoding tests), `q-engine-quickjs`
+    108 passed (+2 JS TextEncoder/TextDecoder integration tests), `bun test` 181 passed (+16 text encoding tests).
+  - Report: `docs/reports/m27-006-wpt-text-encoding-report.md`.
+  - Manifest: `benchmarks/manifest.json` matched refresh under verify remap environment.
+- Exact verification (fresh on this branch): `cargo test` across all crates passes;
+  `bun test` 181/0; typecheck, fmt --check, clippy `-D warnings` clean;
+  `./scripts/verify` — ALL PASS (exit 0).
+- Status bookkeeping: ledger marks M27-006 PASS; TASK_INDEX marks M27-006-Z PASS.
+  Queues expose M27-007-A next.
+- Remaining scope: M27-007+ (AbortController & AbortSignal), M27-GATE.
