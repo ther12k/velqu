@@ -4,7 +4,7 @@ parent_task: M27-010
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -106,3 +106,27 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-010-D) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-010-d (squash-merged; see git log for final hash)
+- Closes: #297
+
+### Changed files
+- `crates/q-engine-quickjs/src/worker.rs`: Added integration test `unsupported_web_apis_are_strictly_absent_and_never_stubbed` proving non-advertised Web APIs (`crypto.subtle`, `fetch`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `document`, `window`, `Worker`, `Blob`) are strictly `undefined`, dummy stubs are never injected, and undeclared identifiers fail closed with `ReferenceError`.
+- `conformance/web-api/web-api.conformance.test.ts`: Added automated verification asserting all explicit skips in the manifest are classified with standard reason codes.
+
+### Command results
+- `cargo test -p q-capabilities` → 107 unit tests + 7 integration tests passed
+- `cargo test -p q-engine-quickjs` → 15 unit tests + 97 worker tests passed
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p velqu-runtime` → 31 passed
+- `bun test` → 213 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
