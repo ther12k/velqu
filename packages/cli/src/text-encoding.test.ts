@@ -108,4 +108,35 @@ describe("TextEncoder and TextDecoder baseline conformance (M27-006-A)", () => {
       expect(decoder.decode(undefined)).toBe("");
     });
   });
+
+  describe("WPT multi-byte and edge-case vectors (M27-006-D)", () => {
+    test("encodes and decodes multi-byte characters and astral planes", () => {
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder("utf-8");
+
+      const inputs = [
+        "ASCII text 123",
+        "Latin-1: café, naïve, résumé",
+        "Greek: Ελληνικά, Cyrillic: Русский",
+        "CJK: 日本語, 中文, 한국어",
+        "Emoji astral plane: 🚀✨🎉🔥",
+      ];
+
+      for (const text of inputs) {
+        const encoded = encoder.encode(text);
+        const decoded = decoder.decode(encoded);
+        expect(decoded).toBe(text);
+      }
+    });
+
+    test("encode into exact-fit buffer", () => {
+      const encoder = new TextEncoder();
+      const text = "⚡ Velqu ⚡";
+      const byteLen = encoder.encode(text).length;
+      const dest = new Uint8Array(byteLen);
+      const res = encoder.encodeInto(text, dest);
+      expect(res.written).toBe(byteLen);
+      expect(new TextDecoder().decode(dest)).toBe(text);
+    });
+  });
 });
