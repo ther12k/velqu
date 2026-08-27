@@ -316,7 +316,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-007-Z](../tasks/04_m27_capability_linker/M27-007-Z-package-evidence-for-implement-abortcontroller-and-abortsignal.md) | P0 | evidence | PASS | M27-007-V | Package evidence for Implement AbortController and AbortSignal |
 | [M27-008-A](../tasks/04_m27_capability_linker/M27-008-A-implement-getrandomvalues-and-randomuuid-through-os-csprng.md) | P0 | implement | PASS | M27-001-Z, M27-003-Z | Implement `getRandomValues` and `randomUUID` through OS CSPRNG |
 | [M27-008-B](../tasks/04_m27_capability_linker/M27-008-B-enforce-typed-array-and-size-constraints.md) | P0 | implement | PASS | M27-008-A | Enforce typed-array and size constraints |
-| [M27-008-C](../tasks/04_m27_capability_linker/M27-008-C-define-unavailable-entropy-failure.md) | P0 | implement | TODO | M27-008-B | Define unavailable-entropy failure |
+| [M27-008-C](../tasks/04_m27_capability_linker/M27-008-C-define-unavailable-entropy-failure.md) | P0 | implement | PASS | M27-008-B | Define unavailable-entropy failure |
 | [M27-008-D](../tasks/04_m27_capability_linker/M27-008-D-do-not-implement-custom-cryptography.md) | P0 | implement | TODO | M27-008-C | Do not implement custom cryptography |
 | [M27-008-V](../tasks/04_m27_capability_linker/M27-008-V-verify-implement-crypto-random-subset.md) | P0 | verify | TODO | M27-008-A, M27-008-B, M27-008-C, M27-008-D | Verify Implement crypto random subset |
 | [M27-008-Z](../tasks/04_m27_capability_linker/M27-008-Z-package-evidence-for-implement-crypto-random-subset.md) | P0 | evidence | TODO | M27-008-V | Package evidence for Implement crypto random subset |
