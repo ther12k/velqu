@@ -310,7 +310,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M27-006-Z](../tasks/04_m27_capability_linker/M27-006-Z-package-evidence-for-implement-textencoder-and-textdecoder.md) | P1 | evidence | PASS | M27-006-V | Package evidence for Implement TextEncoder and TextDecoder |
 | [M27-007-A](../tasks/04_m27_capability_linker/M27-007-A-define-signal-state-listeners-reason.md) | P0 | implement | PASS | M27-001-Z, M27-003-Z | Define signal state/listeners/reason |
 | [M27-007-B](../tasks/04_m27_capability_linker/M27-007-B-bridge-route-deadline-and-explicit-cancellation.md) | P0 | implement | PASS | M27-007-A | Bridge route deadline and explicit cancellation |
-| [M27-007-C](../tasks/04_m27_capability_linker/M27-007-C-prevent-listener-leaks.md) | P0 | implement | TODO | M27-007-B | Prevent listener leaks |
+| [M27-007-C](../tasks/04_m27_capability_linker/M27-007-C-prevent-listener-leaks.md) | P0 | implement | PASS | M27-007-B | Prevent listener leaks |
 | [M27-007-D](../tasks/04_m27_capability_linker/M27-007-D-make-cancellation-idempotent.md) | P0 | implement | TODO | M27-007-C | Make cancellation idempotent |
 | [M27-007-V](../tasks/04_m27_capability_linker/M27-007-V-verify-implement-abortcontroller-and-abortsignal.md) | P0 | verify | TODO | M27-007-A, M27-007-B, M27-007-C, M27-007-D | Verify Implement AbortController and AbortSignal |
 | [M27-007-Z](../tasks/04_m27_capability_linker/M27-007-Z-package-evidence-for-implement-abortcontroller-and-abortsignal.md) | P0 | evidence | TODO | M27-007-V | Package evidence for Implement AbortController and AbortSignal |
