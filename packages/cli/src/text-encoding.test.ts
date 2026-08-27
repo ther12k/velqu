@@ -44,4 +44,25 @@ describe("TextEncoder and TextDecoder baseline conformance (M27-006-A)", () => {
   test("Invalid encoding label throws RangeError", () => {
     expect(() => new TextDecoder("invalid-encoding-label")).toThrow(RangeError);
   });
+
+  describe("Invalid sequence replacement behavior (M27-006-B)", () => {
+    test("non-fatal decoder replaces invalid bytes with U+FFFD", () => {
+      const decoder = new TextDecoder("utf-8");
+      // 0xFF is not a valid UTF-8 start byte
+      const invalid = new Uint8Array([0x66, 0x6f, 0x6f, 0xff, 0x62, 0x61, 0x72]);
+      expect(decoder.decode(invalid)).toBe("foo\uFFFDbar");
+    });
+
+    test("fatal decoder throws TypeError on invalid byte sequences", () => {
+      const fatalDecoder = new TextDecoder("utf-8", { fatal: true });
+      const invalid = new Uint8Array([0xff, 0xfe]);
+      expect(() => fatalDecoder.decode(invalid)).toThrow(TypeError);
+    });
+
+    test("truncated multi-byte sequences replaced safely", () => {
+      const decoder = new TextDecoder("utf-8");
+      const truncated = new Uint8Array([0x61, 0xc2]);
+      expect(decoder.decode(truncated)).toBe("a\uFFFD");
+    });
+  });
 });

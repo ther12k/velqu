@@ -4,7 +4,7 @@ parent_task: M27-006
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Completion record — M27-006-B (PASS)
+
+Deliverable: define and enforce invalid byte sequence replacement and fatal decode error behavior according to the WHATWG Encoding Standard.
+
+### Changed files
+
+- `crates/q-capabilities/src/text_encoding.rs`:
+  - Defined invalid sequence replacement behavior using `String::from_utf8_lossy` for non-fatal decoding (`\u{FFFD}`).
+  - Defined fatal decode error handling returning `FatalDecodeError { offset }`.
+  - Added unit test `invalid_sequence_replacement_patterns` (testing lone continuation bytes, overlong 2-byte sequences, truncated sequences, interleaved valid/invalid bytes, and fatal error offsets).
+- `packages/cli/src/text-encoding.test.ts`: added test suite for invalid byte replacement with `U+FFFD`, fatal decoder `TypeError`, and truncated multi-byte sequence replacement.
+- Bookkeeping: STATUS.md, TASK_INDEX.md.
+
+### Tests
+
+- `cargo test -p q-capabilities` — 78 passed (+1 invalid sequence test).
+- `cargo test -p q-engine-quickjs` — 108 passed.
+- `cargo test -p velqu-runtime` — 31 passed.
+- `cargo test -p q-schema-runtime` — 67 passed.
+- `cargo test -p q-pack` — 98 passed.
+- `bun test` — 174 passed (+3 invalid sequence replacement tests), 0 failed.
+
+### Commands (fresh worktree on parent HEAD 88f44c9)
+
+- `cargo test -p q-pack` 98 · `-p q-engine-quickjs` 108 · `-p q-schema-runtime` 67 · `-p q-capabilities` 78 · `-p velqu-runtime` 31 — pass.
+- `bun test` 174 pass / 0 fail; `bun run typecheck`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` — clean.
+
+### Notes
+
+- Guardrail mapping:
+  - Encoding semantics match selected standard cases: invalid UTF-8 sequences are replaced with U+FFFD or throw TypeError on fatal mode.
+  - Large buffers are bounded: bounded by `MAX_TEXT_BUFFER_LEN` (16 MB).
+
