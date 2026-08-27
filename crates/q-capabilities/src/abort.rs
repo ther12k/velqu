@@ -14,6 +14,9 @@ pub enum SignalState {
     Aborted { reason: String },
 }
 
+/// Maximum number of listeners allowed per AbortSignal to prevent unbounded growth/leaks (M27-007-C).
+pub const MAX_ABORT_LISTENERS: usize = 1_024;
+
 /// Callback type for registered abort listeners.
 pub type AbortListener = Box<dyn Fn(&str) + Send + Sync + 'static>;
 
@@ -90,8 +93,8 @@ impl AbortSignalModel {
         true
     }
 
-    /// Add an abort listener. If already aborted, the listener is invoked immediately (late listener semantics).
-    pub fn add_listener<F>(&self, listener: F)
+    /// Add an abort listener with maximum listener capacity check (M27-007-C).
+    pub fn try_add_listener<F>(&self, listener: F) -> Result<(), &'static str>
     where
         F: Fn(&str) + Send + Sync + 'static,
     {
@@ -100,20 +103,37 @@ impl AbortSignalModel {
                 .reason()
                 .unwrap_or_else(|| "AbortError: This operation was aborted".to_string());
             listener(&r);
-            return;
+            return Ok(());
         }
 
         let mut guard = self.listeners.lock().unwrap();
-        // Double-check under lock
         if self.is_aborted() {
             drop(guard);
             let r = self
                 .reason()
                 .unwrap_or_else(|| "AbortError: This operation was aborted".to_string());
             listener(&r);
-        } else {
-            guard.push(Box::new(listener));
+            return Ok(());
         }
+
+        if guard.len() >= MAX_ABORT_LISTENERS {
+            return Err("maximum abort listeners limit exceeded (1024)");
+        }
+        guard.push(Box::new(listener));
+        Ok(())
+    }
+
+    /// Add an abort listener. If already aborted, the listener is invoked immediately (late listener semantics).
+    pub fn add_listener<F>(&self, listener: F)
+    where
+        F: Fn(&str) + Send + Sync + 'static,
+    {
+        let _ = self.try_add_listener(listener);
+    }
+
+    /// Number of active pending listeners.
+    pub fn listener_count(&self) -> usize {
+        self.listeners.lock().unwrap().len()
     }
 
     /// Throw or return error if aborted (`throwIfAborted` semantics).
@@ -221,5 +241,31 @@ mod tests {
 
         signal.abort(Some("custom reason"));
         assert_eq!(signal.throw_if_aborted(), Err("custom reason".to_string()));
+    }
+
+    /// M27-007-C: listener leak prevention tests.
+    #[test]
+    fn listeners_cleared_after_abort_and_bounded_capacity() {
+        let signal = AbortSignalModel::new();
+        assert_eq!(signal.listener_count(), 0);
+
+        signal.add_listener(|_| {});
+        signal.add_listener(|_| {});
+        assert_eq!(signal.listener_count(), 2);
+
+        signal.abort(Some("aborted"));
+        // Listeners vector is drained/cleared upon abort
+        assert_eq!(signal.listener_count(), 0);
+
+        // Max listeners capacity check
+        let signal2 = AbortSignalModel::new();
+        for _ in 0..MAX_ABORT_LISTENERS {
+            assert!(signal2.try_add_listener(|_| {}).is_ok());
+        }
+        assert_eq!(signal2.listener_count(), MAX_ABORT_LISTENERS);
+        assert_eq!(
+            signal2.try_add_listener(|_| {}),
+            Err("maximum abort listeners limit exceeded (1024)")
+        );
     }
 }

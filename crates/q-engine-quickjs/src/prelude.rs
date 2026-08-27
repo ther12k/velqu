@@ -255,16 +255,17 @@ Object.defineProperty(AbortSignal.prototype, "reason", {
   get: function() { return this._reason; },
   enumerable: true
 });
-AbortSignal.prototype.addEventListener = function(type, listener, options) {
+AbortSignal.prototype.addEventListener = function (type, listener, options) {
   if (type !== "abort" || typeof listener !== "function") return;
+  if (this._listeners.length >= 1024) throw new RangeError("AbortSignal listener limit exceeded (1024)");
   var once = options && typeof options === "object" && options.once;
   var self = this;
-  var wrap = once ? function(evt) { self.removeEventListener("abort", wrap); listener.call(self, evt); } : listener;
+  var wrap = once ? function (evt) { self.removeEventListener("abort", wrap); listener.call(self, evt); } : listener;
   wrap._orig = listener;
   if (this._aborted) {
     var evt = { type: "abort", target: self, currentTarget: self };
     if (typeof queueMicrotask === "function") {
-      queueMicrotask(function() { wrap(evt); });
+      queueMicrotask(function () { wrap(evt); });
     } else {
       wrap(evt);
     }
@@ -272,13 +273,14 @@ AbortSignal.prototype.addEventListener = function(type, listener, options) {
   }
   this._listeners.push(wrap);
 };
-AbortSignal.prototype.removeEventListener = function(type, listener) {
+AbortSignal.prototype.removeEventListener = function (type, listener) {
   if (type !== "abort" || typeof listener !== "function") return;
-  this._listeners = this._listeners.filter(function(l) { return l !== listener && l._orig !== listener; });
+  this._listeners = this._listeners.filter(function (l) { return l !== listener && l._orig !== listener; });
 };
-AbortSignal.prototype.dispatchEvent = function(evt) {
+AbortSignal.prototype.dispatchEvent = function (evt) {
   if (evt && evt.type === "abort") {
     var ls = this._listeners.slice();
+    this._listeners = [];
     for (var i = 0; i < ls.length; i++) {
       try { ls[i].call(this, evt); } catch (e) { if (console && console.error) console.error(e); }
     }
@@ -288,35 +290,54 @@ AbortSignal.prototype.dispatchEvent = function(evt) {
   }
   return true;
 };
-AbortSignal.prototype.throwIfAborted = function() {
+AbortSignal.prototype.throwIfAborted = function () {
   if (this._aborted) throw this._reason;
 };
-AbortSignal.abort = function(reason) {
+AbortSignal.abort = function (reason) {
   var s = new AbortSignal();
   s._aborted = true;
   s._reason = reason !== undefined ? reason : new Error("This operation was aborted");
   return s;
 };
-AbortSignal.timeout = function(ms) {
+AbortSignal.timeout = function (ms) {
   var ctrl = new AbortController();
   var delay = Number(ms) || 0;
   if (typeof globalThis.__velquTimerP === "function") {
-    globalThis.__velquTimerP(delay).then(function() {
+    globalThis.__velquTimerP(delay).then(function () {
       ctrl.abort(new Error("TimeoutError: The operation timed out"));
     });
+  } else {
+    setTimeout(function () {
+      ctrl.abort(new Error("TimeoutError: The operation timed out"));
+    }, delay);
   }
   return ctrl.signal;
 };
-AbortSignal.any = function(signals) {
+AbortSignal.any = function (signals) {
   var ctrl = new AbortController();
   var sigs = Array.from(signals || []);
+  var cleanups = [];
+  function cleanupAll() {
+    for (var j = 0; j < cleanups.length; j++) cleanups[j]();
+    cleanups = [];
+  }
   for (var i = 0; i < sigs.length; i++) {
     var s = sigs[i];
     if (s.aborted) {
+      cleanupAll();
       ctrl.abort(s.reason);
       return ctrl.signal;
     }
-    s.addEventListener("abort", function() { ctrl.abort(this.reason); }, { once: true });
+    (function (sig) {
+      var onAbort = function () {
+        cleanupAll();
+        ctrl.abort(sig.reason);
+      };
+      sig.addEventListener("abort", onAbort, { once: true });
+      cleanups.push(function () {
+        sig.removeEventListener("abort", onAbort);
+      });
+    })(s);
   }
   return ctrl.signal;
 };

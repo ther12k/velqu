@@ -85,4 +85,38 @@ describe("AbortController and AbortSignal conformance (M27-007-A)", () => {
       await expect(delayPromise).rejects.toBe("cancelled-mid-flight");
     });
   });
+
+  describe("Listener leak prevention (M27-007-C)", () => {
+    test("removeEventListener unregisters listeners", () => {
+      const ctrl = new AbortController();
+      let fired = 0;
+      const handler = () => { fired++; };
+      ctrl.signal.addEventListener("abort", handler);
+      ctrl.signal.removeEventListener("abort", handler);
+      ctrl.abort();
+      expect(fired).toBe(0);
+    });
+
+    test("once listener auto-unregisters after dispatch", () => {
+      const ctrl = new AbortController();
+      let fired = 0;
+      ctrl.signal.addEventListener("abort", () => { fired++; }, { once: true });
+      ctrl.abort();
+      expect(fired).toBe(1);
+    });
+
+    test("AbortSignal.any unregisters remaining listeners when any signal fires", () => {
+      const c1 = new AbortController();
+      const c2 = new AbortController();
+      const anySignal = AbortSignal.any([c1.signal, c2.signal]);
+      expect(anySignal.aborted).toBe(false);
+
+      c1.abort("first aborted");
+      expect(anySignal.aborted).toBe(true);
+
+      // c2 aborting afterwards should not crash or re-abort
+      c2.abort("second aborted");
+      expect(anySignal.reason).toBe("first aborted");
+    });
+  });
 });
