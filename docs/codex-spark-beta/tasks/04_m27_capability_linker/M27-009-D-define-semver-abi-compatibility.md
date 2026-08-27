@@ -4,7 +4,7 @@ parent_task: M27-009
 milestone: M27
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M27.md
 commit_required: true
 ---
@@ -120,3 +120,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M27-009-D) — PASS
+
+- Date: 2026-08-27
+- Branch/PR: m27-009-d (squash-merged; see git log for final hash)
+- Closes: #291
+
+### Changed files
+- `crates/q-capabilities/src/compat.rs` (new): the explicit, tested semver/ABI policy ADR-0029 reserved for this packet — packed semver triple (`major*1_000_000 + minor*1_000 + patch`, each part ≤ `MAX_SEMVER_COMPONENT`=999, unpack failures typed), major = ABI revision, `classify()` marks cross-major changes `AbiBreaking`, opt-in `VersionSelector::{Exact, CompatibleWith}` (CompatibleWith: same ABI revision + provider ≥ required minor/patch lexicographically; unpackable providers never satisfy), pinned `SDK_ABI_REVISION = 1`.
+- `crates/q-capabilities/src/lib.rs`: added `pub mod compat;` + re-exports.
+- `crates/q-capabilities/src/identity.rs`: module doc now points at the defined policy; resolution semantics untouched (exact match remains the default).
+- `docs/okf/decisions/0032-capability-semver-abi-compatibility.md` (new): material design change recorded per AGENTS.md; documents policy, alternatives, consequences.
+
+### Tests added (crates/q-capabilities/src/compat.rs)
+- `parts_pack_and_roundtrip`
+- `out_of_range_components_fail_closed`
+- `unpack_rejects_versions_above_component_ceiling`
+- `major_changes_break_abi_within_major_is_compatible`
+- `exact_selector_matches_only_identical_version`
+- `compatible_selector_follows_semver_policy`
+- `sdk_abi_revision_is_explicit`
+
+### Command results
+- `cargo test -p q-capabilities` → 107 passed (+7 over M27-009-C)
+- `cargo test -p q-pack` → 96+2 passed
+- `cargo test -p q-engine-quickjs` → 14+97 passed
+- `cargo test -p velqu-runtime` → 31 passed (after standard fresh-worktree builds)
+- `bun test` → 200 pass / 0 fail
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → clean
+- `./scripts/validate-okf` → exit 0, no errors (ADR-0032 accepted)
+
+### Evidence mapping
+- SDK docs: rustdoc module-level policy statement on `compat.rs`.
+- Example package: unchanged from M27-009-B/C (still green; exact-match regime unaffected).
+- Compatibility tests: seven new tests pinning pack/unpack, ceilings, ABI classification, selector direction, and revision pin.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
