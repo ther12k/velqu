@@ -4,7 +4,7 @@ parent_task: M28-003
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -123,3 +123,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-003-C) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-003-c (squash-merged; see git log for final hash)
+- Closes: #320
+
+### Changed files
+- `crates/q-runtime/tests/fetch_pool_conformance.rs`: Added integration tests `tls_untrusted_non_tls_endpoint_on_https_fails_closed` and `tls_verification_cannot_be_disabled_accidentally` verifying that plaintext endpoints answering on `https://` URLs fail closed during TLS handshake and that `FetchPool` uses bundled webpki roots without any bypass methods.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Tests added
+- `crates/q-runtime/tests/fetch_pool_conformance.rs`:
+  - `tls_untrusted_non_tls_endpoint_on_https_fails_closed`
+  - `tls_verification_cannot_be_disabled_accidentally`
+
+### Command results
+- `cargo test -p velqu-runtime` → 7 unit + 5 integration + 31 conformance passed (43 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-engine-quickjs` → 16+97 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-schema-runtime` → 58+5+4 passed
+- `bun test` → 215 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **TLS verification cannot be disabled accidentally** — `build_connector()` forces `with_webpki_roots()`; no insecure certificate verifier API exists on the builder path.
+- **App with no fetch pays no pool initialization** — unchanged (`FetchPool::new()` is dormant).
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
