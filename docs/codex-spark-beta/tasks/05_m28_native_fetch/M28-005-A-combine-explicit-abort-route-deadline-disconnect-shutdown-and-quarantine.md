@@ -4,7 +4,7 @@ parent_task: M28-005
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-005-A) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-005-a (squash-merged; see git log for final hash)
+- Closes: #330
+
+### Changed files
+- `crates/q-engine-quickjs/tests/engine.rs`: Added integration test `combined_route_deadline_abort_signal_and_shutdown_lifecycle` proving the combined cancellation lifecycle — explicit client cancel (1), route-deadline expiry (2), worker reuse after both cancellations (3), and clean shutdown with pending operations aborting all remaining tasks (4). Verifies `cancelled_invocations`, `timeouts`, `native_tasks_aborted`, `native_tasks_alive`, and `pending_ops` counters at each stage.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Tests added
+- `crates/q-engine-quickjs/tests/engine.rs`:
+  - `combined_route_deadline_abort_signal_and_shutdown_lifecycle`
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 98 engine passed (new combined lifecycle test)
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **No outbound task survives terminal invocation without defer ownership** — all aborted physical tasks (`native_tasks_aborted == N`) and zero tasks remain alive after every cancellation and shutdown stage.
+- **Timeout counted once** — `timeouts == 1` after route deadline expiry.
+- **Cancellation latency is bounded** — cancellation completes within milliseconds of `cancel()` call.
+- **Worker remains reusable** — `js.text` handler serves successfully after both explicit cancel and timeout.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
