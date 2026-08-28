@@ -1,12 +1,13 @@
 /**
- * Web API Standards Conformance Suite (M27-010-A, M27-010-B, M27-010-D).
+ * Web API Standards Conformance Suite (M27-010-A, M27-010-B, M27-010-D, M28-001-C, M28-004-A).
  *
  * Validates pinned WPT / WinterTC test vectors, records explicit skips/reasons,
- * and verifies unsupported/unadvertised APIs are documented and tracked:
+ * and verifies Web API specifications across:
  * 1. WHATWG URL / URLSearchParams
  * 2. WHATWG TextEncoder / TextDecoder (UTF-8)
  * 3. WHATWG AbortController / AbortSignal
  * 4. W3C Web Crypto random subset (getRandomValues / randomUUID)
+ * 5. WHATWG Fetch Standard (fetch, Request, Response, Headers, bodyUsed)
  */
 
 import { describe, expect, test } from "bun:test";
@@ -16,7 +17,7 @@ import { join } from "path";
 const manifestPath = join(import.meta.dir, "wpt-manifest.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
-describe("Web API Standards Conformance (M27-010)", () => {
+describe("Web API Standards Conformance (M27-010, M28-004)", () => {
   describe("Pinned Manifest Structure", () => {
     test("manifest declares all M27 + M28 capability subsets", () => {
       expect(manifest.capabilities.url).toBeDefined();
@@ -241,9 +242,6 @@ describe("Web API Standards Conformance (M27-010)", () => {
       expect(fetch.pinnedSubsets.length).toBeGreaterThan(0);
       const subset = fetch.pinnedSubsets.find((s: any) => s.id === "fetch-policy-security");
       expect(subset).toBeDefined();
-      // The vectors execute in Rust against q_capabilities::fetch_policy,
-      // not against Bun globals (engine divergence) — the pointer must be
-      // explicit so the report cannot imply a Bun-side run.
       expect(subset.verifiedIn).toBe("crates/q-capabilities/tests/wpt_wintertc_conformance.rs");
       expect(subset.cases.length).toBeGreaterThanOrEqual(23);
       const checks = new Set(subset.cases.map((c: any) => c.check));
@@ -253,7 +251,6 @@ describe("Web API Standards Conformance (M27-010)", () => {
       for (const c of subset.cases) {
         expect(c.expect === "allow" || c.expect === "deny").toBe(true);
       }
-      // Both directions present.
       expect(subset.cases.some((c: any) => c.expect === "allow")).toBe(true);
       expect(subset.cases.some((c: any) => c.expect === "deny")).toBe(true);
     });
@@ -261,7 +258,6 @@ describe("Web API Standards Conformance (M27-010)", () => {
     test("fetch unsupported features are frozen with deferral targets", () => {
       const fetch = manifest.capabilities.fetch;
       const byId = new Map(fetch.explicitSkips.map((s: any) => [s.id, s]));
-      // The headline non-goals from the M28 evidence list.
       expect(byId.has("wpt-fetch-websockets")).toBe(true);
       expect(byId.has("wpt-fetch-sse")).toBe(true);
       for (const skip of fetch.explicitSkips) {
@@ -269,6 +265,43 @@ describe("Web API Standards Conformance (M27-010)", () => {
         expect(skip.reason.length).toBeGreaterThan(10);
         expect(["OUT_OF_SCOPE", "POST_M28", "POST_BETA", "GA_TRACK"]).toContain(skip.deferredTo);
       }
+    });
+  });
+
+  describe("Fetch API Surface & Response Methods (M28-004-A)", () => {
+    test("Headers case-insensitivity and mutation", () => {
+      const h = new Headers({ "Content-Type": "application/json" });
+      h.set("X-Custom", "val1");
+      h.append("X-Custom", "val2");
+      expect(h.get("content-type")).toBe("application/json");
+      expect(h.get("x-custom")).toBe("val1, val2");
+      expect(h.has("X-CUSTOM")).toBe(true);
+    });
+
+    test("Response status, ok, headers, and bodyUsed", async () => {
+      const res = new Response("payload text", {
+        status: 201,
+        statusText: "Created",
+        headers: { "x-tag": "123" },
+      });
+      expect(res.status).toBe(201);
+      expect(res.statusText).toBe("Created");
+      expect(res.ok).toBe(true);
+      expect(res.bodyUsed).toBe(false);
+      expect(res.headers.get("x-tag")).toBe("123");
+
+      const text = await res.text();
+      expect(text).toBe("payload text");
+      expect(res.bodyUsed).toBe(true);
+      expect(async () => await res.text()).toThrow();
+    });
+
+    test("Response.json static builder", async () => {
+      const res = Response.json({ success: true }, { status: 200 });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("application/json");
+      const json = await res.json();
+      expect(json).toEqual({ success: true });
     });
   });
 });
