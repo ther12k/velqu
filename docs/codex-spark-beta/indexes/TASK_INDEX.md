@@ -356,7 +356,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-002-D](../tasks/05_m28_native_fetch/M28-002-D-record-maintenance-security-considerations.md) | P1 | implement | PASS | M28-002-C | Record maintenance/security considerations |
 | [M28-002-V](../tasks/05_m28_native_fetch/M28-002-V-verify-select-native-http-client-stack-from-evidence.md) | P1 | verify | PASS | M28-002-A, M28-002-B, M28-002-C, M28-002-D | Verify Select native HTTP client stack from evidence |
 | [M28-002-Z](../tasks/05_m28_native_fetch/M28-002-Z-package-evidence-for-select-native-http-client-stack-from-evidence.md) | P1 | evidence | PASS | M28-002-V | Package evidence for Select native HTTP client stack from evidence |
-| [M28-003-A](../tasks/05_m28_native_fetch/M28-003-A-lazy-pool-initialization.md) | P0 | implement | TODO | M28-002-Z | Lazy pool initialization |
+| [M28-003-A](../tasks/05_m28_native_fetch/M28-003-A-lazy-pool-initialization.md) | P0 | implement | PASS | M28-002-Z | Lazy pool initialization |
 | [M28-003-B](../tasks/05_m28_native_fetch/M28-003-B-bound-idle-active-connections-and-dns-cache.md) | P0 | implement | TODO | M28-003-A | Bound idle/active connections and DNS cache |
 | [M28-003-C](../tasks/05_m28_native_fetch/M28-003-C-use-verified-tls-roots-and-hostname-validation.md) | P0 | implement | TODO | M28-003-B | Use verified TLS roots and hostname validation |
 | [M28-003-D](../tasks/05_m28_native_fetch/M28-003-D-define-keepalive-and-shutdown.md) | P0 | implement | TODO | M28-003-C | Define keepalive and shutdown |

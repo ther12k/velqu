@@ -346,7 +346,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M28-002-D — Record maintenance/security considerations](tasks/05_m28_native_fetch/M28-002-D-record-maintenance-security-considerations.md)
 - [x] [M28-002-V — Verify Select native HTTP client stack from evidence](tasks/05_m28_native_fetch/M28-002-V-verify-select-native-http-client-stack-from-evidence.md)
 - [x] [M28-002-Z — Package evidence for Select native HTTP client stack from evidence](tasks/05_m28_native_fetch/M28-002-Z-package-evidence-for-select-native-http-client-stack-from-evidence.md)
-- [ ] [M28-003-A — Lazy pool initialization](tasks/05_m28_native_fetch/M28-003-A-lazy-pool-initialization.md)
+- [x] [M28-003-A — Lazy pool initialization](tasks/05_m28_native_fetch/M28-003-A-lazy-pool-initialization.md)
 - [ ] [M28-003-B — Bound idle/active connections and DNS cache](tasks/05_m28_native_fetch/M28-003-B-bound-idle-active-connections-and-dns-cache.md)
 - [ ] [M28-003-C — Use verified TLS roots and hostname validation](tasks/05_m28_native_fetch/M28-003-C-use-verified-tls-roots-and-hostname-validation.md)
 - [ ] [M28-003-D — Define keepalive and shutdown](tasks/05_m28_native_fetch/M28-003-D-define-keepalive-and-shutdown.md)
