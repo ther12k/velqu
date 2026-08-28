@@ -3595,3 +3595,114 @@ async fn combined_route_deadline_abort_signal_and_shutdown_lifecycle() {
     );
     assert_eq!(stats4.pending_ops, 0);
 }
+
+// ------------------------------------------------------------ M28-005-B one terminal state per operation
+
+/// M28-005-B: Every operation reaches EXACTLY ONE terminal state (Completed or
+/// Aborted), the accounting invariant holds after quiescence, and no task is
+/// double-counted. Exercises the full mixed termination matrix.
+#[tokio::test]
+async fn each_operation_reaches_exactly_one_terminal_state() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // Phase 1: three explicit cancels — each task must classify Aborted exactly once
+    for id in 201..=203u64 {
+        let handle = insert_request(
+            &eng,
+            q_bridge::RequestMeta {
+                query: vec![("ms".into(), "5000".into())],
+                ..Default::default()
+            },
+        );
+        let mut s = spec(id, "timer.route", &[200], 10_000);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        eng.invoke(s, tx);
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        eng.cancel(id);
+        let _ = tokio::time::timeout(Duration::from_millis(300), rx).await;
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let after_cancels = eng.stats();
+    assert_eq!(after_cancels.cancelled_invocations, 3);
+    assert_eq!(after_cancels.native_tasks_started, 3);
+    assert_eq!(
+        after_cancels.native_tasks_aborted, 3,
+        "all 3 classify Aborted exactly once"
+    );
+    assert_eq!(after_cancels.native_tasks_completed, 0);
+    assert_eq!(after_cancels.native_tasks_alive, 0);
+    assert_eq!(
+        after_cancels.native_tasks_started,
+        after_cancels.native_tasks_completed
+            + after_cancels.native_tasks_aborted
+            + after_cancels.native_tasks_alive,
+        "terminal-state invariant holds after cancels"
+    );
+
+    // Phase 2: two route-deadline timeouts — Aborted again, exactly once each
+    for id in 204..=205u64 {
+        let handle = insert_request(
+            &eng,
+            q_bridge::RequestMeta {
+                query: vec![("ms".into(), "5000".into())],
+                ..Default::default()
+            },
+        );
+        let mut s = spec(id, "timer.route", &[200], 40);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let out = run(&mut eng, s).await;
+        assert!(matches!(out, Outcome::Timeout));
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let after_timeouts = eng.stats();
+    assert_eq!(after_timeouts.native_tasks_started, 5);
+    assert_eq!(
+        after_timeouts.native_tasks_aborted, 5,
+        "timeouts also classify Aborted once"
+    );
+    assert_eq!(after_timeouts.native_tasks_completed, 0);
+    assert_eq!(after_timeouts.native_tasks_alive, 0);
+
+    // Phase 3: three natural completions — Completed exactly once each
+    for id in 206..=208u64 {
+        let handle = insert_request(
+            &eng,
+            q_bridge::RequestMeta {
+                query: vec![("ms".into(), "10".into())],
+                ..Default::default()
+            },
+        );
+        let mut s = spec(id, "timer.route", &[200], 1000);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let out = run(&mut eng, s).await;
+        assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let final_stats = eng.stats();
+    assert_eq!(final_stats.native_tasks_started, 8);
+    assert_eq!(
+        final_stats.native_tasks_completed, 3,
+        "completions classify Completed once"
+    );
+    assert_eq!(final_stats.native_tasks_aborted, 5);
+    assert_eq!(final_stats.native_tasks_alive, 0);
+    assert_eq!(
+        final_stats.native_tasks_started,
+        final_stats.native_tasks_completed
+            + final_stats.native_tasks_aborted
+            + final_stats.native_tasks_alive,
+        "invariant holds across the full mixed termination matrix"
+    );
+    assert_eq!(final_stats.pending_ops, 0);
+    assert_eq!(final_stats.scheduler_boundary_violations, 0);
+
+    // Worker fully reusable after 8 mixed terminations
+    let out = run(&mut eng, spec(999, "js.text", &[200], 1000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    eng.shutdown();
+}
