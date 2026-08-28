@@ -4,7 +4,7 @@ parent_task: M28-005
 milestone: M28
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-005-Z) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-005-z (squash-merged; see git log for final hash)
+- Closes: #335
+
+### Parent closure — M28-005 Propagate AbortSignal and route deadlines
+
+Parent intent: ensure request cancellation physically stops outbound work and keeps ownership correct. Status: **PASS**.
+
+Packet commits (squash merges):
+- M28-005-A — c18e96e (#933, Closes #330): Combined cancellation lifecycle test (`combined_route_deadline_abort_signal_and_shutdown_lifecycle`) covering explicit cancel, route-deadline expiry, worker reuse, and shutdown with pending ops
+- M28-005-B — f948a7e (#934, Closes #331): Terminal-state invariant test (`each_operation_reaches_exactly_one_terminal_state`) — 8 mixed terminations (3 cancels + 2 timeouts + 3 completions), `started == completed + aborted + alive` after every phase, zero double-counting
+- M28-005-C — b40012d (#935, Closes #332): Mid-flight cancellation test (`mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escalate`) — abort reaches the sleeping Tokio task; cleanup cannot escalate to quarantine
+- M28-005-D — 19e09ef (#936, Closes #333): Deterministic failure-mapping test (`terminal_failures_map_deterministically`) — EngineFailure/ContractViolation/Timeout/Problem identical across repeats
+- M28-005-V — efeac29 (#937, Closes #334): Verification closure mapping all 4 acceptance guardrails + failure-mapping
+
+### Evidence ledger (required microtask evidence)
+- **Race tests**: completion-vs-abort CAS races (`completion_wins_abort_race_without_double_count`, `abort_actually_wins_completion_race`, `floating.race` matrix); cleanup-path races (`cleanup_poison_fails_all_pending_immediately`, `cleanup_interrupt_does_not_timeout_unrelated_invocation`).
+- **Task accounting**: `native_tasks_started == completed + aborted + alive` verified after every scenario; zero underflow (`zero_delay_timer_does_not_wrap_alive_counter`); no accumulation (`repeated_floating_timers_do_not_accumulate_tasks` over 2000 requests).
+- **Timeout/cancel conformance**: runtime mapping Timeout→`timeout`/504, RequestCapacity→`overload`/503, EngineFailure/ContractViolation→`internal`/500 redacted; cancellation latency bounded by SETTLEMENT_GRACE (100ms, not the 5s watchdog).
+
+### Command results (this branch)
+- `cargo test -p q-engine-quickjs` → 17 unit + 101 engine passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Ledger update
+- `docs/beta/04_TASK_LEDGER.md`: M28-005 flipped TODO -> PASS.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
