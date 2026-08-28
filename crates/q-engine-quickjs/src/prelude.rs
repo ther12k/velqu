@@ -577,6 +577,15 @@ globalThis.Response = Response;
 
 globalThis.fetch = function(input, init) {
   var req = input instanceof Request ? input : new Request(input, init);
+  // Explicit scheme validation (ADR-0033 §1)
+  var urlStr = String(req.url);
+  var colonIdx = urlStr.indexOf(":");
+  if (colonIdx !== -1) {
+    var scheme = urlStr.slice(0, colonIdx).toLowerCase();
+    if (scheme !== "http" && scheme !== "https") {
+      return Promise.reject(new TypeError("fetch: scheme '" + scheme + "' is not allowed (http/https only, fail closed)"));
+    }
+  }
   if (req.signal && req.signal.aborted) {
     return Promise.reject(req.signal.reason);
   }
