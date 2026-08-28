@@ -38,6 +38,10 @@ sha2 = { workspace = true }
 clap = { workspace = true }
 sourcemap = { workspace = true }
 bytes = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+hyper-rustls = { workspace = true }
+http-body-util = { workspace = true }
 
 [dev-dependencies]
 sha2 = { workspace = true }

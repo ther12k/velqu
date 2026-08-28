@@ -8,6 +8,7 @@
 //! Both modes run the IDENTICAL load-verify-serve pipeline below; they
 //! differ only in where the pack bytes come from.
 
+pub mod fetch_stack;
 pub mod problems;
 pub mod serve;
 pub mod source_map;

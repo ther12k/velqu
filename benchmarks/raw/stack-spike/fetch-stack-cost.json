@@ -1,0 +1,56 @@
+{
+  "format": "velqu-fetch-stack-cost-v1",
+  "generatedAt": "2026-08-28T02:05:57Z",
+  "commit": "9d942b6",
+  "before": {
+    "label": "master without outbound fetch stack",
+    "binaryBytes": 5552936,
+    "binarySha256": "e12bcf3fd19c418b8bff15e629eea1d9359db8f4caa66bfd94098df2de6764bd",
+    "startup": {
+      "p50": 4.060619000000001,
+      "p95": 4.7040848,
+      "p99": 4.73241536,
+      "raw": [
+        3.351137,
+        3.377765,
+        3.412264,
+        3.839839,
+        4.056793000000001,
+        4.064445,
+        4.150314000000001,
+        4.383268,
+        4.660802,
+        4.739498
+      ]
+    }
+  },
+  "after": {
+    "label": "master + selected outbound stack linked (dormant fetch_stack module, reachable constructor)",
+    "binaryBytes": 6468376,
+    "binarySha256": "ab6dbd6cbeb478ce57bd67bdd6cf13eb8f132811c293bd5c15f9ec48fdc544e8",
+    "startup": {
+      "p50": 4.511509500000001,
+      "p95": 5.21352285,
+      "p99": 5.223151770000001,
+      "raw": [
+        3.608248,
+        3.698935,
+        3.7571420000000004,
+        3.959654,
+        4.500027,
+        4.522992,
+        4.550631999999999,
+        4.737220000000001,
+        5.198811999999999,
+        5.2255590000000005
+      ]
+    }
+  },
+  "delta": {
+    "binaryBytes": 915440,
+    "binaryPercent": 16.485693334120903,
+    "startupP50Ms": 0.45089049999999986,
+    "startupP95Ms": 0.50943805,
+    "depGraphNote": "hyper client + hyper-util client/client-legacy features extended in place (no new hyper/hyper-util copies); new crates: hyper-rustls 0.27, http-body-util 0.1, ring, rustls, webpki deps (see Cargo.lock diff)"
+  }
+}
