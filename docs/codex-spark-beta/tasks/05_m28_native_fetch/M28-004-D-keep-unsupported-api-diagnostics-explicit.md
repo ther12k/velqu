@@ -4,7 +4,7 @@ parent_task: M28-004
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -123,3 +123,32 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-004-D) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-004-d (squash-merged; see git log for final hash)
+- Closes: #327
+
+### Changed files
+- `crates/q-engine-quickjs/src/prelude.rs`: Added explicit scheme validation in `globalThis.fetch(input, init)` enforcing that unallowed schemes (`file:`, `ws:`, `data:`, `ftp:`, etc.) reject fail-closed with clear `TypeError` diagnostics (`"fetch: scheme '<scheme>' is not allowed (http/https only, fail closed)"`) matching ADR-0033 §1.
+- `crates/q-engine-quickjs/src/worker.rs`: Added test in `fetch_request_response_headers_and_body_used_in_js_environment` verifying that unallowed schemes reject fail-closed with typed errors.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 97 worker passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed (44 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **No silent Node-specific behavior** — unsupported options and schemes fail closed with explicit, actionable `TypeError` diagnostics.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

@@ -3587,6 +3587,20 @@ mod tests {
                 })()
             "#;
             assert!(ctx.eval::<bool, _>(code_clone).unwrap());
+
+            // 8. M28-004-D: Unsupported API diagnostics fail closed
+            let code_unsupported_diagnostics = r#"
+                (() => {
+                    let p1 = fetch('file:///etc/passwd');
+                    let p2 = fetch('ws://localhost:8080');
+                    let p3 = fetch('data:text/plain,hello');
+                    p1.catch(() => {});
+                    p2.catch(() => {});
+                    p3.catch(() => {});
+                    return (p1 instanceof Promise) && (p2 instanceof Promise) && (p3 instanceof Promise);
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_unsupported_diagnostics).unwrap());
         });
     }
 
