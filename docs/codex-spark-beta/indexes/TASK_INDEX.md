@@ -361,7 +361,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-003-C](../tasks/05_m28_native_fetch/M28-003-C-use-verified-tls-roots-and-hostname-validation.md) | P0 | implement | PASS | M28-003-B | Use verified TLS roots and hostname validation |
 | [M28-003-D](../tasks/05_m28_native_fetch/M28-003-D-define-keepalive-and-shutdown.md) | P0 | implement | PASS | M28-003-C | Define keepalive and shutdown |
 | [M28-003-V](../tasks/05_m28_native_fetch/M28-003-V-verify-implement-connection-pooling-dns-and-tls.md) | P0 | verify | PASS | M28-003-A, M28-003-B, M28-003-C, M28-003-D | Verify Implement connection pooling, DNS, and TLS |
-| [M28-003-Z](../tasks/05_m28_native_fetch/M28-003-Z-package-evidence-for-implement-connection-pooling-dns-and-tls.md) | P0 | evidence | TODO | M28-003-V | Package evidence for Implement connection pooling, DNS, and TLS |
+| [M28-003-Z](../tasks/05_m28_native_fetch/M28-003-Z-package-evidence-for-implement-connection-pooling-dns-and-tls.md) | P0 | evidence | PASS | M28-003-V | Package evidence for Implement connection pooling, DNS, and TLS |
 | [M28-004-A](../tasks/05_m28_native_fetch/M28-004-A-implement-method-url-selected-headers-body-types-status-and-response-methods.md) | P0 | implement | TODO | M28-003-Z, M27-005-Z, M27-006-Z | Implement method, URL, selected headers, body types, status, and response methods |
 | [M28-004-B](../tasks/05_m28_native_fetch/M28-004-B-use-lazy-native-backed-objects.md) | P0 | implement | TODO | M28-004-A | Use lazy native-backed objects |
 | [M28-004-C](../tasks/05_m28_native_fetch/M28-004-C-define-clone-body-used-semantics-for-beta.md) | P0 | implement | TODO | M28-004-B | Define clone/body-used semantics for beta |
