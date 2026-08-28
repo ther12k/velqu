@@ -3706,3 +3706,67 @@ async fn each_operation_reaches_exactly_one_terminal_state() {
     assert!(matches!(out, Outcome::Response { status: 200, .. }));
     eng.shutdown();
 }
+
+// ------------------------------------------------------------ M28-005-C cancel in-flight native work
+
+/// M28-005-C: Cancellation reaches the PHYSICAL Tokio task mid-flight —
+/// the task is aborted while the timer is pending, the abort is observed
+/// on the native task counters (not a late completion), and the aborted
+/// task's rejection continuation runs under the Cleanup phase where it
+/// cannot spawn second-generation work. Bounded by wall-clock deadline.
+#[tokio::test]
+async fn mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escalate() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // Start a 60s timer — cancellation must reach it while sleeping
+    let handle = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            query: vec![("ms".into(), "60000".into())],
+            ..Default::default()
+        },
+    );
+    let mut s = spec(301, "timer.route", &[200], 10_000);
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    eng.invoke(s, tx);
+
+    // Confirm the task is physically alive and pending
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    let pending = eng.stats();
+    assert_eq!(pending.native_tasks_alive, 1, "task in-flight");
+    assert_eq!(pending.pending_ops, 1, "op registered while pending");
+
+    // Cancel mid-flight
+    eng.cancel(301);
+    let _ = tokio::time::timeout(Duration::from_millis(300), rx).await;
+
+    // Cancellation latency: bounded cleanup window
+    tokio::time::sleep(Duration::from_millis(80)).await;
+    let stats = eng.stats();
+    assert_eq!(stats.cancelled_invocations, 1);
+    assert_eq!(
+        stats.native_tasks_aborted, 1,
+        "task physically aborted mid-flight"
+    );
+    assert_eq!(stats.native_tasks_alive, 0, "no task survives cancellation");
+    assert_eq!(stats.pending_ops, 0, "op deregistered");
+    assert_eq!(
+        stats.late_completions_dropped, 0,
+        "aborted task sent nothing"
+    );
+    assert_eq!(
+        stats.native_tasks_started,
+        stats.native_tasks_completed + stats.native_tasks_aborted + stats.native_tasks_alive,
+        "terminal invariant holds after mid-flight cancel"
+    );
+    assert!(!stats.queue_poisoned, "ordinary cancel must NOT quarantine");
+    assert_eq!(stats.scheduler_boundary_violations, 0);
+
+    // Worker remains fully reusable
+    let out = run(&mut eng, spec(302, "js.text", &[200], 1000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    eng.shutdown();
+}

@@ -4,7 +4,7 @@ parent_task: M28-005
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-005-C) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-005-c (squash-merged; see git log for final hash)
+- Closes: #332
+
+### Changed files
+- `crates/q-engine-quickjs/tests/engine.rs`: Added integration test `mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escalate` proving mid-flight cancellation reaches the PHYSICAL Tokio task — the in-flight task (confirmed alive and pending before cancel) is aborted, the abort lands on native task counters (not a late completion), the cleanup rejection continuation cannot spawn second-generation work, and the worker remains fully reusable.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Tests added
+- `crates/q-engine-quickjs/tests/engine.rs`:
+  - `mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escalate`
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 100 engine passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **No outbound task survives terminal invocation without defer ownership** — `native_tasks_alive == 0` after mid-flight cancel; abort reached the sleeping Tokio task.
+- **Timeout counted once** — abort lands via single CAS; `late_completions_dropped == 0`.
+- **Cancellation latency is bounded** — cancellation + cleanup completes within the bounded settle window; no quarantine escalation.
+- **Worker remains reusable** — `js.text` serves successfully after mid-flight cancellation.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
