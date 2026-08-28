@@ -72,7 +72,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M27-GATE | P0 | PASS | M27-001, M27-002, M27-003, M27-004, M27-005, M27-006, M27-007, M27-008, M27-009, M27-010, M27-011 | M27 | M2.7 — Capability Linker and Minimal Web Runtime exit gate |
 | M28-001 | P0 | PASS | M27-GATE | M28 | Accept fetch, TLS, redirect, and SSRF security ADR |
 | M28-002 | P1 | PASS | M28-001 | M28 | Select native HTTP client stack from evidence |
-| M28-003 | P0 | TODO | M28-002 | M28 | Implement connection pooling, DNS, and TLS |
+| M28-003 | P0 | PASS | M28-002 | M28 | Implement connection pooling, DNS, and TLS |
 | M28-004 | P0 | TODO | M28-003, M27-005, M27-006 | M28 | Implement Request, Response, and Headers subset |
 | M28-005 | P0 | TODO | M28-003, M27-007 | M28 | Propagate AbortSignal and route deadlines |
 | M28-006 | P0 | TODO | M28-004, M28-005 | M28 | Implement streaming and strict backpressure |
