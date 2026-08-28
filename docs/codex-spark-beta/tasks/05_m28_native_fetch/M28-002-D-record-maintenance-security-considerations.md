@@ -4,7 +4,7 @@ parent_task: M28-002
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,28 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-002-D) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-002-d (squash-merged; see git log for final hash)
+- Closes: #315
+
+### Changed files
+- `docs/reports/m28-002-d-maintenance-security.md` (new): standing maintenance and security posture for the selected outbound stack — ownership/review-boundary table (policy = ADR-0033 object, trust = ADR-0034, pool bounds = M28-003, address validation = M28-008-A); dependency maintenance policy (pinned minimal ring-only feature sets, dedicated upgrade packets that re-run verify + C-probes + cost baseline, RUSTSEC review checklist, webpki-roots refresh policy with fail-closed staleness); five security considerations (no ambient configuration, no bypass surface, network-not-process trust per ADR-0035, dormant-until-wired, disclosed legacy-connector retry limitation); per-packet maintenance checklist.
+
+### Command results
+- `cargo test -p q-engine-quickjs` 16+97 · `-p q-http` 4+6+1 · `-p q-capabilities` 132+8 · `-p velqu-runtime` 1+31 — all pass
+- `bun test` → 215 pass / 0 fail; `bun run typecheck` → clean
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- Documentation-only packet: no runtime or dependency changes.
+
+### Guardrail mapping
+- **Decision is evidence-backed** — considerations cite measured evidence (M28-002-A/B/C) and name the owning packet for each concern.
+- **No framework benchmark alone determines choice** — posture adds the ongoing-criteria (CVE review, probe re-runs, cost baseline) that keep the choice honest over time.
+- **Selected stack supports cancellation/backpressure** — unchanged; C-probe 6 remains the proof.
+- **Fallback strategy documented** — unchanged (M28-002-A); maintenance checklist makes a fallback re-evaluation a recorded decision if the stack ever fails its criteria.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
