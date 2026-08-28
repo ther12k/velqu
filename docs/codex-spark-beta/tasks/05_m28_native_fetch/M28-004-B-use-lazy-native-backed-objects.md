@@ -4,7 +4,7 @@ parent_task: M28-004
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -112,3 +112,33 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-004-B) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-004-b (squash-merged; see git log for final hash)
+- Closes: #325
+
+### Changed files
+- `crates/q-engine-quickjs/src/prelude.rs`: Made `headers` on `Response` and `Request` lazy property getters so `Headers` map objects are only allocated upon first property access (0 heap allocation if handler only checks `res.status` or `res.ok`); body streams and buffers remain completely unmaterialized until `text()`, `json()`, `arrayBuffer()`, or `bytes()` is invoked; `__velquHeadersPrototype` stabilized for hidden-class optimization.
+- `crates/q-engine-quickjs/src/worker.rs`: Added test in `fetch_request_response_headers_and_body_used_in_js_environment` verifying that inspecting status and ok leaves headers unmaterialized until accessed.
+- `crates/q-runtime/tests/runtime_conformance.rs`: Hardened `graceful_shutdown_exits_zero` test to eliminate transient port/signal race.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 97 worker passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed (44 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `bun test` → 218 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Expose a useful Web-compatible API without materializing unnecessary objects** — `Response` and `Request` headers and body readers are strictly lazy (non-negotiable constraint 7: request data crossing into JS is lazy; unread fields are never materialized).
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

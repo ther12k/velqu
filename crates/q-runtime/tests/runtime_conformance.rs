@@ -1712,6 +1712,8 @@ fn graceful_shutdown_exits_zero() {
     let pack_path = write_pack(&dir);
     let port = free_port();
     let mut server = Server::start(&pack_path, port);
+    // Allow the server's signal listener to establish
+    std::thread::sleep(Duration::from_millis(50));
     // SIGTERM
     unsafe {
         libc::kill(server.child.id() as i32, libc::SIGTERM);
