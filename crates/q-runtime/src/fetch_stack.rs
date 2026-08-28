@@ -1,4 +1,4 @@
-//! Outbound fetch stack and lazy connection pooling (M28-002-B, M28-003-A, M28-003-B).
+//! Outbound fetch stack and lazy connection pooling (M28-002-B, M28-003-A, M28-003-B, M28-003-D).
 //!
 //! Provides a strictly lazy, thread-safe connection pool [`FetchPool`] for
 //! outbound requests. An application that does not execute any `fetch()`
@@ -8,7 +8,7 @@
 //! On first actual request, the pool initializes once as a singleton using
 //! the M28-002-A selected stack (hyper 1 + hyper-util client-legacy +
 //! hyper-rustls with webpki roots) with strict bounds on idle connections,
-//! active concurrency, and connect/keepalive timeouts.
+//! active concurrency, keepalive, and bounded shutdown drains (ADR-0031).
 
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -203,6 +203,27 @@ impl FetchPool {
         self.shutdown_called.store(true, Ordering::SeqCst);
     }
 
+    /// Drain in-flight work and close pooled connections within the budget (ADR-0031).
+    pub async fn drain_shutdown(&self, budget: Duration) -> Result<(), &'static str> {
+        self.shutdown();
+        let max_active = self
+            .bounds
+            .max_active_connections
+            .min(MAX_ACTIVE_CONNECTIONS_CEILING);
+        // Wait for all permits to be returned within budget
+        let acquire_all = async {
+            match self.semaphore.acquire_many(max_active as u32).await {
+                Ok(_permits) => Ok(()),
+                Err(_) => Err("semaphore closed"),
+            }
+        };
+        match tokio::time::timeout(budget, acquire_all).await {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err("shutdown drain budget exceeded; failing closed"),
+        }
+    }
+
     /// Returns whether `shutdown` has been initiated.
     pub fn is_shutdown(&self) -> bool {
         self.shutdown_called.load(Ordering::SeqCst)
@@ -270,25 +291,29 @@ mod tests {
         assert!(init_pool.is_shutdown());
     }
 
+    #[tokio::test]
+    async fn pool_drain_shutdown_settles_within_budget() {
+        let pool = FetchPool::new();
+        let res = pool.drain_shutdown(Duration::from_millis(500)).await;
+        assert!(res.is_ok(), "drain on idle pool must succeed immediately");
+        assert!(pool.is_shutdown());
+    }
+
     #[test]
     fn pool_exhaustion_yields_bounded_backpressure_error() {
-        // Create pool with max_active = 2
         let bounds = PoolBounds {
             max_active_connections: 2,
             ..PoolBounds::default()
         };
         let pool = FetchPool::with_bounds(bounds);
 
-        // Acquire 2 permits
         let permit1 = pool.try_acquire_permit().expect("permit 1");
         let permit2 = pool.try_acquire_permit().expect("permit 2");
 
-        // Third permit must be rejected with PoolExhausted (backpressure)
         let err = pool.try_acquire_permit().unwrap_err();
         assert_eq!(err, PoolError::PoolExhausted { max_active: 2 });
         assert!(err.to_string().contains("backpressure applied"));
 
-        // Dropping a permit restores capacity
         drop(permit1);
         let permit3 = pool.try_acquire_permit().expect("permit 3 after drop");
         drop(permit2);
@@ -302,7 +327,6 @@ mod tests {
             ..PoolBounds::default()
         };
         let pool = FetchPool::with_bounds(bounds);
-        // Semaphore capacity clamped to MAX_ACTIVE_CONNECTIONS_CEILING (1024)
         assert_eq!(pool.semaphore.available_permits(), 1024);
     }
 
