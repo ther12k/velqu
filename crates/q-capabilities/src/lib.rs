@@ -30,6 +30,7 @@ pub mod operations;
 pub mod resolver;
 pub mod sdk;
 pub mod shutdown;
+pub mod stream_buffer;
 pub mod text_encoding;
 pub mod url_model;
 
@@ -61,6 +62,9 @@ pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX
 pub use resolver::{resolve_closure, DependencyDag};
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
+};
+pub use stream_buffer::{
+    BoundedStream, StreamError, DEFAULT_STREAM_BUFFER_BYTES, MAX_STREAM_CHUNK_BYTES,
 };
 pub use text_encoding::{
     TextDecoderModel, TextDecoderOptions, TextEncoderModel, TextEncodingError, MAX_TEXT_BUFFER_LEN,
