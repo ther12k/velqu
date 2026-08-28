@@ -4,7 +4,7 @@ parent_task: M28-002
 milestone: M28
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -132,3 +132,31 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-002-V) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-002-v (squash-merged; see git log for final hash)
+- Closes: #316
+
+### Acceptance-criterion mapping (parent M28-002 guardrails)
+
+1. **Decision is evidence-backed** — verified: `benchmarks/raw/stack-spike/stack-comparison.json` (40 fresh-process spawn samples comparing reqwest 0.12 vs hyper stack in isolation; hyper −21.4% binary, −48.8% crate count, p95 3.32 vs 4.84 ms); `benchmarks/raw/stack-spike/fetch-stack-cost.json` (linked-in production cost: +915 KB binary, +0.45 ms cold-start delta, within < 10 ms budget); `docs/reports/m28-002-a-stack-comparison.md`, `m28-002-b-stack-cost.md`, `m28-002-c-dns-tls-pool-behavior.md`, `m28-002-d-maintenance-security.md`.
+2. **No framework benchmark alone determines choice** — verified: Decision rests on full 6-axis matrix (policy fit to ADR-0033 with no bypass traps, direct pooling controls for M28-003, cancellation/backpressure support, maintainability, dependency risk, binary size/startup).
+3. **Selected stack supports cancellation/backpressure** — verified: `streaming_body_supports_bounded_prefix_and_early_drop` (`benchmarks/stack-spike/spike-hyper/tests/stack_behavior.rs`) tests that 1 MiB stream reads bounded frames and drops mid-stream with server observing cancellation.
+4. **Fallback strategy documented** — verified: `docs/reports/m28-002-a-stack-comparison.md` and `m28-002-d-maintenance-security.md` document reqwest as prepared fallback behind the ADR-0033 policy object.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test --test stack_behavior` (spike workspace) → 6/6 passed (pool reuse, pool origin keying, DNS resolution, DNS unresolvable fast-fail, self-signed TLS fail-closed, streaming early-drop).
+- `cargo test -p q-capabilities` → 132 unit + 8 integration passed
+- `cargo test -p q-engine-quickjs` → 16+97 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p velqu-runtime` → 1 unit + 31 conformance passed
+- `./target/release/velqu-runtime --fetch-stack-info` → constructs cleanly and prints identity.
+- `bun test` → 215 pass / 0 fail (27 files); `bun run typecheck` → clean
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
