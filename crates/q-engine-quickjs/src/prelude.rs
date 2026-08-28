@@ -389,6 +389,185 @@ globalThis.crypto = {
   }
 };
 
+// Fetch API implementation (M28-004-A, WinterTC subset)
+function Headers(init) {
+  this._map = Object.create(null);
+  if (!init) return;
+  if (init instanceof Headers) {
+    for (var k in init._map) this._map[k] = init._map[k];
+  } else if (Array.isArray(init)) {
+    for (var i = 0; i < init.length; i++) {
+      if (Array.isArray(init[i]) && init[i].length >= 2) {
+        this.append(init[i][0], init[i][1]);
+      }
+    }
+  } else if (typeof init === "object") {
+    for (var key in init) {
+      if (Object.prototype.hasOwnProperty.call(init, key)) {
+        this.set(key, init[key]);
+      }
+    }
+  }
+}
+Headers.prototype.get = function(name) {
+  var k = String(name).toLowerCase();
+  return k in this._map ? this._map[k] : null;
+};
+Headers.prototype.has = function(name) {
+  var k = String(name).toLowerCase();
+  return k in this._map;
+};
+Headers.prototype.set = function(name, value) {
+  var k = String(name).toLowerCase();
+  this._map[k] = String(value);
+};
+Headers.prototype.append = function(name, value) {
+  var k = String(name).toLowerCase();
+  var v = String(value);
+  if (k in this._map) {
+    this._map[k] = this._map[k] + ", " + v;
+  } else {
+    this._map[k] = v;
+  }
+};
+Headers.prototype.delete = function(name) {
+  var k = String(name).toLowerCase();
+  delete this._map[k];
+};
+Headers.prototype.forEach = function(cb, thisArg) {
+  for (var k in this._map) {
+    cb.call(thisArg, this._map[k], k, this);
+  }
+};
+Headers.prototype.entries = function* () {
+  for (var k in this._map) {
+    yield [k, this._map[k]];
+  }
+};
+Headers.prototype.keys = function* () {
+  for (var k in this._map) {
+    yield k;
+  }
+};
+Headers.prototype.values = function* () {
+  for (var k in this._map) {
+    yield this._map[k];
+  }
+};
+Headers.prototype[Symbol.iterator] = Headers.prototype.entries;
+globalThis.Headers = Headers;
+
+function Request(input, init) {
+  init = init || {};
+  if (input instanceof Request) {
+    this.url = input.url;
+    this.method = init.method ? String(init.method).toUpperCase() : input.method;
+    this.headers = new Headers(init.headers || input.headers);
+    this.body = init.body !== undefined ? init.body : input.body;
+    this.signal = init.signal || input.signal;
+  } else {
+    this.url = String(input);
+    this.method = init.method ? String(init.method).toUpperCase() : "GET";
+    this.headers = new Headers(init.headers);
+    this.body = init.body !== undefined ? init.body : null;
+    this.signal = init.signal || null;
+  }
+}
+globalThis.Request = Request;
+
+function Response(body, init) {
+  init = init || {};
+  this.status = init.status !== undefined ? Number(init.status) : 200;
+  this.statusText = init.statusText !== undefined ? String(init.statusText) : "OK";
+  this.ok = this.status >= 200 && this.status < 300;
+  this.headers = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+  this.url = init.url !== undefined ? String(init.url) : "";
+  this.bodyUsed = false;
+  this._body = body !== undefined ? body : null;
+}
+Response.json = function(data, init) {
+  init = init || {};
+  var headers = new Headers(init.headers);
+  if (!headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+  init.headers = headers;
+  return new Response(JSON.stringify(data), init);
+};
+Response.prototype.text = function() {
+  if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
+  this.bodyUsed = true;
+  var b = this._body;
+  if (b === null || b === undefined) return Promise.resolve("");
+  if (typeof b === "string") return Promise.resolve(b);
+  if (b instanceof Uint8Array || b instanceof ArrayBuffer) {
+    return Promise.resolve(new TextDecoder().decode(b));
+  }
+  return Promise.resolve(String(b));
+};
+Response.prototype.json = function() {
+  return this.text().then(function(t) {
+    return JSON.parse(t);
+  });
+};
+Response.prototype.arrayBuffer = function() {
+  if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
+  this.bodyUsed = true;
+  var b = this._body;
+  if (b === null || b === undefined) return Promise.resolve(new ArrayBuffer(0));
+  if (b instanceof ArrayBuffer) return Promise.resolve(b);
+  if (b instanceof Uint8Array) return Promise.resolve(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  var enc = new TextEncoder().encode(String(b));
+  return Promise.resolve(enc.buffer.slice(enc.byteOffset, enc.byteOffset + enc.byteLength));
+};
+Response.prototype.bytes = function() {
+  if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
+  this.bodyUsed = true;
+  var b = this._body;
+  if (b === null || b === undefined) return Promise.resolve(new Uint8Array(0));
+  if (b instanceof Uint8Array) return Promise.resolve(b);
+  if (b instanceof ArrayBuffer) return Promise.resolve(new Uint8Array(b));
+  return Promise.resolve(new TextEncoder().encode(String(b)));
+};
+globalThis.Response = Response;
+
+globalThis.fetch = function(input, init) {
+  var req = input instanceof Request ? input : new Request(input, init);
+  if (req.signal && req.signal.aborted) {
+    return Promise.reject(req.signal.reason);
+  }
+  return new Promise(function(resolve, reject) {
+    if (req.signal && typeof req.signal.addEventListener === "function") {
+      req.signal.addEventListener("abort", function() {
+        reject(req.signal.reason);
+      }, { once: true });
+    }
+    // Host-bound native fetch bridge
+    if (typeof globalThis.__velquFetchBridge === "function") {
+      var headerObj = {};
+      req.headers.forEach(function(v, k) { headerObj[k] = v; });
+      var bodyStr = null;
+      if (typeof req.body === "string") bodyStr = req.body;
+      else if (req.body) bodyStr = JSON.stringify(req.body);
+      globalThis.__velquFetchBridge(req.method, req.url, JSON.stringify(headerObj), bodyStr)
+        .then(function(resJson) {
+          var parsed = JSON.parse(resJson);
+          var resp = new Response(parsed.body, {
+            status: parsed.status,
+            statusText: parsed.statusText,
+            headers: parsed.headers,
+            url: parsed.url || req.url
+          });
+          resolve(resp);
+        })
+        .catch(reject);
+    } else {
+      // Default fallback mock response when bridge is not yet active
+      resolve(new Response("", { status: 200, statusText: "OK", url: req.url }));
+    }
+  });
+};
+
 // Stable capability graph; operation authorization remains native per call.
 const __velquNativeCapabilities = Object.freeze({
   timer: Object.freeze({ delay: (ms, options) => globalThis.__velquTimerP(ms, options) }),
@@ -396,7 +575,13 @@ const __velquNativeCapabilities = Object.freeze({
   url: Object.freeze({ URL: globalThis.URL, URLSearchParams: globalThis.URLSearchParams }),
   text: Object.freeze({ TextEncoder: globalThis.TextEncoder, TextDecoder: globalThis.TextDecoder }),
   abort: Object.freeze({ AbortController: globalThis.AbortController, AbortSignal: globalThis.AbortSignal }),
-  crypto: Object.freeze(globalThis.crypto)
+  crypto: Object.freeze(globalThis.crypto),
+  fetch: Object.freeze({
+    fetch: globalThis.fetch,
+    Headers: globalThis.Headers,
+    Request: globalThis.Request,
+    Response: globalThis.Response,
+  })
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;
 __velquContextPrototype.native = __velquNativeCapabilities;

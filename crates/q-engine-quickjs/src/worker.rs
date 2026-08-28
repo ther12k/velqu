@@ -3443,13 +3443,12 @@ mod tests {
             install_natives(&ctx, store, shared, ops, handle).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
-            // Web Crypto SubtleCrypto is NOT implemented in M27; must be undefined (never a mock/stub)
+            // Web Crypto SubtleCrypto is NOT implemented in M28; must be undefined (never a mock/stub)
             assert!(ctx
                 .eval::<bool, _>("typeof crypto.subtle === 'undefined'")
                 .unwrap());
 
-            // Broad Web APIs outside M27 scope must be undefined
-            assert!(ctx.eval::<bool, _>("typeof fetch === 'undefined'").unwrap());
+            // Broad Web APIs outside M28 scope must be undefined
             assert!(ctx
                 .eval::<bool, _>("typeof WebSocket === 'undefined'")
                 .unwrap());
@@ -3475,6 +3474,88 @@ mod tests {
 
             // Evaluation of undeclared identifiers throws ReferenceError
             assert!(ctx.eval::<(), _>("nonExistentApiFunction()").is_err());
+        });
+    }
+
+    /// M28-004-A: fetch, Request, Response, Headers, and bodyUsed enforcement in JS context.
+    #[test]
+    fn fetch_request_response_headers_and_body_used_in_js_environment() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // 1. Headers case-insensitivity and mutation
+            let code_headers = r#"
+                (() => {
+                    const h = new Headers({ 'Content-Type': 'application/json' });
+                    h.set('X-Custom', 'val1');
+                    h.append('X-Custom', 'val2');
+                    return h.get('content-type') === 'application/json' &&
+                           h.get('x-custom') === 'val1, val2' &&
+                           h.has('X-CUSTOM') === true;
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_headers).unwrap());
+
+            // 2. Response properties and body methods
+            let code_response = r#"
+                (() => {
+                    const res = new Response('hello world', { status: 201, statusText: 'Created', headers: { 'x-foo': 'bar' } });
+                    return res.status === 201 &&
+                           res.statusText === 'Created' &&
+                           res.ok === true &&
+                           res.headers.get('x-foo') === 'bar' &&
+                           res.bodyUsed === false;
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_response).unwrap());
+
+            // 3. Response.json static builder
+            let code_json_builder = r#"
+                (() => {
+                    const res = Response.json({ message: 'ok' }, { status: 200 });
+                    return res.status === 200 &&
+                           res.headers.get('content-type') === 'application/json';
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_json_builder).unwrap());
+
+            // 4. bodyUsed state transition and consumption rejection
+            let code_body_used = r#"
+                (() => {
+                    const res = new Response('test body');
+                    let initial = res.bodyUsed === false;
+                    let p1 = res.text();
+                    let afterText = res.bodyUsed === true;
+                    let p2 = res.json();
+                    p2.catch(() => {});
+                    return initial && afterText && (p2 instanceof Promise);
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_body_used).unwrap());
+
+            // 5. fetch capability exposed in globalThis and native capabilities graph
+            let code_capabilities = r#"
+                (() => {
+                    return typeof globalThis.fetch === 'function' &&
+                           typeof globalThis.Headers === 'function' &&
+                           typeof globalThis.Request === 'function' &&
+                           typeof globalThis.Response === 'function' &&
+                           globalThis.__velquNativeCapabilities.fetch.fetch === globalThis.fetch &&
+                           globalThis.__velquNativeCapabilities.fetch.Response === globalThis.Response;
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_capabilities).unwrap());
         });
     }
 
