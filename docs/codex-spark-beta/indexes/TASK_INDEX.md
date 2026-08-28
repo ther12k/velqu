@@ -372,7 +372,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-005-B](../tasks/05_m28_native_fetch/M28-005-B-use-one-terminal-state-for-each-operation.md) | P0 | implement | PASS | M28-005-A | Use one terminal state for each operation |
 | [M28-005-C](../tasks/05_m28_native_fetch/M28-005-C-cancel-dns-connect-body-streaming.md) | P0 | implement | PASS | M28-005-B | Cancel DNS/connect/body streaming |
 | [M28-005-D](../tasks/05_m28_native_fetch/M28-005-D-map-failures-deterministically.md) | P0 | implement | PASS | M28-005-C | Map failures deterministically |
-| [M28-005-V](../tasks/05_m28_native_fetch/M28-005-V-verify-propagate-abortsignal-and-route-deadlines.md) | P0 | verify | TODO | M28-005-A, M28-005-B, M28-005-C, M28-005-D | Verify Propagate AbortSignal and route deadlines |
+| [M28-005-V](../tasks/05_m28_native_fetch/M28-005-V-verify-propagate-abortsignal-and-route-deadlines.md) | P0 | verify | PASS | M28-005-A, M28-005-B, M28-005-C, M28-005-D | Verify Propagate AbortSignal and route deadlines |
 | [M28-005-Z](../tasks/05_m28_native_fetch/M28-005-Z-package-evidence-for-propagate-abortsignal-and-route-deadlines.md) | P0 | evidence | TODO | M28-005-V | Package evidence for Propagate AbortSignal and route deadlines |
 | [M28-006-A](../tasks/05_m28_native_fetch/M28-006-A-bound-read-write-buffers.md) | P0 | implement | TODO | M28-004-Z, M28-005-Z | Bound read/write buffers |
 | [M28-006-B](../tasks/05_m28_native_fetch/M28-006-B-propagate-downstream-backpressure.md) | P0 | implement | TODO | M28-006-A | Propagate downstream backpressure |

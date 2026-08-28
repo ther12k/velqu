@@ -4,7 +4,7 @@ parent_task: M28-005
 milestone: M28
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -132,3 +132,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-005-V) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-005-v (squash-merged; see git log for final hash)
+- Closes: #334
+
+### Acceptance-criterion mapping (parent M28-005 guardrails)
+
+1. **No outbound task survives terminal invocation without defer ownership** — verified: `combined_route_deadline_abort_signal_and_shutdown_lifecycle` (`engine.rs`), `each_operation_reaches_exactly_one_terminal_state`, and `mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escalate` all prove `native_tasks_alive == 0` after every cancellation, timeout, and shutdown stage; cleanup reactions cannot spawn second-generation ops (`cleanup_reaction_cannot_start_native_operation`, `cancel_reaction_cannot_spawn_second_generation_op`).
+2. **Timeout counted once** — verified: `timeouts == 1` after route-deadline expiry in the combined lifecycle test; abort lands via single CAS in `abort_op_task` (`completion_wins_abort_race_without_double_count`, `abort_actually_wins_completion_race`).
+3. **Cancellation latency is bounded** — verified: `floating_timer_aborts_underlying_tokio_task` (no late completions), `post_settlement_floating_cleanup_uses_cleanup_budget` (100ms grace, not the 5s watchdog), `ordinary_async_timeout_does_not_quarantine_worker` (prompt timeout, no quarantine).
+4. **Worker remains reusable** — verified: `sync_runaway_microtask_leaves_worker_reusable`, `deadline_timeout_interrupts_and_replies`, `response_mapping_timeout_leaves_worker_reusable`, and the tail of every M28-005 A–D test (workers serve `js.text` after cancellations/timeouts).
+
+Failure-mapping guardrail (D packet): `terminal_failures_map_deterministically` — every terminal outcome maps identically across repeats (EngineFailure/ContractViolation/Timeout/Problem).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-engine-quickjs` → 17 unit + 101 engine passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
