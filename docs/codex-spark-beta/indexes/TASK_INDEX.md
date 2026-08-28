@@ -353,7 +353,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-002-A](../tasks/05_m28_native_fetch/M28-002-A-compare-reqwest-and-lower-level-hyper-rustls-approach.md) | P1 | implement | PASS | M28-001-Z | Compare reqwest and lower-level Hyper/Rustls approach |
 | [M28-002-B](../tasks/05_m28_native_fetch/M28-002-B-measure-dependency-binary-startup-cost.md) | P1 | implement | PASS | M28-002-A | Measure dependency/binary/startup cost |
 | [M28-002-C](../tasks/05_m28_native_fetch/M28-002-C-test-dns-tls-pool-behavior.md) | P1 | implement | PASS | M28-002-B | Test DNS/TLS/pool behavior |
-| [M28-002-D](../tasks/05_m28_native_fetch/M28-002-D-record-maintenance-security-considerations.md) | P1 | implement | TODO | M28-002-C | Record maintenance/security considerations |
+| [M28-002-D](../tasks/05_m28_native_fetch/M28-002-D-record-maintenance-security-considerations.md) | P1 | implement | PASS | M28-002-C | Record maintenance/security considerations |
 | [M28-002-V](../tasks/05_m28_native_fetch/M28-002-V-verify-select-native-http-client-stack-from-evidence.md) | P1 | verify | TODO | M28-002-A, M28-002-B, M28-002-C, M28-002-D | Verify Select native HTTP client stack from evidence |
 | [M28-002-Z](../tasks/05_m28_native_fetch/M28-002-Z-package-evidence-for-select-native-http-client-stack-from-evidence.md) | P1 | evidence | TODO | M28-002-V | Package evidence for Select native HTTP client stack from evidence |
 | [M28-003-A](../tasks/05_m28_native_fetch/M28-003-A-lazy-pool-initialization.md) | P0 | implement | TODO | M28-002-Z | Lazy pool initialization |
