@@ -487,6 +487,14 @@ function Request(input, init) {
     }
   });
 }
+Request.prototype.clone = function() {
+  return new Request(this.url, {
+    method: this.method,
+    headers: new Headers(this.headers),
+    body: this.body,
+    signal: this.signal
+  });
+};
 globalThis.Request = Request;
 
 function Response(body, init) {
@@ -553,6 +561,17 @@ Response.prototype.bytes = function() {
   if (b instanceof Uint8Array) return Promise.resolve(b);
   if (b instanceof ArrayBuffer) return Promise.resolve(new Uint8Array(b));
   return Promise.resolve(new TextEncoder().encode(String(b)));
+};
+Response.prototype.clone = function() {
+  if (this.bodyUsed) {
+    throw new TypeError("Failed to execute 'clone' on 'Response': Response body is already used");
+  }
+  return new Response(this._body, {
+    status: this.status,
+    statusText: this.statusText,
+    headers: new Headers(this.headers),
+    url: this.url
+  });
 };
 globalThis.Response = Response;
 

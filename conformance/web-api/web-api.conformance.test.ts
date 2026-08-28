@@ -303,5 +303,24 @@ describe("Web API Standards Conformance (M27-010, M28-004)", () => {
       const json = await res.json();
       expect(json).toEqual({ success: true });
     });
+
+    test("Response.clone and Request.clone independent bodyUsed semantics (M28-004-C)", async () => {
+      const res = new Response("cloneable text", { status: 200, headers: { "x-mode": "test" } });
+      const cloned = res.clone();
+      expect(res.bodyUsed).toBe(false);
+      expect(cloned.bodyUsed).toBe(false);
+      expect(cloned.headers.get("x-mode")).toBe("test");
+
+      const t1 = await res.text();
+      expect(t1).toBe("cloneable text");
+      expect(res.bodyUsed).toBe(true);
+      expect(cloned.bodyUsed).toBe(false);
+
+      expect(() => res.clone()).toThrow();
+
+      const t2 = await cloned.text();
+      expect(t2).toBe("cloneable text");
+      expect(cloned.bodyUsed).toBe(true);
+    });
   });
 });

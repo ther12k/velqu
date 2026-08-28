@@ -4,7 +4,7 @@ parent_task: M28-004
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -112,3 +112,33 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-004-C) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-004-c (squash-merged; see git log for final hash)
+- Closes: #326
+
+### Changed files
+- `crates/q-engine-quickjs/src/prelude.rs`: Added `Response.prototype.clone()` and `Request.prototype.clone()`; enforces that cloning an already-consumed response/request throws `TypeError` fail-closed, while cloning an unconsumed instance creates an independent copy with its own `bodyUsed = false` lifecycle state.
+- `crates/q-engine-quickjs/src/worker.rs`: Added unit test in `fetch_request_response_headers_and_body_used_in_js_environment` verifying clone independence and consumed clone rejection.
+- `conformance/web-api/web-api.conformance.test.ts`: Added automated test `Response.clone and Request.clone independent bodyUsed semantics (M28-004-C)`.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 97 worker passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed (44 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Expose a useful Web-compatible API without materializing unnecessary objects** — `clone()` duplicates headers and body references cleanly; `bodyUsed` transitions and re-consumption/re-clone errors follow WHATWG specification.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

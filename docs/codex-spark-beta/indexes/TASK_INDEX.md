@@ -364,7 +364,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-003-Z](../tasks/05_m28_native_fetch/M28-003-Z-package-evidence-for-implement-connection-pooling-dns-and-tls.md) | P0 | evidence | PASS | M28-003-V | Package evidence for Implement connection pooling, DNS, and TLS |
 | [M28-004-A](../tasks/05_m28_native_fetch/M28-004-A-implement-method-url-selected-headers-body-types-status-and-response-methods.md) | P0 | implement | PASS | M28-003-Z, M27-005-Z, M27-006-Z | Implement method, URL, selected headers, body types, status, and response methods |
 | [M28-004-B](../tasks/05_m28_native_fetch/M28-004-B-use-lazy-native-backed-objects.md) | P0 | implement | PASS | M28-004-A | Use lazy native-backed objects |
-| [M28-004-C](../tasks/05_m28_native_fetch/M28-004-C-define-clone-body-used-semantics-for-beta.md) | P0 | implement | TODO | M28-004-B | Define clone/body-used semantics for beta |
+| [M28-004-C](../tasks/05_m28_native_fetch/M28-004-C-define-clone-body-used-semantics-for-beta.md) | P0 | implement | PASS | M28-004-B | Define clone/body-used semantics for beta |
 | [M28-004-D](../tasks/05_m28_native_fetch/M28-004-D-keep-unsupported-api-diagnostics-explicit.md) | P0 | implement | TODO | M28-004-C | Keep unsupported API diagnostics explicit |
 | [M28-004-V](../tasks/05_m28_native_fetch/M28-004-V-verify-implement-request-response-and-headers-subset.md) | P0 | verify | TODO | M28-004-A, M28-004-B, M28-004-C, M28-004-D | Verify Implement Request, Response, and Headers subset |
 | [M28-004-Z](../tasks/05_m28_native_fetch/M28-004-Z-package-evidence-for-implement-request-response-and-headers-subset.md) | P0 | evidence | TODO | M28-004-V | Package evidence for Implement Request, Response, and Headers subset |
