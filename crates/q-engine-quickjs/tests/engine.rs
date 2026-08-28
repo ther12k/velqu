@@ -3502,3 +3502,96 @@ async fn invalid_bytecode_fails_loudly_never_silently_sources() {
     // missing handlers rather than serving
     eng.shutdown();
 }
+
+// ------------------------------------------------------------ M28-005-A cancellation & timeout convergence
+
+/// M28-005-A: Combining route deadlines, explicit abort signals, and server shutdown.
+/// Outbound work is aborted physically on Tokio tasks, timeout counters are recorded once,
+/// and the worker remains reusable.
+#[tokio::test]
+async fn combined_route_deadline_abort_signal_and_shutdown_lifecycle() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // 1. Explicit abort via client cancellation while an async timer is in flight
+    let handle1 = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            query: vec![("ms".into(), "5000".into())],
+            ..Default::default()
+        },
+    );
+    let mut s1 = spec(101, "timer.route", &[200], 10_000);
+    s1.slot = handle1.slot();
+    s1.generation = handle1.generation();
+    let (tx1, rx1) = tokio::sync::oneshot::channel();
+    eng.invoke(s1, tx1);
+
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    // Explicit cancel
+    eng.cancel(101);
+    let _ = tokio::time::timeout(Duration::from_millis(300), rx1).await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let stats1 = eng.stats();
+    assert_eq!(stats1.cancelled_invocations, 1);
+    assert_eq!(
+        stats1.native_tasks_aborted, 1,
+        "task physically aborted on explicit cancel"
+    );
+    assert_eq!(stats1.native_tasks_alive, 0);
+    assert_eq!(stats1.pending_ops, 0);
+
+    // 2. Route deadline expiry: short deadline triggers timeout and physical task abort
+    let handle2 = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            query: vec![("ms".into(), "5000".into())],
+            ..Default::default()
+        },
+    );
+    let mut s2 = spec(102, "timer.route", &[200], 50);
+    s2.slot = handle2.slot();
+    s2.generation = handle2.generation();
+    let out2 = run(&mut eng, s2).await;
+    assert!(matches!(out2, Outcome::Timeout));
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let stats2 = eng.stats();
+    assert_eq!(stats2.timeouts, 1, "timeout counted exactly once");
+    assert_eq!(
+        stats2.native_tasks_aborted, 2,
+        "second task physically aborted on timeout"
+    );
+    assert_eq!(stats2.native_tasks_alive, 0);
+    assert_eq!(stats2.pending_ops, 0);
+
+    // 3. Worker remains fully reusable after both cancellations
+    let out3 = run(&mut eng, spec(103, "js.text", &[200], 1000)).await;
+    assert!(matches!(out3, Outcome::Response { status: 200, .. }));
+
+    // 4. Shutdown with pending operations: cleanly aborts all remaining work
+    let handle4 = insert_request(
+        &eng,
+        q_bridge::RequestMeta {
+            query: vec![("ms".into(), "5000".into())],
+            ..Default::default()
+        },
+    );
+    let mut s4 = spec(104, "timer.route", &[200], 10_000);
+    s4.slot = handle4.slot();
+    s4.generation = handle4.generation();
+    let (tx4, _rx4) = tokio::sync::oneshot::channel();
+    eng.invoke(s4, tx4);
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    eng.shutdown();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let stats4 = eng.stats();
+    assert_eq!(
+        stats4.native_tasks_alive, 0,
+        "zero tasks alive after shutdown"
+    );
+    assert_eq!(stats4.pending_ops, 0);
+}
