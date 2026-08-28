@@ -34,8 +34,9 @@ q-bench-support = { path = "crates/q-bench-support" }
 
 rquickjs = { version = "=0.12.2", features = ["full-async"] }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "macros", "signal", "sync", "fs", "process"] }
-hyper = { version = "1", features = ["http1", "server"] }
-hyper-util = { version = "0.1", features = ["tokio", "server", "http1"] }
+hyper = { version = "1", features = ["http1", "server", "client"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "client", "client-legacy"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "webpki-tokio", "tls12"] }
 http-body-util = "0.1"
 bytes = "1"
 serde = { version = "1", features = ["derive"] }

@@ -16,7 +16,7 @@ use velqu_runtime::{print_fingerprint, run, PackSource, RunConfig};
 struct Args {
     /// Path to the application pack (velqu.qpack v1)
     #[arg(long)]
-    pack: PathBuf,
+    pack: Option<PathBuf>,
     /// TCP port (default 3000, or PORT env)
     #[arg(long)]
     port: Option<u16>,
@@ -46,16 +46,27 @@ struct Args {
     /// baseline.
     #[arg(long)]
     context_profile: Option<String>,
+    /// M28-002-B: print the linked outbound fetch stack identity and
+    /// construct it once (no dialing); exit 0.
+    #[arg(long)]
+    fetch_stack_info: bool,
 }
 
 fn main() {
     let args = Args::parse();
+    if args.fetch_stack_info {
+        println!("{}", velqu_runtime::fetch_stack::describe());
+        std::process::exit(0);
+    }
+    let pack = args
+        .pack
+        .expect("--pack is required unless --fetch-stack-info is given");
     if args.fingerprint {
-        let code = print_fingerprint(&PackSource::Path(args.pack.clone()));
+        let code = print_fingerprint(&PackSource::Path(pack.clone()));
         std::process::exit(code);
     }
     let code = run(
-        PackSource::Path(args.pack),
+        PackSource::Path(pack),
         RunConfig {
             port: args.port,
             host: args.host,
