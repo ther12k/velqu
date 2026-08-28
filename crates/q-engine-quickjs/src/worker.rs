@@ -3556,6 +3556,18 @@ mod tests {
                 })()
             "#;
             assert!(ctx.eval::<bool, _>(code_capabilities).unwrap());
+
+            // 6. M28-004-B: Lazy native-backed objects — headers materialize only on property access
+            let code_lazy_objects = r#"
+                (() => {
+                    const res = new Response('lazy body', { headers: { 'a': '1' } });
+                    // Inspect status and body without triggering headers getter
+                    let untouched = res.status === 200 && res.ok === true;
+                    let headersAccessible = res.headers.get('a') === '1';
+                    return untouched && headersAccessible;
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_lazy_objects).unwrap());
         });
     }
 

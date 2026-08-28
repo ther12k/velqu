@@ -389,39 +389,21 @@ globalThis.crypto = {
   }
 };
 
-// Fetch API implementation (M28-004-A, WinterTC subset)
-function Headers(init) {
-  this._map = Object.create(null);
-  if (!init) return;
-  if (init instanceof Headers) {
-    for (var k in init._map) this._map[k] = init._map[k];
-  } else if (Array.isArray(init)) {
-    for (var i = 0; i < init.length; i++) {
-      if (Array.isArray(init[i]) && init[i].length >= 2) {
-        this.append(init[i][0], init[i][1]);
-      }
-    }
-  } else if (typeof init === "object") {
-    for (var key in init) {
-      if (Object.prototype.hasOwnProperty.call(init, key)) {
-        this.set(key, init[key]);
-      }
-    }
-  }
-}
-Headers.prototype.get = function(name) {
+// Fetch API implementation (M28-004-A, M28-004-B: lazy native-backed objects)
+const __velquHeadersPrototype = Object.create(null);
+__velquHeadersPrototype.get = function(name) {
   var k = String(name).toLowerCase();
   return k in this._map ? this._map[k] : null;
 };
-Headers.prototype.has = function(name) {
+__velquHeadersPrototype.has = function(name) {
   var k = String(name).toLowerCase();
   return k in this._map;
 };
-Headers.prototype.set = function(name, value) {
+__velquHeadersPrototype.set = function(name, value) {
   var k = String(name).toLowerCase();
   this._map[k] = String(value);
 };
-Headers.prototype.append = function(name, value) {
+__velquHeadersPrototype.append = function(name, value) {
   var k = String(name).toLowerCase();
   var v = String(value);
   if (k in this._map) {
@@ -430,31 +412,54 @@ Headers.prototype.append = function(name, value) {
     this._map[k] = v;
   }
 };
-Headers.prototype.delete = function(name) {
+__velquHeadersPrototype.delete = function(name) {
   var k = String(name).toLowerCase();
   delete this._map[k];
 };
-Headers.prototype.forEach = function(cb, thisArg) {
+__velquHeadersPrototype.forEach = function(cb, thisArg) {
   for (var k in this._map) {
     cb.call(thisArg, this._map[k], k, this);
   }
 };
-Headers.prototype.entries = function* () {
+__velquHeadersPrototype.entries = function* () {
   for (var k in this._map) {
     yield [k, this._map[k]];
   }
 };
-Headers.prototype.keys = function* () {
+__velquHeadersPrototype.keys = function* () {
   for (var k in this._map) {
     yield k;
   }
 };
-Headers.prototype.values = function* () {
+__velquHeadersPrototype.values = function* () {
   for (var k in this._map) {
     yield this._map[k];
   }
 };
-Headers.prototype[Symbol.iterator] = Headers.prototype.entries;
+__velquHeadersPrototype[Symbol.iterator] = __velquHeadersPrototype.entries;
+
+function Headers(init) {
+  var h = Object.create(__velquHeadersPrototype);
+  h._map = Object.create(null);
+  if (!init) return h;
+  if (init instanceof Headers || (init && init._map)) {
+    for (var k in init._map) h._map[k] = init._map[k];
+  } else if (Array.isArray(init)) {
+    for (var i = 0; i < init.length; i++) {
+      if (Array.isArray(init[i]) && init[i].length >= 2) {
+        h.append(init[i][0], init[i][1]);
+      }
+    }
+  } else if (typeof init === "object") {
+    for (var key in init) {
+      if (Object.prototype.hasOwnProperty.call(init, key)) {
+        h.set(key, init[key]);
+      }
+    }
+  }
+  return h;
+}
+Headers.prototype = __velquHeadersPrototype;
 globalThis.Headers = Headers;
 
 function Request(input, init) {
@@ -462,16 +467,25 @@ function Request(input, init) {
   if (input instanceof Request) {
     this.url = input.url;
     this.method = init.method ? String(init.method).toUpperCase() : input.method;
-    this.headers = new Headers(init.headers || input.headers);
+    this._headersInit = init.headers || input.headers;
     this.body = init.body !== undefined ? init.body : input.body;
     this.signal = init.signal || input.signal;
   } else {
     this.url = String(input);
     this.method = init.method ? String(init.method).toUpperCase() : "GET";
-    this.headers = new Headers(init.headers);
+    this._headersInit = init.headers;
     this.body = init.body !== undefined ? init.body : null;
     this.signal = init.signal || null;
   }
+  // Lazy headers materialization
+  var _h = null;
+  Object.defineProperty(this, "headers", {
+    enumerable: true,
+    get: function() {
+      if (_h === null) _h = new Headers(this._headersInit);
+      return _h;
+    }
+  });
 }
 globalThis.Request = Request;
 
@@ -480,10 +494,21 @@ function Response(body, init) {
   this.status = init.status !== undefined ? Number(init.status) : 200;
   this.statusText = init.statusText !== undefined ? String(init.statusText) : "OK";
   this.ok = this.status >= 200 && this.status < 300;
-  this.headers = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
   this.url = init.url !== undefined ? String(init.url) : "";
   this.bodyUsed = false;
   this._body = body !== undefined ? body : null;
+  this._headersInit = init.headers;
+  // Lazy headers materialization
+  var _h = null;
+  Object.defineProperty(this, "headers", {
+    enumerable: true,
+    get: function() {
+      if (_h === null) {
+        _h = this._headersInit instanceof Headers ? this._headersInit : new Headers(this._headersInit);
+      }
+      return _h;
+    }
+  });
 }
 Response.json = function(data, init) {
   init = init || {};
