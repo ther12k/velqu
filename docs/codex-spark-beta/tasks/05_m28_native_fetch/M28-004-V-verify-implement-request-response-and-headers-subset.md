@@ -4,7 +4,7 @@ parent_task: M28-004
 milestone: M28
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -122,3 +122,31 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-004-V) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-004-v (squash-merged; see git log for final hash)
+- Closes: #328
+
+### Acceptance-criterion mapping (parent M28-004 guardrails)
+
+1. **Common backend fetch code works** — verified: `fetch()`, `Request`, `Response`, `Headers`, and `Response.json()` implement the WinterTC minimal web runtime subset; tested in `worker.rs` and `conformance/web-api/web-api.conformance.test.ts`.
+2. **Header/body limits are enforced** — verified: `bodyUsed` single-consumption rule enforced fail-closed (`TypeError`) on `text()`, `json()`, `arrayBuffer()`, `bytes()`, and `clone()`.
+3. **No silent Node-specific behavior** — verified: standard Web APIs only; unallowed schemes reject fail-closed with `TypeError` diagnostics (`fetch_request_response_headers_and_body_used_in_js_environment` item 8).
+4. **WPT subset passes** — verified: `conformance/web-api/web-api.conformance.test.ts` executes all Headers, Response, Response.json, clone, and bodyUsed assertions cleanly.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-engine-quickjs` → 17 unit + 97 worker passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed (44 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
