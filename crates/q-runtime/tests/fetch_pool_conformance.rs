@@ -1,7 +1,7 @@
-//! Outbound fetch pool conformance tests (M28-003-A).
+//! Outbound fetch pool conformance tests (M28-003-A, M28-003-B).
 //!
-//! Validates lazy initialization, connection reuse, and shutdown behavior
-//! of the production [`velqu_runtime::fetch_stack::FetchPool`].
+//! Validates lazy initialization, connection reuse, bounded active limits,
+//! and shutdown behavior of the production [`velqu_runtime::fetch_stack::FetchPool`].
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use http_body_util::Empty;
 use hyper::Request;
-use velqu_runtime::fetch_stack::FetchPool;
+use velqu_runtime::fetch_stack::{FetchPool, PoolBounds, PoolError};
 
 fn spawn_mock_server(request_counter: Arc<AtomicUsize>) -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -69,4 +69,25 @@ async fn fetch_pool_initializes_on_request_and_serves_traffic() {
 
     pool.shutdown();
     assert!(pool.is_shutdown());
+}
+
+#[test]
+fn fetch_pool_active_connection_bounds_enforce_backpressure() {
+    let bounds = PoolBounds {
+        max_active_connections: 1,
+        ..PoolBounds::default()
+    };
+    let pool = FetchPool::with_bounds(bounds);
+
+    let permit = pool.try_acquire_permit().expect("first permit succeeds");
+    let err = pool
+        .try_acquire_permit()
+        .expect_err("second permit exceeds bound");
+    assert_eq!(err, PoolError::PoolExhausted { max_active: 1 });
+
+    drop(permit);
+    assert!(
+        pool.try_acquire_permit().is_ok(),
+        "permit released back to pool"
+    );
 }
