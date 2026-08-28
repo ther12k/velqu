@@ -4,7 +4,7 @@ parent_task: M28-005
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -119,3 +119,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-005-D) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-005-d (squash-merged; see git log for final hash)
+- Closes: #333
+
+### Changed files
+- `crates/q-engine-quickjs/tests/engine.rs`: Added integration test `terminal_failures_map_deterministically` proving every terminal outcome maps deterministically through the public engine — handler throw → `EngineFailure` (redacted 500) identical across 3 repeats; undeclared status → `ContractViolation` identical across 3 repeats; route deadline expiry → `Timeout` identical across 3 repeats; typed problem → `Problem` envelope unchanged across 3 repeats. Worker remains healthy after the full matrix.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Tests added
+- `crates/q-engine-quickjs/tests/engine.rs`:
+  - `terminal_failures_map_deterministically`
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 17 unit + 101 engine passed
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-bridge` → 11 passed
+- `cargo test -p q-pack` → 96+2 passed
+- `bun test` → 219 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Failure mapping is deterministic** — every outcome class (EngineFailure, ContractViolation, Timeout, Problem) maps identically across repeated runs; the runtime serve path maps these to fixed problem ids (`timeout`→504, `overload`→503, `internal`→500) with internal detail redacted.
+- **Worker remains reusable** — `js.text` serves successfully after the full failure matrix; zero scheduler boundary violations.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.

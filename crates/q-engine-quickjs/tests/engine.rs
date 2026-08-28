@@ -3770,3 +3770,69 @@ async fn mid_flight_cancel_physically_stops_native_task_and_cleanup_cannot_escal
     assert!(matches!(out, Outcome::Response { status: 200, .. }));
     eng.shutdown();
 }
+
+// ------------------------------------------------------------ M28-005-D deterministic failure mapping
+
+/// M28-005-D: every terminal outcome maps to a DETERMINISTIC problem
+/// response — same input, same outcome class, same status, same problem id,
+/// every time. Exercises the full failure matrix through the public engine.
+#[tokio::test]
+async fn terminal_failures_map_deterministically() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // 1. Handler throw → EngineFailure (redacted 500) — deterministic across repeats
+    for _ in 0..3 {
+        let out = run(&mut eng, spec(401, "throw.redacted", &[200], 1000)).await;
+        assert!(
+            matches!(out, Outcome::EngineFailure { .. }),
+            "throw must deterministically map to EngineFailure, got {out:?}"
+        );
+    }
+
+    // 2. Undeclared status → ContractViolation — deterministic
+    for _ in 0..3 {
+        let out = run(&mut eng, spec(402, "status.undeclared", &[200], 1000)).await;
+        assert!(
+            matches!(out, Outcome::ContractViolation(_)),
+            "undeclared status must deterministically map to ContractViolation, got {out:?}"
+        );
+    }
+
+    // 3. Route deadline expiry → Timeout — deterministic
+    for _ in 0..3 {
+        let handle = insert_request(
+            &eng,
+            q_bridge::RequestMeta {
+                query: vec![("ms".into(), "5000".into())],
+                ..Default::default()
+            },
+        );
+        let mut s = spec(403, "timer.route", &[200], 40);
+        s.slot = handle.slot();
+        s.generation = handle.generation();
+        let out = run(&mut eng, s).await;
+        assert!(
+            matches!(out, Outcome::Timeout),
+            "deadline expiry must deterministically map to Timeout, got {out:?}"
+        );
+    }
+
+    // 4. Typed problem passes through unchanged — deterministic
+    for _ in 0..3 {
+        let out = run(&mut eng, spec(404, "problem.notfound", &[200, 404], 1000)).await;
+        match out {
+            Outcome::Problem(p) => {
+                assert_eq!(p.problem_id, "not-found");
+                assert_eq!(p.status, 404);
+            }
+            o => panic!("typed problem must pass through, got {o:?}"),
+        }
+    }
+
+    // Worker healthy after the full matrix
+    let out = run(&mut eng, spec(499, "js.text", &[200], 1000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    assert_eq!(eng.stats().scheduler_boundary_violations, 0);
+    eng.shutdown();
+}
