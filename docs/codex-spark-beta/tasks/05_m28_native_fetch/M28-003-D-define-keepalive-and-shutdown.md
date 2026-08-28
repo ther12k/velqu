@@ -4,7 +4,7 @@ parent_task: M28-003
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-003-D) — PASS
+
+- Date: 2026-08-28
+- Branch/PR: m28-003-d (squash-merged; see git log for final hash)
+- Closes: #321
+
+### Changed files
+- `crates/q-runtime/src/fetch_stack.rs`: Added `drain_shutdown` async method on `FetchPool` enforcing bounded shutdown drain within a declared budget (ADR-0031); reclaims active permits and signals pool shutdown.
+- `crates/q-runtime/src/fetch_stack.rs`: Added unit test `pool_drain_shutdown_settles_within_budget`.
+- `benchmarks/manifest.json`: Refreshed `qRuntimeRelease` hash.
+
+### Tests added
+- `crates/q-runtime/src/fetch_stack.rs`:
+  - `pool_drain_shutdown_settles_within_budget`
+
+### Command results
+- `cargo test -p velqu-runtime` → 8 unit + 5 integration + 31 conformance passed (44 total)
+- `cargo test -p q-capabilities` → 132+8 passed
+- `cargo test -p q-engine-quickjs` → 16+97 passed
+- `cargo test -p q-http` → 4+6+1 passed
+- `cargo test -p q-schema-runtime` → 58+5+4 passed
+- `bun test` → 215 pass / 0 fail (27 files)
+- `bun run typecheck` → clean
+- `cargo fmt --check` → clean
+- `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Keepalive and shutdown drains are bounded** — TCP keepalive default is 30s; pool idle timeout is 15s; `drain_shutdown` enforces timeout budget.
+- **Shutdown releases connections** — `pool.shutdown()` transitions pool to shutdown state and rejects new permit leases.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
