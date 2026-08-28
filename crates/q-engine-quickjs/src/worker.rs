@@ -3568,6 +3568,25 @@ mod tests {
                 })()
             "#;
             assert!(ctx.eval::<bool, _>(code_lazy_objects).unwrap());
+
+            // 7. M28-004-C: Response.clone() and Request.clone() independent bodyUsed state
+            let code_clone = r#"
+                (() => {
+                    const res = new Response('cloneable body', { status: 200, headers: { 'x-cloned': 'true' } });
+                    const cloned = res.clone();
+                    let independentStart = res.bodyUsed === false && cloned.bodyUsed === false;
+                    let p = res.text();
+                    let originalUsed = res.bodyUsed === true && cloned.bodyUsed === false;
+                    let caughtUsedClone = false;
+                    try {
+                        res.clone();
+                    } catch (e) {
+                        caughtUsedClone = e instanceof TypeError;
+                    }
+                    return independentStart && originalUsed && caughtUsedClone && cloned.headers.get('x-cloned') === 'true';
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_clone).unwrap());
         });
     }
 
