@@ -16,7 +16,7 @@ interface WorkloadsFile {
 const config: WorkloadsFile = JSON.parse(
   readFileSync(import.meta.dir + "/workloads.json", "utf8"),
 );
-const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/];
+const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/, /^\/api\/bench\/fanout\?n=[124]&ms=\d+$/];
 
 describe("real-world workload config", () => {
   test("every workload declares id, method, path, and expectedStatus", () => {

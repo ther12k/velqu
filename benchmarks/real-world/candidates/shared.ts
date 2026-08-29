@@ -25,3 +25,9 @@ export function validateMs(raw: string | null): number | null {
   if (ms > 1000) return null;
   return ms;
 }
+
+export function validateFanout(n: string | null): number | null {
+  if (n === null) return null;
+  if (!/^[124]$/.test(n)) return null;
+  return Number(n);
+}

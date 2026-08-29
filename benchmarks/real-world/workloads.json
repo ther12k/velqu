@@ -5,7 +5,9 @@
       "name": "Authenticated User Lookup",
       "path": "/api/users/usr_1",
       "method": "GET",
-      "headers": { "Authorization": "Bearer velqu-benchmark-jwt" },
+      "headers": {
+        "Authorization": "Bearer velqu-benchmark-jwt"
+      },
       "expectedStatus": 200,
       "description": "Bearer token validation + indexed single-row primary key query"
     },
@@ -14,8 +16,22 @@
       "name": "Authenticated Transactional Write",
       "path": "/api/orders",
       "method": "POST",
-      "headers": { "Authorization": "Bearer velqu-benchmark-jwt", "Content-Type": "application/json" },
-      "body": { "items": [{ "productId": "prod_1", "qty": 2 }, { "productId": "prod_2", "qty": 1 }] },
+      "headers": {
+        "Authorization": "Bearer velqu-benchmark-jwt",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "items": [
+          {
+            "productId": "prod_1",
+            "qty": 2
+          },
+          {
+            "productId": "prod_2",
+            "qty": 1
+          }
+        ]
+      },
       "expectedStatus": 201,
       "description": "Multi-row write transaction with stock check and foreign key constraints"
     },
@@ -58,8 +74,37 @@
       "method": "GET",
       "expectedStatus": 200,
       "description": "Simulated 25ms database query latency"
+    },
+    {
+      "id": "FANOUT_1",
+      "name": "Fan-out 1 parallel call",
+      "path": "/api/bench/fanout?n=1&ms=5",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Single upstream call (baseline)"
+    },
+    {
+      "id": "FANOUT_2",
+      "name": "Fan-out 2 parallel calls",
+      "path": "/api/bench/fanout?n=2&ms=5",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Two parallel upstream calls aggregated"
+    },
+    {
+      "id": "FANOUT_4",
+      "name": "Fan-out 4 parallel calls",
+      "path": "/api/bench/fanout?n=4&ms=5",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Four parallel upstream calls aggregated"
     }
   ],
-  "concurrencyLevels": [1, 10, 50, 200],
+  "concurrencyLevels": [
+    1,
+    10,
+    50,
+    200
+  ],
   "durationSec": 10
 }

@@ -1,12 +1,15 @@
-/** W4 candidate: Fastify on Node (pinned fastify@5.12.1) + Node global fetch. */
+/** W4/Fanout candidate: Fastify on Node (pinned fastify@5.12.1) + Node global fetch. */
 const fastify = require("fastify")({ logger: false });
-const { PORT, UPSTREAM, validateMs } = require("./shared.cjs");
+const { PORT, UPSTREAM, validateMs, validateFanout } = require("./shared.cjs");
+
+async function proxyIo(ms) {
+  const upstream = await fetch(`${UPSTREAM}/io?ms=${ms}`);
+  return upstream.status === 200;
+}
 
 fastify.get("/api/bench/io", async (request, reply) => {
   const ms = validateMs(request.query.ms ?? null);
-  if (ms === null) {
-    return reply.code(400).send({ error: "invalid ms" });
-  }
+  if (ms === null) return reply.code(400).send({ error: "invalid ms" });
   const upstream = await fetch(`${UPSTREAM}/io?ms=${ms}`);
   const body = await upstream.text();
   reply.code(upstream.status).header(
@@ -14,6 +17,14 @@ fastify.get("/api/bench/io", async (request, reply) => {
     upstream.headers.get("content-type") ?? "application/json",
   );
   return body;
+});
+
+fastify.get("/api/bench/fanout", async (request, reply) => {
+  const n = validateFanout(request.query.n ?? null);
+  const ms = validateMs(request.query.ms ?? "5");
+  if (n === null || ms === null) return reply.code(400).send({ error: "invalid n or ms" });
+  const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
+  return { n, ms, ok: results.every(Boolean) };
 });
 
 fastify.setNotFoundHandler((request, reply) => {
