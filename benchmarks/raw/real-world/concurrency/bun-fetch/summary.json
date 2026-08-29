@@ -1,0 +1,125 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:57:03.434Z",
+  "baseUrl": "http://127.0.0.1:33245",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10,
+    50,
+    200
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "6aeff79c10c90b8e169229a3f87aff48c33d1a19",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "804e822c78f823effe6ea7ae847b0a9ecead87ac7ac5a74a5bb03b722e6694e1",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "W4_1ms",
+      "concurrency": 1,
+      "totalRequests": 1669,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 556.33,
+      "p50Us": 1614,
+      "p95Us": 3074,
+      "p99Us": 5078,
+      "maxUs": 8671
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 10,
+      "totalRequests": 16228,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 5409.33,
+      "p50Us": 1689,
+      "p95Us": 2971,
+      "p99Us": 3940,
+      "maxUs": 6412
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 50,
+      "totalRequests": 41172,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 13724,
+      "p50Us": 3256,
+      "p95Us": 6631,
+      "p99Us": 9813,
+      "maxUs": 22368
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 200,
+      "totalRequests": 46236,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 15412,
+      "p50Us": 12513,
+      "p95Us": 20527,
+      "p99Us": 24115,
+      "maxUs": 30624
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 1,
+      "totalRequests": 506,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 168.67,
+      "p50Us": 5767,
+      "p95Us": 7012,
+      "p99Us": 8144,
+      "maxUs": 9342
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 10,
+      "totalRequests": 4844,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1614.67,
+      "p50Us": 5919,
+      "p95Us": 7667,
+      "p99Us": 9241,
+      "maxUs": 12014
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 50,
+      "totalRequests": 19850,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 6616.67,
+      "p50Us": 6894,
+      "p95Us": 12497,
+      "p99Us": 16005,
+      "maxUs": 21182
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 200,
+      "totalRequests": 46113,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 15371,
+      "p50Us": 12408,
+      "p95Us": 19942,
+      "p99Us": 24861,
+      "maxUs": 34815
+    }
+  ],
+  "raw": "../raw/real-world/concurrency/bun-fetch/raw.jsonl"
+}

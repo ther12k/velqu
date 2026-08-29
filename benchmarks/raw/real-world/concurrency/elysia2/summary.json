@@ -1,0 +1,125 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:57:52.992Z",
+  "baseUrl": "http://127.0.0.1:40947",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10,
+    50,
+    200
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "6aeff79c10c90b8e169229a3f87aff48c33d1a19",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "804e822c78f823effe6ea7ae847b0a9ecead87ac7ac5a74a5bb03b722e6694e1",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "W4_1ms",
+      "concurrency": 1,
+      "totalRequests": 1452,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 484,
+      "p50Us": 1726,
+      "p95Us": 3212,
+      "p99Us": 4670,
+      "maxUs": 205594
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 10,
+      "totalRequests": 15508,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 5169.33,
+      "p50Us": 1724,
+      "p95Us": 3134,
+      "p99Us": 4135,
+      "maxUs": 9525
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 50,
+      "totalRequests": 39539,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 13179.67,
+      "p50Us": 3335,
+      "p95Us": 7250,
+      "p99Us": 10220,
+      "maxUs": 28398
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 200,
+      "totalRequests": 49360,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 16453.33,
+      "p50Us": 11790,
+      "p95Us": 18553,
+      "p99Us": 22062,
+      "maxUs": 30535
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 1,
+      "totalRequests": 507,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 169,
+      "p50Us": 5763,
+      "p95Us": 6866,
+      "p99Us": 7841,
+      "maxUs": 10508
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 10,
+      "totalRequests": 4891,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1630.33,
+      "p50Us": 5889,
+      "p95Us": 7516,
+      "p99Us": 9425,
+      "maxUs": 12208
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 50,
+      "totalRequests": 21560,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 7186.67,
+      "p50Us": 6802,
+      "p95Us": 8637,
+      "p99Us": 10577,
+      "maxUs": 17385
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 200,
+      "totalRequests": 44005,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 14668.33,
+      "p50Us": 13398,
+      "p95Us": 19899,
+      "p99Us": 22677,
+      "maxUs": 28291
+    }
+  ],
+  "raw": "../raw/real-world/concurrency/elysia2/raw.jsonl"
+}
