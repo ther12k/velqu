@@ -11,7 +11,7 @@
 //! active concurrency, keepalive, and bounded shutdown drains (ADR-0031).
 
 use std::fmt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
@@ -148,6 +148,8 @@ pub struct FetchPool {
     client: OnceLock<Arc<OutboundClient>>,
     semaphore: Arc<Semaphore>,
     shutdown_called: AtomicBool,
+    /// New-work refusals since creation (saturating; M28-009-D observability).
+    rejections: AtomicU32,
 }
 
 impl Default for FetchPool {
@@ -172,6 +174,7 @@ impl FetchPool {
             client: OnceLock::new(),
             semaphore: Arc::new(Semaphore::new(max_active)),
             shutdown_called: AtomicBool::new(false),
+            rejections: AtomicU32::new(0),
         }
     }
 
@@ -200,14 +203,33 @@ impl FetchPool {
     /// If all permits are currently in use, returns `Err(PoolError::PoolExhausted)`.
     pub fn try_acquire_permit(&self) -> Result<OwnedSemaphorePermit, PoolError> {
         if self.is_shutdown() {
+            self.rejections.fetch_add(1, Ordering::Relaxed);
             return Err(PoolError::PoolShuttingDown);
         }
-        self.semaphore
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| PoolError::PoolExhausted {
+        self.semaphore.clone().try_acquire_owned().map_err(|_| {
+            self.rejections.fetch_add(1, Ordering::Relaxed);
+            PoolError::PoolExhausted {
                 max_active: self.bounds.max_active_connections,
-            })
+            }
+        })
+    }
+
+    /// Client access that refuses new work on a shut-down pool (M28-009-D).
+    /// Unlike [`FetchPool::client`] — which lazily initializes and is only
+    /// valid pre-shutdown — this returns `None` once the pool has been
+    /// drained: a quarantined pool never resurrects its client.
+    pub fn try_client(&self) -> Option<Arc<OutboundClient>> {
+        if self.is_shutdown() {
+            self.rejections.fetch_add(1, Ordering::Relaxed);
+            return None;
+        }
+        Some(self.client())
+    }
+
+    /// New-work refusals counted since creation (exhausted, post-shutdown
+    /// permits, and post-shutdown client attempts).
+    pub fn rejections(&self) -> u32 {
+        self.rejections.load(Ordering::Relaxed)
     }
 
     /// Gracefully shutdown the pool and release any idle pooled connections.
@@ -291,6 +313,31 @@ mod tests {
             shared_pool().try_acquire_permit(),
             Err(PoolError::PoolShuttingDown)
         ));
+    }
+
+    /// M28-009-D: a quarantined (drained/shut-down) pool rejects ALL new
+    /// work — permits, client resurrection — and counts every refusal.
+    #[test]
+    fn quarantined_pool_rejects_new_work_and_counts_refusals() {
+        let pool = FetchPool::new();
+        assert_eq!(pool.rejections(), 0);
+        // Pre-shutdown: a permit attempt on an uninitialized pool still
+        // works (permits are semaphore-based, independent of the client).
+        let permit = pool.try_acquire_permit().expect("permit before shutdown");
+        drop(permit);
+        // Drain the pool: terminal quarantine for outbound work.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(pool.drain_shutdown(std::time::Duration::from_millis(100)))
+            .expect("drain reaches quiescence");
+        // New work is refused at every layer...
+        assert!(matches!(
+            pool.try_acquire_permit(),
+            Err(PoolError::PoolShuttingDown)
+        ));
+        assert!(pool.try_client().is_none(), "client cannot be resurrected");
+        assert!(pool.try_client().is_none());
+        // ...and every refusal is counted (bounded, saturating counter).
+        assert_eq!(pool.rejections(), 3);
     }
 
     #[test]

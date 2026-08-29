@@ -395,7 +395,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-009-A](../tasks/05_m28_native_fetch/M28-009-A-expose-pool-wait-dns-connect-tls-ttfb-body-errors-cancellations.md) | P1 | implement | PASS | M28-003-Z, M28-005-Z, M28-006-Z | Expose pool wait, DNS, connect, TLS, TTFB, body, errors, cancellations |
 | [M28-009-B](../tasks/05_m28_native_fetch/M28-009-B-sample-aggregate-metrics.md) | P1 | implement | PASS | M28-009-A | Sample/aggregate metrics |
 | [M28-009-C](../tasks/05_m28_native_fetch/M28-009-C-drain-pool-on-shutdown.md) | P1 | implement | PASS | M28-009-B | Drain pool on shutdown |
-| [M28-009-D](../tasks/05_m28_native_fetch/M28-009-D-quarantine-rejects-new-work.md) | P1 | implement | TODO | M28-009-C | Quarantine rejects new work |
+| [M28-009-D](../tasks/05_m28_native_fetch/M28-009-D-quarantine-rejects-new-work.md) | P1 | implement | PASS | M28-009-C | Quarantine rejects new work |
 | [M28-009-V](../tasks/05_m28_native_fetch/M28-009-V-verify-integrate-lifecycle-observability-and-shutdown.md) | P1 | verify | TODO | M28-009-A, M28-009-B, M28-009-C, M28-009-D | Verify Integrate lifecycle, observability, and shutdown |
 | [M28-009-Z](../tasks/05_m28_native_fetch/M28-009-Z-package-evidence-for-integrate-lifecycle-observability-and-shutdown.md) | P1 | evidence | TODO | M28-009-V | Package evidence for Integrate lifecycle, observability, and shutdown |
 | [M28-010-A](../tasks/05_m28_native_fetch/M28-010-A-run-selected-wpt-cases.md) | P0 | implement | TODO | M28-004-Z, M28-005-Z, M28-006-Z, M28-007-Z, M28-008-Z | Run selected WPT cases |
