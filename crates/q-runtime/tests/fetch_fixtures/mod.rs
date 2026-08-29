@@ -57,33 +57,42 @@ pub fn spawn_redirect_server(chain_len: usize, requests: Arc<AtomicUsize>) -> u1
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        for stream in listener.incoming() {
-            let Ok(mut sock) = stream else { break };
+        // The fixture serves the first accepted connection until it closes;
+        // the pool under test reuses that single keep-alive connection.
+        if let Some(Ok(mut sock)) = listener.incoming().next() {
             let mut buf = [0u8; 2048];
-            let mut req = String::new();
-            while let Ok(n) = sock.read(&mut buf) {
-                if n == 0 {
-                    break;
+            // Keep-alive: parse each request head independently, resetting
+            // the accumulation buffer per request. Connection-level
+            // failures end the fixture.
+            loop {
+                let mut req = String::new();
+                loop {
+                    match sock.read(&mut buf) {
+                        Ok(0) => return,
+                        Ok(n) => {
+                            req.push_str(&String::from_utf8_lossy(&buf[..n]));
+                            if req.contains("\r\n\r\n") {
+                                break;
+                            }
+                        }
+                        Err(_) => return,
+                    }
                 }
-                req.push_str(&String::from_utf8_lossy(&buf[..n]));
-                if req.contains("\r\n\r\n") {
-                    break;
+                let path = req.split_whitespace().nth(1).unwrap_or("/").to_string();
+                requests.fetch_add(1, Ordering::SeqCst);
+                let hop: usize = path.trim_start_matches("/hop/").parse().unwrap_or(0);
+                let resp = if hop < chain_len {
+                    format!(
+                        "HTTP/1.1 302 Found\r\nLocation: /hop/{}\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n",
+                        hop + 1
+                    )
+                } else {
+                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
+                        .to_string()
+                };
+                if sock.write_all(resp.as_bytes()).is_err() {
+                    return;
                 }
-            }
-            let path = req.split_whitespace().nth(1).unwrap_or("/").to_string();
-            requests.fetch_add(1, Ordering::SeqCst);
-            let hop: usize = path.trim_start_matches("/hop/").parse().unwrap_or(0);
-            let resp = if hop < chain_len {
-                format!(
-                    "HTTP/1.1 302 Found\r\nLocation: /hop/{}\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n",
-                    hop + 1
-                )
-            } else {
-                "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
-                    .to_string()
-            };
-            if sock.write_all(resp.as_bytes()).is_err() {
-                break;
             }
         }
     });
