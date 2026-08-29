@@ -1677,6 +1677,7 @@ dependencies = [
  "hyper-util",
  "libc",
  "q-bridge",
+ "q-capabilities",
  "q-engine",
  "q-engine-quickjs",
  "q-http",
