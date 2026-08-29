@@ -362,6 +362,16 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         let handler = serve::make_handler(Arc::clone(&state));
         let _ = host.serve(listener, handler, shutdown_rx).await;
 
+        // M28-009-C: quiescence includes the outbound pool. Drain the
+        // shared fetch pool within the shutdown budget (ADR-0031
+        // 5s budget, q_capabilities::SHUTDOWN_BUDGET_MS); an app that
+        // never fetched drains as an immediate no-op.
+        let fetch_pool = fetch_stack::shared_pool();
+        let fetch_pool_drained = fetch_pool
+            .drain_shutdown(std::time::Duration::from_millis(5_000))
+            .await
+            .is_ok();
+
         // deterministic engine teardown after connections drain
         {
             let mut eng = state.engine.lock().unwrap();
@@ -371,6 +381,10 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 "event": "shutdown.complete",
                 "stats": eng.stats(),
                 "stageMetrics": state.metrics.snapshot(),
+                "fetchPool": {
+                    "initialized": fetch_pool.is_initialized(),
+                    "drained": fetch_pool_drained,
+                },
             });
             println!("{done}");
         }

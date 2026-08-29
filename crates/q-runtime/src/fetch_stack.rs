@@ -126,6 +126,18 @@ pub fn build_client() -> OutboundClient {
     build_client_with_bounds(&PoolBounds::default())
 }
 
+/// Process-global outbound fetch pool (M28-009-C). Every fetch path shares
+/// this instance so the shutdown sequence drains the pool that actually
+/// served traffic; an application with no fetch operations never
+/// initializes it, making the shutdown drain an immediate no-op.
+static SHARED_POOL: OnceLock<FetchPool> = OnceLock::new();
+
+/// Access the process-global shared pool (created on first call, dormant
+/// until a fetch initializes it).
+pub fn shared_pool() -> &'static FetchPool {
+    SHARED_POOL.get_or_init(FetchPool::new)
+}
+
 /// Lazy, thread-safe connection pool with active concurrency bounds.
 ///
 /// An application with no fetch operations never initializes the client
@@ -259,6 +271,26 @@ mod tests {
             "pool must not be initialized eagerly"
         );
         assert!(!pool.is_shutdown());
+    }
+
+    /// M28-009-C: the shared pool is process-global and drains in place.
+    #[test]
+    fn shared_pool_is_process_global_and_drains_in_place() {
+        let a = shared_pool() as *const FetchPool;
+        let b = shared_pool() as *const FetchPool;
+        assert_eq!(a, b, "shared_pool must return the same instance");
+        // An app that never fetched: drain is an immediate no-op Ok.
+        assert!(!shared_pool().is_initialized());
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let drained =
+            rt.block_on(shared_pool().drain_shutdown(std::time::Duration::from_millis(100)));
+        assert!(drained.is_ok());
+        assert!(shared_pool().is_shutdown());
+        // Post-shutdown permit attempts are rejected (PoolShuttingDown).
+        assert!(matches!(
+            shared_pool().try_acquire_permit(),
+            Err(PoolError::PoolShuttingDown)
+        ));
     }
 
     #[test]
