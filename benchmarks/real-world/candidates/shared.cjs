@@ -20,3 +20,10 @@ function validateFanout(n) {
   return Number(n);
 }
 module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs, validateFanout };
+
+const MIX_MODES = ["success", "timeout", "malformed"];
+function validateMode(mode) {
+  if (mode === null || mode === undefined) return null;
+  return MIX_MODES.includes(mode) ? mode : null;
+}
+module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs, validateFanout, validateMode };

@@ -98,6 +98,30 @@
       "method": "GET",
       "expectedStatus": 200,
       "description": "Four parallel upstream calls aggregated"
+    },
+    {
+      "id": "MIX_SUCCESS",
+      "name": "Mixed upstream: success",
+      "path": "/api/bench/mixed?mode=success",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Upstream 200 relayed"
+    },
+    {
+      "id": "MIX_TIMEOUT",
+      "name": "Mixed upstream: client-deadline timeout",
+      "path": "/api/bench/mixed?mode=timeout",
+      "method": "GET",
+      "expectedStatus": 504,
+      "description": "Upstream 500ms vs 100ms deadline: typed 504"
+    },
+    {
+      "id": "MIX_MALFORMED",
+      "name": "Mixed upstream: malformed body",
+      "path": "/api/bench/mixed?mode=malformed",
+      "method": "GET",
+      "expectedStatus": 502,
+      "description": "Upstream 200 + garbage body: typed 502"
     }
   ],
   "concurrencyLevels": [

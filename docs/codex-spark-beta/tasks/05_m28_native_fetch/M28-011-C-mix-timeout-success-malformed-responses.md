@@ -4,7 +4,7 @@ parent_task: M28-011
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -132,3 +132,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-011-C) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-011-c (squash-merged; see git log for final hash)
+- Closes: #368
+
+### Changed files
+- `benchmarks/real-world/upstream.ts`: deterministic `/bad` fixture endpoint (HTTP 200 + garbage body, content-type json) — malformed-response source for the mixed matrix. Additive; existing endpoints untouched.
+- `benchmarks/real-world/candidates/*`: every candidate gains `GET /api/bench/mixed?mode=success|timeout|malformed` mapping deterministic upstream outcomes to typed statuses — success: 200 relay; timeout: upstream 500ms vs a 100ms client deadline (`AbortSignal.timeout`) -> **504**; malformed: 200 + garbage -> JSON parse failure -> **502**. `shared.ts`/`shared.cjs` gain `validateMode` (closed mode set).
+- `benchmarks/real-world/workloads.json`: MIX_SUCCESS (200) / MIX_TIMEOUT (504) / MIX_MALFORMED (502) cells.
+- `benchmarks/real-world/workloads.test.ts`: the status guard now permits the documented failure-mode statuses (502/504) for `/api/bench/mixed` paths only; PATHS guard extended.
+- `benchmarks/real-world/run-mixed.sh` (new): one-command mixed matrix.
+- `benchmarks/real-world/compare-mixed.ts` (new): aggregates with guardrails — every cell 0 errors + 0 mismatches (each mode maps to its EXACT typed status) and bounded handling overhead (timeout/malformed p50 <= 2x success p50 + 250ms).
+
+### Raw evidence (committed)
+- `benchmarks/raw/real-world/mixed/`: per-candidate summaries + logs + comparison.md.
+- Headline: ALL 24 cells 0 errors / 0 mismatches — every candidate maps success->200, timeout->504, malformed->502 exactly. Timeout cells sit at ~101ms p50 (the deadline), malformed at ~144-4132us p50 (parse-fail is fast); overhead guardrail green.
+
+### Command results
+- `bash benchmarks/real-world/run-mixed.sh 3 1,10` → PASS
+- `bun test benchmarks/real-world` → 36 pass / 0 fail
+- `cargo test` all packages green; `bun run typecheck` → clean; fmt/clippy clean
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged
+
+### Guardrail mapping
+- **Error rate and cancellation are correct** — the mixed matrix IS the error-path rate proof: deterministic typed statuses at load, zero unexpected errors.
+
+### Disclosures
+- The first matrix run correctly FAILED the comparison: hono returned 500 for every mixed mode (module-scope handler lost the route context `c`) and bun-fetch returned 500 on timeout (missing try/catch around the abort rejection) while elysia/fastify passed. Both bugs fixed and the probe now shows exact 200/504/502 for all four. This is the comparison harness doing its job — failure handling bugs surface as data.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

@@ -31,3 +31,11 @@ export function validateFanout(n: string | null): number | null {
   if (!/^[124]$/.test(n)) return null;
   return Number(n);
 }
+
+export const MIX_MODES = ["success", "timeout", "malformed"] as const;
+export function validateMode(mode: string | null): (typeof MIX_MODES)[number] | null {
+  if (mode === null) return null;
+  return (MIX_MODES as readonly string[]).includes(mode)
+    ? (mode as (typeof MIX_MODES)[number])
+    : null;
+}

@@ -1,0 +1,99 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:46:32.563Z",
+  "baseUrl": "http://127.0.0.1:44991",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "01dad8e9cd4322a5f545c482104cda04fbe7eba6",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "804e822c78f823effe6ea7ae847b0a9ecead87ac7ac5a74a5bb03b722e6694e1",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "MIX_SUCCESS",
+      "concurrency": 1,
+      "totalRequests": 537,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 179,
+      "p50Us": 5561,
+      "p95Us": 5691,
+      "p99Us": 6017,
+      "maxUs": 15597
+    },
+    {
+      "workload": "MIX_SUCCESS",
+      "concurrency": 10,
+      "totalRequests": 5330,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1776.67,
+      "p50Us": 5600,
+      "p95Us": 5905,
+      "p99Us": 6423,
+      "maxUs": 8096
+    },
+    {
+      "workload": "MIX_TIMEOUT",
+      "concurrency": 1,
+      "totalRequests": 30,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 10,
+      "p50Us": 100615,
+      "p95Us": 100901,
+      "p99Us": 101156,
+      "maxUs": 101156
+    },
+    {
+      "workload": "MIX_TIMEOUT",
+      "concurrency": 10,
+      "totalRequests": 300,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 100,
+      "p50Us": 100710,
+      "p95Us": 103223,
+      "p99Us": 104927,
+      "maxUs": 105172
+    },
+    {
+      "workload": "MIX_MALFORMED",
+      "concurrency": 1,
+      "totalRequests": 13071,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 4357,
+      "p50Us": 198,
+      "p95Us": 400,
+      "p99Us": 852,
+      "maxUs": 6216
+    },
+    {
+      "workload": "MIX_MALFORMED",
+      "concurrency": 10,
+      "totalRequests": 69280,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 23093.33,
+      "p50Us": 384,
+      "p95Us": 785,
+      "p99Us": 1431,
+      "maxUs": 4201
+    }
+  ],
+  "raw": "../raw/real-world/mixed/elysia2/raw.jsonl"
+}

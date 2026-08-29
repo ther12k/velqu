@@ -25,6 +25,14 @@ const httpServer = Bun.serve({
     if (url.pathname === "/health") {
       return Response.json({ status: "ok" });
     }
+    if (url.pathname === "/bad") {
+      // M28-011-C fixture: HTTP 200 with a MALFORMED body — clients must
+      // treat this as a response-parse failure, not an HTTP error.
+      return new Response("MALFORMED-NOT-JSON{{{", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     if (url.pathname !== "/io") {
       return problem(404, `unknown path: ${url.pathname}`);
     }
