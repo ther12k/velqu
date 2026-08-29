@@ -652,6 +652,28 @@ impl DecompressionGuard {
     }
 }
 
+/// Maximum configured allow/deny entries (M28-008-C). Configuration is
+/// bounded like everything else.
+pub const MAX_EGRESS_HOST_ENTRIES: usize = 256;
+
+/// Normalize a host(entry): trim, lowercase, strip one trailing dot,
+/// bounded length. Empty on whitespace-only input.
+fn normalize_host_entry(host: &str) -> String {
+    host.trim().trim_end_matches('.').to_ascii_lowercase()
+}
+
+/// Does `host` match a configured entry? An entry starting with `.` is a
+/// suffix rule matching the domain and every subdomain (`.corp.example`
+/// matches `corp.example` and `api.corp.example`); other entries match
+/// exactly. Inputs must already be normalized.
+fn host_entry_matches(host: &str, entry: &str) -> bool {
+    if let Some(suffix) = entry.strip_prefix('.') {
+        host == suffix || host.ends_with(entry)
+    } else {
+        host == entry
+    }
+}
+
 /// Hostnames (lowercased) that serve cloud instance metadata. Denied by
 /// NAME before any resolution (M28-008-A, ADR-0033 §2) — defense in depth
 /// alongside the address-space denial: a hostname must never earn its way
@@ -691,6 +713,9 @@ where
             reason: "cloud metadata endpoint denied by name".to_string(),
         });
     }
+    // Explicit allow/deny configuration (M28-008-C): deny wins over allow;
+    // neither can re-enable metadata names or undialable address classes.
+    policy.check_host_config(host)?;
     // IP literals never reach the resolver: validate directly.
     if let Ok(addr) = host.parse::<IpAddr>() {
         policy.check_address(addr)?;
@@ -851,6 +876,13 @@ pub struct FetchPolicy {
     /// Ambient proxy trust is always disabled (ADR-0033 §5); the field
     /// exists so the posture is queryable, never configurable here.
     ambient_proxy: bool,
+    /// Explicit egress deny list (M28-008-C): normalized hostnames; a match
+    /// denies the host regardless of any allow entry. Deny wins.
+    host_deny: Vec<String>,
+    /// Explicit egress allow list (M28-008-C): empty means "no name-based
+    /// restriction"; non-empty means only matching hosts pass the name
+    /// gate. Never overrides metadata-by-name or trust-mode denials.
+    host_allow: Vec<String>,
 }
 
 impl Default for FetchPolicy {
@@ -863,6 +895,8 @@ impl Default for FetchPolicy {
             max_request_body_bytes: MAX_FETCH_REQUEST_BODY_BYTES,
             max_response_body_bytes: MAX_FETCH_RESPONSE_BODY_BYTES,
             ambient_proxy: false,
+            host_deny: Vec::new(),
+            host_allow: Vec::new(),
         }
     }
 }
@@ -875,6 +909,78 @@ impl FetchPolicy {
             trust: TrustMode::ExplicitLoopbackTesting,
             ..FetchPolicy::default()
         }
+    }
+
+    /// Add normalized hostnames to the egress deny list (M28-008-C).
+    /// Builder-style; entries are lowercased and trailing dots stripped.
+    /// Entries beyond [`MAX_EGRESS_HOST_ENTRIES`] are dropped (bounded
+    /// configuration; parse-time validators should reject bigger inputs).
+    pub fn with_deny_hosts(mut self, hosts: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        for h in hosts {
+            if self.host_deny.len() >= MAX_EGRESS_HOST_ENTRIES {
+                break;
+            }
+            let entry = normalize_host_entry(&h.into());
+            if !entry.is_empty() && !self.host_deny.contains(&entry) {
+                self.host_deny.push(entry);
+            }
+        }
+        self
+    }
+
+    /// Add normalized hostnames to the egress allow list (M28-008-C).
+    /// A non-empty allow list restricts egress to matching hosts; it can
+    /// never re-enable metadata names or undialable address classes.
+    pub fn with_allow_hosts(mut self, hosts: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        for h in hosts {
+            if self.host_allow.len() >= MAX_EGRESS_HOST_ENTRIES {
+                break;
+            }
+            let entry = normalize_host_entry(&h.into());
+            if !entry.is_empty() && !self.host_allow.contains(&entry) {
+                self.host_allow.push(entry);
+            }
+        }
+        self
+    }
+
+    /// The configured deny entries (normalized).
+    pub fn host_deny(&self) -> &[String] {
+        &self.host_deny
+    }
+
+    /// The configured allow entries (normalized).
+    pub fn host_allow(&self) -> &[String] {
+        &self.host_allow
+    }
+
+    /// Configuration gate for a hostname (M28-008-C): explicit deny wins
+    /// over everything; a non-empty allow list restricts to matching hosts;
+    /// an empty allow list imposes no name-based restriction. Typed
+    /// `HostnameDenied` reasons name the decision so policy outcomes are
+    /// observable without logging secrets.
+    pub fn check_host_config(&self, host: &str) -> Result<(), FetchPolicyError> {
+        let normalized = normalize_host_entry(host);
+        for entry in &self.host_deny {
+            if host_entry_matches(&normalized, entry) {
+                return Err(FetchPolicyError::HostnameDenied {
+                    host: host.to_string(),
+                    reason: "explicitly denied by egress configuration".to_string(),
+                });
+            }
+        }
+        if !self.host_allow.is_empty()
+            && !self
+                .host_allow
+                .iter()
+                .any(|e| host_entry_matches(&normalized, e))
+        {
+            return Err(FetchPolicyError::HostnameDenied {
+                host: host.to_string(),
+                reason: "not in the configured egress allow list".to_string(),
+            });
+        }
+        Ok(())
     }
 
     pub fn trust_mode(&self) -> TrustMode {
@@ -2108,5 +2214,97 @@ mod tests {
             .unwrap_err();
         assert!(matches!(err, FetchPolicyError::RedirectLoop { .. }));
         assert_eq!(lim.hops(), 1, "loop denial leaves state unchanged");
+    }
+
+    #[test]
+    fn deny_list_blocks_hosts_before_resolution() {
+        let policy = FetchPolicy::default().with_deny_hosts(["evil.test", "banned.example"]);
+        // Denied by name; the resolver is provably untouched.
+        let called = std::cell::Cell::new(false);
+        let mut resolve = |_host: &str| {
+            called.set(true);
+            Ok::<Vec<IpAddr>, String>(vec![public_ip()])
+        };
+        let err = resolve_and_validate(&policy, "EVIL.test.", &mut resolve).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { host, reason }
+            if host == "EVIL.test." && reason.contains("explicitly denied"))
+        );
+        assert!(!called.get());
+        // Unrelated hosts pass the name gate (subject to address checks).
+        assert!(resolve_and_validate(&policy, "fine.test", &mut resolve).is_ok());
+    }
+
+    #[test]
+    fn allow_list_restricts_to_listed_hosts_only() {
+        let policy = FetchPolicy::default().with_allow_hosts(["api.corp.example"]);
+        let mut resolve = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        // Non-listed host: typed denial naming the decision.
+        let err = resolve_and_validate(&policy, "elsewhere.test", &mut resolve).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
+            if reason.contains("allow list"))
+        );
+        // Listed host passes.
+        assert!(resolve_and_validate(&policy, "api.corp.example", &mut resolve).is_ok());
+        // Empty allow list imposes no name-based restriction.
+        let unrestricted = FetchPolicy::default();
+        assert!(resolve_and_validate(&unrestricted, "anything.test", &mut resolve).is_ok());
+    }
+
+    #[test]
+    fn deny_wins_over_allow() {
+        let policy = FetchPolicy::default()
+            .with_allow_hosts(["a.test", "b.test"])
+            .with_deny_hosts(["b.test"]);
+        let mut resolve = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        assert!(resolve_and_validate(&policy, "a.test", &mut resolve).is_ok());
+        let err = resolve_and_validate(&policy, "b.test", &mut resolve).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
+            if reason.contains("explicitly denied"))
+        );
+    }
+
+    #[test]
+    fn allow_list_cannot_re_enable_metadata_names() {
+        let policy =
+            FetchPolicy::default().with_allow_hosts(["metadata.google.internal", "127.0.0.1-host"]);
+        let called = std::cell::Cell::new(false);
+        let mut resolve = |_host: &str| {
+            called.set(true);
+            Ok::<Vec<IpAddr>, String>(vec![public_ip()])
+        };
+        // The safe default is not configurable away: metadata names stay
+        // denied by name even when explicitly allow-listed.
+        let err =
+            resolve_and_validate(&policy, "metadata.google.internal", &mut resolve).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
+            if reason.contains("denied by name"))
+        );
+        assert!(!called.get());
+    }
+
+    #[test]
+    fn suffix_entries_cover_domain_and_subdomains() {
+        let policy = FetchPolicy::default().with_deny_hosts([".internal.test"]);
+        assert!(policy.check_host_config("api.internal.test").is_err());
+        assert!(policy.check_host_config("internal.test").is_err());
+        // Suffix anchoring: an unrelated host merely ENDING with the same
+        // text does not match.
+        assert!(policy.check_host_config("internal.test.evil").is_ok());
+        assert!(policy.check_host_config("notinternal.test").is_ok());
+    }
+
+    #[test]
+    fn configuration_normalizes_and_deduplicates_entries() {
+        let policy = FetchPolicy::default()
+            .with_deny_hosts(["EVIL.Test.", "evil.test", "  spaced.test  "])
+            .with_allow_hosts(["OK.Test"]);
+        assert_eq!(policy.host_deny(), ["evil.test", "spaced.test"]);
+        assert_eq!(policy.host_allow(), ["ok.test"]);
+        // A host equal to the apex suffix rule matches.
+        assert!(policy.check_host_config("SPACED.TEST").is_err());
     }
 }
