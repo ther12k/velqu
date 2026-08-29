@@ -22,6 +22,7 @@ pub mod compat;
 pub mod console;
 pub mod crypto;
 pub mod diagnostics;
+pub mod fetch_metrics;
 pub mod fetch_policy;
 pub mod harness;
 pub mod identity;
@@ -45,6 +46,7 @@ pub use console::{
 };
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
+pub use fetch_metrics::{FetchMetrics, FetchMetricsSnapshot, FetchStage};
 pub use fetch_policy::{
     headers_surviving_redirect, is_credential_header, is_cross_origin_redirect,
     is_metadata_hostname, resolve_and_validate, url_origin, DecompressionGuard, FollowedHop,
