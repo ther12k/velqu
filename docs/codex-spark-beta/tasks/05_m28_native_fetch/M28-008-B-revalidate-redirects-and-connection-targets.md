@@ -4,7 +4,7 @@ parent_task: M28-008
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -108,3 +108,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-008-B) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-008-b (squash-merged; see git log for final hash)
+- Closes: #349
+
+### Changed files
+- `crates/q-capabilities/src/fetch_policy.rs`: revalidation composition on the redirect limiter —
+  - `RedirectLimiter::follow_hop(from_url, to_url, resolve) -> Result<FollowedHop, FetchPolicyError>`: the executor's ONE-call revalidation gate, atomic by construction — URL-level checks (scheme allowlist, downgrade denial, hop ceiling, loop detection) run first; the hop target is resolved and EVERY address validated through `resolve_and_validate` (including metadata-by-name denial for redirect targets); only after all checks pass is hop state committed. A failed attempt leaves limiter state exactly as before.
+  - `FollowedHop { outcome, pinned }`: on `Follow`, `pinned` is the validated dial-ready address set (the connector dials these and never re-resolves); empty for `Surface`.
+  - `RedirectLimiter::seed_target(url)`: records the initial request target as visited (no hop consumed) so a chain that leads back to the origin URL fails via the typed `RedirectLoop` path.
+- `crates/q-capabilities/src/lib.rs`: re-exports `FollowedHop`.
+
+### Tests added (fetch_policy.rs, +5 → 176 lib tests)
+- `follow_hop_resolves_and_validates_atomically` (public hop follows with pin set; DNS failure after URL checks leaves `hops()` unchanged; a valid hop still follows afterwards)
+- `redirect_targets_deny_metadata_by_name_too` (redirect to `metadata.google.internal` denied by name with the resolver provably untouched)
+- `follow_hop_pin_set_is_the_only_dial_set` (mixed public+private answer denied; clean answer pins exactly the validated address)
+- `manual_gate_surfaces_without_any_resolution` (Surface, empty pins, resolver never called)
+- `full_fetch_sequence_composes_open_and_hops` (executor shape: `resolve_and_validate` opens the origin target, `seed_target` records it, same-origin hop follows, redirect back to the origin URL is a typed loop denial with state unchanged)
+
+### Command results
+- `cargo test -p q-capabilities` → **176 unit (was 171) + 4 backpressure + 8 WPT** — 0 failed
+- `cargo test -p q-engine-quickjs` → 18+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 · `-p velqu-runtime` 8+5+31 — all pass
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- Release binary hash unchanged (`ef142331…` matches manifest) — policy additions dead-code-eliminated until the executor wires in.
+
+### Guardrail mapping
+- **DNS rebinding tests fail closed** — resolution is atomic with hop checks: no committed-but-undialable states, no unvalidated dials; pins are the only dial set.
+- **Policy decisions observable without logging secrets** — typed errors carry host/class/reason only (no header values, no credentials).
+
+### Disclosures
+- The composition test caught a real semantic gap before commit: the original request target was not in the limiter's visited set, so a chain redirecting back to the origin URL escaped loop detection. Fixed with `seed_target` (no hop consumed); the test now pins that semantics.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
