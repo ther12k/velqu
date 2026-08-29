@@ -1723,6 +1723,17 @@ fn graceful_shutdown_exits_zero() {
         status.success(),
         "graceful shutdown must exit 0, got {status:?}"
     );
+    // M28-009-C: quiescence includes the outbound fetch pool — the
+    // shutdown.complete event must report the pool drain.
+    let logs = server.drain_logs();
+    let complete = logs
+        .iter()
+        .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        .unwrap_or_else(|| panic!("shutdown.complete event missing in {:?}", logs.len()));
+    assert!(
+        complete.contains("\"fetchPool\":{\"initialized\":false,\"drained\":true}"),
+        "fetch pool drain not reported: {complete}"
+    );
 }
 
 #[test]
