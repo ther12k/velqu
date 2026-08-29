@@ -4,7 +4,7 @@ parent_task: M28-009
 milestone: M28
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -120,3 +120,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-009-V) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-009-v (squash-merged; see git log for final hash)
+- Closes: #358
+
+### Acceptance-criterion mapping (parent M28-009 guardrails)
+
+1. **Metrics are bounded and redacted** — verified: fixed `[u64; 6]` stage array + saturating `u32` counters; serialized snapshot field set provably closed (9 keys, no URL/header/host fields possible); collector holds exactly one fixed-size struct. Tests: `stage_and_counter_observations_saturate_without_panicking`, `snapshot_field_set_is_the_redaction_boundary`, `collector_snapshot_serializes_redacted`, `collector_is_thread_safe_and_lossless`.
+2. **Shutdown reaches quiescence** — verified: the runtime teardown drains the shared outbound pool within the ADR-0031 budget AFTER connections drain and the engine shuts down; the drain is reported in `shutdown.complete`. Tests: `graceful_shutdown_exits_zero` (extended, real SIGTERM path: `fetchPool {"initialized":false,"drained":true}`), `shared_pool_is_process_global_and_drains_in_place`, plus `drain_shutdown` budget-exceeded fail-closed (carried from M28-003).
+3. **No task/connection leak after errors** — verified: a drained/quarantined pool rejects all new work at every layer and cannot resurrect its client; engine-level quarantine rejects new invocations immediately and resets pending ops to zero. Tests: `quarantined_pool_rejects_new_work_and_counts_refusals`, `quarantine rejects subsequent dynamic JS requests immediately`, `quarantine_accounting_drift_resets_pending_ops_to_zero`.
+4. **Disabled instrumentation overhead is measured** — measured this packet (release build, `tests/metrics_overhead.rs`, informational no-assertion test): plain `observe_stage` ~0 ns/op (compiles to a saturating add); collector (mutex shard) ~22 ns/op; the disabled path is structurally zero (no call exists). Design bounds the enabled cost to a few integer adds per stage.
+
+### Required evidence
+- **Metrics schema**: `FetchStage` order + snapshot field mapping pinned; redaction boundary proven via serialized JSON.
+- **Shutdown tests**: extended SIGTERM integration (fetchPool drain reported) + shared-pool unit tests.
+- **Overhead report**: measured numbers above (10M iterations each, release profile, this machine).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 192 unit + 4 backpressure + 8 WPT passed (+1 overhead measurement, release)
+- `cargo test -p q-engine-quickjs` → 18 unit + 101 engine passed
+- `cargo test -p q-http` → 4+6+1 passed; `-p q-bridge` → 11 passed
+- `cargo test -p velqu-runtime` → 10+5+31 passed
+- `bun test` → 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary reproduced deterministically (`5d2f6d9a…` matches the M28-009-D manifest)
+
+### Disclosures (standing)
+- The only code change in this packet is the informational overhead-measurement test (no assertions, no production impact).
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
