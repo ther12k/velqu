@@ -418,7 +418,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 |---|---:|---|---|---|---|
 | [M3-001-A](../tasks/06_m3_multi_worker/M3-001-A-accept-adr.md) | P0 | implement | PASS | M28-GATE | Accept ADR |
 | [M3-001-B](../tasks/06_m3_multi_worker/M3-001-B-document-module-level-state-replication.md) | P0 | implement | PASS | M3-001-A | Document module-level state replication |
-| [M3-001-C](../tasks/06_m3_multi_worker/M3-001-C-forbid-jsvalue-sharing.md) | P0 | implement | TODO | M3-001-B | Forbid JSValue sharing |
+| [M3-001-C](../tasks/06_m3_multi_worker/M3-001-C-forbid-jsvalue-sharing.md) | P0 | implement | PASS | M3-001-B | Forbid JSValue sharing |
 | [M3-001-D](../tasks/06_m3_multi_worker/M3-001-D-define-service-capability-shared-handles-and-thread-safety.md) | P0 | implement | TODO | M3-001-C | Define service/capability shared handles and thread safety |
 | [M3-001-V](../tasks/06_m3_multi_worker/M3-001-V-verify-freeze-independent-worker-state-semantics.md) | P0 | verify | TODO | M3-001-A, M3-001-B, M3-001-C, M3-001-D | Verify Freeze independent-worker state semantics |
 | [M3-001-Z](../tasks/06_m3_multi_worker/M3-001-Z-package-evidence-for-freeze-independent-worker-state-semantics.md) | P0 | evidence | TODO | M3-001-V | Package evidence for Freeze independent-worker state semantics |
