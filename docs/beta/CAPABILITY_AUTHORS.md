@@ -129,7 +129,55 @@ redacted before leaving the host. Do not invent stringly-typed error
 channels, and do not leak request objects or host internals in
 messages.
 
+
+## Module-level state under multiple workers (M3)
+
+Velqu's service runtime may run **several QuickJS workers**, each an
+independent runtime with its own heap, executing your pack on its own
+owner thread ([ADR-0036](../okf/decisions/0036-multi-worker-state-ownership.md)).
+The rule for your code is simple and strict:
+
+**Every worker gets its own copy of your module-level state.** There
+are N independent instances of every module under N workers. Nothing
+you store at module top level — counters, caches, singletons, maps —
+is visible to any other worker, and nothing you write there is shared.
+
+```js
+// module top level (per worker!)
+let hits = 0;
+const cache = new Map();
+
+export function handler(req) {
+  hits += 1;          // counts THIS worker's requests only
+  cache.set(req.id, req.body);  // THIS worker's cache only
+  return { ok: true };
+}
+```
+
+What this means in practice:
+
+- **Counters under-count.** With 4 workers and 100 requests, each
+  worker's `hits` totals roughly 25. Do not use module globals for
+  anything you need globally — request the host metrics surface
+  instead (it is explicitly shared and bounded).
+- **Caches replicate.** Each worker builds its own cache lazily; total
+  memory scales with worker count. Size caches for one worker's share
+  of traffic, not the whole service.
+- **One-time initialization is per worker.** A lazily-built singleton
+  is built once per worker, not once per process.
+- **There is no cross-worker messaging in the beta.** Workers
+  coordinate through the host (queues, metrics, lifecycle), never
+  through JS.
+
+What IS shared, so you never have to wonder: your pack's code itself,
+the compiled routes and schema tables, and the capability
+configuration — identical and immutable for every worker, produced
+once at startup ([ADR-0036](../okf/decisions/0036-multi-worker-state-ownership.md),
+§3/§6). And JS values never cross workers: a value you hold is only
+ever touched by the worker that created it.
+
 ## Review checklist (what we will ask you)
+
 
 - [ ] Operations start only in `Ready` (state-machine tests cite the
       guard).
