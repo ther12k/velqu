@@ -436,6 +436,36 @@ impl RedirectLimiter {
         if matches!(self.policy.redirect, RedirectPolicy::Manual) {
             return Ok(RedirectOutcome::Surface);
         }
+        self.check_hop_urls(from_url, to_url)?;
+        self.commit_hop(to_url);
+        Ok(RedirectOutcome::Follow)
+    }
+
+    /// Evaluate one 3xx hop **with SSRF/DNS revalidation** (M28-007-B): the
+    /// redirect target's host is re-resolved by the caller and EVERY
+    /// resolved address must pass the trust-mode policy
+    /// ([`FetchPolicy::check_resolved`]) — a public origin may never lure a
+    /// hop into loopback, link-local, private, or metadata space. Runs
+    /// after the URL-level checks and before any state is committed, so a
+    /// denied hop leaves the limiter unchanged.
+    pub fn evaluate_resolved(
+        &mut self,
+        from_url: &str,
+        to_url: &str,
+        resolved: &[std::net::IpAddr],
+    ) -> Result<RedirectOutcome, FetchPolicyError> {
+        if matches!(self.policy.redirect, RedirectPolicy::Manual) {
+            return Ok(RedirectOutcome::Surface);
+        }
+        self.check_hop_urls(from_url, to_url)?;
+        self.policy.check_resolved(url_host(to_url), resolved)?;
+        self.commit_hop(to_url);
+        Ok(RedirectOutcome::Follow)
+    }
+
+    /// URL-level hop checks with no mutation: Manual short-circuit, scheme
+    /// allowlist, downgrade denial, hop ceiling, and loop detection.
+    fn check_hop_urls(&self, from_url: &str, to_url: &str) -> Result<(), FetchPolicyError> {
         // Hop ceiling + scheme allowlist + downgrade denial: one policy path.
         let hop = self.hops + 1;
         self.policy
@@ -446,9 +476,13 @@ impl RedirectLimiter {
                 url: to_url.to_string(),
             });
         }
-        self.hops = hop;
+        Ok(())
+    }
+
+    /// Commit a passing hop (only called after every check succeeded).
+    fn commit_hop(&mut self, to_url: &str) {
+        self.hops += 1;
         self.visited.push(to_url.to_string());
-        Ok(RedirectOutcome::Follow)
     }
 }
 
@@ -460,6 +494,33 @@ fn url_scheme(url: &str) -> &str {
     match url.split_once("://") {
         Some((scheme, _)) => scheme,
         None => "",
+    }
+}
+
+/// Extract the host component of an absolute URL (between the scheme
+/// delimiter and the first `/`, `?`, `#`, or `:` port separator), with any
+/// `user@` userinfo stripped. Empty on malformed input, which the resolved
+/// policy rejects fail closed.
+fn url_host(url: &str) -> &str {
+    let rest = match url.split_once("://") {
+        Some((_, rest)) => rest,
+        None => "",
+    };
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..end];
+    let host = match authority.rsplit_once('@') {
+        Some((_, host)) => host,
+        None => authority,
+    };
+    // Trim a port suffix (last colon outside brackets keeps IPv6 literals
+    // intact: "[::1]:8080" -> "[::1]"; brackets themselves stay for the
+    // caller to normalize — addresses come from DNS, not the URL).
+    if host.starts_with('[') {
+        return host;
+    }
+    match host.rsplit_once(':') {
+        Some((h, _)) => h,
+        None => host,
     }
 }
 
@@ -1186,6 +1247,133 @@ mod tests {
         assert!(matches!(
             lim.evaluate("https://a.test/4", "https://a.test/5"),
             Err(FetchPolicyError::TooManyRedirects { max_hops: 3 })
+        ));
+    }
+
+    fn public_ip() -> std::net::IpAddr {
+        "93.184.216.34".parse().unwrap()
+    }
+
+    #[test]
+    fn ssrf_policy_is_reapplied_on_every_hop() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // Hop 1: public -> public (93.184.216.34): follows.
+        assert_eq!(
+            lim.evaluate_resolved(
+                "https://a.test/start",
+                "https://b.test/next",
+                &[public_ip()]
+            ),
+            Ok(RedirectOutcome::Follow)
+        );
+        assert_eq!(lim.hops(), 1);
+        // Hop 2: the public origin redirects into loopback space — the
+        // classic SSRF-via-redirect — denied typed, limiter unchanged.
+        // (https target: the https→http downgrade rule is exercised on its
+        // own in the deny-path and ceiling tests.)
+        let err = lim
+            .evaluate_resolved(
+                "https://b.test/next",
+                "https://127.0.0.1:8443/fetch-internal",
+                &["127.0.0.1".parse().unwrap()],
+            )
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::AddressDenied {
+                class: AddressClass::Loopback,
+                ..
+            }
+        ));
+        assert_eq!(lim.hops(), 1, "denied hop must not advance state");
+        // Hop 3: a legitimate public hop still follows (state intact).
+        assert_eq!(
+            lim.evaluate_resolved(
+                "https://b.test/next",
+                "https://c.test/final",
+                &[public_ip()]
+            ),
+            Ok(RedirectOutcome::Follow)
+        );
+        assert_eq!(lim.hops(), 2);
+    }
+
+    #[test]
+    fn redirect_target_resolving_partial_loopback_is_denied() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // DNS round-robin mixes a public and a private address: ONE bad
+        // address poisons the host (every address must pass).
+        let mixed = [public_ip(), "10.0.0.7".parse().unwrap()];
+        let err = lim
+            .evaluate_resolved("https://a.test/", "https://evil.test/x", &mixed)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::AddressDenied {
+                class: AddressClass::Private,
+                ..
+            }
+        ));
+        assert_eq!(lim.hops(), 0);
+    }
+
+    #[test]
+    fn loopback_trust_still_denies_metadata_space_on_hops() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::trusted_loopback_explicit());
+        // Explicit loopback testing mode: 127.0.0.1 targets are dialable.
+        assert_eq!(
+            lim.evaluate_resolved(
+                "http://a.test/",
+                "http://127.0.0.1:8080/next",
+                &["127.0.0.1".parse().unwrap()]
+            ),
+            Ok(RedirectOutcome::Follow)
+        );
+        // ...but cloud metadata space keeps its own class and stays denied
+        // even here.
+        let err = lim
+            .evaluate_resolved(
+                "http://127.0.0.1:8080/next",
+                "http://169.254.169.254/latest/meta-data",
+                &["169.254.169.254".parse().unwrap()],
+            )
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::AddressDenied {
+                class: AddressClass::Metadata,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn empty_resolution_and_ceiling_precede_address_checks() {
+        // Empty DNS resolution is a typed hostname denial.
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        let err = lim
+            .evaluate_resolved("https://a.test/", "https://b.test/x", &[])
+            .unwrap_err();
+        assert!(matches!(err, FetchPolicyError::HostnameDenied { .. }));
+        // A hop past the ceiling fails before any address check matters.
+        let mut lim = RedirectLimiter::new(FetchPolicy {
+            redirect: RedirectPolicy::Follow { max_hops: 1 },
+            ..FetchPolicy::default()
+        });
+        assert_eq!(
+            lim.evaluate_resolved("https://a.test/", "https://b.test/x", &[public_ip()]),
+            Ok(RedirectOutcome::Follow)
+        );
+        let err = lim
+            .evaluate_resolved(
+                "https://b.test/x",
+                "https://c.test/y",
+                &["127.0.0.1".parse().unwrap()],
+            )
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::TooManyRedirects { max_hops: 1 }
         ));
     }
 }
