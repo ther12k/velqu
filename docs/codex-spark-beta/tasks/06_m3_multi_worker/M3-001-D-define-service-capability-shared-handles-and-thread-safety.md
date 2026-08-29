@@ -4,7 +4,7 @@ parent_task: M3-001
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -117,3 +117,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-001-D) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-001-d (squash-merged; see git log for final hash)
+- Closes: #375
+
+### Changed files
+- `crates/q-capabilities/src/shared_handles.rs` (new): the ADR-0036 section 4 shared-handle contract in the type system —
+  - `SharedAcrossWorkers: Send + Sync + 'static` marker trait: an impl is a compile-time declaration that a handle follows one of the four named sharing disciplines (locks/atomics only, bounded growth, saturating-or-dropping overflow, never a JS value inside);
+  - **explicit impls only** (no blanket impl): sharing is an auditable per-type decision. First two impls: `FetchMetricsCollector` (metric-shard discipline, M28-009) and `BoundedLogSink` (bounded log sink, M27-004-C);
+  - module docs name the contract and the audit rule ("anything mutable that cannot be phrased in one of the four shapes requires a new ADR").
+- `crates/q-capabilities/src/lib.rs`: module + `SharedAcrossWorkers` re-export.
+- `crates/q-runtime/src/fetch_stack.rs`: pool-handle discipline test — `FetchPool: Send + Sync`, shared behind `Arc`, probed from a worker thread.
+
+### Tests added
+- `shared_handles_are_send_sync_static` (explicit impls audited)
+- `shared_handles_work_behind_arc_from_any_thread` (Arc-shared collector + sink exercised from a worker thread)
+- `pool_handle_is_send_sync_shared` (FetchPool: Send + Sync + Arc-shared)
+
+### Command results
+- `cargo test -p q-capabilities` → **194 unit (was 192) + 7 + 1 + 4 + 9** — 0 failed
+- `cargo test -p velqu-runtime` → **13 unit** (fetch_stack 11 + pool-handle test) + 5 + 44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`333d563d…` matches manifest)
+
+### Guardrail mapping
+- **Cross-worker mutable state is explicit** — the shared-handle vocabulary is now a trait: a type is shared only if someone wrote `impl SharedAcrossWorkers for It`, and every impl is reviewable against the four disciplines.
+
+### Disclosures
+- One Arc-move test slip caught by the compiler; fixed before commit.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

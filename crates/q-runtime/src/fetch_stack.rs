@@ -295,6 +295,20 @@ mod tests {
         assert!(!pool.is_shutdown());
     }
 
+    /// M3-001-D: the pool handle follows the ADR-0036 §4 shared-handle
+    /// discipline (pool-handle shape): Send + Sync, shareable by Arc.
+    #[test]
+    fn pool_handle_is_send_sync_shared() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<FetchPool>();
+        let pool: Arc<FetchPool> = Arc::new(FetchPool::new());
+        let p2 = pool.clone();
+        let h = std::thread::spawn(move || {
+            assert!(!p2.is_initialized());
+        });
+        h.join().unwrap();
+    }
+
     /// M28-009-C: the shared pool is process-global and drains in place.
     #[test]
     fn shared_pool_is_process_global_and_drains_in_place() {
