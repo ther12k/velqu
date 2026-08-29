@@ -69,6 +69,58 @@ pub const MAX_FETCH_REQUEST_BODY_BYTES: u64 = 16 * 1024 * 1024;
 /// Response body ceiling and default cap.
 pub const MAX_FETCH_RESPONSE_BODY_BYTES: u64 = 16 * 1024 * 1024;
 
+/// Maximum body helper size (M28-006-D): the largest body a materializing
+/// helper (`Response.text/json/arrayBuffer/bytes`) may produce, fail closed
+/// above. Pinned equal to [`MAX_FETCH_RESPONSE_BODY_BYTES`] — a helper can
+/// never be asked to materialize more than the network layer admits.
+pub const MAX_BODY_HELPER_BYTES: usize = 16 * 1024 * 1024;
+
+/// The body-materializing helpers subject to [`MAX_BODY_HELPER_BYTES`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BodyHelper {
+    /// `Response.text()` — decoded string copy.
+    ResponseText,
+    /// `Response.json()` — parse over the decoded text.
+    ResponseJson,
+    /// `Response.arrayBuffer()` — copied byte buffer.
+    ResponseArrayBuffer,
+    /// `Response.bytes()` — copied byte view.
+    ResponseBytes,
+}
+
+impl BodyHelper {
+    /// Stable helper name used in typed error messages and JS errors.
+    pub fn name(self) -> &'static str {
+        match self {
+            BodyHelper::ResponseText => "text",
+            BodyHelper::ResponseJson => "json",
+            BodyHelper::ResponseArrayBuffer => "arrayBuffer",
+            BodyHelper::ResponseBytes => "bytes",
+        }
+    }
+
+    /// The per-helper byte cap. All helpers share
+    /// [`MAX_BODY_HELPER_BYTES`] today; named accessors keep future
+    /// per-helper tightening a one-line policy change.
+    pub const fn max_bytes(self) -> usize {
+        MAX_BODY_HELPER_BYTES
+    }
+}
+
+/// Fail-closed size check for a materializing body helper. Typed rejection
+/// when `byte_len` exceeds the helper's cap.
+pub fn check_body_helper_size(helper: BodyHelper, byte_len: usize) -> Result<(), FetchPolicyError> {
+    let max = helper.max_bytes();
+    if byte_len > max {
+        return Err(FetchPolicyError::BodyTooLarge {
+            helper: helper.name(),
+            len: byte_len,
+            max,
+        });
+    }
+    Ok(())
+}
+
 /// Maximum followed redirect hops (browser-aligned; ADR-0033 §4).
 pub const MAX_REDIRECT_HOPS: u32 = 20;
 
@@ -231,14 +283,42 @@ pub enum CompressionPolicy {
 /// Typed policy violations. Closed set; every denial names its reason.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FetchPolicyError {
-    SchemeNotAllowed { scheme: String },
-    AddressDenied { addr: IpAddr, class: AddressClass },
-    HostnameDenied { host: String, reason: String },
-    DowngradeRedirect { from: String, to: String },
-    TooManyRedirects { max_hops: u32 },
-    InvalidRedirectHops { requested: u32, max: u32 },
-    InvalidDeadline { ms: u64, max: u64 },
-    InvalidBodyLimit { bytes: u64, max: u64 },
+    SchemeNotAllowed {
+        scheme: String,
+    },
+    AddressDenied {
+        addr: IpAddr,
+        class: AddressClass,
+    },
+    HostnameDenied {
+        host: String,
+        reason: String,
+    },
+    DowngradeRedirect {
+        from: String,
+        to: String,
+    },
+    TooManyRedirects {
+        max_hops: u32,
+    },
+    InvalidRedirectHops {
+        requested: u32,
+        max: u32,
+    },
+    InvalidDeadline {
+        ms: u64,
+        max: u64,
+    },
+    InvalidBodyLimit {
+        bytes: u64,
+        max: u64,
+    },
+    /// A body helper was asked to materialize past its cap (M28-006-D).
+    BodyTooLarge {
+        helper: &'static str,
+        len: usize,
+        max: usize,
+    },
 }
 
 impl fmt::Display for FetchPolicyError {
@@ -278,6 +358,12 @@ impl fmt::Display for FetchPolicyError {
                 write!(
                     f,
                     "fetch body limit {bytes} bytes is zero or exceeds the {max} byte ceiling"
+                )
+            }
+            FetchPolicyError::BodyTooLarge { helper, len, max } => {
+                write!(
+                    f,
+                    "Response.{helper}: body of {len} bytes exceeds the maximum helper size of {max} bytes"
                 )
             }
         }
@@ -872,5 +958,38 @@ mod tests {
         assert!(p
             .check_resolved("example.com", &[ip("93.184.216.34")])
             .is_ok());
+    }
+
+    #[test]
+    fn body_helper_sizes_are_defined_and_fail_closed() {
+        let helpers = [
+            BodyHelper::ResponseText,
+            BodyHelper::ResponseJson,
+            BodyHelper::ResponseArrayBuffer,
+            BodyHelper::ResponseBytes,
+        ];
+        for h in helpers {
+            assert_eq!(h.max_bytes(), MAX_BODY_HELPER_BYTES);
+            assert!(check_body_helper_size(h, 0).is_ok());
+            assert!(check_body_helper_size(h, h.max_bytes()).is_ok());
+            let err = check_body_helper_size(h, h.max_bytes() + 1).unwrap_err();
+            assert!(matches!(err, FetchPolicyError::BodyTooLarge { .. }));
+            let msg = err.to_string();
+            assert!(msg.contains(h.name()), "message names the helper: {msg}");
+            assert!(msg.contains("maximum helper size"));
+        }
+    }
+
+    #[test]
+    fn body_helper_cap_composes_with_network_and_text_limits() {
+        // A helper can never be asked to materialize more than the network
+        // layer admits (ADR-0033 §9), and text decode stays within the
+        // text-encoding buffer bound.
+        const _: () = assert!(MAX_BODY_HELPER_BYTES <= crate::text_encoding::MAX_TEXT_BUFFER_LEN);
+        assert_eq!(
+            MAX_BODY_HELPER_BYTES,
+            MAX_FETCH_RESPONSE_BODY_BYTES as usize
+        );
+        assert_eq!(MAX_BODY_HELPER_BYTES, 16 * 1024 * 1024);
     }
 }

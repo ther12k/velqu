@@ -527,7 +527,33 @@ Response.json = function(data, init) {
   init.headers = headers;
   return new Response(JSON.stringify(data), init);
 };
+// M28-006-D: maximum body helper sizes. Materializing helpers fail closed
+// above the native limit before any derived copy is made. The guard keeps
+// the plain Web surface runnable outside the host (dev tooling); in the
+// production worker the limit binding is always installed.
+var __velquBodyHelperCheck = function(helper, b) {
+  if (typeof globalThis.__velquBodyHelperLimit !== "function") return;
+  var max = globalThis.__velquBodyHelperLimit();
+  var n;
+  if (b === null || b === undefined) {
+    n = 0;
+  } else if (b instanceof Uint8Array || b instanceof ArrayBuffer) {
+    n = b.byteLength;
+  } else {
+    // Measure UTF-8 size via the native encode bridge; its over-ceiling
+    // throw means the body is over the (same) helper limit too.
+    try {
+      n = globalThis.__velquTextEncodeLen(String(b));
+    } catch (e) {
+      n = max + 1;
+    }
+  }
+  if (n > max) {
+    throw new TypeError("Response." + helper + ": body of " + n + " bytes exceeds the maximum helper size of " + max + " bytes");
+  }
+};
 Response.prototype.text = function() {
+  __velquBodyHelperCheck("text", this._body);
   if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
   this.bodyUsed = true;
   var b = this._body;
@@ -544,6 +570,7 @@ Response.prototype.json = function() {
   });
 };
 Response.prototype.arrayBuffer = function() {
+  __velquBodyHelperCheck("arrayBuffer", this._body);
   if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
   this.bodyUsed = true;
   var b = this._body;
@@ -554,6 +581,7 @@ Response.prototype.arrayBuffer = function() {
   return Promise.resolve(enc.buffer.slice(enc.byteOffset, enc.byteOffset + enc.byteLength));
 };
 Response.prototype.bytes = function() {
+  __velquBodyHelperCheck("bytes", this._body);
   if (this.bodyUsed) return Promise.reject(new TypeError("Body has already been consumed"));
   this.bodyUsed = true;
   var b = this._body;
