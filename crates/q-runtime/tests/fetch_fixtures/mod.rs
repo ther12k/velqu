@@ -1,5 +1,9 @@
 //! Deterministic fetch fixtures (M28-010-B).
 //!
+//! Each integration test file includes this module and uses the fixtures
+//! it needs; the rest are intentionally available (allow(dead_code)).
+#![allow(dead_code)]
+//!
 //! Hermetic, reproducible fixtures for the fetch executor conformance:
 //! canned DNS resolvers (including a rebinding-sequence attacker model),
 //! redirect-chain and slow-body HTTP servers, and untrusted-TLS endpoints
