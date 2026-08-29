@@ -4,7 +4,7 @@ parent_task: M28-009
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -125,3 +125,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-009-A) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-009-a (squash-merged; see git log for final hash)
+- Closes: #354
+
+### Changed files
+- `crates/q-capabilities/src/fetch_metrics.rs` (new): the fetch metrics schema —
+  - `FetchStage` (PoolWait/Dns/Connect/Tls/Ttfb/Body) with `ALL` in schema order and stable snake_case names; the order IS the schema, pinned by test.
+  - `FetchMetrics` — bounded observations: fixed `[u64; 6]` stage array (saturating adds), `u32` request/error/cancellation counters (saturating). Observation path is plain integer adds: no allocation, no locks, no strings — hot-path cost is a few cycles.
+  - `FetchMetricsSnapshot` (serde): the redaction boundary — exactly six `*_ns` stage fields + `requests`/`errors`/`cancellations`; nothing else can leak in. Pinned by a JSON key test.
+  - `merge(&FetchMetrics)` for aggregation (saturating) — feeds M28-009-B.
+- `crates/q-capabilities/src/lib.rs`: module + re-exports.
+
+### Tests added (fetch_metrics.rs, +4 → 188 q-capabilities lib tests)
+- `metrics_schema_covers_all_stages_in_order` (stage names + snapshot field mapping)
+- `stage_and_counter_observations_saturate_without_panicking` (u64::MAX stage adds; 100k counter records)
+- `snapshot_field_set_is_the_redaction_boundary` (serialized JSON contains exactly the 9 schema keys, 8 commas; no url/header fields possible)
+- `merge_aggregates_saturating`
+
+### Command results
+- `cargo test -p q-capabilities` → **188 unit (was 184) + 4 backpressure + 8 WPT** — 0 failed
+- `cargo test -p q-engine-quickjs` → 18+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 · `-p velqu-runtime` 8+5+31 — all pass
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- Release binary hash unchanged (`46de91ac…` matches manifest) — the schema is dormant until the executor records into it.
+
+### Guardrail mapping
+- **Metrics are bounded and redacted** — fixed arrays + saturating counters; the snapshot's serialized field set is provably closed (no URL/header/host field can appear).
+- **Disabled instrumentation overhead is measured** — by design the observation path is saturating integer adds with `#[inline]`; the executor's overhead report (parent evidence) will quantify the enabled path; the disabled path is structurally zero (no call).
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
