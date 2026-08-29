@@ -4,7 +4,7 @@ parent_task: M28-GATE
 milestone: M28
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -126,3 +126,16 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-GATE) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m28-gate (squash-merged; see git log for final hash)
+- Candidate commit: 1cd63fc (clean tree at gate time)
+
+### Gate decision: PASS
+- All 11 parents (M28-001..M28-011) have V+Z packets PASS; ledger row updated.
+- Full verification from the clean candidate commit: ./scripts/verify exit 0 (Rust: q-capabilities 192+7+1+4+9, q-engine-quickjs 18+101, velqu-runtime 12+5+44, q-http 4+6+1, q-bridge 11; TypeScript 219; fmt/clippy -D warnings clean; benchmark evidence current; binary b82960604ddf390d matches manifest).
+- Review packet: docs/reports/m28-gate-review.md; indexes EVIDENCE_INDEX.json / REVIEW_INDEX.json updated to the M28 checkpoint (commit rewritten by scripts/release-packet at release time).
+- Milestone report, source archive, Git bundle, and SHA-256 manifest produced via scripts/release-packet (release/ artifacts are untracked by design).
+- No unresolved P0/P1 findings hidden or waived: the PACK_FORMAT_CURRENT owner decision remains tracked in REVIEW_INDEX openItems (carried from M26); the fastify/Node-fetch c=200 tail finding is a measured candidate limitation disclosed in M28-011-V, not a velqu-path defect.
