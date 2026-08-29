@@ -568,6 +568,23 @@ pub struct FollowedHop {
     pub pinned: Vec<IpAddr>,
 }
 
+/// Proxy interaction semantics (M28-008-D, ADR-0033 §5). The runtime
+/// dials validated origin addresses directly; no CONNECT tunneling and no
+/// proxy credentials exist anywhere in the fetch path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ProxyMode {
+    /// No proxy is ever consulted or configured. Ambient environment
+    /// variables are ignored by construction, and the policy surface
+    /// exposes no way to enable one.
+    #[default]
+    Disabled,
+}
+
+/// The closed survey of ambient proxy environment variables (M28-008-D).
+/// These names are never read by the runtime; the list exists so
+/// diagnostics and tests can assert the isolation posture by name.
+pub const AMBIENT_PROXY_ENV_VARS: &[&str] = &["http_proxy", "https_proxy", "all_proxy", "no_proxy"];
+
 /// Decompression-ratio ceiling: decompressed output may be at most this
 /// many times the compressed input (M28-007-D, ADR-0033 §8). Well above
 /// any legitimate gzip/deflate expansion for web payloads.
@@ -1010,6 +1027,14 @@ impl FetchPolicy {
     /// Ambient proxy trust (environment variables) is never enabled.
     pub fn ambient_proxy_enabled(&self) -> bool {
         self.ambient_proxy
+    }
+
+    /// Proxy interaction posture (M28-008-D): always
+    /// [`ProxyMode::Disabled`] — the dial goes straight to the validated
+    /// origin address, and ambient proxy environment variables are ignored
+    /// by construction.
+    pub fn proxy_mode(&self) -> ProxyMode {
+        ProxyMode::Disabled
     }
 
     /// Validate a URL scheme (case-insensitive) before any resolution.
@@ -2306,5 +2331,37 @@ mod tests {
         assert_eq!(policy.host_allow(), ["ok.test"]);
         // A host equal to the apex suffix rule matches.
         assert!(policy.check_host_config("SPACED.TEST").is_err());
+    }
+
+    #[test]
+    fn proxy_mode_is_disabled_by_construction_and_not_configurable() {
+        // Every policy construction path reports the same posture.
+        assert_eq!(FetchPolicy::default().proxy_mode(), ProxyMode::Disabled);
+        assert_eq!(
+            FetchPolicy::trusted_loopback_explicit().proxy_mode(),
+            ProxyMode::Disabled
+        );
+        let configured = FetchPolicy::default()
+            .with_deny_hosts(["a.test"])
+            .with_allow_hosts(["b.test"]);
+        assert_eq!(configured.proxy_mode(), ProxyMode::Disabled);
+        // The ambient flag stays false through every builder.
+        assert!(!configured.ambient_proxy_enabled());
+        assert!(!FetchPolicy::default().ambient_proxy_enabled());
+    }
+
+    #[test]
+    fn ambient_proxy_env_survey_is_the_closed_list() {
+        // The runtime never reads these; the list is the diagnostic surface.
+        assert_eq!(
+            AMBIENT_PROXY_ENV_VARS,
+            &["http_proxy", "https_proxy", "all_proxy", "no_proxy"]
+        );
+        for name in AMBIENT_PROXY_ENV_VARS {
+            assert!(
+                name.eq(name) && name.to_ascii_lowercase() == *name,
+                "survey entries must be lowercased: {name}"
+            );
+        }
     }
 }

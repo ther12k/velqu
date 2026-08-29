@@ -233,7 +233,7 @@ impl FetchPool {
 /// Diagnostic summary for `--fetch-stack-info`.
 pub fn describe() -> String {
     let _client = build_client(); // prove the stack constructs
-    format!("outbound fetch stack: {STACK_ID} (constructs ok; dialing gated by ADR-0033 policy, wired in M28-003)")
+    format!("outbound fetch stack: {STACK_ID} (constructs ok; dialing gated by ADR-0033 policy, wired in M28-003; proxy mode: disabled, ambient env ignored per M28-008-D)")
 }
 
 #[cfg(test)]
@@ -246,6 +246,8 @@ mod tests {
         assert!(described.contains("hyper1+hyper-util"));
         assert!(described.contains("webpki-roots"));
         assert!(described.contains("M28-003"));
+        // M28-008-D: the diagnostic names the proxy posture.
+        assert!(described.contains("proxy mode: disabled"));
     }
 
     #[test]
