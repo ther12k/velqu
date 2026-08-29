@@ -166,6 +166,76 @@ impl FetchMetrics {
     }
 }
 
+/// Shared fetch metrics collector (M28-009-B): the thread-safe sampling
+/// surface over [`FetchMetrics`]. Workers record into the shared shard;
+/// operators sample cumulative aggregates or drain per-interval windows.
+/// Bounded by construction — the collector holds exactly one fixed-size
+/// [`FetchMetrics`], so long-running processes cannot grow it.
+pub struct FetchMetricsCollector {
+    shard: std::sync::Mutex<FetchMetrics>,
+}
+
+impl Default for FetchMetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FetchMetricsCollector {
+    /// Empty collector.
+    pub fn new() -> Self {
+        FetchMetricsCollector {
+            shard: std::sync::Mutex::new(FetchMetrics::new()),
+        }
+    }
+
+    /// Shared handle for workers.
+    pub fn shared() -> std::sync::Arc<Self> {
+        std::sync::Arc::new(FetchMetricsCollector::new())
+    }
+
+    /// Apply an observation closure under the shard lock. Bounded work
+    /// only (saturating integer adds); do not hold across awaits.
+    pub fn record(&self, f: impl FnOnce(&mut FetchMetrics)) {
+        let mut shard = self.shard.lock().unwrap();
+        f(&mut shard);
+    }
+
+    /// Record one completed request.
+    pub fn record_request(&self) {
+        self.record(|m| m.record_request());
+    }
+
+    /// Record one typed fetch error.
+    pub fn record_error(&self) {
+        self.record(|m| m.record_error());
+    }
+
+    /// Record one cancellation.
+    pub fn record_cancellation(&self) {
+        self.record(|m| m.record_cancellation());
+    }
+
+    /// Record a stage duration (saturating).
+    pub fn observe_stage(&self, stage: FetchStage, nanos: u64) {
+        self.record(|m| m.observe_stage(stage, nanos));
+    }
+
+    /// Non-destructive cumulative snapshot.
+    pub fn sample(&self) -> FetchMetricsSnapshot {
+        self.shard.lock().unwrap().snapshot()
+    }
+
+    /// Interval sampling: return the cumulative snapshot and reset the
+    /// shard, so the next window reports only new observations.
+    pub fn drain(&self) -> FetchMetricsSnapshot {
+        let mut shard = self.shard.lock().unwrap();
+        let snap = shard.snapshot();
+        *shard = FetchMetrics::new();
+        snap
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,5 +329,82 @@ mod tests {
         let before = a.snapshot();
         a.merge(&FetchMetrics::new());
         assert_eq!(a.snapshot(), before);
+    }
+
+    #[test]
+    fn collector_samples_cumulative_aggregates() {
+        let collector = FetchMetricsCollector::shared();
+        collector.observe_stage(FetchStage::Connect, 11);
+        collector.observe_stage(FetchStage::Connect, 22);
+        collector.record_request();
+        collector.record_request();
+        collector.record_error();
+        collector.record_cancellation();
+        let snap = collector.sample();
+        assert_eq!(snap.connect_ns, 33);
+        assert_eq!(snap.requests, 2);
+        assert_eq!(snap.errors, 1);
+        assert_eq!(snap.cancellations, 1);
+        // Sampling is non-destructive.
+        assert_eq!(collector.sample(), snap);
+    }
+
+    #[test]
+    fn collector_drain_reports_window_then_resets() {
+        let collector = FetchMetricsCollector::shared();
+        collector.observe_stage(FetchStage::Dns, 9);
+        collector.record_request();
+        let window = collector.drain();
+        assert_eq!(window.dns_ns, 9);
+        assert_eq!(window.requests, 1);
+        // The next window is empty until new observations arrive.
+        let empty = collector.drain();
+        assert_eq!(
+            empty,
+            FetchMetricsSnapshot {
+                pool_wait_ns: 0,
+                dns_ns: 0,
+                connect_ns: 0,
+                tls_ns: 0,
+                ttfb_ns: 0,
+                body_ns: 0,
+                requests: 0,
+                errors: 0,
+                cancellations: 0,
+            }
+        );
+        collector.observe_stage(FetchStage::Dns, 3);
+        assert_eq!(collector.sample().dns_ns, 3);
+    }
+
+    #[test]
+    fn collector_is_thread_safe_and_lossless() {
+        let collector = FetchMetricsCollector::shared();
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let c = collector.clone();
+                std::thread::spawn(move || {
+                    for _ in 0..10_000 {
+                        c.record_request();
+                        c.observe_stage(FetchStage::Body, 1);
+                    }
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+        let snap = collector.sample();
+        assert_eq!(snap.requests, 40_000);
+        assert_eq!(snap.body_ns, 40_000);
+    }
+
+    #[test]
+    fn collector_snapshot_serializes_redacted() {
+        let collector = FetchMetricsCollector::shared();
+        collector.record_cancellation();
+        let json = serde_json::to_string(&collector.sample()).unwrap();
+        assert!(json.contains("\"cancellations\":1"));
+        assert!(!json.contains("url") && !json.contains("header"));
     }
 }
