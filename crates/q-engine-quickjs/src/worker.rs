@@ -2795,6 +2795,18 @@ fn install_natives(
         globals.set("__velquTextDecode", Function::new(ctx.clone(), f_decode)?)?;
     }
 
+    // M28-006-D: maximum body helper size for the fetch Response helpers.
+    // Single source of truth: the pinned q-capabilities policy constant.
+    {
+        let f_limit = move |_ctx: rquickjs::Ctx| -> rquickjs::Result<f64> {
+            Ok(q_capabilities::MAX_BODY_HELPER_BYTES as f64)
+        };
+        globals.set(
+            "__velquBodyHelperLimit",
+            Function::new(ctx.clone(), f_limit)?,
+        )?;
+    }
+
     // M27-008-A: Web Crypto getRandomValues & randomUUID native bridges
     {
         // __velquCryptoGetRandomValues(uint8Array) -> void
@@ -3651,6 +3663,105 @@ mod tests {
                     !Object.prototype.hasOwnProperty.call(ctx, 'native');
             })()";
             assert!(ctx.eval::<bool, _>(code).unwrap());
+        });
+    }
+
+    /// M28-006-D: maximum body helper sizes — materializing helpers fail
+    /// closed above the native limit, before any derived copy is made.
+    #[test]
+    fn body_helper_sizes_fail_closed_above_native_cap() {
+        let tokio_rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = rquickjs::Runtime::new().unwrap();
+        let ctx = rquickjs::Context::full(&rt).unwrap();
+        ctx.with(|ctx| {
+            let ops = Arc::new(OpRegistry::new(1024, Duration::from_millis(5000)));
+            let store = Rc::new(RequestStore::with_capacity_and_counters(
+                256,
+                Arc::new(BridgeCounters::default()),
+            ));
+            let shared = Arc::new(WorkerShared::new());
+            let handle = tokio_rt.handle().clone();
+            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
+
+            // 1. The limit binding exposes the pinned policy constant.
+            assert!(ctx
+                .eval::<bool, _>("globalThis.__velquBodyHelperLimit() === 16777216")
+                .unwrap());
+
+            // 2. Oversized typed-array body: bytes()/arrayBuffer()/text()
+            //    throw a synchronous TypeError naming the helper and the
+            //    limit, and the response stays unconsumed (fail closed
+            //    BEFORE bodyUsed flips or any copy is materialized).
+            let code_oversize = r#"
+                (() => {
+                    const big = new Uint8Array(16777217);
+                    const results = {};
+                    for (const helper of ["bytes", "arrayBuffer", "text"]) {
+                        const res = new Response(big);
+                        try {
+                            res[helper]();
+                            results[helper] = "no-throw";
+                        } catch (e) {
+                            results[helper] = (e instanceof TypeError &&
+                                e.message.indexOf("Response." + helper) !== -1 &&
+                                e.message.indexOf("maximum helper size") !== -1)
+                                ? "typed" : "wrong: " + e.message;
+                        }
+                        if (res.bodyUsed !== false) results[helper] += " bodyUsed-flipped";
+                    }
+                    return results.bytes === "typed" &&
+                           results.arrayBuffer === "typed" &&
+                           results.text === "typed";
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_oversize).unwrap());
+
+            // 3. Oversized string body: measured through the native encode
+            //    bridge (over-ceiling throw maps to the typed helper error).
+            let code_oversize_str = r#"
+                (() => {
+                    const res = new Response("x".repeat(16777217));
+                    try {
+                        res.text();
+                        return false;
+                    } catch (e) {
+                        return e instanceof TypeError &&
+                            e.message.indexOf("Response.text") !== -1 &&
+                            res.bodyUsed === false;
+                    }
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_oversize_str).unwrap());
+
+            // 4. json() inherits the cap through text().
+            let code_json = r#"
+                (() => {
+                    const res = new Response(new Uint8Array(16777217));
+                    try {
+                        res.json();
+                        return false;
+                    } catch (e) {
+                        return e instanceof TypeError &&
+                            e.message.indexOf("Response.text") !== -1;
+                    }
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_json).unwrap());
+
+            // 5. Within-limit bodies still materialize and consume normally;
+            //    null bodies pass at zero bytes.
+            let code_within = r#"
+                (() => {
+                    const res = new Response(new Uint8Array(1024));
+                    const p = res.bytes();
+                    if (!(p instanceof Promise) || res.bodyUsed !== true) return false;
+                    const empty = new Response(null);
+                    const p2 = empty.text();
+                    return p2 instanceof Promise;
+                })()
+            "#;
+            assert!(ctx.eval::<bool, _>(code_within).unwrap());
         });
     }
 }
