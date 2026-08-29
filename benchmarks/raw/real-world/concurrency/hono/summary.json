@@ -1,0 +1,125 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:57:28.260Z",
+  "baseUrl": "http://127.0.0.1:40367",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10,
+    50,
+    200
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "6aeff79c10c90b8e169229a3f87aff48c33d1a19",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "804e822c78f823effe6ea7ae847b0a9ecead87ac7ac5a74a5bb03b722e6694e1",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "W4_1ms",
+      "concurrency": 1,
+      "totalRequests": 1615,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 538.33,
+      "p50Us": 1675,
+      "p95Us": 2997,
+      "p99Us": 5119,
+      "maxUs": 13313
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 10,
+      "totalRequests": 15129,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 5043,
+      "p50Us": 1740,
+      "p95Us": 3340,
+      "p99Us": 4845,
+      "maxUs": 11361
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 50,
+      "totalRequests": 44490,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 14830,
+      "p50Us": 2988,
+      "p95Us": 6030,
+      "p99Us": 9541,
+      "maxUs": 20713
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 200,
+      "totalRequests": 44183,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 14727.67,
+      "p50Us": 13099,
+      "p95Us": 21101,
+      "p99Us": 26204,
+      "maxUs": 35213
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 1,
+      "totalRequests": 511,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 170.33,
+      "p50Us": 5736,
+      "p95Us": 6797,
+      "p99Us": 8418,
+      "maxUs": 10094
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 10,
+      "totalRequests": 4980,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1660,
+      "p50Us": 5857,
+      "p95Us": 7074,
+      "p99Us": 8728,
+      "maxUs": 10300
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 50,
+      "totalRequests": 20938,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 6979.33,
+      "p50Us": 6841,
+      "p95Us": 9523,
+      "p99Us": 13777,
+      "maxUs": 21733
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 200,
+      "totalRequests": 35252,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 11750.67,
+      "p50Us": 15243,
+      "p95Us": 30028,
+      "p99Us": 45805,
+      "maxUs": 67883
+    }
+  ],
+  "raw": "../raw/real-world/concurrency/hono/raw.jsonl"
+}

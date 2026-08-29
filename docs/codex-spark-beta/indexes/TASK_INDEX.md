@@ -407,7 +407,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-011-A](../tasks/05_m28_native_fetch/M28-011-A-run-1-5-10-25ms-upstream-latency.md) | P1 | implement | PASS | M28-009-Z, M28-010-Z | Run 1/5/10/25ms upstream latency |
 | [M28-011-B](../tasks/05_m28_native_fetch/M28-011-B-run-one-two-and-four-parallel-calls.md) | P1 | implement | PASS | M28-011-A | Run one, two, and four parallel calls |
 | [M28-011-C](../tasks/05_m28_native_fetch/M28-011-C-mix-timeout-success-malformed-responses.md) | P1 | implement | PASS | M28-011-B | Mix timeout/success/malformed responses |
-| [M28-011-D](../tasks/05_m28_native_fetch/M28-011-D-test-concurrency-1-10-50-200.md) | P1 | implement | TODO | M28-011-C | Test concurrency 1/10/50/200 |
+| [M28-011-D](../tasks/05_m28_native_fetch/M28-011-D-test-concurrency-1-10-50-200.md) | P1 | implement | PASS | M28-011-C | Test concurrency 1/10/50/200 |
 | [M28-011-V](../tasks/05_m28_native_fetch/M28-011-V-verify-run-controlled-upstream-and-fan-out-benchmarks.md) | P1 | verify | TODO | M28-011-A, M28-011-B, M28-011-C, M28-011-D | Verify Run controlled upstream and fan-out benchmarks |
 | [M28-011-Z](../tasks/05_m28_native_fetch/M28-011-Z-package-evidence-for-run-controlled-upstream-and-fan-out-benchmarks.md) | P1 | evidence | TODO | M28-011-V | Package evidence for Run controlled upstream and fan-out benchmarks |
 | [M28-GATE](../gates/M28-GATE.md) | P0 | gate | TODO | M28-001-Z, M28-002-Z, M28-003-Z, M28-004-Z, M28-005-Z, M28-006-Z, M28-007-Z, M28-008-Z, M28-009-Z, M28-010-Z, M28-011-Z | M2.8 — Native Outbound Fetch exit gate |
