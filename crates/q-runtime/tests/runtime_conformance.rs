@@ -1724,12 +1724,25 @@ fn graceful_shutdown_exits_zero() {
         "graceful shutdown must exit 0, got {status:?}"
     );
     // M28-009-C: quiescence includes the outbound fetch pool — the
-    // shutdown.complete event must report the pool drain.
-    let logs = server.drain_logs();
-    let complete = logs
-        .iter()
-        .find(|l| l.contains("\"event\":\"shutdown.complete\""))
-        .unwrap_or_else(|| panic!("shutdown.complete event missing in {:?}", logs.len()));
+    // shutdown.complete event must report the pool drain. The log reader
+    // thread may still be pumping the pipe after wait(): poll bounded.
+    let mut complete: Option<String> = None;
+    for _ in 0..50 {
+        let logs = server.drain_logs();
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        {
+            complete = Some(line.clone());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
+    assert!(
+        complete.contains("\"fetchPool\":{\"initialized\":false,\"drained\":true}"),
+        "fetch pool drain not reported: {complete}"
+    );
     assert!(
         complete.contains("\"fetchPool\":{\"initialized\":false,\"drained\":true}"),
         "fetch pool drain not reported: {complete}"
