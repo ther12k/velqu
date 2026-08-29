@@ -402,7 +402,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-010-B](../tasks/05_m28_native_fetch/M28-010-B-create-deterministic-dns-tls-redirect-slow-body-fixtures.md) | P0 | implement | PASS | M28-010-A | Create deterministic DNS/TLS/redirect/slow/body fixtures |
 | [M28-010-C](../tasks/05_m28_native_fetch/M28-010-C-fuzz-headers-and-urls.md) | P0 | implement | PASS | M28-010-B | Fuzz headers and URLs |
 | [M28-010-D](../tasks/05_m28_native_fetch/M28-010-D-test-proxy-and-cancellation.md) | P0 | implement | PASS | M28-010-C | Test proxy and cancellation |
-| [M28-010-V](../tasks/05_m28_native_fetch/M28-010-V-verify-complete-fetch-conformance-and-fault-testing.md) | P0 | verify | TODO | M28-010-A, M28-010-B, M28-010-C, M28-010-D | Verify Complete fetch conformance and fault testing |
+| [M28-010-V](../tasks/05_m28_native_fetch/M28-010-V-verify-complete-fetch-conformance-and-fault-testing.md) | P0 | verify | PASS | M28-010-A, M28-010-B, M28-010-C, M28-010-D | Verify Complete fetch conformance and fault testing |
 | [M28-010-Z](../tasks/05_m28_native_fetch/M28-010-Z-package-evidence-for-complete-fetch-conformance-and-fault-testing.md) | P0 | evidence | TODO | M28-010-V | Package evidence for Complete fetch conformance and fault testing |
 | [M28-011-A](../tasks/05_m28_native_fetch/M28-011-A-run-1-5-10-25ms-upstream-latency.md) | P1 | implement | TODO | M28-009-Z, M28-010-Z | Run 1/5/10/25ms upstream latency |
 | [M28-011-B](../tasks/05_m28_native_fetch/M28-011-B-run-one-two-and-four-parallel-calls.md) | P1 | implement | TODO | M28-011-A | Run one, two, and four parallel calls |
