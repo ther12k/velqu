@@ -421,7 +421,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-001-C](../tasks/06_m3_multi_worker/M3-001-C-forbid-jsvalue-sharing.md) | P0 | implement | PASS | M3-001-B | Forbid JSValue sharing |
 | [M3-001-D](../tasks/06_m3_multi_worker/M3-001-D-define-service-capability-shared-handles-and-thread-safety.md) | P0 | implement | PASS | M3-001-C | Define service/capability shared handles and thread safety |
 | [M3-001-V](../tasks/06_m3_multi_worker/M3-001-V-verify-freeze-independent-worker-state-semantics.md) | P0 | verify | PASS | M3-001-A, M3-001-B, M3-001-C, M3-001-D | Verify Freeze independent-worker state semantics |
-| [M3-001-Z](../tasks/06_m3_multi_worker/M3-001-Z-package-evidence-for-freeze-independent-worker-state-semantics.md) | P0 | evidence | TODO | M3-001-V | Package evidence for Freeze independent-worker state semantics |
+| [M3-001-Z](../tasks/06_m3_multi_worker/M3-001-Z-package-evidence-for-freeze-independent-worker-state-semantics.md) | P0 | evidence | PASS | M3-001-V | Package evidence for Freeze independent-worker state semantics |
 | [M3-002-A](../tasks/06_m3_multi_worker/M3-002-A-use-bounded-per-worker-queues.md) | P0 | implement | TODO | M3-001-Z | Use bounded per-worker queues |
 | [M3-002-B](../tasks/06_m3_multi_worker/M3-002-B-select-worker-using-outstanding-load-strategy.md) | P0 | implement | TODO | M3-002-A | Select worker using outstanding-load strategy |
 | [M3-002-C](../tasks/06_m3_multi_worker/M3-002-C-define-admission-and-overload-response.md) | P0 | implement | TODO | M3-002-B | Define admission and overload response |
