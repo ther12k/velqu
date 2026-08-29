@@ -4,7 +4,7 @@ parent_task: M3-001
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -103,3 +103,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-001-A) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-001-a (squash-merged; see git log for final hash)
+- Closes: #372
+
+### Changed files
+- `docs/okf/decisions/0036-multi-worker-state-ownership.md` (new, ACCEPTED): the multi-worker concurrency model —
+  - one QuickJS runtime per owner thread for its whole lifetime (never moved, locked, or polled cross-thread);
+  - per-worker exclusive JS state enumerated (runtime/heap, module-level state, timers/promises, per-worker op registry);
+  - shared-immutable enumerated (QPack bytes, route plans, schema tables — frozen after startup);
+  - shared-mutable restricted to FOUR named disciplines (MPMC dispatch queues, fixed-size metric shards, pool handles, lifecycle atomics) — anything else requires a new ADR;
+  - forbidden outright: JSValue/runtime/context pointers crossing workers, shared heaps, locks held across JS execution, ambient pools touching runtimes;
+  - deterministic initialization: worker K evaluates identical pack bytes in pack order with the same construction sequence as worker 0;
+  - **concurrency model tests plan** table binding each invariant to its proving packet (M3-002/004/005/007);
+  - **state examples**: per-worker module counters, per-worker caches, native permit ownership;
+  - alternatives considered and rejected (global-lock shared runtime, worker processes, STM).
+- `docs/okf/decisions/index.md`: ADR-0036 indexed.
+
+### Concurrency model tests plan
+Embedded in the ADR as a table mapping each invariant to its proving packet (M3-002-A/C/D, M3-004-A/B, M3-005-A/B/C, M3-007-A..D) — no new infrastructure required in this packet.
+
+### State examples
+Embedded in the ADR: module-level `hits` counter under 4 workers (4 independent variables), per-worker Map caches, native permit ownership.
+
+### Command results
+- `./scripts/validate-okf` → exit 0, errors: []
+- `cargo test -p q-engine-quickjs` → 18+101 passed; `-p velqu-runtime` → all suites pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (docs-only packet)
+
+### Guardrail mapping
+- **Each runtime has one owner thread** — ADR §1.
+- **Cross-worker mutable state is explicit** — ADR §4 closes the vocabulary; §5 forbids the rest.
+- **Initialization is deterministic** — ADR §6 (worker K ≡ worker 0 at ready).
+- **Developer docs describe per-worker globals** — ADR §2 consequences + state examples; M3-001-B owns the developer-facing doc.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

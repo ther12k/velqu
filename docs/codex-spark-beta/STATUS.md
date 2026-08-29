@@ -404,7 +404,7 @@ Update a checkbox only after the task commit and required tests pass.
 
 ## M3 — Multi-Worker Service Runtime
 
-- [ ] [M3-001-A — Accept ADR](tasks/06_m3_multi_worker/M3-001-A-accept-adr.md)
+- [x] [M3-001-A — Accept ADR](tasks/06_m3_multi_worker/M3-001-A-accept-adr.md)
 - [ ] [M3-001-B — Document module-level state replication](tasks/06_m3_multi_worker/M3-001-B-document-module-level-state-replication.md)
 - [ ] [M3-001-C — Forbid JSValue sharing](tasks/06_m3_multi_worker/M3-001-C-forbid-jsvalue-sharing.md)
 - [ ] [M3-001-D — Define service/capability shared handles and thread safety](tasks/06_m3_multi_worker/M3-001-D-define-service-capability-shared-handles-and-thread-safety.md)
