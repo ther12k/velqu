@@ -46,7 +46,8 @@ pub use console::{
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
 pub use fetch_policy::{
-    check_body_helper_size, RedirectLimiter, RedirectOutcome, MAX_BODY_HELPER_BYTES,
+    headers_surviving_redirect, is_credential_header, is_cross_origin_redirect, url_origin,
+    RedirectLimiter, RedirectOutcome, CREDENTIAL_REDIRECT_HEADERS, MAX_BODY_HELPER_BYTES,
 };
 pub use fetch_policy::{
     is_untrusted_forward_header, AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError,

@@ -4,7 +4,7 @@ parent_task: M28-007
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -113,3 +113,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-007-C) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-007-c (squash-merged; see git log for final hash)
+- Closes: #344
+
+### Changed files
+- `crates/q-capabilities/src/fetch_policy.rs`: credential/header stripping policy (ADR-0033 §4, WHATWG fetch HTTP-redirect alignment) —
+  - `CREDENTIAL_REDIRECT_HEADERS`: closed, lowercased set — `authorization`, `cookie`, `cookie2`, `proxy-authorization`.
+  - `url_origin(url) -> Option<String>`: normalized origin (lowercased scheme/host, default ports elided: http 80 / https 443); `None` on malformed input.
+  - `is_cross_origin_redirect(from, to)`: scheme/host/effective-port comparison; malformed URLs count as cross-origin (strip = fail-closed direction).
+  - `is_credential_header(name)`: case-insensitive membership.
+  - `headers_surviving_redirect(from, to, names)`: the executor's one-call hop filter — drops credential headers on cross-origin hops (and on malformed URLs), preserves everything else in input order with original casing, deduplicated case-insensitively.
+- `crates/q-capabilities/src/lib.rs`: re-exports the five new symbols.
+
+### Tests added (fetch_policy.rs, +4 → 162 lib tests)
+- `cross_origin_hops_strip_credential_headers` (host change / scheme change / port change all drop Authorization, Cookie, Proxy-Authorization; non-credential headers survive)
+- `same_origin_hops_keep_credentials` (path/query-only redirects keep everything; default-port elision: https://a:443 == https://a; differing port is cross-origin)
+- `credential_header_detection_is_case_insensitive_and_closed` (set membership + non-membership edges like `authorizationx` and `www-authenticate`; the constant itself is pinned)
+- `malformed_redirect_targets_fail_closed_to_stripping` (garbage URLs are cross-origin by definition, so credentials are stripped)
+
+### Command results
+- `cargo test -p q-capabilities` → **162 unit (was 158) + 4 backpressure + 8 WPT** — 0 failed
+- `cargo test -p q-engine-quickjs` → 18+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 · `-p velqu-runtime` 8+5+31 — all pass
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- Release binary hash unchanged (`ef142331…` matches manifest) — policy additions dead-code-eliminated until the executor wires in.
+
+### Guardrail mapping
+- **Sensitive headers never leak cross-origin** — the closed credential set is stripped on every origin change, with malformed-URL fail-closed semantics; the executor gets a single filter function to apply per hop.
+
+### Disclosures
+- The first insertion attempt silently no-opped (a heredoc `src.replace` whose anchor handling failed without erroring) — caught because the tests referencing the functions failed E0432; re-applied with the file-edit tool which fails loudly. Test casing expectations were then aligned with the preserved-casing contract (surviving names echo input casing). No production behavior changed beyond the new policy surface.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
