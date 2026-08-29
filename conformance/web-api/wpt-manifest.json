@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "velqu-wpt-wintertc-subset-manifest",
-  "version": "1.1.0",
-  "description": "Pinned Web Platform Tests (WPT) and WinterTC test subset vectors for Velqu M27 capabilities and the M28 fetch security policy",
-  "milestone": "M27",
+  "version": "1.2.0",
+  "description": "Pinned Web Platform Tests (WPT) and WinterTC test subset vectors for Velqu M27 capabilities and the M28 fetch security policy, redirect/compression policy, and SSRF egress controls",
+  "milestone": "M28",
   "capabilities": {
     "url": {
       "standard": "WHATWG URL Standard (https://url.spec.whatwg.org/)",
@@ -543,6 +543,156 @@
               "expect": "deny"
             }
           ]
+        },
+        {
+          "id": "fetch-redirect-policy",
+          "description": "Redirect hop ceiling, typed loop detection, downgrade/scheme denial, and Manual surfacing (M28-007-A)",
+          "cases": [
+            {
+              "op": "follow",
+              "from": "https://a.test/",
+              "to": "https://b.test/",
+              "expect": "follow"
+            },
+            {
+              "op": "follow",
+              "from": "https://a.test/",
+              "to": "http://b.test/",
+              "expect": "deny:DowngradeRedirect"
+            },
+            {
+              "op": "follow",
+              "from": "https://a.test/",
+              "to": "ftp://b.test/f",
+              "expect": "deny:SchemeNotAllowed"
+            },
+            {
+              "op": "ceiling",
+              "hops": 20,
+              "expect": "follow"
+            },
+            {
+              "op": "ceiling",
+              "hops": 21,
+              "expect": "deny:TooManyRedirects"
+            },
+            {
+              "op": "loop",
+              "expect": "deny:RedirectLoop"
+            },
+            {
+              "op": "manual",
+              "expect": "surface"
+            }
+          ]
+        },
+        {
+          "id": "fetch-egress-control",
+          "description": "Resolve-and-validate connect gate: metadata-by-name, rebinding, IP literals, empty resolution, allow/deny configuration (M28-008-A/C)",
+          "cases": [
+            {
+              "op": "resolve_metadata_name",
+              "host": "metadata.google.internal",
+              "expect": "deny:HostnameDenied"
+            },
+            {
+              "op": "resolve_mixed",
+              "host": "rebind.test",
+              "addrs": [
+                "93.184.216.34",
+                "10.0.0.9"
+              ],
+              "expect": "deny:AddressDenied"
+            },
+            {
+              "op": "resolve_ok",
+              "host": "example.test",
+              "addrs": [
+                "93.184.216.34"
+              ],
+              "expect": "allow"
+            },
+            {
+              "op": "resolve_ip_literal",
+              "host": "127.0.0.1",
+              "expect": "deny:AddressDenied"
+            },
+            {
+              "op": "resolve_empty",
+              "host": "nx.test",
+              "addrs": [],
+              "expect": "deny:HostnameDenied"
+            },
+            {
+              "op": "config_deny",
+              "deny": [
+                "evil.test"
+              ],
+              "host": "evil.test",
+              "expect": "deny:HostnameDenied"
+            },
+            {
+              "op": "config_allow",
+              "allow": [
+                "api.corp.example"
+              ],
+              "host": "elsewhere.test",
+              "expect": "deny:HostnameDenied"
+            },
+            {
+              "op": "config_deny_wins",
+              "deny": [
+                "b.test"
+              ],
+              "allow": [
+                "b.test"
+              ],
+              "host": "b.test",
+              "expect": "deny:HostnameDenied"
+            },
+            {
+              "op": "config_metadata_allow_cannot_reenable",
+              "allow": [
+                "metadata.google.internal"
+              ],
+              "host": "metadata.google.internal",
+              "expect": "deny:HostnameDenied"
+            }
+          ]
+        },
+        {
+          "id": "fetch-decompression-bounds",
+          "description": "Decompression output cap, ratio ceiling past threshold, threshold exception, and proxy posture (M28-007-D/M28-008-D)",
+          "cases": [
+            {
+              "op": "decompress",
+              "compressed": 2048,
+              "output": 2048000,
+              "expect": "allow"
+            },
+            {
+              "op": "decompress",
+              "compressed": 2048,
+              "output": 2048001,
+              "expect": "deny:DecompressionBomb"
+            },
+            {
+              "op": "decompress",
+              "compressed": 4,
+              "output": 4000,
+              "expect": "allow"
+            },
+            {
+              "op": "decompress",
+              "compressed": 1024,
+              "output": 20971520,
+              "expect": "deny:DecompressedTooLarge"
+            },
+            {
+              "op": "proxy_mode",
+              "expect": "disabled"
+            }
+          ]
         }
       ],
       "explicitSkips": [
@@ -641,6 +791,30 @@
           "reasonCode": "NO_BR_ZSTD",
           "reason": "Only opt-in gzip is negotiated and decompressed, bounded by the response body limit (ADR-0033 §8).",
           "deferredTo": "POST_M28"
+        },
+        {
+          "id": "wpt-fetch-live-dns",
+          "name": "Live DNS resolution against system resolvers",
+          "standardReference": "RFC 1035",
+          "reasonCode": "NETWORK_EGRESS_IN_TEST",
+          "reason": "Conformance runs hermetic; resolution semantics are pinned via injected-resolver fixtures (M28-008-A). Deterministic DNS fixtures are M28-010-B.",
+          "deferredTo": "M28-010-B"
+        },
+        {
+          "id": "wpt-fetch-live-tls",
+          "name": "Live TLS handshake to public internet hosts",
+          "standardReference": "RFC 8446",
+          "reasonCode": "NETWORK_EGRESS_IN_TEST",
+          "reason": "TLS verification is pinned hermetically via webpki-roots negative tests (M28-003); no conformance vector requires outbound network.",
+          "deferredTo": "M28-010-B"
+        },
+        {
+          "id": "wpt-fetch-proxy-connect",
+          "name": "Proxy CONNECT tunneling",
+          "standardReference": "RFC 7231 section 4.3.6",
+          "reasonCode": "NO_PROXY_BY_DESIGN",
+          "reason": "ProxyMode::Disabled is the only posture (M28-008-D, ADR-0033 section 5); there is no proxy behavior to conform to.",
+          "deferredTo": "POST_BETA"
         }
       ]
     }

@@ -5,7 +5,7 @@ Programmatic conformance baseline pinning Web Platform Tests (WPT) and WinterTC 
 ## Standards and Pinned Manifest
 
 Pinned test vectors and explicit skips are formally declared in [`conformance/web-api/wpt-manifest.json`](../../conformance/web-api/wpt-manifest.json).
-Manifest SHA-256: `aa4f59dabab4b91fc3ce20dbc260567e95e0555e2bff2c746bc934022e5ebf19` (Commit: `c02338b`).
+Manifest SHA-256: `750a2dde3af6ea7054ff394b6afecc31e08239d069fb29a0eae9f479cb1b834f` (Commit: `5d0314d`).
 
 | Capability | Upstream Standard | WinterTC Profile | Pinned Subset ID | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -13,7 +13,7 @@ Manifest SHA-256: `aa4f59dabab4b91fc3ce20dbc260567e95e0555e2bff2c746bc934022e5eb
 | `text_encoding` | WHATWG Encoding Standard | WinterTC Minimum Common Web Platform API (UTF-8 subset) | `wpt-textencoder-utf8`, `wpt-textdecoder-utf8` | PASS (9/9) |
 | `abort` | WHATWG DOM Standard — AbortController & AbortSignal | WinterTC Minimum Common Web Platform API | `wpt-abortcontroller-basic`, `wpt-abortsignal-static` | PASS (4/4) |
 | `crypto` | W3C Web Cryptography API — Random Subset | WinterTC Minimal Web Crypto Subset | `wpt-crypto-getrandomvalues`, `wpt-crypto-randomuuid` | PASS (6/6) |
-| `fetch` | WHATWG Fetch Standard | WinterTC Minimal Web Runtime — outbound fetch (M28) | `fetch-policy-security` | PASS (24/24) |
+| `fetch` | WHATWG Fetch Standard | WinterTC Minimal Web Runtime — outbound fetch (M28) | `fetch-policy-security`, `fetch-redirect-policy`, `fetch-egress-control`, `fetch-decompression-bounds` | PASS (45/45) |
 
 ## Explicit Skips & Rationale (M27-010-B)
 
@@ -41,6 +41,9 @@ To prevent advertising unsupported APIs while maintaining honesty regarding web 
 | `fetch` | `wpt-fetch-socks-proxy` | `NO_SOCKS_PROXY` | No ambient or explicit proxy support in beta (ADR-0033 §5); a proxy would move the trust boundary off the address classifier. | OUT_OF_SCOPE |
 | `fetch` | `wpt-fetch-cookies` | `NO_COOKIE_JAR` | No persistent cookie store ships; cross-origin redirect credential stripping IS enforced, but cookie persistence is deferred. | POST_M28 |
 | `fetch` | `wpt-fetch-br-zstd` | `NO_BR_ZSTD` | Only opt-in gzip is negotiated and decompressed, bounded by the response body limit (ADR-0033 §8). | POST_M28 |
+| `fetch` | `wpt-fetch-live-dns` | `NETWORK_EGRESS_IN_TEST` | Conformance runs hermetic; resolution semantics are pinned via injected-resolver fixtures (M28-008-A). Deterministic DNS fixtures are M28-010-B. | M28-010-B |
+| `fetch` | `wpt-fetch-live-tls` | `NETWORK_EGRESS_IN_TEST` | TLS verification is pinned hermetically via webpki-roots negative tests (M28-003); no conformance vector requires outbound network. | M28-010-B |
+| `fetch` | `wpt-fetch-proxy-connect` | `NO_PROXY_BY_DESIGN` | ProxyMode::Disabled is the only posture (M28-008-D, ADR-0033 section 5); there is no proxy behavior to conform to. | POST_BETA |
 
 ## Test Suites & Executable Proofs
 
@@ -51,6 +54,6 @@ To prevent advertising unsupported APIs while maintaining honesty regarding web 
 ## Acceptance Guardrails (M27-010)
 
 - **No unsupported API advertised**: Subsets strictly cover implemented primitives; no placeholder or unbacked APIs exist.
-- **Pass/fail/skip counts are reproducible**: 58 pinned test vectors (100% PASS) + 20 explicit skips documented with rationale.
+- **Pass/fail/skip counts are reproducible**: 79 pinned test vectors (100% PASS) + 23 explicit skips documented with rationale.
 - **Behavioral regressions block relevant gate**: Conformance suite runs under standard `./scripts/verify` and `bun test`.
 - **Reports link to exact runtime build**: Bound to `velqu-runtime` and `q-capabilities` at commit hash recorded in task ledger.

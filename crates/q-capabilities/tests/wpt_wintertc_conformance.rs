@@ -244,3 +244,230 @@ fn fetch_policy_manifest_vectors_execute_against_compiled_policy() {
     assert!(denied >= 15, "expected deny vectors, got {denied}");
     assert_eq!(allowed + denied, subset["cases"].as_array().unwrap().len());
 }
+
+/// M28-010-A: the M28-007/008 policy vector families (redirect limiter,
+/// egress control, decompression bounds) execute against the compiled
+/// policy — every manifest case drives the real API and every expected
+/// error maps to its exact typed variant.
+#[test]
+fn fetch_m28_policy_manifest_vectors_execute_against_compiled_policy() {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/web-api/wpt-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let fetch = &manifest["capabilities"]["fetch"];
+    let find = |id: &str| -> serde_json::Value {
+        fetch["pinnedSubsets"]
+            .as_array()
+            .expect("fetch subsets")
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap_or_else(|| panic!("{id} subset missing"))
+            .clone()
+    };
+
+    fn err_variant(err: &q_capabilities::FetchPolicyError) -> &'static str {
+        use q_capabilities::FetchPolicyError as E;
+        match err {
+            E::SchemeNotAllowed { .. } => "SchemeNotAllowed",
+            E::AddressDenied { .. } => "AddressDenied",
+            E::HostnameDenied { .. } => "HostnameDenied",
+            E::DowngradeRedirect { .. } => "DowngradeRedirect",
+            E::TooManyRedirects { .. } => "TooManyRedirects",
+            E::InvalidRedirectHops { .. } => "InvalidRedirectHops",
+            E::InvalidDeadline { .. } => "InvalidDeadline",
+            E::InvalidBodyLimit { .. } => "InvalidBodyLimit",
+            E::BodyTooLarge { .. } => "BodyTooLarge",
+            E::RedirectLoop { .. } => "RedirectLoop",
+            E::DecompressedTooLarge { .. } => "DecompressedTooLarge",
+            E::DecompressionBomb { .. } => "DecompressionBomb",
+        }
+    }
+
+    use q_capabilities::{
+        resolve_and_validate, DecompressionGuard, RedirectLimiter, RedirectOutcome,
+        MAX_FETCH_RESPONSE_BODY_BYTES,
+    };
+    use std::net::IpAddr;
+
+    let mut ran = 0usize;
+
+    // ---- fetch-redirect-policy ----
+    let redirect_subset = find("fetch-redirect-policy");
+    let cases = redirect_subset["cases"].as_array().unwrap();
+    for case in cases {
+        let expect = case["expect"].as_str().unwrap();
+        let mut lim = RedirectLimiter::new(q_capabilities::FetchPolicy::default());
+        let outcome: Result<&'static str, String> = match case["op"].as_str().unwrap() {
+            "follow" => {
+                match lim.evaluate(case["from"].as_str().unwrap(), case["to"].as_str().unwrap()) {
+                    Ok(RedirectOutcome::Follow) => Ok(""),
+                    Ok(RedirectOutcome::Surface) => Err("unexpected surface".into()),
+                    Err(e) => Err(err_variant(&e).to_string()),
+                }
+            }
+            "ceiling" => {
+                let hops = case["hops"].as_u64().unwrap() as u32;
+                let mut result = Ok(());
+                for hop in 1..=hops {
+                    result = lim
+                        .evaluate(
+                            &format!("https://a.test/r{}", hop - 1),
+                            &format!("https://a.test/r{hop}"),
+                        )
+                        .map(|_| ());
+                    if result.is_err() {
+                        break;
+                    }
+                }
+                result.map(|_| "").map_err(|e| err_variant(&e).to_string())
+            }
+            "loop" => {
+                let _ = lim.evaluate("https://a.test/x", "https://b.test/y");
+                let _ = lim.evaluate("https://b.test/y", "https://a.test/x");
+                lim.evaluate("https://a.test/x", "https://b.test/y")
+                    .map(|_| "")
+                    .map_err(|e| err_variant(&e).to_string())
+            }
+            "manual" => {
+                let policy = q_capabilities::FetchPolicy::default()
+                    .with_redirect_policy(q_capabilities::RedirectPolicy::Manual);
+                let mut manual = RedirectLimiter::new(policy);
+                match manual.evaluate("https://a.test/", "https://b.test/") {
+                    Ok(RedirectOutcome::Surface) => Ok("surface"),
+                    _ => Err("expected surface".into()),
+                }
+            }
+            other => panic!("unknown redirect op: {other}"),
+        };
+        match (outcome.as_deref(), expect) {
+            (Ok(""), "follow") | (Ok(""), "allow") => {}
+            (Ok("surface"), "surface") => {}
+            (Err(variant), e) if e.strip_prefix("deny:") == Some(variant) => {}
+            (r, e) => panic!(
+                "redirect vector mismatch: op {} expected {e}, got {:?}",
+                case["op"].as_str().unwrap(),
+                r
+            ),
+        }
+        ran += 1;
+    }
+
+    // ---- fetch-egress-control ----
+    let egress_subset = find("fetch-egress-control");
+    let cases = egress_subset["cases"].as_array().unwrap();
+    for case in cases {
+        let expect = case["expect"].as_str().unwrap();
+        let op = case["op"].as_str().unwrap();
+        let result: Result<&'static str, String> = match op {
+            "resolve_metadata_name" | "resolve_mixed" | "resolve_ok" | "resolve_empty" => {
+                let policy = q_capabilities::FetchPolicy::default();
+                let addrs: Vec<IpAddr> = case["addrs"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|v| v.as_str().unwrap().parse().unwrap())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let static_addrs: &'static [IpAddr] = Box::leak(addrs.into_boxed_slice());
+                let mut resolve =
+                    move |_host: &str| Ok::<Vec<IpAddr>, String>(static_addrs.to_vec());
+                resolve_and_validate(&policy, case["host"].as_str().unwrap(), &mut resolve)
+                    .map(|_| "")
+                    .map_err(|e| err_variant(&e).to_string())
+            }
+            "resolve_ip_literal" => {
+                let policy = q_capabilities::FetchPolicy::default();
+                let mut resolve = |_host: &str| panic!("IP literals must not reach the resolver");
+                resolve_and_validate(&policy, case["host"].as_str().unwrap(), &mut resolve)
+                    .map(|_| "")
+                    .map_err(|e| err_variant(&e).to_string())
+            }
+            "config_deny" | "config_allow" | "config_deny_wins" => {
+                let mut policy = q_capabilities::FetchPolicy::default();
+                if let Some(deny) = case["deny"].as_array() {
+                    let owned: Vec<String> = deny
+                        .iter()
+                        .map(|v| v.as_str().unwrap().to_string())
+                        .collect();
+                    policy = policy.with_deny_hosts(owned);
+                }
+                if let Some(allow) = case["allow"].as_array() {
+                    let owned: Vec<String> = allow
+                        .iter()
+                        .map(|v| v.as_str().unwrap().to_string())
+                        .collect();
+                    policy = policy.with_allow_hosts(owned);
+                }
+                policy
+                    .check_host_config(case["host"].as_str().unwrap())
+                    .map(|_| "")
+                    .map_err(|e| err_variant(&e).to_string())
+            }
+            // The safe default composes BEFORE configuration: run the full
+            // connect gate so allow-listing a metadata name still denies by
+            // name (and the resolver is never consulted).
+            "config_metadata_allow_cannot_reenable" => {
+                let policy = q_capabilities::FetchPolicy::default()
+                    .with_allow_hosts([case["allow"][0].as_str().unwrap()]);
+                let called = std::cell::Cell::new(false);
+                let resolve = |_host: &str| {
+                    called.set(true);
+                    Ok::<Vec<IpAddr>, String>(vec!["93.184.216.34".parse().unwrap()])
+                };
+                let out = resolve_and_validate(&policy, case["host"].as_str().unwrap(), resolve)
+                    .map(|_| "");
+                assert!(!called.get(), "metadata denial must precede resolution");
+                out.map_err(|e| err_variant(&e).to_string())
+            }
+            other => panic!("unknown egress op: {other}"),
+        };
+        match (result.as_deref(), expect) {
+            (Ok(""), "allow") => {}
+            (Err(variant), e) if e.strip_prefix("deny:") == Some(variant) => {}
+            (r, e) => panic!("egress vector mismatch: op {op} expected {e}, got {:?}", r),
+        }
+        ran += 1;
+    }
+
+    // ---- fetch-decompression-bounds ----
+    let decompression_subset = find("fetch-decompression-bounds");
+    let cases = decompression_subset["cases"].as_array().unwrap();
+    for case in cases {
+        let expect = case["expect"].as_str().unwrap();
+        let op = case["op"].as_str().unwrap();
+        let result: Result<&'static str, String> = match op {
+            "decompress" => {
+                let mut g = DecompressionGuard::new(MAX_FETCH_RESPONSE_BODY_BYTES);
+                g.compressed_input(case["compressed"].as_u64().unwrap() as usize);
+                g.decompressed_output(case["output"].as_u64().unwrap() as usize)
+                    .map(|_| "")
+                    .map_err(|e| err_variant(&e).to_string())
+            }
+            "proxy_mode" => {
+                if q_capabilities::ProxyMode::Disabled
+                    == q_capabilities::FetchPolicy::default().proxy_mode()
+                {
+                    Ok("")
+                } else {
+                    Err("proxy not disabled".into())
+                }
+            }
+            other => panic!("unknown decompression op: {other}"),
+        };
+        match (result.as_deref(), expect) {
+            (Ok(""), "allow") => {}
+            (Ok(""), "disabled") => {}
+            (Err(variant), e) if e.strip_prefix("deny:") == Some(variant) => {}
+            (r, e) => panic!(
+                "decompression vector mismatch: op {op} expected {e}, got {:?}",
+                r
+            ),
+        }
+        ran += 1;
+    }
+
+    // The manifest must have delivered every new vector to this executor.
+    assert_eq!(ran, 21, "expected 21 M28 policy manifest vectors");
+}

@@ -928,6 +928,12 @@ impl FetchPolicy {
         }
     }
 
+    /// Set the redirect policy (builder-style).
+    pub fn with_redirect_policy(mut self, redirect: RedirectPolicy) -> Self {
+        self.redirect = redirect;
+        self
+    }
+
     /// Add normalized hostnames to the egress deny list (M28-008-C).
     /// Builder-style; entries are lowercased and trailing dots stripped.
     /// Entries beyond [`MAX_EGRESS_HOST_ENTRIES`] are dropped (bounded

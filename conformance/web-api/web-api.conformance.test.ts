@@ -227,6 +227,8 @@ describe("Web API Standards Conformance (M27-010, M28-004)", () => {
         "NO_SOCKS_PROXY",
         "NO_COOKIE_JAR",
         "NO_BR_ZSTD",
+        "NETWORK_EGRESS_IN_TEST",
+        "NO_PROXY_BY_DESIGN",
       ]);
       for (const cap of Object.values(manifest.capabilities) as any[]) {
         for (const skip of cap.explicitSkips) {
@@ -263,7 +265,7 @@ describe("Web API Standards Conformance (M27-010, M28-004)", () => {
       for (const skip of fetch.explicitSkips) {
         expect(skip.standardReference).toBeDefined();
         expect(skip.reason.length).toBeGreaterThan(10);
-        expect(["OUT_OF_SCOPE", "POST_M28", "POST_BETA", "GA_TRACK"]).toContain(skip.deferredTo);
+        expect(["OUT_OF_SCOPE", "POST_M28", "POST_BETA", "GA_TRACK", "M28-010-B"]).toContain(skip.deferredTo);
       }
     });
   });
