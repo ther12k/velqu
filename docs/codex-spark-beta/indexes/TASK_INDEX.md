@@ -385,7 +385,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-007-C](../tasks/05_m28_native_fetch/M28-007-C-define-credential-header-stripping.md) | P1 | implement | PASS | M28-007-B | Define credential/header stripping |
 | [M28-007-D](../tasks/05_m28_native_fetch/M28-007-D-bound-decompression-ratio-and-output.md) | P1 | implement | PASS | M28-007-C | Bound decompression ratio and output |
 | [M28-007-V](../tasks/05_m28_native_fetch/M28-007-V-verify-implement-redirect-and-compression-policy.md) | P1 | verify | PASS | M28-007-A, M28-007-B, M28-007-C, M28-007-D | Verify Implement redirect and compression policy |
-| [M28-007-Z](../tasks/05_m28_native_fetch/M28-007-Z-package-evidence-for-implement-redirect-and-compression-policy.md) | P1 | evidence | TODO | M28-007-V | Package evidence for Implement redirect and compression policy |
+| [M28-007-Z](../tasks/05_m28_native_fetch/M28-007-Z-package-evidence-for-implement-redirect-and-compression-policy.md) | P1 | evidence | PASS | M28-007-V | Package evidence for Implement redirect and compression policy |
 | [M28-008-A](../tasks/05_m28_native_fetch/M28-008-A-resolve-and-validate-addresses-before-connect.md) | P0 | implement | TODO | M28-001-Z, M28-003-Z, M28-007-Z | Resolve and validate addresses before connect |
 | [M28-008-B](../tasks/05_m28_native_fetch/M28-008-B-revalidate-redirects-and-connection-targets.md) | P0 | implement | TODO | M28-008-A | Revalidate redirects and connection targets |
 | [M28-008-C](../tasks/05_m28_native_fetch/M28-008-C-support-allow-deny-configuration.md) | P0 | implement | TODO | M28-008-B | Support allow/deny configuration |
