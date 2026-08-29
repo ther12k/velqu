@@ -507,11 +507,65 @@ impl RedirectLimiter {
         Ok(())
     }
 
+    /// Record the initial request target as visited (M28-008-B): a redirect
+    /// chain that leads back to the origin URL is a loop and must fail via
+    /// the typed `RedirectLoop` path. Does not consume a hop.
+    pub fn seed_target(&mut self, url: &str) {
+        if !self.visited.iter().any(|u| u == url) {
+            self.visited.push(url.to_string());
+        }
+    }
+
     /// Commit a passing hop (only called after every check succeeded).
     fn commit_hop(&mut self, to_url: &str) {
         self.hops += 1;
         self.visited.push(to_url.to_string());
     }
+
+    /// Atomic redirect hop (M28-008-B): the executor's one-call revalidation
+    /// gate. URL-level checks run first (scheme allowlist, https→http
+    /// downgrade denial, hop ceiling, loop detection); the hop target's host
+    /// is then resolved and EVERY address validated against trust mode via
+    /// [`resolve_and_validate`] — including metadata-by-name denial for
+    /// redirect targets; only after all of that is hop state committed, so
+    /// a resolution failure leaves the limiter exactly as it was. On
+    /// [`RedirectOutcome::Follow`] the returned `pinned` set is the dial
+    /// set: the connector uses these addresses and never re-resolves.
+    pub fn follow_hop<F>(
+        &mut self,
+        from_url: &str,
+        to_url: &str,
+        resolve: F,
+    ) -> Result<FollowedHop, FetchPolicyError>
+    where
+        F: FnMut(&str) -> Result<Vec<IpAddr>, String>,
+    {
+        if matches!(self.policy.redirect, RedirectPolicy::Manual) {
+            return Ok(FollowedHop {
+                outcome: RedirectOutcome::Surface,
+                pinned: Vec::new(),
+            });
+        }
+        self.check_hop_urls(from_url, to_url)?;
+        let pinned = resolve_and_validate(&self.policy, url_host(to_url), resolve)?;
+        self.commit_hop(to_url);
+        Ok(FollowedHop {
+            outcome: RedirectOutcome::Follow,
+            pinned,
+        })
+    }
+}
+
+/// Result of an atomic [`RedirectLimiter::follow_hop`] (M28-008-B): the
+/// redirect decision plus — when followed — the validated, dial-ready
+/// address pin set for the next hop.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FollowedHop {
+    /// Follow the redirect (dial `pinned`) or surface the 3xx.
+    pub outcome: RedirectOutcome,
+    /// Validated addresses to dial, in resolution order. Empty for
+    /// `Surface` outcomes.
+    pub pinned: Vec<IpAddr>,
 }
 
 /// Decompression-ratio ceiling: decompressed output may be at most this
@@ -1920,5 +1974,139 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn follow_hop_resolves_and_validates_atomically() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // Hop 1: public target resolves and validates; pin set returned.
+        let mut resolve = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        let hop = lim
+            .follow_hop("https://a.test/start", "https://b.test/next", &mut resolve)
+            .expect("public hop follows");
+        assert_eq!(hop.outcome, RedirectOutcome::Follow);
+        assert_eq!(hop.pinned, vec![public_ip()]);
+        assert_eq!(lim.hops(), 1);
+
+        // Hop 2: resolution FAILS after URL checks — the limiter state must
+        // remain exactly as before the attempt (atomicity).
+        let mut failing =
+            |_host: &str| -> Result<Vec<IpAddr>, String> { Err("servfail".to_string()) };
+        let err = lim
+            .follow_hop("https://b.test/next", "https://c.test/final", &mut failing)
+            .unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
+            if reason == "servfail")
+        );
+        assert_eq!(lim.hops(), 1, "failed hop must not advance state");
+
+        // Hop 3: a valid hop still follows after the failed attempt.
+        let mut resolve2 = |_host: &str| {
+            Ok::<Vec<IpAddr>, String>(vec!["2606:2800:220:1:248:1893:25c8:1946".parse().unwrap()])
+        };
+        let hop = lim
+            .follow_hop("https://b.test/next", "https://c.test/final", &mut resolve2)
+            .expect("retry with working DNS follows");
+        assert_eq!(hop.outcome, RedirectOutcome::Follow);
+        assert_eq!(lim.hops(), 2);
+    }
+
+    #[test]
+    fn redirect_targets_deny_metadata_by_name_too() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // The resolver must never be consulted: the name denies first.
+        let called = std::cell::Cell::new(false);
+        let resolve = |_host: &str| {
+            called.set(true);
+            Ok::<Vec<IpAddr>, String>(vec![public_ip()])
+        };
+        let err = lim
+            .follow_hop(
+                "https://a.test/",
+                "https://metadata.google.internal/computeMetadata/v1/",
+                &resolve,
+            )
+            .unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { host, reason }
+            if host == "metadata.google.internal" && reason.contains("denied by name"))
+        );
+        assert!(!called.get());
+        assert_eq!(lim.hops(), 0);
+    }
+
+    #[test]
+    fn follow_hop_pin_set_is_the_only_dial_set() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // A rebinding-flavored answer (public + private) is denied; the
+        // pinned set on success contains only validated addresses.
+        let mut mixed = |_host: &str| {
+            Ok::<Vec<IpAddr>, String>(vec![public_ip(), "192.168.1.1".parse().unwrap()])
+        };
+        let err = lim
+            .follow_hop("https://a.test/", "https://b.test/x", &mut mixed)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::AddressDenied {
+                class: AddressClass::Private,
+                ..
+            }
+        ));
+        let mut clean = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        let hop = lim
+            .follow_hop("https://a.test/", "https://b.test/x", &mut clean)
+            .expect("clean answer follows");
+        assert_eq!(hop.pinned.len(), 1);
+        assert!(lim.hops() == 1);
+    }
+
+    #[test]
+    fn manual_gate_surfaces_without_any_resolution() {
+        let policy = FetchPolicy {
+            redirect: RedirectPolicy::Manual,
+            ..FetchPolicy::default()
+        };
+        let mut lim = RedirectLimiter::new(policy);
+        let called = std::cell::Cell::new(false);
+        let resolve = |_host: &str| {
+            called.set(true);
+            Ok::<Vec<IpAddr>, String>(vec![public_ip()])
+        };
+        let hop = lim
+            .follow_hop("https://a.test/", "https://b.test/", &resolve)
+            .expect("manual policy surfaces the 3xx");
+        assert_eq!(hop.outcome, RedirectOutcome::Surface);
+        assert!(hop.pinned.is_empty());
+        assert!(!called.get());
+        assert_eq!(lim.hops(), 0);
+    }
+
+    #[test]
+    fn full_fetch_sequence_composes_open_and_hops() {
+        // The executor shape: open the origin target, then follow hops.
+        let policy = FetchPolicy::default();
+        let mut lim = RedirectLimiter::new(policy.clone());
+        // Open: validate the ORIGINAL target (resolve_and_validate path)
+        // and seed it so a redirect back to it is a loop.
+        let mut resolver = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        let pinned = resolve_and_validate(&policy, url_host("https://a.test/"), &mut resolver)
+            .expect("origin target validates");
+        assert_eq!(pinned, vec![public_ip()]);
+        lim.seed_target("https://a.test/");
+        // Hop 1: same-origin redirect (path-only) — keeps following.
+        let mut r = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        let hop = lim
+            .follow_hop("https://a.test/a", "https://a.test/b", &mut r)
+            .expect("same-origin hop follows");
+        assert_eq!(hop.outcome, RedirectOutcome::Follow);
+        // Hop 2: returning to the ORIGINAL target is a typed loop denial.
+        let mut r2 = |_host: &str| Ok::<Vec<IpAddr>, String>(vec![public_ip()]);
+        let err = lim
+            .follow_hop("https://a.test/b", "https://a.test/", &mut r2)
+            .unwrap_err();
+        assert!(matches!(err, FetchPolicyError::RedirectLoop { .. }));
+        assert_eq!(lim.hops(), 1, "loop denial leaves state unchanged");
     }
 }
