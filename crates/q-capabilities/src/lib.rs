@@ -30,6 +30,7 @@ pub mod inventory;
 pub mod operations;
 pub mod resolver;
 pub mod sdk;
+pub mod shared_handles;
 pub mod shutdown;
 pub mod stream_buffer;
 pub mod text_encoding;
@@ -69,6 +70,7 @@ pub use identity::{
 pub use inventory::{CapabilityInventory, InventoryEntry, InventoryError};
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
 pub use resolver::{resolve_closure, DependencyDag};
+pub use shared_handles::SharedAcrossWorkers;
 pub use shutdown::{
     begin_shutdown, drain_step, finish_shutdown, DrainOutcome, ShutdownError, SHUTDOWN_BUDGET_MS,
 };
