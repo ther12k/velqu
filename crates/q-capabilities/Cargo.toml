@@ -11,3 +11,7 @@ serde_json = { workspace = true }
 url = { workspace = true }
 percent-encoding = { workspace = true }
 getrandom = { workspace = true }
+
+[dev-dependencies]
+# Test-only: drives the M28-006-B slow-consumer backpressure pump tests.
+tokio = { workspace = true }
