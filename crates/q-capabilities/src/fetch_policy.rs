@@ -486,6 +486,94 @@ impl RedirectLimiter {
     }
 }
 
+/// Credential-bearing headers (lowercased) that are **stripped when a
+/// redirect crosses origins** (M28-007-C, ADR-0033 §4; aligned with the
+/// WHATWG fetch HTTP-redirect fetch step). These never leak cross-origin;
+/// same-origin redirects keep them.
+pub const CREDENTIAL_REDIRECT_HEADERS: &[&str] =
+    &["authorization", "cookie", "cookie2", "proxy-authorization"];
+
+/// Compute the normalized origin of an absolute URL:
+/// `lowercase(scheme)://lowercase(host)[:port]`, with the scheme's default
+/// port elided (`http` 80, `https` 443) so `https://a:443` equals
+/// `https://a`. `None` on malformed input (no scheme or no host) — callers
+/// treat `None` as cross-origin and strip, fail closed.
+pub fn url_origin(url: &str) -> Option<String> {
+    let scheme = url_scheme(url);
+    if scheme.is_empty() {
+        return None;
+    }
+    let host = url_host(url);
+    if host.is_empty() {
+        return None;
+    }
+    // Recover the port exactly as written: the authority is between the
+    // scheme delimiter and the first path/query/fragment separator.
+    let rest = url.split_once("://").map(|(_, rest)| rest).unwrap_or("");
+    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..authority_end];
+    // A bracketed IPv6 authority never carries a bare port suffix in this
+    // simplified parse; its colon pair belongs to the address.
+    let port = if authority.starts_with('[') {
+        None
+    } else {
+        authority.rsplit_once(':').map(|(_, p)| p)
+    };
+    let default_port = match scheme.to_ascii_lowercase().as_str() {
+        "http" => Some("80"),
+        "https" => Some("443"),
+        _ => None,
+    };
+    let port_out = match (port, default_port) {
+        (Some(p), Some(d)) if p == d => String::new(),
+        (Some(p), _) => format!(":{p}"),
+        (None, _) => String::new(),
+    };
+    Some(format!(
+        "{}://{}{}",
+        scheme.to_ascii_lowercase(),
+        host.to_ascii_lowercase(),
+        port_out
+    ))
+}
+
+/// True when a redirect from `from_url` to `to_url` crosses origins
+/// (scheme, host, or effective port differ). Malformed URLs on either side
+/// count as cross-origin: stripping is the fail-closed direction.
+pub fn is_cross_origin_redirect(from_url: &str, to_url: &str) -> bool {
+    match (url_origin(from_url), url_origin(to_url)) {
+        (Some(a), Some(b)) => a != b,
+        _ => true,
+    }
+}
+
+/// Case-insensitive check whether a header name is in the credential set.
+pub fn is_credential_header(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    CREDENTIAL_REDIRECT_HEADERS.contains(&lower.as_str())
+}
+
+/// Headers that survive a redirect hop from `from_url` to `to_url`, given
+/// the current hop's header names. Cross-origin hops (and malformed URLs)
+/// drop every credential header; same-origin hops keep all names. Returns
+/// the surviving names in input order, deduplicated case-insensitively.
+pub fn headers_surviving_redirect<'a, I>(from_url: &str, to_url: &str, names: I) -> Vec<String>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let cross_origin = is_cross_origin_redirect(from_url, to_url);
+    let mut survived: Vec<String> = Vec::new();
+    for name in names {
+        if cross_origin && is_credential_header(name) {
+            continue;
+        }
+        if !survived.iter().any(|s| s.eq_ignore_ascii_case(name)) {
+            survived.push(name.to_string());
+        }
+    }
+    survived
+}
+
 /// Extract the scheme prefix of an absolute URL (`"https"` from
 /// `"https://host/x"`). Empty when no scheme delimiter exists, which the
 /// scheme allowlist rejects fail closed. Case handling is
@@ -1375,5 +1463,100 @@ mod tests {
             err,
             FetchPolicyError::TooManyRedirects { max_hops: 1 }
         ));
+    }
+
+    #[test]
+    fn cross_origin_hops_strip_credential_headers() {
+        // Host change: credentials dropped, everything else survives.
+        let hop = headers_surviving_redirect(
+            "https://a.test/start",
+            "https://b.test/next",
+            ["Authorization", "cookie", "Content-Type", "X-Custom"],
+        );
+        assert_eq!(hop, ["Content-Type", "X-Custom"]);
+
+        // Scheme change (https -> http): cross-origin even for same host.
+        let hop = headers_surviving_redirect(
+            "https://a.test/x",
+            "http://a.test/y",
+            ["Authorization", "Accept"],
+        );
+        assert_eq!(hop, ["Accept"]);
+
+        // Port change: cross-origin.
+        let hop = headers_surviving_redirect(
+            "https://a.test:8443/x",
+            "https://a.test/y",
+            ["Proxy-Authorization", "Accept"],
+        );
+        assert_eq!(hop, ["Accept"]);
+    }
+
+    #[test]
+    fn same_origin_hops_keep_credentials() {
+        let hop = headers_surviving_redirect(
+            "https://a.test/start",
+            "https://a.test/next?q=1",
+            ["Authorization", "Cookie", "Content-Type"],
+        );
+        assert_eq!(hop, ["Authorization", "Cookie", "Content-Type"]);
+        // Default port elision: https://a.test == https://a.test:443.
+        let hop = headers_surviving_redirect(
+            "https://a.test:443/x",
+            "https://a.test/y",
+            ["Authorization"],
+        );
+        assert_eq!(hop, ["Authorization"]);
+        assert!(!is_cross_origin_redirect(
+            "http://a.test:80/",
+            "http://a.test/"
+        ));
+        assert!(is_cross_origin_redirect(
+            "http://a.test:8080/",
+            "http://a.test/"
+        ));
+    }
+
+    #[test]
+    fn credential_header_detection_is_case_insensitive_and_closed() {
+        for name in [
+            "Authorization",
+            "AUTHORIZATION",
+            "Cookie",
+            "COOKIE2",
+            "proxy-authorization",
+        ] {
+            assert!(
+                is_credential_header(name),
+                "{name} must be a credential header"
+            );
+        }
+        for name in [
+            "content-type",
+            "X-Custom",
+            "authorizationx",
+            "www-authenticate",
+        ] {
+            assert!(!is_credential_header(name), "{name} must survive");
+        }
+        // The set itself is the closed policy surface (lowercased).
+        assert_eq!(
+            CREDENTIAL_REDIRECT_HEADERS,
+            &["authorization", "cookie", "cookie2", "proxy-authorization"]
+        );
+    }
+
+    #[test]
+    fn malformed_redirect_targets_fail_closed_to_stripping() {
+        // Malformed target origin: cross-origin by definition -> strip.
+        assert!(is_cross_origin_redirect("https://a.test/x", "not-a-url"));
+        assert!(is_cross_origin_redirect("garbage", "https://a.test/x"));
+        // And the surviving set drops credentials for that hop.
+        let hop = headers_surviving_redirect(
+            "https://a.test/x",
+            "not-a-url",
+            ["Authorization", "Accept"],
+        );
+        assert_eq!(hop, ["Accept"]);
     }
 }
