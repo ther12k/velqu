@@ -22,6 +22,7 @@ pub mod compat;
 pub mod console;
 pub mod crypto;
 pub mod diagnostics;
+pub mod dispatch;
 pub mod fetch_metrics;
 pub mod fetch_policy;
 pub mod harness;
@@ -47,6 +48,10 @@ pub use console::{
 };
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
+pub use dispatch::{
+    BoundedWorkerQueue, QueueError, QueueStats, DEFAULT_WORKER_QUEUE_CAPACITY,
+    MAX_WORKER_QUEUE_CAPACITY,
+};
 pub use fetch_metrics::{FetchMetrics, FetchMetricsCollector, FetchMetricsSnapshot, FetchStage};
 pub use fetch_policy::{
     headers_surviving_redirect, is_credential_header, is_cross_origin_redirect,
