@@ -1,0 +1,11 @@
+{
+  "name": "velqu-realworld-w4-candidates",
+  "private": true,
+  "version": "0.1.0",
+  "description": "W4 controlled-latency proxy candidates (M28-011-A): each proxies /api/bench/io?ms=N to the controlled upstream via its runtime's native fetch. Runtime pairing is pinned in versions.json.",
+  "dependencies": {
+    "elysia": "2.0.0-beta.4",
+    "hono": "4.13.5",
+    "fastify": "5.12.1"
+  }
+}

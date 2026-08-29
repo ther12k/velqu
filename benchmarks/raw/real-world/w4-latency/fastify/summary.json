@@ -1,0 +1,123 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:04:47.557Z",
+  "baseUrl": "http://127.0.0.1:44071",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "092efc3a047b20136b146043c9d693166bd04618",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "88a33a052f7efaed2e878cce2a57cd4c2bb3c9aef1f97d29e62e2ff2c9f51e33",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "W4_1ms",
+      "concurrency": 1,
+      "totalRequests": 1214,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 404.67,
+      "p50Us": 2308,
+      "p95Us": 3382,
+      "p99Us": 5230,
+      "maxUs": 60578
+    },
+    {
+      "workload": "W4_1ms",
+      "concurrency": 10,
+      "totalRequests": 7785,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 2595,
+      "p50Us": 3230,
+      "p95Us": 7539,
+      "p99Us": 11602,
+      "maxUs": 35629
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 1,
+      "totalRequests": 482,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 160.67,
+      "p50Us": 6129,
+      "p95Us": 6752,
+      "p99Us": 8331,
+      "maxUs": 12372
+    },
+    {
+      "workload": "W4_5ms",
+      "concurrency": 10,
+      "totalRequests": 4699,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1566.33,
+      "p50Us": 6138,
+      "p95Us": 7612,
+      "p99Us": 11942,
+      "maxUs": 25179
+    },
+    {
+      "workload": "W4_10ms",
+      "concurrency": 1,
+      "totalRequests": 270,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 90,
+      "p50Us": 11021,
+      "p95Us": 11353,
+      "p99Us": 14176,
+      "maxUs": 18837
+    },
+    {
+      "workload": "W4_10ms",
+      "concurrency": 10,
+      "totalRequests": 2593,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 864.33,
+      "p50Us": 11459,
+      "p95Us": 12801,
+      "p99Us": 15449,
+      "maxUs": 19917
+    },
+    {
+      "workload": "W4_25ms",
+      "concurrency": 1,
+      "totalRequests": 113,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 37.67,
+      "p50Us": 26239,
+      "p95Us": 29116,
+      "p99Us": 30874,
+      "maxUs": 30920
+    },
+    {
+      "workload": "W4_25ms",
+      "concurrency": 10,
+      "totalRequests": 1113,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 371,
+      "p50Us": 26594,
+      "p95Us": 29382,
+      "p99Us": 33484,
+      "maxUs": 39635
+    }
+  ],
+  "raw": "../raw/real-world/w4-latency/fastify/raw.jsonl"
+}
