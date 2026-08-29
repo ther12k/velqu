@@ -4,7 +4,7 @@ parent_task: M28-007
 milestone: M28
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -127,3 +127,29 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-007-V) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-007-v (squash-merged; see git log for final hash)
+- Closes: #346
+
+### Acceptance-criterion mapping (parent M28-007 guardrails)
+
+1. **Redirect loops fail boundedly** — verified: hop ceiling (`TooManyRedirects` at the policy `max_hops`, default `MAX_REDIRECT_HOPS` = 20) as the hard backstop plus typed `RedirectLoop` fast-path over the bounded visited set. Tests: `redirect_limiter_follows_up_to_ceiling_then_fails_typed`, `redirect_loop_fails_fast_and_typed`, `custom_hop_limit_is_respected_exactly`, `empty_resolution_and_ceiling_precede_address_checks` (ceiling fires before DNS work).
+2. **Sensitive headers never leak cross-origin** — verified: closed `CREDENTIAL_REDIRECT_HEADERS` set stripped on every origin change (scheme/host/effective-port), same-origin keeps them, malformed URLs fail closed to stripping. Tests: `cross_origin_hops_strip_credential_headers`, `same_origin_hops_keep_credentials`, `credential_header_detection_is_case_insensitive_and_closed`, `malformed_redirect_targets_fail_closed_to_stripping`.
+3. **Zip-bomb style expansion is limited** — verified: dual bound — output cap at the response body limit and 1000:1 ratio ceiling past the 1 KiB input threshold, per-step push accounting where a failed step accepts no bytes. Tests: `decompression_output_is_capped_typed`, `zip_bomb_ratio_is_bounded_typed`, `small_payloads_are_not_ratio_limited_below_threshold`, `bomb_fixture_output_cap_fires_before_ratio_when_tighter`, `guard_from_policy_matches_compression_posture`.
+4. **Observed URL/status follows documented semantics** — verified: every hop (URL checks, SSRF/DNS revalidation) goes through the ONE policy path (`FetchPolicy::check_redirect_hop` + `check_resolved`); `Manual` policy surfaces the 3xx with zero hop consumption; denied hops leave limiter state unchanged. Tests: `manual_policy_surfaces_3xx_without_following`, `ssrf_policy_is_reapplied_on_every_hop`, `redirect_target_resolving_partial_loopback_is_denied`, `loopback_trust_still_denies_metadata_space_on_hops`, `scheme_and_downgrade_denials_flow_through_limiter`.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 167 unit + 4 backpressure + 8 WPT passed
+- `cargo test -p q-engine-quickjs` → 18 unit + 101 engine passed
+- `cargo test -p q-http` → 4+6+1 passed; `-p q-bridge` → 11 passed
+- `cargo test -p velqu-runtime` → 8+5+31 passed
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary reproduced deterministically (`ef142331…` matches the manifest refreshed in M28-006-D — M28-007 policy additions are dead-code-eliminated until the executor wires in)
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of M28-007-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
