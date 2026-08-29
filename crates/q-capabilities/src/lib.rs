@@ -46,9 +46,10 @@ pub use console::{
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
 pub use fetch_policy::{
-    headers_surviving_redirect, is_credential_header, is_cross_origin_redirect, url_origin,
-    DecompressionGuard, RedirectLimiter, RedirectOutcome, CREDENTIAL_REDIRECT_HEADERS,
-    DECOMPRESSION_RATIO_THRESHOLD, MAX_BODY_HELPER_BYTES, MAX_DECOMPRESSION_RATIO,
+    headers_surviving_redirect, is_credential_header, is_cross_origin_redirect,
+    is_metadata_hostname, resolve_and_validate, url_origin, DecompressionGuard, RedirectLimiter,
+    RedirectOutcome, CREDENTIAL_REDIRECT_HEADERS, DECOMPRESSION_RATIO_THRESHOLD,
+    HOSTNAME_METADATA_ENDPOINTS, MAX_BODY_HELPER_BYTES, MAX_DECOMPRESSION_RATIO,
 };
 pub use fetch_policy::{
     is_untrusted_forward_header, AddressClass, CompressionPolicy, FetchPolicy, FetchPolicyError,

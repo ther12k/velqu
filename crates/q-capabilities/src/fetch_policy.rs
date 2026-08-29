@@ -598,6 +598,66 @@ impl DecompressionGuard {
     }
 }
 
+/// Hostnames (lowercased) that serve cloud instance metadata. Denied by
+/// NAME before any resolution (M28-008-A, ADR-0033 §2) — defense in depth
+/// alongside the address-space denial: a hostname must never earn its way
+/// to the resolver when the name itself declares metadata intent.
+pub const HOSTNAME_METADATA_ENDPOINTS: &[&str] =
+    &["metadata.google.internal", "instance-data", "metadata"];
+
+/// Case-insensitive metadata-hostname check with trailing-dot (FQDN)
+/// normalization: `Metadata.Google.Internal.` is denied exactly like the
+/// bare form.
+pub fn is_metadata_hostname(host: &str) -> bool {
+    let mut lower = host.trim_end_matches('.').to_ascii_lowercase();
+    lower.truncate(253); // longest legal FQDN; keeps truncate cheap and bounded
+    HOSTNAME_METADATA_ENDPOINTS.contains(&lower.as_str())
+}
+
+/// Resolve `host` and validate EVERY resolved address against the policy
+/// trust mode BEFORE anything connects (M28-008-A, ADR-0033 §2/§3). The
+/// resolver is injected so the real executor plugs DNS in and tests plug
+/// deterministic fakes; the returned address set is the pin set — the
+/// connector must dial exactly these addresses and never re-resolve, so a
+/// first-resolve-public/second-resolve-private rebinding window cannot
+/// open. IP-literal hosts skip the resolver entirely and are validated
+/// directly. Ordering: hostname denial (metadata by name) -> resolution ->
+/// per-address trust-mode validation; every failure is typed.
+pub fn resolve_and_validate<F>(
+    policy: &FetchPolicy,
+    host: &str,
+    mut resolve: F,
+) -> Result<Vec<IpAddr>, FetchPolicyError>
+where
+    F: FnMut(&str) -> Result<Vec<IpAddr>, String>,
+{
+    if is_metadata_hostname(host) {
+        return Err(FetchPolicyError::HostnameDenied {
+            host: host.to_string(),
+            reason: "cloud metadata endpoint denied by name".to_string(),
+        });
+    }
+    // IP literals never reach the resolver: validate directly.
+    if let Ok(addr) = host.parse::<IpAddr>() {
+        policy.check_address(addr)?;
+        return Ok(vec![normalize(addr)]);
+    }
+    let addrs = resolve(host).map_err(|reason| FetchPolicyError::HostnameDenied {
+        host: host.to_string(),
+        reason,
+    })?;
+    if addrs.is_empty() {
+        return Err(FetchPolicyError::HostnameDenied {
+            host: host.to_string(),
+            reason: "no addresses resolved".to_string(),
+        });
+    }
+    for &addr in &addrs {
+        policy.check_address(addr)?;
+    }
+    Ok(addrs.into_iter().map(normalize).collect())
+}
+
 /// Credential-bearing headers (lowercased) that are **stripped when a
 /// redirect crosses origins** (M28-007-C, ADR-0033 §4; aligned with the
 /// WHATWG fetch HTTP-redirect fetch step). These never leak cross-origin;
@@ -1756,5 +1816,109 @@ mod tests {
             .unwrap_err();
         assert!(matches!(err, FetchPolicyError::DecompressedTooLarge { .. }));
         assert_eq!(g.produced(), 0, "failed step accepts no bytes");
+    }
+
+    fn resolver_of(
+        addrs: &'static [std::net::IpAddr],
+    ) -> impl FnMut(&str) -> Result<Vec<IpAddr>, String> {
+        move |_host| Ok(addrs.to_vec())
+    }
+
+    #[test]
+    fn metadata_hostnames_are_denied_before_any_resolution() {
+        let policy = FetchPolicy::default();
+        // The resolver records whether it was ever called: denial must
+        // happen by NAME, before the resolver is touched.
+        let mut called = false;
+        let mut resolve = |_host: &str| {
+            called = true;
+            Ok::<Vec<IpAddr>, String>(vec![public_ip()])
+        };
+        for host in [
+            "metadata.google.internal",
+            "Metadata.Google.Internal.",
+            "INSTANCE-DATA",
+            "metadata",
+        ] {
+            let err = resolve_and_validate(&policy, host, &mut resolve).unwrap_err();
+            assert!(
+                matches!(&err, FetchPolicyError::HostnameDenied { host: h, reason }
+                    if reason.contains("denied by name")),
+                "{host}: {err}"
+            );
+        }
+        assert!(!called, "resolver must not be consulted for denied names");
+    }
+
+    #[test]
+    fn resolution_uses_only_validated_addresses_in_order() {
+        let policy = FetchPolicy::default();
+        let public_a: IpAddr = "93.184.216.34".parse().unwrap();
+        let public_b: IpAddr = "2606:2800:220:1:248:1893:25c8:1946".parse().unwrap();
+        let static_addrs: &'static [std::net::IpAddr] =
+            Box::leak(vec![public_a, public_b].into_boxed_slice());
+        let pinned = resolve_and_validate(&policy, "example.com", resolver_of(static_addrs))
+            .expect("all-public resolution validates");
+        // The returned set is the connect pin set: same addresses, same
+        // order, IPv4-mapped forms normalized.
+        assert_eq!(pinned, vec![public_a, public_b]);
+    }
+
+    #[test]
+    fn dns_rebinding_mixing_public_and_private_fails_closed() {
+        let policy = FetchPolicy::default();
+        // First answer public, second private: the classic rebinding
+        // first-glance trick is denied because EVERY address must pass.
+        let static_addrs: &'static [std::net::IpAddr] = Box::leak(
+            vec![
+                "93.184.216.34".parse::<IpAddr>().unwrap(),
+                "10.0.0.9".parse::<IpAddr>().unwrap(),
+            ]
+            .into_boxed_slice(),
+        );
+        let err =
+            resolve_and_validate(&policy, "rebind.test", resolver_of(static_addrs)).unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::AddressDenied {
+                class: AddressClass::Private,
+                ..
+            }
+        ));
+        // Empty resolution is a typed denial too.
+        let static_empty: &'static [std::net::IpAddr] = Box::leak(Vec::new().into_boxed_slice());
+        let err = resolve_and_validate(&policy, "nx.test", resolver_of(static_empty)).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
+            if reason.contains("no addresses resolved"))
+        );
+    }
+
+    #[test]
+    fn resolver_failures_and_ip_literals_are_handled() {
+        let policy = FetchPolicy::default();
+        // Resolver error: typed hostname denial carrying the reason.
+        let mut resolve =
+            |_host: &str| -> Result<Vec<IpAddr>, String> { Err("timed out".to_string()) };
+        let err = resolve_and_validate(&policy, "slow.test", &mut resolve).unwrap_err();
+        assert!(
+            matches!(&err, FetchPolicyError::HostnameDenied { host, reason }
+            if host == "slow.test" && reason == "timed out")
+        );
+        // IP-literal hosts skip the resolver and validate directly.
+        let called = std::cell::Cell::new(false);
+        let literal_resolver = |_host: &str| {
+            called.set(true);
+            Ok::<Vec<IpAddr>, String>(vec!["1.2.3.4".parse().unwrap()])
+        };
+        assert!(resolve_and_validate(&policy, "93.184.216.34", &literal_resolver).is_ok());
+        assert!(!called.get(), "IP literals must not reach the resolver");
+        assert!(matches!(
+            resolve_and_validate(&policy, "127.0.0.1", &literal_resolver),
+            Err(FetchPolicyError::AddressDenied {
+                class: AddressClass::Loopback,
+                ..
+            })
+        ));
     }
 }
