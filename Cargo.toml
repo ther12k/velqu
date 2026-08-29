@@ -33,7 +33,7 @@ q-capabilities = { path = "crates/q-capabilities" }
 q-bench-support = { path = "crates/q-bench-support" }
 
 rquickjs = { version = "=0.12.2", features = ["full-async"] }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "macros", "signal", "sync", "fs", "process"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "macros", "signal", "sync", "fs", "process", "io-util"] }
 hyper = { version = "1", features = ["http1", "server", "client"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "client", "client-legacy"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "webpki-tokio", "tls12"] }

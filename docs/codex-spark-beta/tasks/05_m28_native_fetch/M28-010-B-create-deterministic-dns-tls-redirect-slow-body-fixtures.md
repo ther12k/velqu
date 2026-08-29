@@ -4,7 +4,7 @@ parent_task: M28-010
 milestone: M28
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -113,3 +113,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-010-B) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-010-b (squash-merged; see git log for final hash)
+- Closes: #361
+
+### Changed files
+- `crates/q-runtime/tests/fetch_fixtures/mod.rs` (new): the deterministic fixture library —
+  - `deterministic_resolver(table)`: canned DNS; unknown hosts error; answers cannot drift between calls.
+  - `RebindingResolver`: counts resolutions so tests prove the connect gate resolves EXACTLY ONCE and dials the pin set (the TTL-expiry attacker's second answer is never consulted).
+  - `spawn_redirect_server(chain_len)`: `/hop/N` -> 302 `/hop/N+1` -> 200 chain with a request counter.
+  - `spawn_slow_body_server(delay, chunks)`: async server dribbling body chunks on a timer.
+  - `spawn_immediate_close_server()`: EOF mid-handshake.
+- `crates/q-runtime/tests/fetch_fixture_conformance.rs` (new, 6 tests): drives the fixtures through the production pool + policy with bounded waits everywhere.
+- `crates/q-runtime/Cargo.toml`: `q-capabilities` dev-dependency (the fixtures drive the policy gates).
+- `Cargo.toml` (workspace): tokio gains the `io-util` feature (async TCP fixtures; no behavior change to existing code).
+
+### Tests added (6, all in `fetch_fixture_conformance.rs`)
+- `dns_pinning_resolves_once_and_dials_the_pin_set` (rebinding attacker resolves exactly once)
+- `dns_rebinding_table_with_private_answer_fails_closed` (one private address poisons the host)
+- `redirect_chain_follows_bounded_and_records_hops` (real 302 chain of 3: limiter records 3 hops, final 200, 4 requests)
+- `slow_body_transfer_is_bounded_by_explicit_budget` (300ms/chunk dribble cut by the 500ms budget; elapsed near 500ms, not unbounded)
+- `untrusted_tls_endpoints_fail_closed_deterministically` (immediate-close + garbage-handshake servers: bounded, error, no hang)
+- `pool_permits_bound_concurrent_fixture_traffic` (max_active=1 serializes; post-shutdown permit refused)
+
+### Command results
+- `cargo test -p velqu-runtime` → **11+5+36** (fetch_stack 10 + fixtures 6, unit 11 total... suite counts: 11 unit + 5 + 36 integration) — all pass
+- `cargo test -p q-capabilities` → 192+4+9 — 0 failed
+- `cargo test -p q-engine-quickjs` → 18+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 — all pass
+- `bun test` → 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; manifest refreshed (`b8296060…`) — workspace tokio feature changes the dep graph hash
+- Fixture suite runtime: 0.5s wall (deterministic; no live network)
+
+### Guardrail mapping
+- **No panic/hang/unbounded work** — slow body cut by explicit budget; handshake failures bounded; redirect chain policy-bounded.
+- **All failures map predictably** — rebinding → typed AddressDenied; untrusted TLS → request error; budget overrun → timeout.
+
+### Disclosures
+- One verify run reported FAILURES PRESENT while a stale artifact check raced the manifest-refresh rebuild; the immediate re-run (exit 0, log captured) was ALL PASS. Two clippy iterations on new test code (unused assignment; missing `io-util` feature surfaced as E0599s).
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
