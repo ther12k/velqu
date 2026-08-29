@@ -323,6 +323,18 @@ pub enum FetchPolicyError {
     RedirectLoop {
         url: String,
     },
+    /// Decompressed output crossed the response body cap (M28-007-D).
+    DecompressedTooLarge {
+        produced: u64,
+        max: u64,
+    },
+    /// Decompressed output crossed the compression-ratio ceiling while a
+    /// meaningful volume of compressed input had been consumed (M28-007-D).
+    DecompressionBomb {
+        compressed: u64,
+        produced: u64,
+        max_ratio: u64,
+    },
 }
 
 impl fmt::Display for FetchPolicyError {
@@ -372,6 +384,22 @@ impl fmt::Display for FetchPolicyError {
             }
             FetchPolicyError::RedirectLoop { url } => {
                 write!(f, "redirect loop detected: {url} was already visited")
+            }
+            FetchPolicyError::DecompressedTooLarge { produced, max } => {
+                write!(
+                    f,
+                    "decompressed body {produced} bytes exceeds the {max} byte response limit"
+                )
+            }
+            FetchPolicyError::DecompressionBomb {
+                compressed,
+                produced,
+                max_ratio,
+            } => {
+                write!(
+                    f,
+                    "decompression bomb: {produced} bytes from {compressed} compressed exceeds the {max_ratio}:1 ratio ceiling"
+                )
             }
         }
     }
@@ -483,6 +511,90 @@ impl RedirectLimiter {
     fn commit_hop(&mut self, to_url: &str) {
         self.hops += 1;
         self.visited.push(to_url.to_string());
+    }
+}
+
+/// Decompression-ratio ceiling: decompressed output may be at most this
+/// many times the compressed input (M28-007-D, ADR-0033 §8). Well above
+/// any legitimate gzip/deflate expansion for web payloads.
+pub const MAX_DECOMPRESSION_RATIO: u64 = 1000;
+
+/// Minimum compressed input before the ratio ceiling applies (bytes).
+/// Below this, small legitimate payloads with high local expansion (an
+/// empty-JSON body, a run of one repeated byte) would false-positive.
+pub const DECOMPRESSION_RATIO_THRESHOLD: u64 = 1024;
+
+/// Push-based decompression bomb guard (M28-007-D). The fetch executor
+/// feeds compressed bytes as consumed and decompressed bytes as produced;
+/// every step is checked, so zip-bomb style expansion fails typed at the
+/// step that crosses the line — never after buffering the payload.
+#[derive(Debug, Clone)]
+pub struct DecompressionGuard {
+    output_limit: u64,
+    compressed_in: u64,
+    produced: u64,
+}
+
+impl DecompressionGuard {
+    /// Build a guard with an explicit decompressed-output cap.
+    pub fn new(output_limit: u64) -> Self {
+        DecompressionGuard {
+            output_limit,
+            compressed_in: 0,
+            produced: 0,
+        }
+    }
+
+    /// Build from the frozen policy: `CompressionPolicy::Off` and
+    /// `Gzip { enabled: false }` decompress nothing, so no guard exists;
+    /// enabled gzip is bounded by the policy's response body cap.
+    pub fn from_policy(policy: &FetchPolicy) -> Option<Self> {
+        match policy.compression() {
+            CompressionPolicy::Off => None,
+            CompressionPolicy::Gzip { enabled: false } => None,
+            CompressionPolicy::Gzip { enabled: true } => {
+                Some(DecompressionGuard::new(policy.max_response_body_bytes()))
+            }
+        }
+    }
+
+    /// Record `n` compressed bytes consumed from the wire.
+    pub fn compressed_input(&mut self, n: usize) {
+        self.compressed_in += n as u64;
+    }
+
+    /// Record `n` decompressed bytes produced by the decoder. Typed failure
+    /// when the output crosses the response body cap, or when the running
+    /// ratio crosses the ceiling after the threshold volume of input.
+    pub fn decompressed_output(&mut self, n: usize) -> Result<(), FetchPolicyError> {
+        let produced = self.produced + n as u64;
+        if produced > self.output_limit {
+            return Err(FetchPolicyError::DecompressedTooLarge {
+                produced,
+                max: self.output_limit,
+            });
+        }
+        if self.compressed_in >= DECOMPRESSION_RATIO_THRESHOLD
+            && produced > self.compressed_in.saturating_mul(MAX_DECOMPRESSION_RATIO)
+        {
+            return Err(FetchPolicyError::DecompressionBomb {
+                compressed: self.compressed_in,
+                produced,
+                max_ratio: MAX_DECOMPRESSION_RATIO,
+            });
+        }
+        self.produced = produced;
+        Ok(())
+    }
+
+    /// Decompressed bytes accepted so far.
+    pub fn produced(&self) -> u64 {
+        self.produced
+    }
+
+    /// Compressed bytes consumed so far.
+    pub fn compressed_in(&self) -> u64 {
+        self.compressed_in
     }
 }
 
@@ -1558,5 +1670,91 @@ mod tests {
             ["Authorization", "Accept"],
         );
         assert_eq!(hop, ["Accept"]);
+    }
+
+    #[test]
+    fn decompression_output_is_capped_typed() {
+        let mut g = DecompressionGuard::new(16);
+        g.compressed_input(4);
+        assert!(g.decompressed_output(10).is_ok());
+        assert_eq!(g.produced(), 10);
+        let err = g.decompressed_output(7).unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::DecompressedTooLarge {
+                produced: 17,
+                max: 16
+            }
+        ));
+        assert!(err.to_string().contains("response limit"));
+        // Rejected bytes are not silently accepted on retry.
+        assert!(g.decompressed_output(6).is_ok());
+        assert!(g.decompressed_output(1).is_err());
+    }
+
+    #[test]
+    fn zip_bomb_ratio_is_bounded_typed() {
+        let mut g = DecompressionGuard::new(MAX_FETCH_RESPONSE_BODY_BYTES);
+        // Classic bomb shape: tiny compressed input, runaway output.
+        g.compressed_input(2048); // past the 1 KiB threshold
+        let limit = 2048 * MAX_DECOMPRESSION_RATIO;
+        assert!(g.decompressed_output(limit as usize).is_ok());
+        let err = g.decompressed_output(1).unwrap_err();
+        assert!(matches!(
+            err,
+            FetchPolicyError::DecompressionBomb {
+                compressed: 2048,
+                produced: _,
+                max_ratio: 1000
+            }
+        ));
+        assert!(err.to_string().contains("decompression bomb"));
+    }
+
+    #[test]
+    fn small_payloads_are_not_ratio_limited_below_threshold() {
+        let mut g = DecompressionGuard::new(MAX_FETCH_RESPONSE_BODY_BYTES);
+        // 4 compressed bytes expanding to 4000: ratio ~1000x but below the
+        // input threshold — legitimate small-payload expansion, allowed.
+        g.compressed_input(4);
+        assert!(g.decompressed_output(4000).is_ok());
+        assert_eq!(g.produced(), 4000);
+    }
+
+    #[test]
+    fn guard_from_policy_matches_compression_posture() {
+        // Default policy: compression off -> no decompression happens at all.
+        assert!(DecompressionGuard::from_policy(&FetchPolicy::default()).is_none());
+        // Explicitly disabled gzip: still no guard.
+        let policy = FetchPolicy {
+            compression: CompressionPolicy::Gzip { enabled: false },
+            ..FetchPolicy::default()
+        };
+        assert!(DecompressionGuard::from_policy(&policy).is_none());
+        // Enabled gzip: bounded by the response body cap.
+        let policy = FetchPolicy {
+            compression: CompressionPolicy::Gzip { enabled: true },
+            ..FetchPolicy::default()
+        };
+        let mut g = DecompressionGuard::from_policy(&policy).unwrap();
+        assert_eq!(g.produced(), 0);
+        // The cap equals the network response limit (ADR-0033 §9).
+        let err = g
+            .decompressed_output((MAX_FETCH_RESPONSE_BODY_BYTES + 1) as usize)
+            .unwrap_err();
+        assert!(matches!(err, FetchPolicyError::DecompressedTooLarge { .. }));
+    }
+
+    #[test]
+    fn bomb_fixture_output_cap_fires_before_ratio_when_tighter() {
+        // A compressed 1 KiB fixture claiming 20 MiB of output: the output
+        // cap (16 MiB) is crossed first and fires as the typed failure.
+        let mut g = DecompressionGuard::new(MAX_FETCH_RESPONSE_BODY_BYTES);
+        g.compressed_input(1024);
+        let err = g
+            .decompressed_output((20 * 1024 * 1024) as usize)
+            .unwrap_err();
+        assert!(matches!(err, FetchPolicyError::DecompressedTooLarge { .. }));
+        assert_eq!(g.produced(), 0, "failed step accepts no bytes");
     }
 }
