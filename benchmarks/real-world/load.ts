@@ -40,6 +40,7 @@ interface Args {
   duration: number;
   concurrency: number[];
   upstreamUrl: string | null;
+  workloads: string[] | null;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -54,12 +55,16 @@ function parseArgs(argv: string[]): Args {
     .split(",")
     .map((s) => Number(s.trim()))
     .filter((n) => n > 0);
+  const workloadsRaw = get("workloads");
   return {
     baseUrl: baseUrl.replace(/\/$/, ""),
     outDir: get("out-dir") ?? `${DIR}/raw/smoke`,
     duration: Number.isFinite(durationRaw) && durationRaw > 0 ? durationRaw : 0,
     concurrency,
     upstreamUrl: get("upstream-url"),
+    workloads: workloadsRaw
+      ? workloadsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+      : null,
   };
 }
 
@@ -144,7 +149,19 @@ async function main() {
   const allRows: RealWorldRawRow[] = [];
   const cells: RealWorldCell[] = [];
 
-  for (const workload of config.workloads) {
+  // Optional workload filter (--workloads W4_1ms,W4_5ms): unknown IDs fail
+  // loudly instead of silently running nothing.
+  let selected = config.workloads;
+  if (args.workloads) {
+    const known = new Set(config.workloads.map((w) => w.id));
+    for (const id of args.workloads) {
+      if (!known.has(id)) throw new Error(`unknown workload id: ${id}`);
+    }
+    selected = config.workloads.filter((w) => args.workloads!.includes(w.id));
+    if (selected.length === 0) throw new Error("workload filter selected nothing");
+  }
+
+  for (const workload of selected) {
     for (const c of concurrencyLevels) {
       const rows = await runCell(workload, c, durationSec, args.baseUrl, args.upstreamUrl);
       allRows.push(...rows);
