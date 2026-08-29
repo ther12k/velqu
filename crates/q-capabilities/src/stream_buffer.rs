@@ -6,6 +6,8 @@
 //! Over-ceiling writes are typed rejections — never unbounded buffering.
 
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
@@ -51,6 +53,8 @@ struct Inner {
     buf: Vec<u8>,
     /// Total bytes that have ever been written (including drained ones).
     total_written: u64,
+    /// High-water mark of buffered bytes observed since creation.
+    max_buffered: u64,
     /// Hard ceiling on total body bytes.
     limit: u64,
     /// Buffer capacity before backpressure applies.
@@ -75,6 +79,7 @@ impl BoundedStream {
             inner: Arc::new(Mutex::new(Inner {
                 buf: Vec::with_capacity(capacity.min(4096)),
                 total_written: 0,
+                max_buffered: 0,
                 limit,
                 capacity,
                 closed: false,
@@ -91,7 +96,8 @@ impl BoundedStream {
 
     /// Try to write a chunk. Fails typed if the chunk exceeds the per-chunk
     /// ceiling or if the body limit would be crossed. Returns `false` when
-    /// the buffer is full (producer should wait); registers the waker.
+    /// the buffer is full (the producer must retry later — no waker is
+    /// registered; async producers use [`BoundedStream::poll_write`]).
     pub fn try_write(&self, chunk: &[u8]) -> Result<bool, StreamError> {
         if chunk.len() > MAX_STREAM_CHUNK_BYTES {
             return Err(StreamError::ChunkTooLarge {
@@ -115,10 +121,65 @@ impl BoundedStream {
         }
         g.buf.extend_from_slice(chunk);
         g.total_written += chunk.len() as u64;
+        g.max_buffered = g.max_buffered.max(g.buf.len() as u64);
         if let Some(w) = g.consumer_waker.take() {
             w.wake();
         }
         Ok(true)
+    }
+
+    /// Poll-style write for async producers: writes when buffer space
+    /// allows; when the buffer is full the producer waker is registered and
+    /// `Poll::Pending` is returned, suspending the producer task until the
+    /// consumer drains. This is the backpressure propagation primitive —
+    /// downstream slowness upstreams as task suspension, never as unbounded
+    /// buffering. Single-producer/single-consumer contract: a second
+    /// concurrent writer would overwrite the registered producer waker.
+    pub fn poll_write(&self, cx: &mut Context<'_>, chunk: &[u8]) -> Poll<Result<(), StreamError>> {
+        if chunk.len() > MAX_STREAM_CHUNK_BYTES {
+            return Poll::Ready(Err(StreamError::ChunkTooLarge {
+                len: chunk.len(),
+                max: MAX_STREAM_CHUNK_BYTES,
+            }));
+        }
+        let mut g = self.inner.lock().unwrap();
+        if g.closed {
+            return Poll::Ready(Err(StreamError::StreamClosed));
+        }
+        if g.total_written + chunk.len() as u64 > g.limit {
+            return Poll::Ready(Err(StreamError::LimitExceeded {
+                total: g.total_written + chunk.len() as u64,
+                limit: g.limit,
+            }));
+        }
+        if g.buf.len() + chunk.len() > g.capacity {
+            // Downstream is slower than the producer: park until drained.
+            g.producer_waker = Some(cx.waker().clone());
+            return Poll::Pending;
+        }
+        g.buf.extend_from_slice(chunk);
+        g.total_written += chunk.len() as u64;
+        g.max_buffered = g.max_buffered.max(g.buf.len() as u64);
+        if let Some(w) = g.consumer_waker.take() {
+            w.wake();
+        }
+        Poll::Ready(Ok(()))
+    }
+
+    /// Async producer write: resolves once `chunk` is fully buffered.
+    /// Suspends (backpressure) while the consumer is slower than the chunk
+    /// inflow. Typed failures surface as `Err` on first poll.
+    pub fn write_chunk(&self, chunk: Vec<u8>) -> WriteChunk<'_> {
+        WriteChunk {
+            stream: self,
+            chunk: Some(chunk),
+        }
+    }
+
+    /// Async consumer read: resolves with up to `max` bytes, or `None` at
+    /// EOF (stream closed and fully drained). Suspends while empty-but-open.
+    pub fn read_chunk(&self, max: usize) -> ReadChunk<'_> {
+        ReadChunk { stream: self, max }
     }
 
     /// Drain up to `max` bytes. Returns `None` when the stream is closed and
@@ -164,6 +225,17 @@ impl BoundedStream {
         self.inner.lock().unwrap().total_written
     }
 
+    /// Configured buffer capacity (the backpressure threshold).
+    pub fn capacity(&self) -> usize {
+        self.inner.lock().unwrap().capacity
+    }
+
+    /// High-water mark of buffered bytes observed since creation. For a
+    /// correctly driven pump this never exceeds [`BoundedStream::capacity`].
+    pub fn max_buffered(&self) -> u64 {
+        self.inner.lock().unwrap().max_buffered
+    }
+
     /// Poll-style read for async consumers: returns Ready when data or EOF
     /// is available; registers the consumer waker when empty-but-open.
     pub fn poll_read(&self, cx: &mut Context<'_>, max: usize) -> Poll<Option<Vec<u8>>> {
@@ -181,6 +253,46 @@ impl BoundedStream {
         }
         g.consumer_waker = Some(cx.waker().clone());
         Poll::Pending
+    }
+}
+
+/// Future produced by [`BoundedStream::write_chunk`]: resolves once the
+/// chunk is fully buffered (or with a typed error).
+pub struct WriteChunk<'a> {
+    stream: &'a BoundedStream,
+    chunk: Option<Vec<u8>>,
+}
+
+impl Future for WriteChunk<'_> {
+    type Output = Result<(), StreamError>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let chunk = self
+            .chunk
+            .as_deref()
+            .expect("WriteChunk polled after completion");
+        match self.stream.poll_write(cx, chunk) {
+            Poll::Ready(result) => {
+                self.chunk = None;
+                Poll::Ready(result)
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+/// Future produced by [`BoundedStream::read_chunk`]: resolves with buffered
+/// bytes (`Some`) or EOF (`None`).
+pub struct ReadChunk<'a> {
+    stream: &'a BoundedStream,
+    max: usize,
+}
+
+impl Future for ReadChunk<'_> {
+    type Output = Option<Vec<u8>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.stream.poll_read(cx, self.max)
     }
 }
 
@@ -266,5 +378,87 @@ mod tests {
             crate::fetch_policy::MAX_FETCH_RESPONSE_BODY_BYTES,
             16 * 1024 * 1024
         );
+    }
+
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+    use std::task::Wake;
+
+    struct CountingWaker(AtomicUsize);
+    impl Wake for CountingWaker {
+        fn wake(self: std::sync::Arc<Self>) {
+            self.0.fetch_add(1, AtomicOrdering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn poll_write_pends_when_full_and_wakes_after_drain() {
+        let s = BoundedStream::new(1 << 20, 16);
+        assert!(s.try_write(b"0123456789abcdef").unwrap()); // buffer at capacity
+        let counter = std::sync::Arc::new(CountingWaker(AtomicUsize::new(0)));
+        let waker = Waker::from(counter.clone());
+        let mut cx = Context::from_waker(&waker);
+        // Full buffer: producer side must suspend, not error and not buffer.
+        assert!(matches!(s.poll_write(&mut cx, b"X"), Poll::Pending));
+        assert_eq!(counter.0.load(AtomicOrdering::SeqCst), 0);
+        // Consumer drain wakes the parked producer exactly once.
+        let out = s.try_read(16).unwrap();
+        assert_eq!(out.len(), 16);
+        assert_eq!(counter.0.load(AtomicOrdering::SeqCst), 1);
+        // With capacity free the same write now completes.
+        assert!(matches!(s.poll_write(&mut cx, b"X"), Poll::Ready(Ok(()))));
+    }
+
+    #[test]
+    fn write_chunk_future_resolves_after_capacity_frees() {
+        let s = BoundedStream::new(1 << 20, 8);
+        let mut cx = Context::from_waker(Waker::noop());
+        let mut fut = std::pin::pin!(s.write_chunk(b"abcdefgh".to_vec()));
+        assert!(matches!(fut.as_mut().poll(&mut cx), Poll::Ready(Ok(()))));
+        let mut blocked = std::pin::pin!(s.write_chunk(b"Z".to_vec()));
+        assert!(matches!(blocked.as_mut().poll(&mut cx), Poll::Pending));
+        let _ = s.try_read(8);
+        assert!(matches!(
+            blocked.as_mut().poll(&mut cx),
+            Poll::Ready(Ok(()))
+        ));
+    }
+
+    #[test]
+    fn poll_write_typed_errors_fail_closed() {
+        let mut cx = Context::from_waker(Waker::noop());
+        let big = BoundedStream::with_limit(u64::MAX);
+        let oversized = vec![0u8; MAX_STREAM_CHUNK_BYTES + 1];
+        assert!(matches!(
+            big.poll_write(&mut cx, &oversized),
+            Poll::Ready(Err(StreamError::ChunkTooLarge { .. }))
+        ));
+        let s = BoundedStream::with_limit(4);
+        assert!(matches!(
+            s.poll_write(&mut cx, b"abcd"),
+            Poll::Ready(Ok(()))
+        ));
+        assert!(matches!(
+            s.poll_write(&mut cx, b"X"),
+            Poll::Ready(Err(StreamError::LimitExceeded { total: 5, limit: 4 }))
+        ));
+        s.close();
+        assert!(matches!(
+            s.poll_write(&mut cx, b"X"),
+            Poll::Ready(Err(StreamError::StreamClosed))
+        ));
+    }
+
+    #[test]
+    fn max_buffered_tracks_peak_and_never_exceeds_capacity() {
+        let s = BoundedStream::new(1 << 20, 16);
+        assert_eq!(s.capacity(), 16);
+        s.try_write(&[0u8; 10]).unwrap();
+        assert_eq!(s.max_buffered(), 10);
+        let drained = s.try_read(4).unwrap();
+        assert_eq!(drained.len(), 4);
+        s.try_write(&[0u8; 8]).unwrap(); // 6 buffered + 8 = 14
+        assert_eq!(s.buffered(), 14);
+        assert_eq!(s.max_buffered(), 14);
+        assert!(s.max_buffered() <= s.capacity() as u64);
     }
 }
