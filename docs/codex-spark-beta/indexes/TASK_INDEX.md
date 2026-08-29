@@ -381,7 +381,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-006-V](../tasks/05_m28_native_fetch/M28-006-V-verify-implement-streaming-and-strict-backpressure.md) | P0 | verify | PASS | M28-006-A, M28-006-B, M28-006-C, M28-006-D | Verify Implement streaming and strict backpressure |
 | [M28-006-Z](../tasks/05_m28_native_fetch/M28-006-Z-package-evidence-for-implement-streaming-and-strict-backpressure.md) | P0 | evidence | PASS | M28-006-V | Package evidence for Implement streaming and strict backpressure |
 | [M28-007-A](../tasks/05_m28_native_fetch/M28-007-A-limit-redirect-count.md) | P1 | implement | PASS | M28-003-Z, M28-004-Z | Limit redirect count |
-| [M28-007-B](../tasks/05_m28_native_fetch/M28-007-B-reapply-ssrf-dns-policy-on-every-hop.md) | P1 | implement | TODO | M28-007-A | Reapply SSRF/DNS policy on every hop |
+| [M28-007-B](../tasks/05_m28_native_fetch/M28-007-B-reapply-ssrf-dns-policy-on-every-hop.md) | P1 | implement | PASS | M28-007-A | Reapply SSRF/DNS policy on every hop |
 | [M28-007-C](../tasks/05_m28_native_fetch/M28-007-C-define-credential-header-stripping.md) | P1 | implement | TODO | M28-007-B | Define credential/header stripping |
 | [M28-007-D](../tasks/05_m28_native_fetch/M28-007-D-bound-decompression-ratio-and-output.md) | P1 | implement | TODO | M28-007-C | Bound decompression ratio and output |
 | [M28-007-V](../tasks/05_m28_native_fetch/M28-007-V-verify-implement-redirect-and-compression-policy.md) | P1 | verify | TODO | M28-007-A, M28-007-B, M28-007-C, M28-007-D | Verify Implement redirect and compression policy |
