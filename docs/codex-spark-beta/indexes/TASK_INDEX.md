@@ -378,7 +378,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-006-B](../tasks/05_m28_native_fetch/M28-006-B-propagate-downstream-backpressure.md) | P0 | implement | PASS | M28-006-A | Propagate downstream backpressure |
 | [M28-006-C](../tasks/05_m28_native_fetch/M28-006-C-cancel-on-consumer-stop-disconnect.md) | P0 | implement | PASS | M28-006-B | Cancel on consumer stop/disconnect |
 | [M28-006-D](../tasks/05_m28_native_fetch/M28-006-D-define-maximum-body-helper-sizes.md) | P0 | implement | PASS | M28-006-C | Define maximum body helper sizes |
-| [M28-006-V](../tasks/05_m28_native_fetch/M28-006-V-verify-implement-streaming-and-strict-backpressure.md) | P0 | verify | TODO | M28-006-A, M28-006-B, M28-006-C, M28-006-D | Verify Implement streaming and strict backpressure |
+| [M28-006-V](../tasks/05_m28_native_fetch/M28-006-V-verify-implement-streaming-and-strict-backpressure.md) | P0 | verify | PASS | M28-006-A, M28-006-B, M28-006-C, M28-006-D | Verify Implement streaming and strict backpressure |
 | [M28-006-Z](../tasks/05_m28_native_fetch/M28-006-Z-package-evidence-for-implement-streaming-and-strict-backpressure.md) | P0 | evidence | TODO | M28-006-V | Package evidence for Implement streaming and strict backpressure |
 | [M28-007-A](../tasks/05_m28_native_fetch/M28-007-A-limit-redirect-count.md) | P1 | implement | TODO | M28-003-Z, M28-004-Z | Limit redirect count |
 | [M28-007-B](../tasks/05_m28_native_fetch/M28-007-B-reapply-ssrf-dns-policy-on-every-hop.md) | P1 | implement | TODO | M28-007-A | Reapply SSRF/DNS policy on every hop |
