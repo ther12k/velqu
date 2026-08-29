@@ -1,6 +1,11 @@
-/** W4 candidate: Elysia 2 (AOT) on Bun + native fetch (pinned elysia@2.0.0-beta.4). */
+/** W4/Fanout candidate: Elysia 2 (AOT) on Bun + native fetch (pinned elysia@2.0.0-beta.4). */
 import { Elysia } from "elysia";
-import { PORT, UPSTREAM, validateMs } from "./shared";
+import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+
+async function proxyIo(ms: number): Promise<boolean> {
+  const upstream = await fetch(`${UPSTREAM}/io?ms=${ms}`);
+  return upstream.status === 200;
+}
 
 const app = new Elysia({ aot: true })
   .get("/api/bench/io", async ({ query, set }) => {
@@ -15,6 +20,16 @@ const app = new Elysia({ aot: true })
     set.headers["content-type"] =
       upstream.headers.get("content-type") ?? "application/json";
     return body;
+  })
+  .get("/api/bench/fanout", async ({ query, set }) => {
+    const n = validateFanout(query.n ?? null);
+    const ms = validateMs(query.ms ?? "5");
+    if (n === null || ms === null) {
+      set.status = 400;
+      return { error: "invalid n or ms" };
+    }
+    const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
+    return { n, ms, ok: results.every(Boolean) };
   })
   .listen(PORT);
 

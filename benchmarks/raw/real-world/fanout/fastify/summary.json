@@ -1,0 +1,99 @@
+{
+  "format": "velqu-realworld-summary-v1",
+  "generatedAt": "2026-08-29T16:22:10.317Z",
+  "baseUrl": "http://127.0.0.1:37981",
+  "durationSec": 3,
+  "concurrencyLevels": [
+    1,
+    10
+  ],
+  "environment": {
+    "bunVersion": "1.4.0",
+    "os": "linux",
+    "arch": "x64",
+    "commit": "aada12a62d97572915a5578a5be0ad4622fef9a0",
+    "nodeVersion": "v24.11.0"
+  },
+  "configHashes": {
+    "spec": "bfe25d3d6e102f644fb3c4c3e83ffca1561e0b5f97a99334c0dcab65dde99fdf",
+    "workloads": "543a2e091efcc4b18afcee12dde14daeda3dfc1ac043dde99d9b7363def13b45",
+    "schema": "b7d77b4348271d2922ed75f3c5ed4c43261a713fa4091bca2149ccdeed2dab58",
+    "seed": "b1f51d068a42bf1af080418f645ecc712f0076610fb9454a429f1be9ba4ba75e",
+    "versions": "7e852d4b887e9beca826a5fe96cd835d30c70317b27fd80ad67eeb48e606c3a8"
+  },
+  "cells": [
+    {
+      "workload": "FANOUT_1",
+      "concurrency": 1,
+      "totalRequests": 419,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 139.67,
+      "p50Us": 6801,
+      "p95Us": 8456,
+      "p99Us": 10480,
+      "maxUs": 65240
+    },
+    {
+      "workload": "FANOUT_1",
+      "concurrency": 10,
+      "totalRequests": 3621,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1207,
+      "p50Us": 7799,
+      "p95Us": 12465,
+      "p99Us": 16667,
+      "maxUs": 24687
+    },
+    {
+      "workload": "FANOUT_2",
+      "concurrency": 1,
+      "totalRequests": 451,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 150.33,
+      "p50Us": 6516,
+      "p95Us": 7694,
+      "p99Us": 8805,
+      "maxUs": 10952
+    },
+    {
+      "workload": "FANOUT_2",
+      "concurrency": 10,
+      "totalRequests": 3576,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 1192,
+      "p50Us": 7907,
+      "p95Us": 12048,
+      "p99Us": 18060,
+      "maxUs": 25981
+    },
+    {
+      "workload": "FANOUT_4",
+      "concurrency": 1,
+      "totalRequests": 446,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 148.67,
+      "p50Us": 6542,
+      "p95Us": 7779,
+      "p99Us": 9210,
+      "maxUs": 24766
+    },
+    {
+      "workload": "FANOUT_4",
+      "concurrency": 10,
+      "totalRequests": 2889,
+      "errors": 0,
+      "statusMismatches": 0,
+      "rps": 963,
+      "p50Us": 9727,
+      "p95Us": 15974,
+      "p99Us": 25908,
+      "maxUs": 35349
+    }
+  ],
+  "raw": "../raw/real-world/fanout/fastify/raw.jsonl"
+}

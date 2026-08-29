@@ -4,7 +4,7 @@ parent_task: M28-011
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -132,3 +132,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-011-B) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-011-b (squash-merged; see git log for final hash)
+- Closes: #367
+
+### Changed files
+- `benchmarks/real-world/candidates/*`: every candidate gains `GET /api/bench/fanout?n=1|2|4&ms=5` — n PARALLEL upstream calls aggregated via Promise.all, returning `{n, ms, ok}`. `shared.ts`/`shared.cjs` gain `validateFanout` (n in {1,2,4} exactly; ms validated as before).
+- `benchmarks/real-world/workloads.json`: FANOUT_1/2/4 workload cells added.
+- `benchmarks/real-world/run-fanout.sh` (new): one-command fan-out matrix (upstream -> per-candidate boot -> cells -> comparison). Ensures candidate deps are installed from the committed lockfile (`bun install --frozen-lockfile`) — Bun auto-install would silently resolve UNPINNED latest versions in fresh checkouts (observed: elysia 1.4.30 instead of the pinned 2.0.0-beta.4).
+- `benchmarks/real-world/compare-fanout.ts` (new): aggregates summaries with the **parallelism proof**: p50(n=4) must be strictly less than 4x p50(n=1) per candidate per concurrency — plus 0 errors / 0 mismatches everywhere.
+- `benchmarks/real-world/load.ts`: summary validation now covers exactly the SELECTED cells (a --workloads filter is a legitimate run shape, not a partial-failure state).
+- `benchmarks/real-world/workloads.test.ts`: PATHS guard extended for the fanout route shape.
+
+### Raw evidence (committed)
+- `benchmarks/raw/real-world/fanout/`: per-candidate summaries + logs + comparison.md.
+- Headline (3s cells, c=1/10, ms=5): ALL 24 cells 0 errors / 0 mismatches; parallelism proven for every candidate: hono p50 n=1 5803us -> n=4 5795us (c=1); bun-fetch n=1 5817us -> n=4 5817us; fastify n=1 6801us -> n=4 6542us. Wall time is flat in n — the upstream calls genuinely run in parallel, not sequentially.
+- Velqu's own slot remains pending the fetch executor wiring (disclosed in M28-011-A, unchanged).
+
+### Command results
+- `bash benchmarks/real-world/run-fanout.sh 3 1,10` → PASS
+- `bun test benchmarks/real-world` → 36 pass / 0 fail
+- `cargo test` all packages green; `bun run typecheck` → clean; `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged
+
+### Guardrail mapping
+- **Queue and pool wait are reported** — fan-out multiplies pool pressure; the metrics schema (M28-009-A) carries the wait stages.
+- **Tail latency remains bounded** — structural guardrails enforced by compare-fanout (0 errors/mismatches; parallelism proof).
+- **Results compare matched candidates** — identical fan-out contract, same upstream, same load generator, pinned deps.
+
+### Disclosures
+- Two fresh-checkout traps found and fixed at the harness level: Bun auto-install resolving unpinned candidate deps (now lockfile-frozen installs), and the summary validator rejecting filtered runs (now validates the selected cells). The PATHS config guard correctly rejected the new route shape first — extended deliberately.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

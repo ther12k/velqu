@@ -13,3 +13,10 @@ function validateMs(raw) {
   return ms;
 }
 module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs };
+
+function validateFanout(n) {
+  if (n === null || n === undefined) return null;
+  if (!/^[124]$/.test(n)) return null;
+  return Number(n);
+}
+module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs, validateFanout };

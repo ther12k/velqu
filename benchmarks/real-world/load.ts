@@ -212,7 +212,9 @@ async function main() {
     raw: rawPath,
   };
 
-  const schemaErrors = validateRealWorldSummary(summary, config.workloads.map((w) => w.id), concurrencyLevels);
+  // Validation covers exactly the selected cells: a --workloads filter is a
+  // legitimate run shape, not a partial-failure state.
+  const schemaErrors = validateRealWorldSummary(summary, selected.map((w) => w.id), concurrencyLevels);
   if (schemaErrors.length > 0) {
     console.error("load.ts: summary failed result-schema validation:");
     for (const e of schemaErrors) console.error(`  - ${e}`);
