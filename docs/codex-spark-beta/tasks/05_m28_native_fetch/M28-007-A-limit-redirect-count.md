@@ -4,7 +4,7 @@ parent_task: M28-007
 milestone: M28
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -114,3 +114,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-007-A) — PASS
+
+- Date: 2026-08-29
+- Branch/PR: m28-007-a (squash-merged; see git log for final hash)
+- Closes: #342
+
+### Changed files
+- `crates/q-capabilities/src/fetch_policy.rs`: stateful per-request redirect limiter —
+  - `RedirectLimiter::new(FetchPolicy)` / `hops()` / `limit()`: drives the fetch follow loop against the frozen policy.
+  - `evaluate(from_url, to_url) -> Result<RedirectOutcome, FetchPolicyError>`: every 3xx hop passes through the ONE policy path — `FetchPolicy::check_redirect_hop` (scheme allowlist, https→http downgrade denial, hop ceiling vs the policy's `max_hops`, default `MAX_REDIRECT_HOPS` = 20) — plus loop detection over the visited set: returning to an already-visited URL fails typed `FetchPolicyError::RedirectLoop` (new variant) immediately instead of burning the ceiling. `RedirectPolicy::Manual` yields `RedirectOutcome::Surface` (3xx to caller) with zero hop consumption. Denied/failed hops leave the limiter state unchanged.
+  - Memory bounded by construction: at most `max_hops` visited URLs (URL strings arrive via Location headers, already bounded by header limits).
+  - `RedirectOutcome::{Follow, Surface}` enum; `url_scheme()` helper (no scheme delimiter → empty → fail closed via the allowlist).
+- `crates/q-capabilities/src/lib.rs`: re-exports `RedirectLimiter`, `RedirectOutcome`.
+
+### Tests added (fetch_policy.rs, +5 → 154 lib tests)
+- `redirect_limiter_follows_up_to_ceiling_then_fails_typed` (hops 1..=20 follow with distinct targets; hop 21 → `TooManyRedirects{20}`)
+- `manual_policy_surfaces_3xx_without_following` (Surface, hops stay 0)
+- `redirect_loop_fails_fast_and_typed` (a→b→a loop fires `RedirectLoop` at the revisit, before the ceiling; failed hop not counted)
+- `scheme_and_downgrade_denials_flow_through_limiter` (DowngradeRedirect / SchemeNotAllowed / scheme-less URL fail closed; limiter unchanged)
+- `custom_hop_limit_is_respected_exactly` (Follow{3}: hops 1–3 follow, 4 → `TooManyRedirects{3}`)
+
+### Command results
+- `cargo test -p q-capabilities` → **154 unit (was 149) + 4 backpressure + 8 WPT** — 0 failed
+- `cargo test -p q-engine-quickjs` → 18+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 · `-p velqu-runtime` 8+5+31 — all pass
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- Release binary hash unchanged (`ef142331…` matches manifest): pure policy additions are dead-code-eliminated until the fetch executor wires in.
+
+### Guardrail mapping
+- **Redirect loops fail boundedly** — hop ceiling (`TooManyRedirects` at ≤ 20) as the hard backstop + typed `RedirectLoop` fast-path; both bounded in hops and memory.
+- **Observed URL/status follows documented semantics** — per-hop evaluation goes through the same `check_redirect_hop` used everywhere; no second policy path.
+- Executor wiring consumes this limiter when dialing lands (M28-003 stack dormant by design).
+
+### Disclosures
+- One placement slip: the limiter block was first inserted inside `impl FetchPolicy` and one helper returned a reference to a temporary — both caught by compile before commit, fixed by relocation/signature. No test weakened.
+- Two `field_reassign_with_default` clippy lints in new tests fixed with struct-update syntax.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

@@ -319,6 +319,10 @@ pub enum FetchPolicyError {
         len: usize,
         max: usize,
     },
+    /// A redirect returned to an already-visited URL (M28-007-A).
+    RedirectLoop {
+        url: String,
+    },
 }
 
 impl fmt::Display for FetchPolicyError {
@@ -366,11 +370,98 @@ impl fmt::Display for FetchPolicyError {
                     "Response.{helper}: body of {len} bytes exceeds the maximum helper size of {max} bytes"
                 )
             }
+            FetchPolicyError::RedirectLoop { url } => {
+                write!(f, "redirect loop detected: {url} was already visited")
+            }
         }
     }
 }
 
 impl std::error::Error for FetchPolicyError {}
+
+/// Stateful per-request redirect hop limiter (M28-007-A). Drives the fetch
+/// follow loop against the policy: every 3xx hop passes through
+/// [`FetchPolicy::check_redirect_hop`] (scheme allowlist, https→http
+/// downgrade denial, hop ceiling) and loop detection over the visited set,
+/// so a redirect loop fails bounded and typed — never unbounded following.
+/// Memory is bounded by construction: at most `max_hops` visited URLs.
+#[derive(Debug, Clone)]
+pub struct RedirectLimiter {
+    policy: FetchPolicy,
+    hops: u32,
+    visited: Vec<String>,
+}
+
+/// Result of evaluating one 3xx hop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RedirectOutcome {
+    /// Follow the redirect to the evaluated target.
+    Follow,
+    /// Surface the 3xx response to the caller (`RedirectPolicy::Manual`).
+    Surface,
+}
+
+impl RedirectLimiter {
+    /// Build a limiter from the frozen policy (manual mode surfaces 3xx;
+    /// follow mode caps at the policy's `max_hops`).
+    pub fn new(policy: FetchPolicy) -> Self {
+        RedirectLimiter {
+            policy,
+            hops: 0,
+            visited: Vec::new(),
+        }
+    }
+
+    /// Redirect hops followed so far.
+    pub fn hops(&self) -> u32 {
+        self.hops
+    }
+
+    /// Configured hop ceiling (0 under `RedirectPolicy::Manual`).
+    pub fn limit(&self) -> u32 {
+        match self.policy.redirect {
+            RedirectPolicy::Manual => 0,
+            RedirectPolicy::Follow { max_hops } => max_hops,
+        }
+    }
+
+    /// Evaluate one 3xx hop from `from_url` to `to_url`. Returns the typed
+    /// policy error for scheme, downgrade, hop-ceiling, or loop violations;
+    /// [`RedirectOutcome::Surface`] under `RedirectPolicy::Manual`.
+    pub fn evaluate(
+        &mut self,
+        from_url: &str,
+        to_url: &str,
+    ) -> Result<RedirectOutcome, FetchPolicyError> {
+        if matches!(self.policy.redirect, RedirectPolicy::Manual) {
+            return Ok(RedirectOutcome::Surface);
+        }
+        // Hop ceiling + scheme allowlist + downgrade denial: one policy path.
+        let hop = self.hops + 1;
+        self.policy
+            .check_redirect_hop(url_scheme(from_url), url_scheme(to_url), hop)?;
+        // Loop detection over the bounded visited set.
+        if self.visited.iter().any(|u| u == to_url) {
+            return Err(FetchPolicyError::RedirectLoop {
+                url: to_url.to_string(),
+            });
+        }
+        self.hops = hop;
+        self.visited.push(to_url.to_string());
+        Ok(RedirectOutcome::Follow)
+    }
+}
+
+/// Extract the scheme prefix of an absolute URL (`"https"` from
+/// `"https://host/x"`). Empty when no scheme delimiter exists, which the
+/// scheme allowlist rejects fail closed. Case handling is
+/// [`FetchPolicy::check_redirect_hop`]'s job.
+fn url_scheme(url: &str) -> &str {
+    match url.split_once("://") {
+        Some((scheme, _)) => scheme,
+        None => "",
+    }
+}
 
 /// The frozen outbound-fetch policy object (ADR-0033). All M28 fetch
 /// paths construct their behavior through this; nothing dials without it.
@@ -991,5 +1082,110 @@ mod tests {
             MAX_FETCH_RESPONSE_BODY_BYTES as usize
         );
         assert_eq!(MAX_BODY_HELPER_BYTES, 16 * 1024 * 1024);
+    }
+
+    #[test]
+    fn redirect_limiter_follows_up_to_ceiling_then_fails_typed() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        assert_eq!(lim.limit(), MAX_REDIRECT_HOPS);
+        // Hops 1..=MAX_FOLLOW distinct targets: all follow.
+        for hop in 1..=MAX_REDIRECT_HOPS {
+            let to = format!("https://ex.test/r{hop}");
+            assert_eq!(
+                lim.evaluate(&format!("https://ex.test/r{}", hop - 1), &to),
+                Ok(RedirectOutcome::Follow),
+                "hop {hop} must follow"
+            );
+            assert_eq!(lim.hops(), hop);
+        }
+        // One past the ceiling: bounded, typed failure.
+        assert_eq!(
+            lim.evaluate("https://ex.test/r20", "https://ex.test/r21"),
+            Err(FetchPolicyError::TooManyRedirects {
+                max_hops: MAX_REDIRECT_HOPS
+            })
+        );
+    }
+
+    #[test]
+    fn manual_policy_surfaces_3xx_without_following() {
+        let policy = FetchPolicy {
+            redirect: RedirectPolicy::Manual,
+            ..FetchPolicy::default()
+        };
+        let mut lim = RedirectLimiter::new(policy);
+        assert_eq!(lim.limit(), 0);
+        // Manual: surface the 3xx; no hop consumption, no policy check.
+        assert_eq!(
+            lim.evaluate("https://a.test/", "http://b.test/"),
+            Ok(RedirectOutcome::Surface)
+        );
+        assert_eq!(lim.hops(), 0);
+    }
+
+    #[test]
+    fn redirect_loop_fails_fast_and_typed() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        assert_eq!(
+            lim.evaluate("https://a.test/x", "https://b.test/y"),
+            Ok(RedirectOutcome::Follow)
+        );
+        assert_eq!(
+            lim.evaluate("https://b.test/y", "https://a.test/x"),
+            Ok(RedirectOutcome::Follow)
+        );
+        // Returning to an already-visited URL: typed loop error, well
+        // before the hop ceiling would fire.
+        let err = lim
+            .evaluate("https://a.test/x", "https://b.test/y")
+            .unwrap_err();
+        assert!(matches!(err, FetchPolicyError::RedirectLoop { .. }));
+        assert!(err.to_string().contains("redirect loop"));
+        assert_eq!(lim.hops(), 2, "failed hop is not counted as followed");
+    }
+
+    #[test]
+    fn scheme_and_downgrade_denials_flow_through_limiter() {
+        let mut lim = RedirectLimiter::new(FetchPolicy::default());
+        // https -> http downgrade: denied.
+        assert!(matches!(
+            lim.evaluate("https://a.test/", "http://b.test/"),
+            Err(FetchPolicyError::DowngradeRedirect { .. })
+        ));
+        // Unallowed scheme on the target: denied.
+        assert!(matches!(
+            lim.evaluate("https://a.test/", "ftp://b.test/f"),
+            Err(FetchPolicyError::SchemeNotAllowed { .. })
+        ));
+        // Malformed target without a scheme delimiter: denied fail closed.
+        assert!(matches!(
+            lim.evaluate("https://a.test/", "not-a-url"),
+            Err(FetchPolicyError::SchemeNotAllowed { .. })
+        ));
+        assert_eq!(lim.hops(), 0, "denied hops leave the limiter unchanged");
+    }
+
+    #[test]
+    fn custom_hop_limit_is_respected_exactly() {
+        let policy = FetchPolicy {
+            redirect: RedirectPolicy::Follow { max_hops: 3 },
+            ..FetchPolicy::default()
+        };
+        assert!(policy.validate_redirect_policy().is_ok());
+        let mut lim = RedirectLimiter::new(policy);
+        assert_eq!(lim.limit(), 3);
+        for hop in 1..=3 {
+            assert_eq!(
+                lim.evaluate(
+                    &format!("https://a.test/{hop}"),
+                    &format!("https://a.test/{}", hop + 1)
+                ),
+                Ok(RedirectOutcome::Follow)
+            );
+        }
+        assert!(matches!(
+            lim.evaluate("https://a.test/4", "https://a.test/5"),
+            Err(FetchPolicyError::TooManyRedirects { max_hops: 3 })
+        ));
     }
 }
