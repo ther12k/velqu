@@ -4,23 +4,28 @@
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M27-CAPABILITY-LINKER-MINIMAL-WEB-RUNTIME",
-  "reviewedImplementationCommit": "2b7d00f",
+  "milestone": "M28-NATIVE-OUTBOUND-FETCH",
+  "reviewedImplementationCommit": "1cd63fc",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — clean candidate-commit verification (2b7d00f), artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
-    "rustTests": "workspace tests PASS (q-capabilities 107+7, q-engine-quickjs 16+97, q-pack 96+2, velqu-runtime 31, q-http 11, q-router 15)",
-    "typescriptTests": 213,
-    "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS"
+    "result": "PASS \u2014 exit 0 at candidate commit 1cd63fc; artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
+    "rustTests": "workspace tests PASS (q-capabilities 192+7+1+4+9, q-engine-quickjs 18+101, velqu-runtime 12+5+44, q-http 4+6+1, q-bridge 11)",
+    "typescriptTests": 219,
+    "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS; release binary b82960604ddf390d matches manifest"
   },
   "benchmarks": {
     "capabilityProfiles": "benchmarks/raw/profiles/capability-profiles.json",
     "routeCount": "benchmarks/raw/route-count/summary.json",
     "coldStart": "benchmarks/raw/cold-start/summary.json",
     "warm": "benchmarks/raw/warm/summary.json",
-    "manifest": "benchmarks/manifest.json"
+    "manifest": "benchmarks/manifest.json",
+    "realWorldW4": "benchmarks/raw/real-world/w4-latency/comparison.md",
+    "realWorldFanout": "benchmarks/raw/real-world/fanout/comparison.md",
+    "realWorldMixed": "benchmarks/raw/real-world/mixed/comparison.md",
+    "realWorldConcurrency": "benchmarks/raw/real-world/concurrency/comparison.md"
   },
   "reports": [
+    "docs/reports/m28-gate-review.md",
     "docs/reports/m27-gate-review.md",
     "docs/reports/m27-010-wpt-wintertc-conformance.md",
     "docs/reports/m27-011-capability-cost-budget-report.md",
@@ -31,7 +36,7 @@
   ],
   "taskLedger": {
     "file": "docs/beta/04_TASK_LEDGER.md",
-    "result": "PASS — all M27-001 through M27-011 parent rows and M27-GATE marked PASS"
+    "result": "PASS \u2014 all M27-001 through M27-011 parent rows and M27-GATE marked PASS"
   },
   "release": {
     "script": "scripts/release-packet",
@@ -41,5 +46,6 @@
   "openItems": [
     "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path (producer emit + runtime default load through the native reader) is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. Requires an owner-authorized follow-up packet."
   ],
-  "gates": []
+  "gates": [],
+  "evidenceCheckpoint": "1cd63fc"
 }
