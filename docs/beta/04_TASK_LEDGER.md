@@ -77,7 +77,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M28-005 | P0 | PASS | M28-003, M27-007 | M28 | Propagate AbortSignal and route deadlines |
 | M28-006 | P0 | PASS | M28-004, M28-005 | M28 | Implement streaming and strict backpressure |
 | M28-007 | P1 | PASS | M28-003, M28-004 | M28 | Implement redirect and compression policy |
-| M28-008 | P0 | TODO | M28-001, M28-003, M28-007 | M28 | Implement SSRF and network egress controls |
+| M28-008 | P0 | PASS | M28-001, M28-003, M28-007 | M28 | Implement SSRF and network egress controls |
 | M28-009 | P1 | TODO | M28-003, M28-005, M28-006 | M28 | Integrate lifecycle, observability, and shutdown |
 | M28-010 | P0 | TODO | M28-004, M28-005, M28-006, M28-007, M28-008 | M28 | Complete fetch conformance and fault testing |
 | M28-011 | P1 | TODO | M28-009, M28-010 | M28 | Run controlled upstream and fan-out benchmarks |

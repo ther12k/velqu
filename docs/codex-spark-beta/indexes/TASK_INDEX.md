@@ -391,7 +391,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M28-008-C](../tasks/05_m28_native_fetch/M28-008-C-support-allow-deny-configuration.md) | P0 | implement | PASS | M28-008-B | Support allow/deny configuration |
 | [M28-008-D](../tasks/05_m28_native_fetch/M28-008-D-define-proxy-interaction.md) | P0 | implement | PASS | M28-008-C | Define proxy interaction |
 | [M28-008-V](../tasks/05_m28_native_fetch/M28-008-V-verify-implement-ssrf-and-network-egress-controls.md) | P0 | verify | PASS | M28-008-A, M28-008-B, M28-008-C, M28-008-D | Verify Implement SSRF and network egress controls |
-| [M28-008-Z](../tasks/05_m28_native_fetch/M28-008-Z-package-evidence-for-implement-ssrf-and-network-egress-controls.md) | P0 | evidence | TODO | M28-008-V | Package evidence for Implement SSRF and network egress controls |
+| [M28-008-Z](../tasks/05_m28_native_fetch/M28-008-Z-package-evidence-for-implement-ssrf-and-network-egress-controls.md) | P0 | evidence | PASS | M28-008-V | Package evidence for Implement SSRF and network egress controls |
 | [M28-009-A](../tasks/05_m28_native_fetch/M28-009-A-expose-pool-wait-dns-connect-tls-ttfb-body-errors-cancellations.md) | P1 | implement | TODO | M28-003-Z, M28-005-Z, M28-006-Z | Expose pool wait, DNS, connect, TLS, TTFB, body, errors, cancellations |
 | [M28-009-B](../tasks/05_m28_native_fetch/M28-009-B-sample-aggregate-metrics.md) | P1 | implement | TODO | M28-009-A | Sample/aggregate metrics |
 | [M28-009-C](../tasks/05_m28_native_fetch/M28-009-C-drain-pool-on-shutdown.md) | P1 | implement | TODO | M28-009-B | Drain pool on shutdown |
