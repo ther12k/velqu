@@ -18,6 +18,33 @@ app.get("/api/bench/io", async (c) => {
     "content-type": upstream.headers.get("content-type") ?? "application/json",
   });
 });
+app.get("/api/bench/mixed", async (c) => {
+    const mode = c.req.query("mode") ?? "";
+    if (mode === "timeout") {
+      try {
+        await fetch(`${UPSTREAM}/io?ms=500`, { signal: AbortSignal.timeout(100) });
+      } catch {
+        return c.json({ mode, handled: "timeout" }, 504);
+      }
+      return c.json({ mode, handled: "timeout-unexpected" }, 500);
+    }
+    if (mode === "malformed") {
+      const res = await fetch(`${UPSTREAM}/bad`);
+      const text = await res.text();
+      try {
+        JSON.parse(text);
+        return c.json({ mode, handled: "malformed-unexpected" }, 500);
+      } catch {
+        return c.json(
+          { mode, handled: "malformed", problem: "upstream response was not valid JSON" },
+          502,
+        );
+      }
+    }
+    const upstream = await fetch(`${UPSTREAM}/io?ms=5`);
+    const body = await upstream.text();
+    return c.body(body, upstream.status, { "content-type": "application/json" });
+  });
 app.get("/api/bench/fanout", async (c) => {
   const n = validateFanout(c.req.query("n"));
   const ms = validateMs(c.req.query("ms") ?? "5");

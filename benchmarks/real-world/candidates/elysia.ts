@@ -21,6 +21,36 @@ const app = new Elysia({ aot: true })
       upstream.headers.get("content-type") ?? "application/json";
     return body;
   })
+  .get("/api/bench/mixed", async ({ query, set }) => {
+    const mode = query.mode ?? "";
+    if (mode === "timeout") {
+      try {
+        await fetch(`${UPSTREAM}/io?ms=500`, { signal: AbortSignal.timeout(100) });
+      } catch {
+        set.status = 504;
+        return { mode, handled: "timeout" };
+      }
+      set.status = 500;
+      return { mode, handled: "timeout-unexpected" };
+    }
+    if (mode === "malformed") {
+      const res = await fetch(`${UPSTREAM}/bad`);
+      const text = await res.text();
+      try {
+        JSON.parse(text);
+        set.status = 500;
+        return { mode, handled: "malformed-unexpected" };
+      } catch {
+        set.status = 502;
+        return { mode, handled: "malformed", problem: "upstream response was not valid JSON" };
+      }
+    }
+    const upstream = await fetch(`${UPSTREAM}/io?ms=5`);
+    const body = await upstream.text();
+    set.status = upstream.status;
+    set.headers["content-type"] = "application/json";
+    return body;
+  })
   .get("/api/bench/fanout", async ({ query, set }) => {
     const n = validateFanout(query.n ?? null);
     const ms = validateMs(query.ms ?? "5");

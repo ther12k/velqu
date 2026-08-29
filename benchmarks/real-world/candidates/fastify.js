@@ -19,6 +19,36 @@ fastify.get("/api/bench/io", async (request, reply) => {
   return body;
 });
 
+fastify.get("/api/bench/mixed", async (request, reply) => {
+  const mode = request.query.mode ?? "";
+  if (mode === "timeout") {
+    try {
+      await fetch(`${UPSTREAM}/io?ms=500`, { signal: AbortSignal.timeout(100) });
+    } catch {
+      return reply.code(504).send({ mode, handled: "timeout" });
+    }
+    return reply.code(500).send({ mode, handled: "timeout-unexpected" });
+  }
+  if (mode === "malformed") {
+    const res = await fetch(`${UPSTREAM}/bad`);
+    const text = await res.text();
+    try {
+      JSON.parse(text);
+      return reply.code(500).send({ mode, handled: "malformed-unexpected" });
+    } catch {
+      return reply.code(502).send({
+        mode,
+        handled: "malformed",
+        problem: "upstream response was not valid JSON",
+      });
+    }
+  }
+  const upstream = await fetch(`${UPSTREAM}/io?ms=5`);
+  const body = await upstream.text();
+  reply.code(upstream.status).header("content-type", "application/json");
+  return body;
+});
+
 fastify.get("/api/bench/fanout", async (request, reply) => {
   const n = validateFanout(request.query.n ?? null);
   const ms = validateMs(request.query.ms ?? "5");

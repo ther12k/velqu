@@ -16,7 +16,7 @@ interface WorkloadsFile {
 const config: WorkloadsFile = JSON.parse(
   readFileSync(import.meta.dir + "/workloads.json", "utf8"),
 );
-const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/, /^\/api\/bench\/fanout\?n=[124]&ms=\d+$/];
+const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/, /^\/api\/bench\/fanout\?n=[124]&ms=\d+$/, /^\/api\/bench\/mixed\?mode=(success|timeout|malformed)$/];
 
 describe("real-world workload config", () => {
   test("every workload declares id, method, path, and expectedStatus", () => {
@@ -26,7 +26,14 @@ describe("real-world workload config", () => {
       expect(w.path).toBeTruthy();
       expect(Number.isInteger(w.expectedStatus)).toBe(true);
       expect(w.expectedStatus).toBeGreaterThanOrEqual(200);
-      expect(w.expectedStatus).toBeLessThan(300);
+      // M28-011-C: mixed-failure workloads assert typed failure statuses
+      // (502 malformed upstream, 504 client-deadline timeout).
+      const failureMode = /^\/api\/bench\/mixed\?mode=/.test(w.path);
+      if (failureMode) {
+        expect([200, 502, 504]).toContain(w.expectedStatus);
+      } else {
+        expect(w.expectedStatus).toBeLessThan(300);
+      }
       expect(PATHS.some((re) => re.test(w.path))).toBe(true);
     }
   });
