@@ -1,9 +1,12 @@
-//! Bounded streaming buffers for fetch bodies (M28-006-A).
+//! Bounded streaming buffers for fetch bodies (M28-006-A/M28-006-B/M28-006-C).
 //!
 //! Chunk-buffer with a hard byte ceiling shared by the reader and writer
 //! sides of a streaming body. The producer blocks (backpressure) when the
 //! buffer is at capacity; the consumer drains and wakes the producer.
 //! Over-ceiling writes are typed rejections — never unbounded buffering.
+//! Consumer stop/disconnect cancels the stream: buffered bytes are
+//! released, a parked producer wakes into a typed `Cancelled` error, and
+//! reads terminate EOF-like.
 
 use std::fmt;
 use std::future::Future;
@@ -25,6 +28,8 @@ pub enum StreamError {
     LimitExceeded { total: u64, limit: u64 },
     /// The stream was already closed.
     StreamClosed,
+    /// The consumer stopped/disconnected: the stream was cancelled.
+    Cancelled,
 }
 
 impl fmt::Display for StreamError {
@@ -43,6 +48,7 @@ impl fmt::Display for StreamError {
                 )
             }
             StreamError::StreamClosed => f.write_str("stream already closed"),
+            StreamError::Cancelled => f.write_str("stream cancelled by consumer stop/disconnect"),
         }
     }
 }
@@ -60,6 +66,8 @@ struct Inner {
     /// Buffer capacity before backpressure applies.
     capacity: usize,
     closed: bool,
+    /// Consumer stopped/disconnected: terminal, buffers released.
+    cancelled: bool,
     /// Waker of a blocked producer (buffer was full).
     producer_waker: Option<Waker>,
     /// Waker of a blocked consumer (buffer was empty).
@@ -83,6 +91,7 @@ impl BoundedStream {
                 limit,
                 capacity,
                 closed: false,
+                cancelled: false,
                 producer_waker: None,
                 consumer_waker: None,
             })),
@@ -106,6 +115,9 @@ impl BoundedStream {
             });
         }
         let mut g = self.inner.lock().unwrap();
+        if g.cancelled {
+            return Err(StreamError::Cancelled);
+        }
         if g.closed {
             return Err(StreamError::StreamClosed);
         }
@@ -143,6 +155,9 @@ impl BoundedStream {
             }));
         }
         let mut g = self.inner.lock().unwrap();
+        if g.cancelled {
+            return Poll::Ready(Err(StreamError::Cancelled));
+        }
         if g.closed {
             return Poll::Ready(Err(StreamError::StreamClosed));
         }
@@ -183,10 +198,14 @@ impl BoundedStream {
     }
 
     /// Drain up to `max` bytes. Returns `None` when the stream is closed and
-    /// fully drained (EOF). Returns an empty vec when empty but still open
-    /// (consumer should wait).
+    /// fully drained (EOF), or when the stream was cancelled (buffered bytes
+    /// are released on cancel — no further data flows). Returns an empty vec
+    /// when empty but still open (consumer should wait).
     pub fn try_read(&self, max: usize) -> Option<Vec<u8>> {
         let mut g = self.inner.lock().unwrap();
+        if g.cancelled {
+            return None; // cancelled: buffers released, EOF-like stop
+        }
         if g.buf.is_empty() {
             if g.closed {
                 return None; // EOF
@@ -208,6 +227,32 @@ impl BoundedStream {
         if let Some(w) = g.consumer_waker.take() {
             w.wake();
         }
+    }
+
+    /// Cancel the stream from the consumer side (stop/disconnect). Terminal
+    /// and idempotent: buffered bytes are released immediately, a producer
+    /// parked in backpressure wakes and its next write fails with
+    /// [`StreamError::Cancelled`], and reads terminate EOF-like. Returns
+    /// `true` when this call performed the cancellation.
+    pub fn cancel(&self) -> bool {
+        let mut g = self.inner.lock().unwrap();
+        if g.cancelled {
+            return false;
+        }
+        g.cancelled = true;
+        g.buf.clear(); // release buffered memory now
+        if let Some(w) = g.producer_waker.take() {
+            w.wake();
+        }
+        if let Some(w) = g.consumer_waker.take() {
+            w.wake();
+        }
+        true
+    }
+
+    /// True when the consumer cancelled the stream.
+    pub fn is_cancelled(&self) -> bool {
+        self.inner.lock().unwrap().cancelled
     }
 
     /// True when the producer closed the stream.
@@ -240,6 +285,9 @@ impl BoundedStream {
     /// is available; registers the consumer waker when empty-but-open.
     pub fn poll_read(&self, cx: &mut Context<'_>, max: usize) -> Poll<Option<Vec<u8>>> {
         let mut g = self.inner.lock().unwrap();
+        if g.cancelled {
+            return Poll::Ready(None); // cancelled: buffers released, stop
+        }
         if !g.buf.is_empty() {
             let n = g.buf.len().min(max);
             let out = g.buf.drain(..n).collect::<Vec<u8>>();
@@ -460,5 +508,75 @@ mod tests {
         assert_eq!(s.buffered(), 14);
         assert_eq!(s.max_buffered(), 14);
         assert!(s.max_buffered() <= s.capacity() as u64);
+    }
+
+    #[test]
+    fn cancel_releases_buffers_and_fails_writes_typed() {
+        let s = BoundedStream::with_limit(1024);
+        assert!(s.try_write(b"buffered-data").unwrap());
+        assert_eq!(s.buffered(), 13);
+        assert!(s.cancel(), "first cancel performs the transition");
+        assert!(!s.cancel(), "cancel is idempotent");
+        assert!(s.is_cancelled());
+        // Buffered bytes are released at cancel time.
+        assert_eq!(s.buffered(), 0);
+        // Writes fail with the typed cancellation error, not StreamClosed.
+        let err = s.try_write(b"x").unwrap_err();
+        assert!(matches!(err, StreamError::Cancelled));
+        assert!(err.to_string().contains("cancelled"));
+        // Reads terminate EOF-like; no residual data leaks after cancel.
+        assert_eq!(s.try_read(64), None);
+    }
+
+    #[test]
+    fn cancel_wakes_parked_producer_into_typed_error() {
+        let s = BoundedStream::new(1 << 20, 16);
+        assert!(s.try_write(b"0123456789abcdef").unwrap()); // fill to capacity
+        let counter = std::sync::Arc::new(CountingWaker(AtomicUsize::new(0)));
+        let waker = Waker::from(counter.clone());
+        let mut cx = Context::from_waker(&waker);
+        // Producer parks in backpressure.
+        assert!(matches!(s.poll_write(&mut cx, b"X"), Poll::Pending));
+        // Consumer disconnect: parked producer is woken exactly once.
+        assert!(s.cancel());
+        assert_eq!(counter.0.load(AtomicOrdering::SeqCst), 1);
+        // Post-wake poll observes the typed cancellation.
+        assert!(matches!(
+            s.poll_write(&mut cx, b"X"),
+            Poll::Ready(Err(StreamError::Cancelled))
+        ));
+    }
+
+    #[test]
+    fn write_chunk_future_errs_after_cancel() {
+        let s = BoundedStream::new(1 << 20, 8);
+        let mut cx = Context::from_waker(Waker::noop());
+        let mut fut = std::pin::pin!(s.write_chunk(b"abcdefgh".to_vec()));
+        assert!(matches!(fut.as_mut().poll(&mut cx), Poll::Ready(Ok(()))));
+        let mut blocked = std::pin::pin!(s.write_chunk(b"Z".to_vec()));
+        assert!(matches!(blocked.as_mut().poll(&mut cx), Poll::Pending));
+        s.cancel();
+        assert!(matches!(
+            blocked.as_mut().poll(&mut cx),
+            Poll::Ready(Err(StreamError::Cancelled))
+        ));
+        // read_chunk resolves None (EOF-like) after cancel, even while the
+        // stream is not closed.
+        let mut read_fut = std::pin::pin!(s.read_chunk(64));
+        assert!(matches!(read_fut.as_mut().poll(&mut cx), Poll::Ready(None)));
+    }
+
+    #[test]
+    fn cancel_after_close_still_releases_residual_buffer() {
+        let s = BoundedStream::with_limit(1024);
+        s.try_write(b"tail").unwrap();
+        s.close(); // producer EOF with undrained tail bytes
+        assert_eq!(s.buffered(), 4);
+        assert!(s.cancel());
+        assert_eq!(s.buffered(), 0, "cancel releases residual buffered tail");
+        assert_eq!(s.try_read(64), None);
+        // close() after cancel stays terminal and harmless.
+        s.close();
+        assert!(s.is_cancelled());
     }
 }

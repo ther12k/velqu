@@ -180,3 +180,79 @@ async fn streaming_load_profile_peak_stays_at_capacity_bound() {
         DEFAULT_STREAM_BUFFER_BYTES
     );
 }
+#[tokio::test(flavor = "multi_thread")]
+async fn consumer_disconnect_cancels_midstream_and_releases_buffers() {
+    let stream = Arc::new(BoundedStream::new(
+        MAX_FETCH_RESPONSE_BODY_BYTES,
+        DEFAULT_STREAM_BUFFER_BYTES,
+    ));
+    let written = Arc::new(AtomicU64::new(0));
+
+    // Producer: keeps streaming until the stream terminates it.
+    let producer_stream = stream.clone();
+    let producer_written = written.clone();
+    let producer = tokio::spawn(async move {
+        let mut pos: u64 = 0;
+        loop {
+            let len = CHUNK_LEN.min((TOTAL_BODY_BYTES - pos) as usize);
+            let chunk: Vec<u8> = (pos..pos + len as u64).map(payload_byte).collect();
+            match producer_stream.write_chunk(chunk).await {
+                Ok(()) => {
+                    producer_written.fetch_add(len as u64, Ordering::SeqCst);
+                    pos += len as u64;
+                }
+                // Consumer stopped/disconnect: typed cancellation ends the pump.
+                Err(StreamError::Cancelled) => return pos,
+                Err(e) => panic!("unexpected producer error: {e}"),
+            }
+        }
+    });
+
+    // Consumer reads a few chunks, then disconnects mid-stream.
+    let consumer_stream = stream.clone();
+    let consumer = tokio::spawn(async move {
+        for _ in 0..3 {
+            let chunk = consumer_stream
+                .read_chunk(DEFAULT_STREAM_BUFFER_BYTES)
+                .await
+                .expect("stream produced data before cancel");
+            assert!(!chunk.is_empty());
+        }
+        // Downstream stops here: cancel releases buffers and terminates
+        // the producer instead of letting it block or buffer unboundedly.
+        assert!(consumer_stream.cancel());
+        assert_eq!(consumer_stream.buffered(), 0, "buffers released at cancel");
+    });
+
+    tokio::time::timeout(Duration::from_secs(10), consumer)
+        .await
+        .expect("consumer timed out")
+        .expect("consumer task panicked");
+
+    let cancelled_at = tokio::time::timeout(Duration::from_secs(10), producer)
+        .await
+        .expect("producer was not terminated by the cancellation")
+        .expect("producer task panicked");
+
+    // Producer stopped well before completing the 8 MiB body: cancellation
+    // actually took effect mid-stream, and memory stayed bounded throughout.
+    assert!(
+        cancelled_at < TOTAL_BODY_BYTES,
+        "producer ran to completion ({cancelled_at}) despite cancellation"
+    );
+    assert_eq!(written.load(Ordering::SeqCst), cancelled_at);
+    assert!(stream.is_cancelled());
+    assert!(
+        stream.max_buffered() <= DEFAULT_STREAM_BUFFER_BYTES as u64,
+        "peak buffered {} exceeded capacity {}",
+        stream.max_buffered(),
+        DEFAULT_STREAM_BUFFER_BYTES
+    );
+    println!(
+        "m28-006-c disconnect profile: cancelled_at={}B of {}B, peak_buffered={}B, capacity={}B",
+        cancelled_at,
+        TOTAL_BODY_BYTES,
+        stream.max_buffered(),
+        DEFAULT_STREAM_BUFFER_BYTES
+    );
+}
