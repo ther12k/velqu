@@ -5,6 +5,30 @@
 //! (timer capability) run on tokio and complete back onto the worker loop as
 //! messages, carrying no JS values across threads. Late completions for
 //! settled/cancelled invocations are dropped (RUN-006, SEC-003).
+//!
+//! # State ownership (ADR-0036, M3-001-C)
+//!
+//! JavaScript values NEVER cross workers — and the type system enforces it:
+//! [`rquickjs::Value`] holds reference-counted pointers into one runtime's
+//! heap, so it is neither [`Send`] nor [`Sync`]. Moving one into another
+//! thread is a compile error, demonstrated below. The only things that cross
+//! worker boundaries are plain data: bytes, numbers, and channel senders.
+//!
+//! ```compile_fail
+//! // Moving a JS value into another thread must not compile (ADR-0036 §5).
+//! use rquickjs::{Context, Runtime};
+//!
+//! let rt = Runtime::new().unwrap();
+//! let ctx = Context::full(&rt).unwrap();
+//! let value = ctx.with(|ctx| ctx.eval("({ a: 1 })").unwrap());
+//! std::thread::spawn(move || {
+//!     // ERROR: `Value` contains `Rc` pointers and cannot be sent.
+//!     let _stolen = value;
+//! });
+//! ```
+//!
+//! The dispatcher message contract is the positive half of the same rule:
+//! only plain-data messages may cross worker boundaries.
 
 mod convert;
 pub mod prelude;
@@ -304,5 +328,34 @@ impl Engine for QuickJsEngine {
 impl Drop for QuickJsEngine {
     fn drop(&mut self) {
         self.shutdown();
+    }
+}
+
+/// M3-001-C: type-level enforcement of the ADR-0036 sharing rules. The
+/// negative half (JS values are not Send/Sync) is pinned by the crate-level
+/// `compile_fail` doc test; this module pins the positive half — the only
+/// types allowed to cross worker boundaries are plain data.
+#[cfg(test)]
+mod state_ownership_tests {
+    use super::*;
+
+    #[test]
+    fn worker_messages_are_plain_data_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        // Every worker-boundary message is plain data: bytes, numbers,
+        // senders. No JS value can hide inside a type that passes this.
+        assert_send_sync::<WorkerMsg>();
+    }
+
+    #[test]
+    fn engine_boundary_types_are_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<q_engine::InvocationSpec>();
+        assert_send_sync::<q_engine::Outcome>();
+        assert_send_sync::<EngineHealth>();
+        // The concrete engine is the Send front door: it talks to the
+        // owner thread through channels, never through runtime pointers.
+        // (WorkerMsg must be Send for it to be Send at all.)
+        assert_send_sync::<QuickJsEngine>();
     }
 }

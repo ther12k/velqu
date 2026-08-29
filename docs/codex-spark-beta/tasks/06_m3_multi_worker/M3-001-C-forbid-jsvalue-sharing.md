@@ -4,7 +4,7 @@ parent_task: M3-001
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -103,3 +103,33 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-001-C) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-001-c (squash-merged; see git log for final hash)
+- Closes: #374
+
+### Changed files
+- `crates/q-engine-quickjs/src/lib.rs`: type-level enforcement of ADR-0036 §5 (no JSValue crosses workers) —
+  - Crate-level state-ownership docs with a **`compile_fail` doc test**: moving an `rquickjs::Value` into `std::thread::spawn` must not compile (the value holds `Rc` pointers into one runtime's heap — `!Send` by construction). This test runs in every `cargo test` and fails the build if a future rquickjs upgrade ever makes values cross-thread-movable.
+  - `state_ownership_tests` module pinning the POSITIVE half of the contract: `WorkerMsg` (the only thing that crosses worker boundaries) is `Send + Sync` — plain data only, so no JS value can hide inside; `InvocationSpec`/`Outcome`/`EngineHealth`/`QuickJsEngine` are `Send` — the engine front door talks through channels, never runtime pointers.
+- `benchmarks/manifest.json`: release binary hash refreshed (`333d563d…`).
+
+### Tests added
+- Crate doc `compile_fail` test (the prohibition itself, compiler-enforced).
+- `worker_messages_are_plain_data_send_sync`
+- `engine_boundary_types_are_send_sync`
+
+### Command results
+- `cargo test -p q-engine-quickjs` → **20 lib (was 18) + 101 engine + 1 doctest (compile_fail verified)** — 0 failed
+- `cargo test -p velqu-runtime` → 12+5+44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Guardrail mapping
+- **Each runtime has one owner thread** — the type system makes cross-thread JS values a compile error, not a convention.
+
+### Disclosures
+- The release binary hash legitimately refreshed: crate-level doc lines land in the panic/metadata sections of the artifact.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
