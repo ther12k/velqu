@@ -4,7 +4,7 @@ parent_task: M28-011
 milestone: M28
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M28.md
 commit_required: true
 ---
@@ -135,3 +135,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M28-011-Z) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m28-011-z (squash-merged; see git log for final hash)
+- Closes: #371
+
+### Parent closure — M28-011 Run controlled upstream and fan-out benchmarks
+
+Parent intent: measure scheduler and pool behavior under realistic I/O. Status: **PASS**.
+
+Packet commits (squash merges):
+- M28-011-A — 1b56d46 (#969, Closes #366): W4 controlled-latency matrix (1/5/10/25ms) — four matched proxy candidates (bun-fetch/hono/elysia2/fastify, pinned), `--workloads` cell filter, comparison with structural tail guardrail; 32/32 cells 0 errors/0 mismatches
+- M28-011-B — 07517d9 (#970, Closes #367): fan-out 1/2/4 — parallelism proven per candidate (p50(n=4) < 4x p50(n=1) everywhere; wall time flat in n); lockfile-frozen candidate installs (auto-install resolved UNPINNED elysia)
+- M28-011-C — 688d7d9 (#971, Closes #368): mixed-outcome matrix — success->200, deadline timeout->504, malformed body->502, exact typed statuses in all 24 cells; the comparison caught two real candidate bugs (hono context scoping, bun-fetch missing abort catch) which were fixed
+- M28-011-D — 6630b63 (#972, Closes #369): concurrency ladder 1/10/50/200 — 32/32 cells clean, throughput scales everywhere, concurrency-aware fair-share tail bound
+- M28-011-V — 07bf502 (#973, Closes #370): verification closure; disclosed a reproducibility finding: fastify (Node fetch) c=200/1ms tail does not reproduce within the fair-share bound across days (186ms committed vs 0.9-1.5s re-measured) — Node-client limitation at extreme fan-in, not a velqu path
+
+### Required evidence
+- **Raw results**: `benchmarks/raw/real-world/{w4-latency,fanout,mixed,concurrency}/` — per-candidate raw JSONL (+gz for the ladder), summaries, logs, comparison reports — all committed.
+- **Generated report**: `comparison.md` per matrix with enforced structural guardrails (0 errors/0 mismatches; parallelism proof; fair-share tail bounds).
+- **Candidate hashes**: `candidates/bun.lock` + `package.json` pin hono@4.13.5, elysia@2.0.0-beta.4, fastify@5.12.1; runner installs `--frozen-lockfile`.
+- **Overhead**: M28-009-V measured the instrumentation path (~0 ns plain / ~22 ns collector / 0 disabled).
+
+### Source/test map
+- `benchmarks/real-world/candidates/` (4 matched apps + shared contract), `run-w4.sh`, `run-fanout.sh`, `run-mixed.sh`, `run-concurrency.sh`, `compare-w4.ts`, `compare-fanout.ts`, `compare-mixed.ts`, `compare-concurrency.ts`, `load.ts` (--workloads filter + selected-cells validation), `upstream.ts` (/bad malformed fixture), `workloads.json` (+6 cells), `workloads.test.ts` (guards extended)
+- `crates/q-runtime/tests/runtime_conformance.rs`: `graceful_shutdown_exits_zero` (fetchPool drain assertion; log collection made race-free with a bounded poll this packet)
+
+### Command results (this branch)
+- `cargo test -p q-capabilities` → 6 suites; `-p velqu-runtime` → 12+5+44; `-p q-engine-quickjs` → 18+101; `-p q-http` → 4+6+1; `-p q-bridge` → 11 — all pass
+- `bun test benchmarks/real-world` → 36 pass / 0 fail; `bun run typecheck` → clean
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Ledger update
+- `docs/beta/04_TASK_LEDGER.md`: M28-011 flipped TODO -> PASS.
+
+### Disclosures
+- This packet fixes a test-harness race found during evidence runs: the extended SIGTERM test drained the log pipe once, before the reader thread had forwarded the final lines — replaced with a bounded poll (3/3 stable). Test-collection fix; no production change.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
