@@ -49,7 +49,7 @@ pub use console::{
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
 pub use dispatch::{
-    BoundedWorkerQueue, QueueError, QueueStats, DEFAULT_WORKER_QUEUE_CAPACITY,
+    BoundedWorkerQueue, Dispatcher, QueueError, QueueStats, DEFAULT_WORKER_QUEUE_CAPACITY,
     MAX_WORKER_QUEUE_CAPACITY,
 };
 pub use fetch_metrics::{FetchMetrics, FetchMetricsCollector, FetchMetricsSnapshot, FetchStage};

@@ -29,6 +29,9 @@ pub enum QueueError {
         len: usize,
         capacity: usize,
     },
+    /// Every worker queue is at capacity: admission rejected globally.
+    /// (M3-002-B selection verdict; M3-002-C formalizes the response.)
+    AllFull { workers: usize, capacity: usize },
 }
 
 impl std::fmt::Display for QueueError {
@@ -41,6 +44,10 @@ impl std::fmt::Display for QueueError {
             } => write!(
                 f,
                 "worker {worker} queue full ({len}/{capacity}); admission rejected"
+            ),
+            QueueError::AllFull { workers, capacity } => write!(
+                f,
+                "all {workers} worker queues full (capacity {capacity} each); admission rejected"
             ),
         }
     }
@@ -236,6 +243,102 @@ pub struct QueueStats {
     pub max_wait: Duration,
 }
 
+/// Least-outstanding-load worker selection over N bounded per-worker
+/// queues (M3-002-B). Selection is pure host-side state: queue lengths
+/// only, no JS values, no locks held across pushes.
+///
+/// Strategy: pick the worker with the SMALLEST queue length that still
+/// has capacity. Ties break round-robin (the cursor advances per
+/// selection) so equal load spreads evenly instead of pinning worker 0.
+pub struct Dispatcher<T> {
+    queues: Vec<BoundedWorkerQueue<T>>,
+    /// Round-robin cursor for tie-breaking among least-loaded workers.
+    cursor: std::sync::atomic::AtomicUsize,
+}
+
+impl<T: Send + 'static> Dispatcher<T> {
+    /// N workers, each with the given queue capacity.
+    pub fn with_workers(workers: usize, capacity: usize) -> Self {
+        assert!(workers >= 1, "a dispatcher needs at least one worker");
+        Dispatcher {
+            queues: (0..workers)
+                .map(|w| BoundedWorkerQueue::with_capacity(w, capacity))
+                .collect(),
+            cursor: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    /// Worker count.
+    pub fn workers(&self) -> usize {
+        self.queues.len()
+    }
+
+    /// Queue for `worker` (the owning thread pops from it).
+    pub fn queue(&self, worker: usize) -> &BoundedWorkerQueue<T> {
+        &self.queues[worker]
+    }
+
+    /// Select the worker with the least outstanding load that has
+    /// capacity. `None` when EVERY queue is full.
+    pub fn select(&self) -> Option<usize> {
+        let n = self.queues.len();
+        let start = self.cursor.load(std::sync::atomic::Ordering::Relaxed) % n;
+        let mut best: Option<usize> = None;
+        let mut best_len = usize::MAX;
+        for i in 0..n {
+            // Visit in rotation order starting at the cursor so equal
+            // loads win round-robin.
+            let idx = (start + i) % n;
+            let q = &self.queues[idx];
+            let len = q.len();
+            if len >= q.capacity() {
+                continue; // full: not a candidate
+            }
+            if len < best_len {
+                best = Some(idx);
+                best_len = len;
+            }
+        }
+        if let Some(chosen) = best {
+            self.cursor
+                .store((chosen + 1) % n, std::sync::atomic::Ordering::Relaxed);
+        }
+        best
+    }
+
+    /// Select the least-loaded worker with capacity and push `job` there.
+    /// Typed `AllFull` when every queue is at capacity.
+    pub fn dispatch(&self, job: T) -> Result<usize, QueueError> {
+        match self.select() {
+            Some(worker) => self.queues[worker]
+                .try_push(job)
+                .map(|()| worker)
+                .map_err(|_| QueueError::AllFull {
+                    workers: self.queues.len(),
+                    capacity: self.queues[worker].capacity(),
+                }),
+            None => Err(QueueError::AllFull {
+                workers: self.queues.len(),
+                capacity: self.queues[0].capacity(),
+            }),
+        }
+    }
+
+    /// Close every queue (shutdown path).
+    pub fn close_all(&self) {
+        for q in &self.queues {
+            q.close();
+        }
+    }
+
+    /// Aggregated per-worker stats.
+    pub fn stats(&self) -> Vec<QueueStats> {
+        self.queues.iter().map(|q| q.stats()).collect()
+    }
+}
+
+impl<T: Send + 'static> SharedAcrossWorkers for Dispatcher<T> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,5 +492,86 @@ mod tests {
             elapsed < Duration::from_secs(2),
             "10k try_push must be fast: {elapsed:?}"
         );
+    }
+
+    #[test]
+    fn selection_targets_least_outstanding_load() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(3, 8);
+        // Uneven fill: w0=3, w1=0, w2=1.
+        for _ in 0..3 {
+            d.queue(0).try_push(0).unwrap();
+        }
+        d.queue(2).try_push(0).unwrap();
+        // dispatch() routes to the least-loaded worker, load-aware each
+        // time: w1 (0), then the w1/w2 tie rotates to w2, then w1 again.
+        let picks: Vec<usize> = (0..3).map(|_| d.dispatch(0).unwrap()).collect();
+        assert_eq!(picks, vec![1, 2, 1]);
+        // Loads converge: [3,2,2] — spread of 1 after three dispatches.
+        let loads: Vec<usize> = (0..3).map(|w| d.queue(w).len()).collect();
+        assert_eq!(loads, vec![3, 2, 2]);
+    }
+
+    #[test]
+    fn equal_loads_break_round_robin() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(3, 8);
+        // All empty: consecutive selections must rotate 0,1,2,0,...
+        let picks: Vec<usize> = (0..6).map(|_| d.select().unwrap()).collect();
+        assert_eq!(picks, vec![0, 1, 2, 0, 1, 2]);
+    }
+
+    #[test]
+    fn full_queues_are_skipped_until_only_choice() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(2, 1);
+        assert!(d.queue(0).try_push(1).is_ok()); // w0 full
+                                                 // Selection skips full w0 and targets w1.
+        assert_eq!(d.select().unwrap(), 1);
+        assert!(d.queue(1).try_push(2).is_ok()); // both full now
+        assert!(d.select().is_none(), "all full -> None");
+    }
+
+    #[test]
+    fn dispatch_routes_to_least_loaded_and_reports_all_full() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(2, 1);
+        assert_eq!(d.dispatch(10).unwrap(), 0);
+        assert_eq!(d.dispatch(20).unwrap(), 1);
+        let err = d.dispatch(30).unwrap_err();
+        assert_eq!(
+            err,
+            QueueError::AllFull {
+                workers: 2,
+                capacity: 1
+            }
+        );
+        assert!(err.to_string().contains("all 2 worker queues full"));
+        // Items landed on the right queues.
+        assert_eq!(
+            d.queue(0).pop_timeout(Duration::from_millis(50)).unwrap().0,
+            10
+        );
+        assert_eq!(
+            d.queue(1).pop_timeout(Duration::from_millis(50)).unwrap().0,
+            20
+        );
+    }
+
+    #[test]
+    fn aggregated_stats_cover_every_worker() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(3, 4);
+        d.dispatch(1).unwrap();
+        d.dispatch(2).unwrap();
+        let stats = d.stats();
+        assert_eq!(stats.len(), 3);
+        let total_pushed: u64 = stats.iter().map(|s| s.pushed).sum();
+        assert_eq!(total_pushed, 2);
+        assert_eq!(stats[0].worker, 0);
+    }
+
+    #[test]
+    fn close_all_shuts_every_queue_down() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(3, 4);
+        d.close_all();
+        for w in 0..3 {
+            assert!(d.queue(w).is_closed());
+        }
     }
 }
