@@ -314,6 +314,34 @@ impl ReplacementPolicy {
     }
 }
 
+/// Fleet readiness aggregated from usable capacity (M3-005-D).
+///
+/// Readiness is derived from what CAN serve, not from what exists: a
+/// worker that is quarantined (or replacing) contributes nothing, and
+/// the fleet stays ready as long as at least one usable worker remains.
+/// The aggregate is a pure function of (healthy, total) — deterministic,
+/// one-way per state change, and reported with the usable count so
+/// readiness degradation is observable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FleetReadiness {
+    /// Workers currently able to serve (not quarantined/replacing).
+    pub usable: usize,
+    /// Total worker slots configured.
+    pub total: usize,
+    /// Aggregated readiness: usable >= 1.
+    pub ready: bool,
+}
+
+/// Compute the fleet readiness aggregate.
+pub fn aggregate_readiness(usable: usize, total: usize) -> FleetReadiness {
+    let total = total.max(1);
+    FleetReadiness {
+        usable: usable.min(total),
+        total,
+        ready: usable.min(total) >= 1,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -615,5 +643,62 @@ mod tests {
             initialized < 100,
             "restart storm is rate-limited, never 1:1 with poison events"
         );
+    }
+
+    #[test]
+    fn readiness_is_true_while_any_worker_is_usable() {
+        assert!(aggregate_readiness(2, 2).ready);
+        assert!(
+            aggregate_readiness(1, 2).ready,
+            "1 usable of 2 still serves"
+        );
+        assert!(aggregate_readiness(1, 64).ready);
+    }
+
+    #[test]
+    fn readiness_is_false_only_when_nothing_is_usable() {
+        let r = aggregate_readiness(0, 4);
+        assert!(!r.ready);
+        assert_eq!(r.usable, 0);
+        assert_eq!(r.total, 4);
+        // Degenerate totals clamp to 1.
+        let r = aggregate_readiness(0, 0);
+        assert_eq!(r.total, 1);
+        assert!(!r.ready);
+    }
+
+    #[test]
+    fn usable_is_capped_at_total_and_counts_degrade_monotonically() {
+        // Over-reporting usable is clamped: usable can never exceed total.
+        let r = aggregate_readiness(9, 4);
+        assert_eq!(r.usable, 4);
+        // Monotonic degradation: readiness drops only when usable hits 0.
+        let seq = [4usize, 3, 2, 1, 0];
+        for &usable in &seq {
+            let r = aggregate_readiness(usable, 4);
+            assert_eq!(r.ready, usable >= 1);
+            assert_eq!(r.usable, usable);
+        }
+    }
+
+    #[test]
+    fn quarantine_lifecycle_reaches_degraded_then_ready_again() {
+        // The full M3-005 story in readiness terms: healthy fleet ->
+        // quarantine degrades to 1 usable -> still ready -> replacement
+        // restores full capacity -> ready again.
+        let mut usable = 4usize;
+        let total = 4usize;
+        // Two of four workers poisoned: 2 usable remain.
+        usable -= 2;
+        let degraded = aggregate_readiness(usable, total);
+        assert!(degraded.ready && degraded.usable == 2);
+        // Down to the last worker — still ready.
+        usable -= 1;
+        let last = aggregate_readiness(usable, total);
+        assert!(last.ready && last.usable == 1);
+        // Replacement initialized: capacity restored.
+        usable = total;
+        let restored = aggregate_readiness(usable, total);
+        assert!(restored.ready && restored.usable == total);
     }
 }
