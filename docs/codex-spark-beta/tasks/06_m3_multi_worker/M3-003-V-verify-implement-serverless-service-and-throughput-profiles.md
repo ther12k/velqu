@@ -4,7 +4,7 @@ parent_task: M3-003
 milestone: M3
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -123,3 +123,28 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-003-V) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-003-v (squash-merged; see git log for final hash)
+- Closes: #388
+
+### Acceptance-criterion mapping (parent M3-003 guardrails)
+
+1. **Serverless cold start remains within approved budget** — verified live: the proof pack's serverless ready line reports `startupMs: 7.50` (budget 10 ms from M27-011 evidence; the one-worker startup is the minimum possible posture). The ready line also declared `serviceProfile: "serverless", startupWorkers: 1` exactly as M3-003-D requires.
+2. **Profiles have deterministic readiness** — verified: `Readiness` flips exactly once on the call meeting the requirement (serverless = worker 0; throughput = all configured), one-way, with out-of-range parse failing closed and direct variants clamping to MAX_WORKERS. Tests: `serverless_readiness_needs_exactly_worker_zero`, `throughput_readiness_needs_every_configured_worker`, `readiness_is_one_way`, `throughput_out_of_range_fails_closed_direct_variants_clamp`.
+3. **No hidden worker creation** — verified: `Serverless` carries no worker count (structurally cannot pre-spawn); `Service` requires an explicit count or fails closed; adaptive adds happen ONLY through the bounded policy tick (max + cooldown). Tests: `serverless_starts_exactly_one_worker`, `service_profile_requires_explicit_count_and_clamps`, `unknown_profiles_fail_closed`, `pressure_adds_one_worker_per_tick`, `max_workers_bounds_growth_exactly`, `cooldown_gates_bursts_against_oscillation`.
+4. **Profile-specific RSS is reported** — measured live this packet: serverless single-worker serving the proof pack = **~7.9 MB RSS** (health 200 during measurement). Profile-differentiated RSS scaling is M3-009's dedicated evidence (topology recorded there).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p velqu-runtime` → 28 unit + 5 + 44 (incl. ready-line/fail-closed integration test) passed
+- `cargo test -p q-capabilities` → 6 suites; `-p q-engine-quickjs` → 20+101 — pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `--profile-info` exercised live: serverless→1, service:4→4, service:0→typed error, bogus→typed error, bounds [1,64] — exit 0
+- Live serverless run: ready 7.5 ms, health 200, graceful shutdown complete with fetchPool drained
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary reproduced deterministically (`55b79127…`)
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of M3-003-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
