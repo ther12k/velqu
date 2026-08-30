@@ -126,6 +126,9 @@ pub struct ServeState {
     /// M3-007-B: the admission drain gate — flips once when the shutdown
     /// signal fires; dynamic admission is refused from that instant.
     pub drain_gate: q_capabilities::DrainGate,
+    /// M3-008-C: load-shed reason counters — every refusal the runtime
+    /// hands a client is recorded by its closed-set kind.
+    pub load_shed: q_capabilities::LoadShedCounters,
     pub log_mode: LogMode,
     pub log_sample: u64,
     pub log_sequence: AtomicU64,
@@ -309,6 +312,9 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // balancers observe the instance going away. Lock-free atomic
             // check — same posture as the quarantine gate below.
             if state.drain_gate.check_admission().is_err() {
+                state
+                    .load_shed
+                    .record(&q_capabilities::LoadShedReason::DrainInProgress);
                 let body = problems::body(
                     "overload",
                     Some(503),
@@ -687,7 +693,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             if let Err(track_err) = state.ownership.track(invocation_id, 0) {
                 state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
                 return match track_err {
-                    q_capabilities::TrackError::AtCapacity { .. } => {
+                    q_capabilities::TrackError::AtCapacity { capacity } => {
+                        state.load_shed.record(
+                            &q_capabilities::LoadShedReason::InvocationTrackingFull { capacity },
+                        );
                         let body =
                             problems::body("overload", Some(503), None, &[], &[], &ctx.request_id);
                         let mut response = problem_response(503, &body);

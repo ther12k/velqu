@@ -1915,6 +1915,20 @@ fn graceful_drain_flips_gate_and_reports_before_exit() {
         complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"aborted\":0}"),
         "shutdown report carries the full drain outcome: {complete}"
     );
+    // M3-008-C: the load-shed exposure is part of the report — the
+    // closed reason vocabulary with per-kind counts (no refusals in
+    // this scenario, so all kinds report zero).
+    let report: Value = serde_json::from_str(&complete).unwrap();
+    let shed = &report["loadShed"];
+    assert_eq!(
+        shed["draining"], 0,
+        "no drain refusals occurred: {complete}"
+    );
+    assert_eq!(
+        shed.as_object().map(|m| m.len()),
+        Some(7),
+        "all seven kinds reported"
+    );
     assert!(
         complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
         "ownership invariant intact through drain: {complete}"

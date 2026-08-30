@@ -31,6 +31,7 @@ pub mod harness;
 pub mod identity;
 pub mod inventory;
 pub mod invocation;
+pub mod load_shed;
 pub mod long_running;
 pub mod operations;
 pub mod resolver;
@@ -87,6 +88,7 @@ pub use invocation::{
     InvocationOwnership, InvocationOwnershipStats, TrackError,
     DEFAULT_INVOCATION_TRACKING_CAPACITY, MAX_INVOCATION_TRACKING_CAPACITY,
 };
+pub use load_shed::{LoadShedCounters, LoadShedReason, LOAD_SHED_KINDS};
 pub use long_running::{
     LongClass, LongRunningBudget, LongRunningPolicy, LongRunningPolicyError, LongRunningStats,
     LongSlotsExhausted, DEFAULT_LONG_RUNNING_THRESHOLD_MS, MAX_LONG_RUNNING_THRESHOLD_MS,
