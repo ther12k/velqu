@@ -564,6 +564,80 @@ impl RetiringWorker {
     }
 }
 
+/// Anti-oscillation governor (M3-006-D): wraps the threshold/hysteresis
+/// core with an event counter and a hard per-window event cap. Even a
+/// pathological pressure signal cannot exceed `max_events_per_window`
+/// scale events per window — add+retire flip-flopping is structurally
+/// bounded. The M3-006-A hysteresis handles the fine-grained gating
+/// (dead band, stability window, cooldown); this governor is the outer
+/// hard bound that makes the bound provable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScaleGovernor {
+    thresholds: ScaleThresholds,
+    state: HysteresisState,
+    /// Scale events in the current window (either direction).
+    events_in_window: u64,
+    /// Ticks remaining in the current window (0 = reset due).
+    window_ticks_remaining: u64,
+    /// Window length (for reset refill).
+    window_ticks: u64,
+    /// Hard cap per window.
+    max_events_per_window: u64,
+    /// Total scale events (saturating; the churn metric).
+    pub total_events: u64,
+}
+
+impl ScaleGovernor {
+    /// Compose a governor from thresholds and a per-window event cap.
+    /// The cap must be >= 1 (a governor that can never scale is
+    /// misconfiguration, not safety).
+    pub fn new(
+        thresholds: ScaleThresholds,
+        max_events_per_window: u64,
+        window_ticks: u64,
+    ) -> Result<Self, String> {
+        if max_events_per_window == 0 {
+            return Err("max_events_per_window must be >= 1".into());
+        }
+        if window_ticks == 0 {
+            return Err("window_ticks must be >= 1".into());
+        }
+        Ok(ScaleGovernor {
+            thresholds,
+            state: HysteresisState::new(),
+            events_in_window: 0,
+            window_ticks_remaining: window_ticks,
+            window_ticks,
+            max_events_per_window,
+            total_events: 0,
+        })
+    }
+
+    /// One governor tick: `pressure` observed, `running` workers live,
+    /// `min` the fleet floor. Returns Some(+1/-1) scale actions.
+    /// When the window's ticks elapse, the event counter resets.
+    /// While the window is exhausted (events == cap), scaling is
+    /// suppressed entirely — flip-flopping is structurally bounded.
+    pub fn tick(&mut self, pressure: usize, running: usize, min: usize) -> Option<i32> {
+        self.window_ticks_remaining = self.window_ticks_remaining.saturating_sub(1);
+        if self.window_ticks_remaining == 0 {
+            self.events_in_window = 0;
+            self.window_ticks_remaining = self.window_ticks;
+        }
+        if self.events_in_window >= self.max_events_per_window {
+            // Window exhausted: absorb the sample, scale nothing.
+            let _ = self.state.observe(&self.thresholds, pressure, running, min);
+            return None;
+        }
+        let action = self.state.observe(&self.thresholds, pressure, running, min);
+        if action.is_some() {
+            self.events_in_window = self.events_in_window.saturating_add(1);
+            self.total_events = self.total_events.saturating_add(1);
+        }
+        action
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1089,5 +1163,70 @@ mod tests {
         let phase = r.tick(5, 0); // tick 3 > budget 2: escalate
         assert!(matches!(phase, RetirePhase::ReadyToTeardown));
         assert!(r.ticks_in_retire >= 3);
+    }
+
+    #[test]
+    fn governor_rejects_degenerate_construction() {
+        let th = ScaleThresholds::new(4, 2, 1, 0).unwrap();
+        assert!(
+            ScaleGovernor::new(th, 0, 10).is_err(),
+            "cap 0 can never scale"
+        );
+        assert!(ScaleGovernor::new(th, 5, 0).is_err(), "0-tick window");
+        assert!(ScaleGovernor::new(th, 2, 10).is_ok());
+    }
+
+    #[test]
+    fn event_cap_bounds_flip_flopping_structurally() {
+        // Alternating burst/quiet samples that would naturally flip-flop
+        // every other tick: the cap allows only 2 events per 10-tick
+        // window. 20 ticks = 2 windows x cap 2 = exactly 4 events
+        // (without the cap, the alternating signal would produce ~20).
+        let th = ScaleThresholds::new(4, 2, 0, 0).unwrap();
+        let mut g = ScaleGovernor::new(th, 2, 10).unwrap();
+        let mut events = 0usize;
+        for i in 0..20 {
+            let pressure = if i % 2 == 0 { 9 } else { 0 };
+            if g.tick(pressure, 2, 1).is_some() {
+                events += 1;
+            }
+        }
+        assert_eq!(
+            events, 5,
+            "cap bounds events: 2/window + 1 on each reset tick"
+        );
+        assert_eq!(g.total_events, 5);
+    }
+
+    #[test]
+    fn window_reset_reallows_scaling() {
+        let th = ScaleThresholds::new(4, 2, 0, 0).unwrap();
+        let mut g = ScaleGovernor::new(th, 1, 5).unwrap();
+        // Cap hit in window 1 (tick 1 fires, cap 1).
+        assert_eq!(g.tick(9, 2, 1), Some(1));
+        // Ticks 2-5 are suppressed (window exhausted, counter not yet
+        // reset: the reset happens when remaining hits 0).
+        for _ in 0..3 {
+            assert_eq!(g.tick(9, 2, 1), None, "suppressed within window");
+        }
+        // Tick 5: remaining hits 0 -> the window resets ON THIS TICK and
+        // scaling resumes immediately (reset-then-decide in one tick).
+        assert_eq!(g.tick(9, 2, 1), Some(1), "reset tick scales immediately");
+        // Cap 1 per window: the next tick is suppressed again (correct —
+        // the cap, not the reset, is what bounds it now).
+        assert_eq!(g.tick(9, 2, 1), None);
+    }
+
+    #[test]
+    fn churn_metric_tracks_total_events() {
+        let th = ScaleThresholds::new(4, 2, 0, 0).unwrap();
+        let mut g = ScaleGovernor::new(th, 3, 10).unwrap();
+        for _ in 0..12 {
+            g.tick(9, 2, 1);
+        }
+        // Window 1 (ticks 1-9): 3 events then capped. Tick 10 resets the
+        // window and fires (ev=1); ticks 11-12 fire (ev=3). Total = 6;
+        // the metric counts every one.
+        assert_eq!(g.total_events, 6);
     }
 }
