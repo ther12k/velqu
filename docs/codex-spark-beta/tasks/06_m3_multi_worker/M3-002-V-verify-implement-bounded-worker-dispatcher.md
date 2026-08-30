@@ -4,7 +4,7 @@ parent_task: M3-002
 milestone: M3
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -129,3 +129,28 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-002-V) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-002-v (squash-merged; see git log for final hash)
+- Closes: #382
+
+### Acceptance-criterion mapping (parent M3-002 guardrails)
+
+1. **Queue capacity is configurable and bounded** — verified: `BoundedWorkerQueue::with_capacity` clamps to [1, MAX_WORKER_QUEUE_CAPACITY=65536], default 256. Tests: `capacity_is_bounded_and_clamped` (M3-002-A).
+2. **Overload fails quickly and observably** — verified: `try_push` rejects IMMEDIATELY with typed `QueueError::Full` (per-worker) / `AllFull` (global); saturating rejection counters; `admission_response` maps every variant to exactly one 503/overload/retry-1 verdict matching the runtime RFC 9457 registry. Tests: `overflow_fails_fast_with_typed_error_and_counts`, `overload_burst_is_rejected_fast_and_fully_counted` (10k vs 128), `admission_response_is_total_deterministic_and_redacted`, `admission_verdict_composes_with_dispatcher_overload` (A, C).
+3. **No head-of-line lock across workers** — verified three ways: per-worker queues (a jammed full worker A while B flows: `no_head_of_line_lock_across_workers`); selection consults lengths only and skips full queues (`full_queues_are_skipped_until_only_choice`, `selection_targets_least_outstanding_load`); the dispatch job carries its resolved plan as Copy data so no post-dispatch matcher/route-table access exists (`route_identity_survives_the_dispatch_queue_boundary`, D).
+4. **Per-worker queue latency is measured** — verified: per-item wait measured at pop; mean/max in the redacted `QueueStats`; aggregated per worker via `Dispatcher::stats`. Tests: `fifo_order_and_wait_measurement`, `aggregated_stats_cover_every_worker` (A, B).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 6 suites pass (210 unit incl. 16 dispatch tests)
+- `cargo test -p velqu-runtime` → 17+5+44 (incl. 4 DispatchRoute boundary tests)
+- `cargo test -p q-engine-quickjs` → 20+101; `-p q-http` 4+6+1; `-p q-bridge` 11 — all pass
+- `bun test` → 0 fail; `bun run typecheck` → clean (via ./scripts/verify)
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary reproduced deterministically (`333d563d…`)
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of M3-002-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
