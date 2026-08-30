@@ -424,7 +424,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-001-Z](../tasks/06_m3_multi_worker/M3-001-Z-package-evidence-for-freeze-independent-worker-state-semantics.md) | P0 | evidence | PASS | M3-001-V | Package evidence for Freeze independent-worker state semantics |
 | [M3-002-A](../tasks/06_m3_multi_worker/M3-002-A-use-bounded-per-worker-queues.md) | P0 | implement | PASS | M3-001-Z | Use bounded per-worker queues |
 | [M3-002-B](../tasks/06_m3_multi_worker/M3-002-B-select-worker-using-outstanding-load-strategy.md) | P0 | implement | PASS | M3-002-A | Select worker using outstanding-load strategy |
-| [M3-002-C](../tasks/06_m3_multi_worker/M3-002-C-define-admission-and-overload-response.md) | P0 | implement | TODO | M3-002-B | Define admission and overload response |
+| [M3-002-C](../tasks/06_m3_multi_worker/M3-002-C-define-admission-and-overload-response.md) | P0 | implement | PASS | M3-002-B | Define admission and overload response |
 | [M3-002-D](../tasks/06_m3_multi_worker/M3-002-D-preserve-routeid-routeplan-before-dispatch.md) | P0 | implement | TODO | M3-002-C | Preserve RouteId/RoutePlan before dispatch |
 | [M3-002-V](../tasks/06_m3_multi_worker/M3-002-V-verify-implement-bounded-worker-dispatcher.md) | P0 | verify | TODO | M3-002-A, M3-002-B, M3-002-C, M3-002-D | Verify Implement bounded worker dispatcher |
 | [M3-002-Z](../tasks/06_m3_multi_worker/M3-002-Z-package-evidence-for-implement-bounded-worker-dispatcher.md) | P0 | evidence | TODO | M3-002-V | Package evidence for Implement bounded worker dispatcher |
