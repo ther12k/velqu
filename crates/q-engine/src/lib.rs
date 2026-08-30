@@ -135,6 +135,35 @@ pub struct InvocationSpec {
     pub deadline: Instant,
 }
 
+/// M3-002-D: the resolved route identity snapshot that crosses the
+/// dispatch boundary (ADR-0036 §3/§6). Extracted from the router's
+/// `CompiledRoute` BEFORE dispatch; the worker consumes numeric IDs only
+/// and never re-runs the matcher. `Copy` plain data — the snapshot for a
+/// given route is identical for every worker, so dispatch preserves
+/// RouteId/RoutePlan exactly with zero re-resolution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DispatchRoute {
+    /// Canonical dense route-vector identity (G0-r1).
+    pub route_id: RouteId,
+    /// Handler the worker invokes.
+    pub handler_id: HandlerId,
+    /// Policy gate, if any (resolved before dispatch; never re-linked).
+    pub policy_id: Option<PolicyId>,
+    pub policy_handler_id: Option<HandlerId>,
+    /// Validation schema ids (dense SchemaId table indices).
+    pub params_schema_id: Option<SchemaId>,
+    pub query_schema_id: Option<SchemaId>,
+    pub headers_schema_id: Option<SchemaId>,
+    pub body_schema_id: Option<SchemaId>,
+    /// Success status when the handler returns a plain value.
+    pub default_status: u16,
+    /// Response serialization path selected at compile time.
+    pub response_strategy: ResponseStrategy,
+    /// Route deadline (ms) — carried with the job so the worker's
+    /// cancellation math never depends on post-dispatch lookups.
+    pub deadline_ms: u64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResponseStrategy {
     /// engine-side JSON.stringify (the JS world serializes)

@@ -4,7 +4,7 @@ parent_task: M3-002
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -120,3 +120,32 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-002-D) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-002-d (squash-merged; see git log for final hash)
+- Closes: #381
+
+### Changed files
+- `crates/q-engine/src/lib.rs`: `DispatchRoute` — the resolved route-identity snapshot that crosses the dispatch boundary (M3-002-D, ADR-0036 §3/§6). `Copy` plain data: route_id, handler_id, policy_id/policy_handler_id, the four validation schema ids, default_status, response_strategy, deadline_ms. Extracted BEFORE dispatch; the worker consumes numeric IDs only and never re-runs the matcher; the snapshot for a given route is identical for every worker.
+- `crates/q-runtime/src/serve.rs`: `dispatch_route(&CompiledRoute) -> DispatchRoute` — the extraction point (the M23R2 resolve-once rule extended across the dispatch boundary); + `dispatch_route_tests` (4 tests).
+
+### Tests added (serve.rs, 4)
+- `snapshot_preserves_route_identity_exactly` (RouteId/handler/policy/schema ids/status/strategy/deadline all intact)
+- `snapshot_is_copy_plain_data_shared_safe` (Copy + Send + Sync + 'static; two workers hold the same snapshot with zero clone cost)
+- `extraction_is_deterministic_across_calls` (worker K's snapshot == worker 0's)
+- `route_identity_survives_the_dispatch_queue_boundary` (full M3-002 shape: extract -> Dispatcher::dispatch -> pop on ANOTHER THREAD -> identity intact; saturated admission stays typed)
+
+### Command results
+- `cargo test -p velqu-runtime` → **17 unit (was 13) + 5 + 44** — 0 failed
+- `cargo test -p q-capabilities` → 6 suites · `-p q-engine-quickjs` 20+101 · `-p q-http` 4+6+1 · `-p q-bridge` 11 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`333d563d…` — extraction dormant until the dispatcher wires into the request path)
+
+### Guardrail mapping
+- **No head-of-line lock across workers** — the job carries its resolved plan as Copy data; no post-dispatch matcher access, no shared route-table lock on the hot path.
+
+### Disclosures
+- One cross-thread borrow restructure (dispatcher Arc-shared with the consumer thread) and one unused-import clippy fix — test-code only.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
