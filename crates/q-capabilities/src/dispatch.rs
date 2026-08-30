@@ -424,6 +424,23 @@ impl<T: Send + 'static> Dispatcher<T> {
         self.quarantine_events
     }
 
+    /// Fail/settle all pending jobs of a quarantined worker (M3-005-B).
+    /// Returns the jobs that were pending at quarantine time so the caller
+    /// (the runtime quarantine path) can settle each with a typed error —
+    /// the queue is then EMPTY: no job is dropped silently, none is ever
+    /// executed by a poisoned runtime. The queue stays closed.
+    pub fn settle_quarantined(&self, worker: usize) -> Vec<T> {
+        assert!(worker < self.queues.len(), "worker index out of range");
+        assert!(
+            self.quarantined.contains(&worker),
+            "settle_quarantined requires a quarantined worker"
+        );
+        let mut g = self.queues[worker].inner.lock().unwrap();
+        let jobs: Vec<T> = g.items.drain(..).map(|(job, _)| job).collect();
+        g.popped = g.popped.saturating_add(jobs.len() as u64);
+        jobs
+    }
+
     /// Replace a quarantined worker's queue with a fresh one (M3-005-C
     /// calls this after re-initialization): the slot returns to Serving
     /// with an empty bounded queue. The quarantine-event history is kept
@@ -797,5 +814,47 @@ mod tests {
         assert!(!d.is_quarantined(0) && !d.is_quarantined(1));
         // Still dispatching to both after 10 cycles.
         assert!(d.select().is_some());
+    }
+
+    #[test]
+    fn settle_quarantined_drains_pending_jobs_for_typed_failure() {
+        let mut d: Dispatcher<String> = Dispatcher::with_workers(1, 8);
+        d.dispatch("job-1".into()).unwrap();
+        d.dispatch("job-2".into()).unwrap();
+        d.quarantine(0);
+        // The queue is closed (no new work) but the 2 pending jobs are
+        // recovered for the caller to settle with typed errors.
+        let pending = d.settle_quarantined(0);
+        assert_eq!(pending, ["job-1", "job-2"]);
+        assert!(d.queue(0).is_empty(), "queue empty after settle");
+        assert!(d.queue(0).is_closed(), "still closed for new work");
+        // Settling again is a no-op (nothing dropped twice).
+        assert!(d.settle_quarantined(0).is_empty());
+    }
+
+    #[test]
+    fn settle_requires_quarantine_state() {
+        let d: Dispatcher<u32> = Dispatcher::with_workers(1, 4);
+        d.dispatch(1).unwrap();
+        // Healthy worker: settle is refused — only quarantine may drain.
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| d.settle_quarantined(0)));
+        assert!(
+            result.is_err(),
+            "settle on a serving worker must panic (contract violation)"
+        );
+        assert_eq!(d.queue(0).len(), 1, "healthy queue untouched");
+    }
+
+    #[test]
+    fn quarantined_pending_work_never_reaches_the_poisoned_runtime() {
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(1, 4);
+        d.dispatch(10).unwrap();
+        d.quarantine(0);
+        let pending = d.settle_quarantined(0);
+        assert_eq!(pending, [10]);
+        // After settle: nothing to pop, closed — the poisoned runtime can
+        // never receive these jobs.
+        assert!(d.queue(0).pop_timeout(Duration::from_millis(50)).is_none());
     }
 }
