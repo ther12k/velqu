@@ -85,7 +85,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M3-001 | P0 | PASS | M28-GATE | M3 | Freeze independent-worker state semantics |
 | M3-002 | P0 | PASS | M3-001 | M3 | Implement bounded worker dispatcher |
 | M3-003 | P1 | PASS | M3-002 | M3 | Implement serverless, service, and throughput profiles |
-| M3-004 | P0 | TODO | M3-002, M26-GATE | M3 | Implement deterministic worker initialization and artifact sharing |
+| M3-004 | P0 | PASS | M3-002, M26-GATE | M3 | Implement deterministic worker initialization and artifact sharing |
 | M3-005 | P0 | TODO | M3-002, M3-004 | M3 | Implement quarantine, replacement, and readiness aggregation |
 | M3-006 | P1 | TODO | M3-003, M3-005 | M3 | Implement adaptive scale-up and scale-down |
 | M3-007 | P0 | TODO | M3-002, M3-004 | M3 | Implement multi-worker cancellation and graceful shutdown |
