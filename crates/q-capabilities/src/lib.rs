@@ -23,6 +23,7 @@ pub mod console;
 pub mod crypto;
 pub mod diagnostics;
 pub mod dispatch;
+pub mod drain;
 pub mod fetch_metrics;
 pub mod fetch_policy;
 pub mod harness;
@@ -53,6 +54,7 @@ pub use dispatch::{
     admission_response, AdmissionDecision, BoundedWorkerQueue, Dispatcher, QueueError, QueueStats,
     DEFAULT_WORKER_QUEUE_CAPACITY, MAX_WORKER_QUEUE_CAPACITY, RETRY_AFTER_OVERLOAD_SECS,
 };
+pub use drain::{AdmissionDrained, DrainGate};
 pub use fetch_metrics::{FetchMetrics, FetchMetricsCollector, FetchMetricsSnapshot, FetchStage};
 pub use fetch_policy::{
     headers_surviving_redirect, is_credential_header, is_cross_origin_redirect,

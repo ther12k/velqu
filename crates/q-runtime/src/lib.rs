@@ -387,12 +387,34 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             // M3-007-A: single-worker topology today; the multi-worker
             // runtime passes its fleet size here.
             ownership: q_capabilities::InvocationOwnership::new(1),
+            // M3-007-B: starts Serving; flipped once by the signal task below.
+            drain_gate: q_capabilities::DrainGate::new(),
             log_mode: serve::LogMode::parse_mode(&cfg.log),
             log_sample: cfg.log_sample,
             log_sequence: std::sync::atomic::AtomicU64::new(0),
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
         });
         let handler = serve::make_handler(Arc::clone(&state));
+        // M3-007-B: the drain gate flips the INSTANT the shutdown signal
+        // fires — new admissions are refused from that moment (the accept
+        // loop also stops, but established keep-alive connections keep
+        // being served, and every request they carry re-checks the gate).
+        let mut drain_rx = shutdown_rx.clone();
+        let drain_state = Arc::clone(&state);
+        tokio::spawn(async move {
+            let _ = drain_rx.changed().await;
+            if *drain_rx.borrow() && drain_state.drain_gate.begin() {
+                let ownership = drain_state.ownership.stats();
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "level": "info",
+                        "event": "drain.begin",
+                        "pending": ownership.pending,
+                    })
+                );
+            }
+        });
         let _ = host.serve(listener, handler, shutdown_rx).await;
 
         // M28-009-C: quiescence includes the outbound pool. Drain the
@@ -423,6 +445,11 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     "pending": ownership.pending,
                     "registered": ownership.registered,
                     "settled": ownership.settled,
+                },
+                // M3-007-B: admissions refused after the drain flip —
+                // clients honestly told to retry elsewhere.
+                "drain": {
+                    "refused": state.drain_gate.refused(),
                 },
                 "fetchPool": {
                     "initialized": fetch_pool.is_initialized(),

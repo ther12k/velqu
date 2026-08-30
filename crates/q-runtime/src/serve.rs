@@ -123,6 +123,9 @@ pub struct ServeState {
     /// exactly once. Cancellation and shutdown route through this
     /// binding — never to a guessed engine.
     pub ownership: q_capabilities::InvocationOwnership,
+    /// M3-007-B: the admission drain gate — flips once when the shutdown
+    /// signal fires; dynamic admission is refused from that instant.
+    pub drain_gate: q_capabilities::DrainGate,
     pub log_mode: LogMode,
     pub log_sample: u64,
     pub log_sequence: AtomicU64,
@@ -297,6 +300,27 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 };
                 resp.headers.push(("x-velqu-stage".into(), "native".into()));
                 return (Ok(resp), route_id, "native");
+            }
+
+            // ---- M3-007-B: the drain gate. Once shutdown begins, dynamic
+            // admission stops: any request that would enter JS is refused
+            // (frozen overload problem, 503, retry-after) while in-flight
+            // work completes. Native liveness above still answers so load
+            // balancers observe the instance going away. Lock-free atomic
+            // check — same posture as the quarantine gate below.
+            if state.drain_gate.check_admission().is_err() {
+                let body = problems::body(
+                    "overload",
+                    Some(503),
+                    Some("server is draining"),
+                    &[],
+                    &[],
+                    &request_id,
+                );
+                let mut resp = problem_response(503, &body);
+                resp.head_only = head;
+                resp.headers.push(("retry-after".into(), "1".into()));
+                return (Ok(resp), route_id, "draining");
             }
 
             // ---- M2.2.1-r4.2.1: a quarantined engine fails dynamic JS routes

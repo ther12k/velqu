@@ -453,7 +453,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-006-V](../tasks/06_m3_multi_worker/M3-006-V-verify-implement-adaptive-scale-up-and-scale-down.md) | P1 | verify | PASS | M3-006-A, M3-006-B, M3-006-C, M3-006-D | Verify Implement adaptive scale-up and scale-down |
 | [M3-006-Z](../tasks/06_m3_multi_worker/M3-006-Z-package-evidence-for-implement-adaptive-scale-up-and-scale-down.md) | P1 | evidence | PASS | M3-006-V | Package evidence for Implement adaptive scale-up and scale-down |
 | [M3-007-A](../tasks/06_m3_multi_worker/M3-007-A-track-invocation-to-worker-ownership.md) | P0 | implement | PASS | M3-002-Z, M3-004-Z | Track invocation-to-worker ownership |
-| [M3-007-B](../tasks/06_m3_multi_worker/M3-007-B-stop-admission-on-drain.md) | P0 | implement | TODO | M3-007-A | Stop admission on drain |
+| [M3-007-B](../tasks/06_m3_multi_worker/M3-007-B-stop-admission-on-drain.md) | P0 | implement | PASS | M3-007-A | Stop admission on drain |
 | [M3-007-C](../tasks/06_m3_multi_worker/M3-007-C-allow-bounded-in-flight-completion.md) | P0 | implement | TODO | M3-007-B | Allow bounded in-flight completion |
 | [M3-007-D](../tasks/06_m3_multi_worker/M3-007-D-abort-after-shutdown-deadline.md) | P0 | implement | TODO | M3-007-C | Abort after shutdown deadline |
 | [M3-007-V](../tasks/06_m3_multi_worker/M3-007-V-verify-implement-multi-worker-cancellation-and-graceful-shutdown.md) | P0 | verify | TODO | M3-007-A, M3-007-B, M3-007-C, M3-007-D | Verify Implement multi-worker cancellation and graceful shutdown |
