@@ -49,8 +49,8 @@ pub use console::{
 pub use crypto::{CryptoError, CryptoRandom, MAX_RANDOM_BYTES_LEN};
 pub use diagnostics::{CapabilityDiagnostic, CapabilityDiagnostics, DiagnosticsError};
 pub use dispatch::{
-    BoundedWorkerQueue, Dispatcher, QueueError, QueueStats, DEFAULT_WORKER_QUEUE_CAPACITY,
-    MAX_WORKER_QUEUE_CAPACITY,
+    admission_response, AdmissionDecision, BoundedWorkerQueue, Dispatcher, QueueError, QueueStats,
+    DEFAULT_WORKER_QUEUE_CAPACITY, MAX_WORKER_QUEUE_CAPACITY, RETRY_AFTER_OVERLOAD_SECS,
 };
 pub use fetch_metrics::{FetchMetrics, FetchMetricsCollector, FetchMetricsSnapshot, FetchStage};
 pub use fetch_policy::{

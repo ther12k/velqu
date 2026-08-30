@@ -339,6 +339,45 @@ impl<T: Send + 'static> Dispatcher<T> {
 
 impl<T: Send + 'static> SharedAcrossWorkers for Dispatcher<T> {}
 
+/// Retry-After (seconds) advertised on dispatch overload. Matches the
+/// runtime's existing quarantine retry-after posture (M2.2.1-r4.2.1) so
+/// clients see one consistent backoff hint.
+pub const RETRY_AFTER_OVERLOAD_SECS: u32 = 1;
+
+/// The typed admission verdict the HTTP layer renders when dispatch
+/// refuses work (M3-002-C). Redacted by construction: it names the
+/// congestion reason and bounds, never the job or the client.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdmissionDecision {
+    /// HTTP status for the rejection (503 for every overload class —
+    /// retryable server-side congestion, never a client error).
+    pub status: u16,
+    /// Problem identifier the runtime registry resolves
+    /// (`overload` -> RFC 9457 `.../problems/overload`, 503).
+    pub problem: &'static str,
+    /// Retry-After hint in seconds.
+    pub retry_after_secs: u32,
+    /// Redacted human-readable detail (queue bounds, no payloads).
+    pub detail: &'static str,
+}
+
+/// Map a dispatch rejection to its admission response (M3-002-C).
+/// Deterministic and total: every `QueueError` variant has exactly one
+/// response. Both per-worker `Full` and global `AllFull` are the SAME
+/// client-facing verdict — 503 overload with a backoff hint — because
+/// which worker was full is scheduler topology, not the client's
+/// business (and per-worker detail would leak it).
+pub fn admission_response(err: &QueueError) -> AdmissionDecision {
+    match err {
+        QueueError::Full { .. } | QueueError::AllFull { .. } => AdmissionDecision {
+            status: 503,
+            problem: "overload",
+            retry_after_secs: RETRY_AFTER_OVERLOAD_SECS,
+            detail: "worker queues at capacity; retry after the advertised delay",
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -573,5 +612,54 @@ mod tests {
         for w in 0..3 {
             assert!(d.queue(w).is_closed());
         }
+    }
+
+    #[test]
+    fn admission_response_is_total_deterministic_and_redacted() {
+        let full = QueueError::Full {
+            worker: 3,
+            len: 256,
+            capacity: 256,
+        };
+        let all = QueueError::AllFull {
+            workers: 4,
+            capacity: 256,
+        };
+        for err in [&full, &all] {
+            let d = admission_response(err);
+            assert_eq!(
+                d.status, 503,
+                "overload is a server-side retryable condition"
+            );
+            assert_eq!(
+                d.problem, "overload",
+                "matches the runtime problem registry kind"
+            );
+            assert_eq!(d.retry_after_secs, RETRY_AFTER_OVERLOAD_SECS);
+            // Redaction: no worker index, no queue internals in the detail.
+            assert!(!d.detail.contains('3') || d.detail.contains("capacity"));
+            assert!(!d.detail.contains("worker 3"));
+        }
+        // Determinism: same input, same verdict.
+        assert_eq!(admission_response(&full), admission_response(&full));
+        // Both classes render the SAME client-facing verdict (topology
+        // stays internal).
+        assert_eq!(admission_response(&full), admission_response(&all));
+    }
+
+    #[test]
+    fn admission_verdict_composes_with_dispatcher_overload() {
+        // End-to-end policy shape: a saturated dispatcher produces
+        // AllFull, which maps to the 503/overload/retry-1 verdict the
+        // HTTP layer renders as an RFC 9457 problem.
+        let d: Dispatcher<u32> = Dispatcher::with_workers(2, 1);
+        assert!(d.dispatch(1).is_ok());
+        assert!(d.dispatch(2).is_ok());
+        let err = d.dispatch(3).unwrap_err();
+        let verdict = admission_response(&err);
+        assert_eq!(
+            (verdict.status, verdict.problem, verdict.retry_after_secs),
+            (503, "overload", 1)
+        );
     }
 }
