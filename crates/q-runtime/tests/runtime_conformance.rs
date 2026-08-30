@@ -1912,7 +1912,7 @@ fn graceful_drain_flips_gate_and_reports_before_exit() {
     );
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
     assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"detached\":0}"),
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"aborted\":0}"),
         "shutdown report carries the full drain outcome: {complete}"
     );
     assert!(
@@ -2023,7 +2023,7 @@ fn drain_lets_in_flight_request_complete() {
     assert!(saw_drain_begin, "drain.begin event missing");
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
     assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"detached\":0}"),
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"aborted\":0}"),
         "the in-flight connection completed within the budget: {complete}"
     );
     assert!(
@@ -2084,28 +2084,26 @@ fn drain_waits_bounded_then_detaches_straggler_connection() {
     let elapsed = t0.elapsed();
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
     assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":0,\"detached\":1}"),
-        "the active straggler is detached, not awaited forever: {complete}"
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":0,\"aborted\":1}"),
+        "the active straggler is force-aborted at the budget: {complete}"
     );
-    // Honest C state, pinned as an exact invariant: the straggler's
-    // invocation was admitted exactly once, and at report time it is
-    // EITHER settled (the detached pipeline observed the engine's
-    // shutdown-cancel before the report printed — the engine stats show
-    // cancelled_invocations:1) OR still live (pending) — never hidden,
-    // never double-counted: registered == 1 and pending + settled == 1.
-    // M3-007-D replaces the detach with abort-through-ownership and
-    // reports the forced abort, making this deterministically pending:0.
+    // M3-007-D: the abort is THROUGH ownership — the dropped handler
+    // future's CancelOnDrop guard settled the binding and cancelled the
+    // invocation exactly once, so the report pins pending:0
+    // deterministically (no scheduling race, no orphan).
     let report: Value = serde_json::from_str(&complete).unwrap();
-    let inv = &report["invocations"];
+    assert_eq!(report["invocations"]["pending"], 0, "no orphan: {complete}");
     assert_eq!(
-        inv["registered"].as_u64(),
-        Some(1),
-        "exactly one admitted invocation: {complete}"
+        report["invocations"]["registered"], 1,
+        "admitted exactly once: {complete}"
     );
     assert_eq!(
-        inv["pending"].as_u64().unwrap_or(255) + inv["settled"].as_u64().unwrap_or(255),
-        1,
-        "one lifecycle, fully accounted: {complete}"
+        report["invocations"]["settled"], 1,
+        "settled exactly once through the abort: {complete}"
+    );
+    assert_eq!(
+        report["stats"]["cancelled_invocations"], 1,
+        "the engine recorded the forced cancellation: {complete}"
     );
     let status = server.child.wait().unwrap();
     assert!(
