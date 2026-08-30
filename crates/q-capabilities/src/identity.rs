@@ -483,3 +483,121 @@ mod tests {
         assert_eq!(d.dependencies[0].id.as_str(), "runtime:text");
     }
 }
+
+/// M3-004-C: per-worker capability compatibility validation. Before a
+/// worker is admitted to serving, EVERY requirement in the pack's
+/// capability manifest must resolve against the linked descriptor set —
+/// identical id, EXACT version (no implicit compatibility), and no
+/// missing capabilities. Every worker runs the same validation over the
+/// same shared manifest (ADR-0036 §6), so either all workers reach Ready
+/// with the identical capability set, or every worker fails closed with
+/// the same typed error — a pack can never serve with split capability
+/// reality across workers.
+pub fn validate_compatibility_per_worker(
+    linked: &[CapabilityDescriptor],
+    requirements: &[CapabilityRequirement],
+    worker: usize,
+) -> Result<WorkerCompatibility, ResolveError> {
+    let mut validated: Vec<(&CapabilityId, &CapabilityVersion)> =
+        Vec::with_capacity(requirements.len());
+    for req in requirements {
+        resolve_requirement(linked, req)?;
+        validated.push((&req.id, &req.version));
+    }
+    Ok(WorkerCompatibility {
+        worker,
+        capabilities: validated.len(),
+    })
+}
+
+/// The per-worker compatibility result: the worker index and how many
+/// capability requirements it validated. Deterministic — worker K's
+/// result equals worker 0's for the same manifest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkerCompatibility {
+    pub worker: usize,
+    pub capabilities: usize,
+}
+
+#[cfg(test)]
+mod per_worker_compat_tests {
+    use super::*;
+
+    fn linked_set() -> Vec<CapabilityDescriptor> {
+        vec![
+            CapabilityDescriptor {
+                requirement: CapabilityRequirement {
+                    id: CapabilityId::parse("runtime:timers").unwrap(),
+                    version: CapabilityVersion(1),
+                },
+                dependencies: vec![],
+            },
+            CapabilityDescriptor {
+                requirement: CapabilityRequirement {
+                    id: CapabilityId::parse("runtime:fetch").unwrap(),
+                    version: CapabilityVersion(3),
+                },
+                dependencies: vec![],
+            },
+        ]
+    }
+
+    fn reqs() -> Vec<CapabilityRequirement> {
+        vec![
+            CapabilityRequirement {
+                id: CapabilityId::parse("runtime:timers").unwrap(),
+                version: CapabilityVersion(1),
+            },
+            CapabilityRequirement {
+                id: CapabilityId::parse("runtime:fetch").unwrap(),
+                version: CapabilityVersion(3),
+            },
+        ]
+    }
+
+    #[test]
+    fn every_worker_validates_the_identical_manifest() {
+        let linked = linked_set();
+        let reqs = reqs();
+        // 4 workers run the same validation over the same manifest.
+        let results: Vec<WorkerCompatibility> = (0..4)
+            .map(|w| validate_compatibility_per_worker(&linked, &reqs, w).unwrap())
+            .collect();
+        for (i, r) in results.iter().enumerate() {
+            assert_eq!(r.worker, i);
+            assert_eq!(r.capabilities, 2);
+        }
+        // Deterministic on the capability set: worker K validates the same
+        // count as worker 0 (the worker index itself differs by design —
+        // it identifies WHO validated, and redacted diagnostics keep it).
+        for (i, r) in results.iter().enumerate() {
+            assert_eq!(r.capabilities, results[0].capabilities);
+            assert_eq!(r.worker, i);
+        }
+    }
+
+    #[test]
+    fn version_conflict_fails_closed_per_worker() {
+        let linked = linked_set();
+        let mut reqs = reqs();
+        reqs[0].version = CapabilityVersion(2); // runtime:timers@2 != linked @1
+        let err = validate_compatibility_per_worker(&linked, &reqs, 0).unwrap_err();
+        assert!(matches!(err, ResolveError::VersionConflict { .. }));
+        // And every worker fails IDENTICALLY — no split capability reality.
+        for w in 0..4 {
+            let err_w = validate_compatibility_per_worker(&linked, &reqs, w).unwrap_err();
+            assert_eq!(err_w, err);
+        }
+    }
+
+    #[test]
+    fn missing_capability_fails_closed_per_worker() {
+        let linked = linked_set();
+        let reqs = vec![CapabilityRequirement {
+            id: CapabilityId::parse("runtime:postgres").unwrap(),
+            version: CapabilityVersion(1),
+        }];
+        let err = validate_compatibility_per_worker(&linked, &reqs, 2).unwrap_err();
+        assert!(matches!(err, ResolveError::Missing { .. }));
+    }
+}

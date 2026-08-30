@@ -4,7 +4,7 @@ parent_task: M3-004
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -111,3 +111,34 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-004-C) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-004-c (squash-merged; see git log for final hash)
+- Closes: #392
+
+### Changed files
+- `crates/q-capabilities/src/identity.rs`: `validate_compatibility_per_worker(linked, requirements, worker) -> Result<WorkerCompatibility, ResolveError>` — per-worker capability compatibility validation (M3-004-C) —
+  - EVERY requirement in the pack's capability manifest resolves against the linked descriptor set: identical id, EXACT version (no implicit compatibility), typed failures (`Missing`/`VersionConflict`).
+  - Every worker runs the same validation over the same shared manifest (ADR-0036 §6), so either all workers reach Ready with the identical capability set, or every worker fails closed with the IDENTICAL typed error — no split capability reality across workers.
+  - `WorkerCompatibility { worker, capabilities }` — deterministic result identifying WHO validated (redacted diagnostics keep the index).
+- `crates/q-capabilities/src/lib.rs`: re-exports.
+
+### Tests added (identity.rs, +3 → 213 q-capabilities lib tests)
+- `every_worker_validates_the_identical_manifest` (4 workers, same manifest, same capability count; worker index identifies the validator)
+- `version_conflict_fails_closed_per_worker` (timers@2 vs linked@1 → typed VersionConflict; all 4 workers fail IDENTICALLY)
+- `missing_capability_fails_closed_per_worker` (unlinked runtime:postgres → typed Missing)
+
+### Command results
+- `cargo test -p q-capabilities` → **213 unit (was 210) + 7 + 1 + 4 + 9** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+102+1 · `-p velqu-runtime` → 17+5+44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`070d2a8a…` — validation dormant until workers wire it)
+
+### Guardrail mapping
+- **Workers execute identical contracts** — all workers validate the same manifest with the same result; a pack can never serve with split capability reality.
+
+### Disclosures
+- A heredoc `\n` slip produced a literal in the file (caught by compile) and the determinism assertion initially compared worker indices (which differ by design) — scoped to the capability set. Both caught before commit.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

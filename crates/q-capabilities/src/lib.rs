@@ -69,8 +69,9 @@ pub use fetch_policy::{
 };
 pub use harness::{run_expired_drain, run_full_lifecycle, LifecycleReport};
 pub use identity::{
-    resolve_and_install, resolve_requirement, CapabilityDescriptor, CapabilityId,
-    CapabilityIdError, CapabilityRequirement, CapabilityVersion, InstallError, ResolveError,
+    resolve_and_install, resolve_requirement, validate_compatibility_per_worker,
+    CapabilityDescriptor, CapabilityId, CapabilityIdError, CapabilityRequirement,
+    CapabilityVersion, InstallError, ResolveError, WorkerCompatibility,
 };
 pub use inventory::{CapabilityInventory, InventoryEntry, InventoryError};
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
