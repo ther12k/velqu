@@ -31,6 +31,7 @@ pub mod harness;
 pub mod identity;
 pub mod inventory;
 pub mod invocation;
+pub mod long_running;
 pub mod operations;
 pub mod resolver;
 pub mod sdk;
@@ -85,6 +86,10 @@ pub use inventory::{CapabilityInventory, InventoryEntry, InventoryError};
 pub use invocation::{
     InvocationOwnership, InvocationOwnershipStats, TrackError,
     DEFAULT_INVOCATION_TRACKING_CAPACITY, MAX_INVOCATION_TRACKING_CAPACITY,
+};
+pub use long_running::{
+    LongClass, LongRunningBudget, LongRunningPolicy, LongRunningPolicyError, LongRunningStats,
+    LongSlotsExhausted, DEFAULT_LONG_RUNNING_THRESHOLD_MS, MAX_LONG_RUNNING_THRESHOLD_MS,
 };
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
 pub use resolver::{resolve_closure, DependencyDag};
