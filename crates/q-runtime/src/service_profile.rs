@@ -442,6 +442,68 @@ impl HysteresisState {
     }
 }
 
+/// Validated min/max worker bounds for adaptive mode (M3-006-B).
+///
+/// Invariants, enforced at construction (fail closed):
+/// - `1 <= min <= max <= MAX_WORKERS` — the fleet never drops below
+///   `min` (capacity floor) and never grows past `max` (memory budget).
+/// - `initial` defaults to `min` for serverless cold start and is
+///   clamped into [min, max].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkerBounds {
+    pub min: usize,
+    pub max: usize,
+    pub initial: usize,
+}
+
+impl WorkerBounds {
+    /// Validated bounds. Fails closed when min/max are inverted, when
+    /// min is zero (the fleet must always serve), or when max exceeds
+    /// the global ceiling.
+    pub fn new(min: usize, max: usize) -> Result<Self, String> {
+        Self::validated(min, max, min)
+    }
+
+    /// Same validation with an explicit initial count (clamped into
+    /// [min, max]).
+    pub fn with_initial(min: usize, max: usize, initial: usize) -> Result<Self, String> {
+        Self::validated(min, max, initial)
+    }
+
+    fn validated(min: usize, max: usize, initial: usize) -> Result<Self, String> {
+        if min == 0 {
+            return Err("min workers must be >= 1: an empty fleet serves nothing".into());
+        }
+        if max > MAX_WORKERS {
+            return Err(format!(
+                "max workers {max} exceeds the ceiling {MAX_WORKERS}"
+            ));
+        }
+        if min > max {
+            return Err(format!(
+                "inverted bounds: min ({min}) must be <= max ({max})"
+            ));
+        }
+        let initial = initial.clamp(min, max);
+        Ok(WorkerBounds { min, max, initial })
+    }
+
+    /// Clamp any running count into the bounds (the scaler's floor/ceiling).
+    pub fn clamp_count(&self, running: usize) -> usize {
+        running.clamp(self.min, self.max)
+    }
+
+    /// Is `running` at the retirement floor? (scale-down blocked)
+    pub fn at_floor(&self, running: usize) -> bool {
+        running <= self.min
+    }
+
+    /// Is `running` at the growth ceiling? (scale-up blocked)
+    pub fn at_ceiling(&self, running: usize) -> bool {
+        running >= self.max
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -887,5 +949,46 @@ mod tests {
         assert_eq!(st.observe(&th, 0, 3, 1), None); // tsr 2
         assert_eq!(st.observe(&th, 0, 3, 1), None); // tsr 3
         assert_eq!(st.observe(&th, 0, 3, 1), Some(-1)); // tsr 4 > 3
+    }
+
+    #[test]
+    fn bounds_fail_closed_on_invalid_configuration() {
+        assert!(WorkerBounds::new(0, 4).is_err(), "min 0 serves nothing");
+        assert!(WorkerBounds::new(4, 2).is_err(), "inverted min/max");
+        assert!(
+            WorkerBounds::new(1, MAX_WORKERS + 1).is_err(),
+            "above ceiling"
+        );
+        // Valid shapes construct.
+        assert!(WorkerBounds::new(1, 1).is_ok(), "fixed single-worker fleet");
+        assert!(WorkerBounds::new(2, 64).is_ok());
+    }
+
+    #[test]
+    fn initial_count_clamps_into_bounds() {
+        let b = WorkerBounds::with_initial(2, 8, 1).unwrap();
+        assert_eq!(b.initial, 2, "initial below min clamps up");
+        let b = WorkerBounds::with_initial(2, 8, 64).unwrap();
+        assert_eq!(b.initial, 8, "initial above max clamps down");
+        let b = WorkerBounds::with_initial(2, 8, 4).unwrap();
+        assert_eq!(b.initial, 4, "in-range initial kept");
+        // Serverless cold start: initial defaults to min.
+        assert_eq!(WorkerBounds::new(2, 8).unwrap().initial, 2);
+    }
+
+    #[test]
+    fn scaler_floor_and_ceiling_query_the_bounds() {
+        let b = WorkerBounds::new(2, 6).unwrap();
+        assert!(b.at_floor(2) && b.at_floor(1), "at/below min is floor");
+        assert!(!b.at_floor(3));
+        assert!(
+            b.at_ceiling(6) && b.at_ceiling(7),
+            "at/above max is ceiling"
+        );
+        assert!(!b.at_ceiling(5));
+        // The scaler's clamp keeps running counts inside the bounds.
+        assert_eq!(b.clamp_count(0), 2);
+        assert_eq!(b.clamp_count(4), 4);
+        assert_eq!(b.clamp_count(99), 6);
     }
 }
