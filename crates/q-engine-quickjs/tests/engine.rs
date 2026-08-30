@@ -3836,3 +3836,65 @@ async fn terminal_failures_map_deterministically() {
     assert_eq!(eng.stats().scheduler_boundary_violations, 0);
     eng.shutdown();
 }
+
+/// M3-004-B: N independent engines evaluate the SAME bundle and reach the
+/// same result for the same input — and a module-level mutation on engine
+/// A is invisible on engine B (state is per-runtime, ADR-0036 §2). This
+/// is the worker-parity + state-isolation proof at the engine layer.
+#[tokio::test]
+async fn independent_engines_share_source_but_not_module_state() {
+    // A module with top-level mutable state and a counter function.
+    // Register via __velquRegister (the Legacy-mode contract the worker
+    // verifies against expected_handlers).
+    let bundle = r#"
+        let count = 0;
+        function inc() { count += 1; return count; }
+        __velquRegister("inc", inc);
+    "#;
+    let plan = EngineLoadPlan::Legacy {
+        expected_handlers: [("inc".to_string(), String::new())].into_iter().collect(),
+    };
+
+    // Two FULLY independent engines (separate threads, heaps, contexts).
+    let mut a = QuickJsEngine::spawn(
+        QuickJsConfig::default(),
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    );
+    let mut b = QuickJsEngine::spawn(
+        QuickJsConfig::default(),
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    );
+    assert!(a.load(bundle, None, plan.clone()).is_ok());
+    assert!(b.load(bundle, None, plan).is_ok());
+
+    // Same input, same result on both engines (worker parity).
+    let out_a1 = run(&mut a, spec(1, "inc", &[200], 1000)).await;
+    let out_b1 = run(&mut b, spec(2, "inc", &[200], 1000)).await;
+    assert!(
+        matches!(&out_a1, Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } if t == "1"),
+        "engine A first inc == 1: {out_a1:?}"
+    );
+    assert!(
+        matches!(&out_b1, Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } if t == "1"),
+        "engine B first inc == 1 (independent state): {out_b1:?}"
+    );
+
+    // Mutate A's state; B must be unaffected (per-runtime isolation).
+    let out_a2 = run(&mut a, spec(3, "inc", &[200], 1000)).await;
+    assert!(
+        matches!(&out_a2, Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } if t == "2"),
+        "engine A second inc == 2 (A kept its own state): {out_a2:?}"
+    );
+    let out_b2 = run(&mut b, spec(4, "inc", &[200], 1000)).await;
+    assert!(
+        matches!(&out_b2, Outcome::Response { status: 200, body: BodyOut::JsonText(t), .. } if t == "2"),
+        "engine B second inc == 2 — A's mutation was invisible: {out_b2:?}"
+    );
+
+    // Labels identify the owner threads (diagnostics surface).
+    let _ = (&a, &b);
+    a.shutdown();
+    b.shutdown();
+}
