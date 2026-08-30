@@ -504,6 +504,66 @@ impl WorkerBounds {
     }
 }
 
+/// Retirement lifecycle for scale-down (M3-006-C): a worker chosen for
+/// retirement must DRAIN its queue before its runtime is torn down —
+/// retiring with queued jobs would lose requests. The state machine is
+/// driven per tick; each phase has a bounded tick budget so a wedged
+/// worker cannot stall the scaler forever.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetirePhase {
+    /// Stop admitting: the scaler removes the worker from dispatch.
+    StopAdmission,
+    /// Draining the queue (jobs popped and re-dispatched by the scaler).
+    Draining { remaining: usize },
+    /// Queue empty: the worker may be torn down.
+    ReadyToTeardown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetiringWorker {
+    pub worker: usize,
+    pub phase: RetirePhase,
+    /// Ticks spent in retirement (saturating; bounded escalation).
+    pub ticks_in_retire: u64,
+    /// Budget of ticks for the drain phase before forced escalation.
+    pub drain_budget_ticks: u64,
+}
+
+impl RetiringWorker {
+    /// Begin retirement: admission stops first (M3-005-A quarantine
+    /// handles the exclusion); the worker starts in Draining with the
+    /// reported queue depth. `remaining` is the queue depth at start.
+    pub fn begin(worker: usize, remaining: usize, drain_budget_ticks: u64) -> Self {
+        RetiringWorker {
+            worker,
+            phase: RetirePhase::Draining { remaining },
+            ticks_in_retire: 0,
+            drain_budget_ticks,
+        }
+    }
+
+    /// Advance retirement by one tick. `remaining` is the queue depth
+    /// AFTER this tick's re-dispatch (`dispatch_out` jobs re-homed to
+    /// surviving workers — no request loss). Transitions: empty queue →
+    /// ReadyToTeardown (lossless); drain budget expired with jobs still
+    /// queued → ReadyToTeardown anyway (the caller settles leftovers
+    /// with typed failures — bounded, never hung).
+    pub fn tick(&mut self, remaining: usize, _dispatch_out: usize) -> RetirePhase {
+        self.ticks_in_retire = self.ticks_in_retire.saturating_add(1);
+        if remaining == 0 {
+            self.phase = RetirePhase::ReadyToTeardown;
+            return self.phase;
+        }
+        if self.ticks_in_retire > self.drain_budget_ticks {
+            // Budget expired: escalate; caller settles leftovers typed.
+            self.phase = RetirePhase::ReadyToTeardown;
+            return self.phase;
+        }
+        self.phase = RetirePhase::Draining { remaining };
+        self.phase
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -990,5 +1050,44 @@ mod tests {
         assert_eq!(b.clamp_count(0), 2);
         assert_eq!(b.clamp_count(4), 4);
         assert_eq!(b.clamp_count(99), 6);
+    }
+
+    #[test]
+    fn retirement_starts_in_draining_with_reported_depth() {
+        let r = RetiringWorker::begin(2, 3, 10);
+        assert!(matches!(r.phase, RetirePhase::Draining { remaining: 3 }));
+        assert_eq!(r.ticks_in_retire, 0);
+    }
+
+    #[test]
+    fn retirement_is_lossless_while_draining() {
+        // 3 queued jobs, re-dispatch 1 per tick: 3 drain ticks then
+        // teardown — no job left behind.
+        let mut r = RetiringWorker::begin(2, 3, 10);
+        let mut remaining = 3usize;
+        let mut rehomed = 0usize;
+        loop {
+            let rehomed_now = remaining.min(1);
+            remaining -= rehomed_now;
+            rehomed += rehomed_now;
+            if matches!(r.tick(remaining, rehomed_now), RetirePhase::ReadyToTeardown) {
+                break;
+            }
+        }
+        assert_eq!(remaining, 0, "no request loss");
+        assert_eq!(rehomed, 3);
+    }
+
+    #[test]
+    fn drain_budget_escalates_a_wedged_worker() {
+        // Budget 2: after 2 drain ticks with jobs still queued, escalate
+        // to teardown — the caller settles leftovers with typed failures
+        // (M3-005-B). Bounded, never hung.
+        let mut r = RetiringWorker::begin(1, 5, 2);
+        r.tick(5, 0); // tick 1: still 5 queued
+        r.tick(5, 0); // tick 2: still 5 queued
+        let phase = r.tick(5, 0); // tick 3 > budget 2: escalate
+        assert!(matches!(phase, RetirePhase::ReadyToTeardown));
+        assert!(r.ticks_in_retire >= 3);
     }
 }
