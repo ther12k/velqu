@@ -49,6 +49,10 @@ pub struct RunConfig {
     /// forces that exact profile. Unknown names fail closed at
     /// startup (before serving), never fall back silently.
     pub context_profile: Option<String>,
+    /// M3-003-A/D: worker startup posture — `serverless` (default, one
+    /// worker, ready immediately) or `service:N` (N workers, ready when
+    /// all N are initialized). Unknown names fail closed at startup.
+    pub service_profile: Option<String>,
 }
 
 /// M26-009-C: print the runtime's exact fingerprint; when a pack is
@@ -209,6 +213,24 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 return 2;
             }
         };
+        // M3-003-A/D: resolve the service profile BEFORE any worker
+        // spawns. Unknown names fail closed here (exit 2), never fall
+        // back; serverless stays at exactly one worker.
+        let service_profile =
+            match cfg.service_profile.as_deref().map(service_profile::ServiceProfile::parse) {
+                Some(Err(e)) => {
+                    let ready = serde_json::json!({
+                        "event": "ready",
+                        "ok": false,
+                        "error": e,
+                    });
+                    eprintln!("{ready}");
+                    return 2;
+                }
+                Some(Ok(p)) => p,
+                None => service_profile::ServiceProfile::default(),
+            };
+        let startup_workers = service_profile.initial_workers();
         let config = QuickJsConfig {
             request_slot_capacity: limits.max_queue.max(1),
             // M26-004-D: embedded-prelude bytecode skips host prelude eval;
@@ -305,6 +327,8 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             // of the startup identity block — every ready line self-
             // describes which intrinsic set produced the measurements.
             "contextProfile": profile.as_str(),
+            "serviceProfile": service_profile.as_str(),
+            "startupWorkers": startup_workers,
             "contractHash": pack.contract_hash,
             "startupMs": t0.elapsed().as_secs_f64() * 1000.0,
             "stages": stages.iter()

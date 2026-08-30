@@ -988,6 +988,9 @@ struct Server {
     #[allow(dead_code)]
     port: u16,
     log_lines: std::sync::mpsc::Receiver<String>,
+    /// The ready line consumed by start()'s readiness wait — retained so
+    /// tests can inspect startup fields without racing the reader.
+    ready_line: String,
 }
 
 impl Server {
@@ -1019,11 +1022,17 @@ impl Server {
         });
         // wait for the explicit ready line (bounded)
         let deadline = Instant::now() + Duration::from_secs(10);
+        let mut ready_line_for_test: Option<String> = None;
         loop {
-            if let Ok(line) = rx.try_recv() {
-                if line.contains("\"event\":\"ready\"") {
-                    break;
+            if ready_line_for_test.is_none() {
+                if let Ok(line) = rx.try_recv() {
+                    if line.contains("\"event\":\"ready\"") {
+                        ready_line_for_test = Some(line);
+                        break;
+                    }
                 }
+            } else {
+                break;
             }
             if Instant::now() > deadline {
                 panic!("server did not become ready in time");
@@ -1034,6 +1043,7 @@ impl Server {
             child,
             port,
             log_lines: rx,
+            ready_line: ready_line_for_test.unwrap_or_default(),
         }
     }
 
@@ -1704,6 +1714,42 @@ fn client_abort_leaves_server_healthy() {
     let r = http(port, "GET /js-json HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 200);
     server.stop();
+}
+
+/// M3-003-D: the ready line exposes the service profile and startup
+/// worker count; an explicit bad profile fails closed before serving.
+#[test]
+fn ready_line_reports_service_profile_and_bad_profile_fails_closed() {
+    let dir = temp_dir("svcprofile");
+    let pack_path = write_pack(&dir);
+
+    // Default (no flag): serverless, one startup worker.
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+    let ready = &server.ready_line;
+    assert!(
+        ready.contains("\"serviceProfile\":\"serverless\"")
+            && ready.contains("\"startupWorkers\":1"),
+        "default ready line must declare serverless/1: {ready}"
+    );
+    server.stop();
+
+    // Unknown profile: fail closed BEFORE serving (exit 2, no ready line).
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_velqu-runtime"))
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .arg("--service-profile")
+        .arg("bogus")
+        .output()
+        .expect("spawn runtime");
+    assert_eq!(output.status.code(), Some(2), "bad profile exits 2");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("unknown service profile"),
+        "fail-closed error names the problem: {stderr}"
+    );
 }
 
 #[test]
