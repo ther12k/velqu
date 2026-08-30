@@ -437,7 +437,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-004-A](../tasks/06_m3_multi_worker/M3-004-A-share-immutable-mapped-qpack-bytes.md) | P0 | implement | PASS | M3-002-Z, M26-GATE | Share immutable mapped QPack bytes |
 | [M3-004-B](../tasks/06_m3_multi_worker/M3-004-B-create-separate-quickjs-runtimes-functions-context-state.md) | P0 | implement | PASS | M3-004-A | Create separate QuickJS runtimes/functions/context state |
 | [M3-004-C](../tasks/06_m3_multi_worker/M3-004-C-validate-capability-compatibility-per-worker.md) | P0 | implement | PASS | M3-004-B | Validate capability compatibility per worker |
-| [M3-004-D](../tasks/06_m3_multi_worker/M3-004-D-bound-startup-parallelism.md) | P0 | implement | TODO | M3-004-C | Bound startup parallelism |
+| [M3-004-D](../tasks/06_m3_multi_worker/M3-004-D-bound-startup-parallelism.md) | P0 | implement | PASS | M3-004-C | Bound startup parallelism |
 | [M3-004-V](../tasks/06_m3_multi_worker/M3-004-V-verify-implement-deterministic-worker-initialization-and-artifact-sharing.md) | P0 | verify | TODO | M3-004-A, M3-004-B, M3-004-C, M3-004-D | Verify Implement deterministic worker initialization and artifact sharing |
 | [M3-004-Z](../tasks/06_m3_multi_worker/M3-004-Z-package-evidence-for-implement-deterministic-worker-initialization-and-artifact.md) | P0 | evidence | TODO | M3-004-V | Package evidence for Implement deterministic worker initialization and artifact sharing |
 | [M3-005-A](../tasks/06_m3_multi_worker/M3-005-A-remove-quarantined-worker-from-dispatch.md) | P0 | implement | TODO | M3-002-Z, M3-004-Z | Remove quarantined worker from dispatch |
