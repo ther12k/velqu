@@ -27,6 +27,7 @@ standalone = []
 q-pack = { workspace = true }
 q-router = { workspace = true }
 q-bridge = { workspace = true }
+q-capabilities = { workspace = true }
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
 q-http = { workspace = true }
@@ -45,7 +46,6 @@ http-body-util = { workspace = true }
 
 [dev-dependencies]
 sha2 = { workspace = true }
-q-capabilities = { workspace = true }
 rquickjs = { workspace = true }
 sourcemap = { workspace = true }
 libc = "0.2"

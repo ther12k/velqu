@@ -28,6 +28,7 @@ pub mod fetch_policy;
 pub mod harness;
 pub mod identity;
 pub mod inventory;
+pub mod invocation;
 pub mod operations;
 pub mod resolver;
 pub mod sdk;
@@ -74,6 +75,10 @@ pub use identity::{
     CapabilityVersion, InstallError, ResolveError, WorkerCompatibility,
 };
 pub use inventory::{CapabilityInventory, InventoryEntry, InventoryError};
+pub use invocation::{
+    InvocationOwnership, InvocationOwnershipStats, TrackError,
+    DEFAULT_INVOCATION_TRACKING_CAPACITY, MAX_INVOCATION_TRACKING_CAPACITY,
+};
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
 pub use resolver::{resolve_closure, DependencyDag};
 pub use shared_handles::SharedAcrossWorkers;
