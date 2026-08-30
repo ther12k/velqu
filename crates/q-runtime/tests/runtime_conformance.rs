@@ -1760,6 +1760,12 @@ fn graceful_shutdown_exits_zero() {
     let mut server = Server::start(&pack_path, port);
     // Allow the server's signal listener to establish
     std::thread::sleep(Duration::from_millis(50));
+    // M3-007-A: one full JS invocation before shutdown — the ownership
+    // registry must show the admission reached its terminal transition
+    // (registered == settled) and the shutdown report carries the
+    // no-orphan invariant (pending == 0) for the engine-backed route.
+    let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "js route served before shutdown");
     // SIGTERM
     unsafe {
         libc::kill(server.child.id() as i32, libc::SIGTERM);
@@ -1789,9 +1795,11 @@ fn graceful_shutdown_exits_zero() {
         complete.contains("\"fetchPool\":{\"initialized\":false,\"drained\":true}"),
         "fetch pool drain not reported: {complete}"
     );
+    // M3-007-A: no orphan invocation — every admission settled; the
+    // single pre-shutdown request is visible as exactly one lifecycle.
     assert!(
-        complete.contains("\"fetchPool\":{\"initialized\":false,\"drained\":true}"),
-        "fetch pool drain not reported: {complete}"
+        complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
+        "ownership invariant (pending=0, 1 settled invocation) not reported: {complete}"
     );
 }
 

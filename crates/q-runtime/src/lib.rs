@@ -384,6 +384,9 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             engine: std::sync::Mutex::new(engine),
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
+            // M3-007-A: single-worker topology today; the multi-worker
+            // runtime passes its fleet size here.
+            ownership: q_capabilities::InvocationOwnership::new(1),
             log_mode: serve::LogMode::parse_mode(&cfg.log),
             log_sample: cfg.log_sample,
             log_sequence: std::sync::atomic::AtomicU64::new(0),
@@ -406,11 +409,21 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         {
             let mut eng = state.engine.lock().unwrap();
             eng.shutdown();
+            // M3-007-A: the shutdown report carries the ownership
+            // invariant — a graceful drain leaves ZERO live bindings
+            // (no orphan invocation); registered/settled expose whether
+            // every admission reached a terminal transition.
+            let ownership = state.ownership.stats();
             let done = serde_json::json!({
                 "level": "info",
                 "event": "shutdown.complete",
                 "stats": eng.stats(),
                 "stageMetrics": state.metrics.snapshot(),
+                "invocations": {
+                    "pending": ownership.pending,
+                    "registered": ownership.registered,
+                    "settled": ownership.settled,
+                },
                 "fetchPool": {
                     "initialized": fetch_pool.is_initialized(),
                     "drained": fetch_pool_drained,

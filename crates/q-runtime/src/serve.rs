@@ -117,6 +117,12 @@ pub struct ServeState {
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
     pub invocation_clock: AtomicU64,
+    /// M3-007-A: invocation-to-worker ownership. Admission binds each
+    /// invocation to its owning worker exactly once; the terminal
+    /// transition (outcome delivered OR cancellation routed) settles it
+    /// exactly once. Cancellation and shutdown route through this
+    /// binding — never to a guessed engine.
+    pub ownership: q_capabilities::InvocationOwnership,
     pub log_mode: LogMode,
     pub log_sample: u64,
     pub log_sequence: AtomicU64,
@@ -649,6 +655,41 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             state.metrics.bridge.fetch_add(1, Ordering::Relaxed);
             state.metrics.js.fetch_add(1, Ordering::Relaxed);
             let invocation_id = state.invocation_clock.fetch_add(1, Ordering::Relaxed);
+            // M3-007-A: bind the invocation to its owning worker BEFORE
+            // the job reaches the engine. The tracking capacity is sized
+            // above every admission bound, so exhaustion is a contract
+            // condition, not steady state — both rejections fail closed
+            // with typed problems and the stage metrics unwind.
+            if let Err(track_err) = state.ownership.track(invocation_id, 0) {
+                state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
+                return match track_err {
+                    q_capabilities::TrackError::AtCapacity { .. } => {
+                        let body =
+                            problems::body("overload", Some(503), None, &[], &[], &ctx.request_id);
+                        let mut response = problem_response(503, &body);
+                        response.head_only = head;
+                        response.headers.push(("retry-after".into(), "1".into()));
+                        (Ok(response), route_id, "engine.capacity")
+                    }
+                    // Duplicate/unknown-worker tracking is a host contract
+                    // violation, not a client condition: generic internal
+                    // problem, details only in the log.
+                    other => {
+                        eprintln!(
+                            "{}",
+                            serde_json::json!({
+                                "level":"error",
+                                "event":"contract.violation.ownership",
+                                "detail": other.to_string(),
+                                "requestId": ctx.request_id,
+                            })
+                        );
+                        let body =
+                            problems::body("internal", None, None, &[], &[], &ctx.request_id);
+                        (Ok(problem_response(500, &body)), route_id, "engine.error")
+                    }
+                };
+            }
             let requestless = !needs.params
                 && !needs.query
                 && !needs.headers
@@ -750,7 +791,17 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 .await
                 .map(|r| r.unwrap_or(Outcome::Timeout))
                 .unwrap_or(Outcome::Timeout);
+            // M3-007-A: the terminal transition settles the ownership
+            // binding FIRST — settle is the exactly-once gate. If this
+            // future is dropped right here (before disarm), the guard's
+            // own settle observes None and never re-cancels a delivered
+            // outcome.
+            let settled_owner = state.ownership.settle(invocation_id);
             cancel_guard.disarm();
+            debug_assert!(
+                settled_owner.is_some(),
+                "a live invocation always settles at its terminal transition"
+            );
             state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
 
             // client gone (connection dropped) → cancel invocation
@@ -1159,8 +1210,15 @@ impl CancelOnDrop<'_> {
 impl Drop for CancelOnDrop<'_> {
     fn drop(&mut self) {
         if self.armed {
-            if let Ok(mut eng) = self.state.engine.lock() {
-                eng.cancel(self.invocation_id);
+            // M3-007-A: cancellation routes through the ownership
+            // binding, and settling IS the exactly-once gate: the guard
+            // delivers `cancel` to the engine only when this drop IS the
+            // terminal transition. A racing delivered outcome consumed
+            // the binding first, so the cancel is never re-delivered.
+            if self.state.ownership.settle(self.invocation_id).is_some() {
+                if let Ok(mut eng) = self.state.engine.lock() {
+                    eng.cancel(self.invocation_id);
+                }
             }
         }
     }
