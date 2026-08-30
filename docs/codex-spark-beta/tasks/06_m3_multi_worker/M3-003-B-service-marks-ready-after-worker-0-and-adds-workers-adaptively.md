@@ -4,7 +4,7 @@ parent_task: M3-003
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -114,3 +114,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-003-B) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-003-b (squash-merged; see git log for final hash)
+- Closes: #385
+
+### Changed files
+- `crates/q-runtime/src/service_profile.rs`: `AdaptiveWorkers` — the bounded adaptive add policy over the serverless posture —
+  - **Ready after worker 0**: `starting()` initializes with `running: 1, ready: true` — worker 0 IS the service; readiness is the initial state, not an event that has to happen.
+  - `tick(pressure, threshold) -> ScaleTick`: pressure strictly ABOVE the threshold may add exactly ONE worker, gated by `max_workers` (never exceeded) and a cooldown (no add before the first add ever; between adds, `ticks_since_add > cooldown_ticks`) — a burst cannot spawn a burst.
+  - `add_events`/`ticks_since_add` saturating observability counters.
+
+### Tests added (service_profile.rs, +5 → 24 runtime unit tests)
+- `adaptive_starts_ready_after_worker_zero`
+- `pressure_adds_one_worker_per_tick` (one add per tick under sustained pressure)
+- `max_workers_bounds_growth_exactly` (10 high-pressure ticks against max 3 → exactly 3, then Hold forever)
+- `cooldown_gates_bursts_against_oscillation` (cooldown 2: add, Hold, Hold, add — a burst cannot spawn a burst)
+- `below_threshold_pressure_always_holds` (pressure == threshold holds; strictly-above adds)
+
+### Command results
+- `cargo test -p velqu-runtime` → **24 unit (was 19) + 5 + 44** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+101 — pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`9c2ebc08…` matches manifest)
+
+### Guardrail mapping
+- **Serverless cold start remains within approved budget** — ready is declared with exactly one worker (initial state).
+- **No hidden worker creation** — adds happen ONLY through the policy tick, bounded by max + cooldown; never spontaneous.
+
+### Disclosures
+- Two iterations before commit: the cooldown initially blocked the FIRST add ever (no prior add exists to cool down from — added the explicit first-add exception), and the burst test's final assertion contradicted its own comment (running must be 3 after the post-cooldown add). Both caught by the suite itself.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
