@@ -84,7 +84,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M28-GATE | P0 | PASS | M28-001, M28-002, M28-003, M28-004, M28-005, M28-006, M28-007, M28-008, M28-009, M28-010, M28-011 | M28 | M2.8 — Native Outbound Fetch exit gate |
 | M3-001 | P0 | PASS | M28-GATE | M3 | Freeze independent-worker state semantics |
 | M3-002 | P0 | PASS | M3-001 | M3 | Implement bounded worker dispatcher |
-| M3-003 | P1 | TODO | M3-002 | M3 | Implement serverless, service, and throughput profiles |
+| M3-003 | P1 | PASS | M3-002 | M3 | Implement serverless, service, and throughput profiles |
 | M3-004 | P0 | TODO | M3-002, M26-GATE | M3 | Implement deterministic worker initialization and artifact sharing |
 | M3-005 | P0 | TODO | M3-002, M3-004 | M3 | Implement quarantine, replacement, and readiness aggregation |
 | M3-006 | P1 | TODO | M3-003, M3-005 | M3 | Implement adaptive scale-up and scale-down |

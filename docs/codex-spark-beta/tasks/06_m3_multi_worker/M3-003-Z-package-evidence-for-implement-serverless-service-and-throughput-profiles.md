@@ -4,7 +4,7 @@ parent_task: M3-003
 milestone: M3
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -120,3 +120,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-003-Z) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-003-z (squash-merged; see git log for final hash)
+- Closes: #389
+
+### Parent closure — M3-003 Implement serverless, service, and throughput profiles
+
+Parent intent: make cold start versus immediate throughput an explicit deployment choice. Status: **PASS**.
+
+Packet commits (squash merges):
+- M3-003-A — 9239959 (#988, Closes #384): `ServiceProfile` — Serverless (initial_workers() == 1 ALWAYS; structurally cannot pre-spawn) vs Service { workers } (explicit count, bare form fails closed, bounds [1,64]); fail-closed parse; round-tripping names
+- M3-003-B — 5ba925a (#989, Closes #385): `AdaptiveWorkers` — ready declared with worker 0 (initial state); adds ONLY via the policy tick, bounded by max + cooldown (first add exempt; bursts cannot spawn bursts)
+- M3-003-C — 392669e (#990, Closes #386): `Readiness` — deterministic per-profile requirement (serverless=1, throughput=all configured); flip exactly once on the meeting call; one-way; out-of-range fails closed / direct variants clamp
+- M3-003-D — 2f9a4cb (#991, Closes #387): `--service-profile` CLI flag (fail-closed before any worker spawns), `--profile-info` inspect surface (verified live: 5 correct JSON rows), ready line declares `serviceProfile` + `startupWorkers`
+- M3-003-V — bc795a2 (#992, Closes #388): verification closure with live binary evidence
+
+### Required evidence
+- **Profile conformance**: 13 unit tests on the profile state machines + the ready-line/fail-closed integration test on the real binary.
+- **Cold/RSS report** (live, V run): serverless ready 7.5ms (budget 10ms); single-worker RSS ~7.9 MB serving the proof pack with health 200. Profile-differentiated scaling is M3-009's dedicated evidence.
+- **Configuration docs**: CAPABILITY_AUTHORS.md per-worker section (M3-001-B) + `--profile-info` inspect surface + ready-line declaration.
+
+### Command results (this branch)
+- `cargo test -p velqu-runtime` → 28 unit + 5 + 44; `-p q-capabilities` → 6 suites; `-p q-engine-quickjs` → 20+101; `-p q-http` → 4+6+1; `-p q-bridge` → 11 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+
+### Ledger update
+- `docs/beta/04_TASK_LEDGER.md`: M3-003 flipped TODO -> PASS.
+
+### Disclosures (standing)
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
