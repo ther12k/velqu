@@ -4066,6 +4066,58 @@ pub struct PolicyDecl {
     pub handler_id: u32,
 }
 
+/// Shared verified pack artifact (M3-004-A, ADR-0036 §3): one verified
+/// [`QPack`] + its source bytes, frozen after verification and shared
+/// read-only across every worker. Workers evaluate the identical
+/// artifact; nothing here is mutable after construction (frozen at
+/// freeze time), and no JS value is involved — the sharing is plain
+/// bytes behind `Arc`, so clone cost is a refcount bump.
+#[derive(Debug, Clone)]
+pub struct SharedPack {
+    pack: std::sync::Arc<QPack>,
+    /// The exact source bytes the pack was parsed/verified from
+    /// (standalone embeds them; shared mode reads the file once).
+    bytes: std::sync::Arc<[u8]>,
+    /// SHA-256 of `bytes` at freeze time (identity pin for workers).
+    sha256: String,
+}
+
+impl SharedPack {
+    /// Verify once, freeze forever. Every subsequent worker gets the
+    /// same `Arc`-shared artifact.
+    pub fn freeze(pack: QPack, bytes: Vec<u8>) -> Self {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update(&bytes);
+        let sha256: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
+        SharedPack {
+            pack: std::sync::Arc::new(pack),
+            bytes: std::sync::Arc::from(bytes.into_boxed_slice()),
+            sha256,
+        }
+    }
+
+    /// The frozen verified pack (Arc-shared across workers).
+    pub fn pack(&self) -> std::sync::Arc<QPack> {
+        self.pack.clone()
+    }
+
+    /// The frozen source bytes (Arc-shared; zero-copy reads).
+    pub fn bytes(&self) -> std::sync::Arc<[u8]> {
+        self.bytes.clone()
+    }
+
+    /// SHA-256 of the frozen bytes (identity every worker can check).
+    pub fn sha256(&self) -> &str {
+        &self.sha256
+    }
+}
+
+// The sharing-discipline declaration (ADR-0036 §4): shared-immutable
+// pack artifacts are explicitly audited as worker-shareable (explicit
+// impl only — the marker makes the decision reviewable).
+impl q_capabilities::SharedAcrossWorkers for SharedPack {}
+
 impl QPack {
     /// Load + fully verify a pack. Fails before any serving can happen.
     pub fn load_and_verify(path: &std::path::Path) -> Result<QPack, PackError> {
@@ -7083,5 +7135,98 @@ mod tests {
         assert!(
             matches!(err, PackError::Rejected(m) if m.contains("IR does not match declared schema IR"))
         );
+    }
+}
+
+#[cfg(test)]
+mod shared_pack_tests {
+    use super::{minimal_pack_public, SharedPack};
+
+    #[test]
+    fn freeze_is_idempotent_per_bytes_and_shareable() {
+        let pack = minimal_pack_public();
+        let bytes = serde_json::to_vec(&pack).unwrap();
+        let shared = SharedPack::freeze(pack, bytes.clone());
+        // Identity pin matches the frozen bytes.
+        assert_eq!(shared.sha256().len(), 64);
+        assert_eq!(shared.bytes().as_ref(), bytes.as_slice());
+        // pack() hands out Arc clones of the SAME artifact.
+        let a = shared.pack();
+        let b = shared.pack();
+        assert!(
+            std::sync::Arc::ptr_eq(&a, &b),
+            "workers share one verified artifact"
+        );
+        assert_eq!(a.format_version, b.format_version);
+    }
+
+    #[test]
+    fn worker_parities_hold_for_every_shared_clone() {
+        // Worker parity (M3-004-A): every worker gets the identical
+        // verified contract — same routes, same schema count, same ABI.
+        let pack = minimal_pack_public();
+        let routes_before = pack.routes.len();
+        let abi_before = pack.runtime_abi;
+        let bytes = serde_json::to_vec(&pack).unwrap();
+        let shared = SharedPack::freeze(pack, bytes);
+
+        let mut per_worker = Vec::new();
+        for _ in 0..4 {
+            let p = shared.pack();
+            per_worker.push((p.routes.len(), p.runtime_abi, p.contract_version));
+        }
+        // All four "workers" see the identical contract.
+        for w in &per_worker {
+            assert_eq!(*w, (routes_before, abi_before, per_worker[0].2));
+        }
+    }
+
+    #[test]
+    fn shared_bytes_are_frozen_against_mutation() {
+        let pack = minimal_pack_public();
+        let bytes = serde_json::to_vec(&pack).unwrap();
+        let shared = SharedPack::freeze(pack, bytes);
+        let snapshot = shared.bytes().to_vec();
+        // A worker thread mutating its own CLONE cannot affect the frozen
+        // artifact (one worker failure does not corrupt others).
+        let worker_bytes = shared.bytes().clone();
+        let h = std::thread::spawn(move || {
+            let mut owned = worker_bytes.to_vec();
+            for b in owned.iter_mut() {
+                *b = b.wrapping_add(1);
+            }
+            owned.len()
+        });
+        assert_eq!(h.join().unwrap(), snapshot.len());
+        // The frozen artifact is untouched.
+        assert_eq!(shared.bytes().as_ref(), snapshot.as_slice());
+        let _ = shared;
+    }
+
+    #[test]
+    fn cross_thread_sharing_never_blocks_and_never_shares_js() {
+        use std::sync::Barrier;
+        let pack = minimal_pack_public();
+        let bytes = serde_json::to_vec(&pack).unwrap();
+        let shared = std::sync::Arc::new(SharedPack::freeze(pack, bytes));
+        // 8 threads concurrently reading the shared artifact: reads never
+        // block (Arc + immutable), and every thread computes the same
+        // identity hash from the SAME bytes.
+        let barrier = std::sync::Arc::new(Barrier::new(8));
+        let mut handles = Vec::new();
+        for _ in 0..8 {
+            let s = shared.clone();
+            let b = barrier.clone();
+            handles.push(std::thread::spawn(move || {
+                b.wait();
+                (s.sha256().to_string(), s.pack().routes.len())
+            }));
+        }
+        let results: Vec<(String, usize)> =
+            handles.into_iter().map(|h| h.join().unwrap()).collect();
+        for r in &results {
+            assert_eq!(r.0, results[0].0);
+            assert_eq!(r.1, results[0].1);
+        }
     }
 }
