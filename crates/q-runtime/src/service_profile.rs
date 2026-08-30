@@ -82,6 +82,70 @@ impl fmt::Display for ServiceProfile {
     }
 }
 
+/// Adaptive worker-add policy state (M3-003-B).
+///
+/// Serverless declares ready after worker 0 is ready (one worker IS the
+/// whole service at that moment), then adds workers only on observed
+/// pressure. Bounded: adds are capped by `max_workers` and rate-limited
+/// by `cooldown`, so no load pattern can spawn unboundedly.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdaptiveWorkers {
+    /// Workers currently running (worker 0 counts).
+    pub running: usize,
+    /// Hard ceiling — never exceeded.
+    pub max_workers: usize,
+    /// Ready flag: true the moment worker 0 is ready.
+    pub ready: bool,
+    /// Number of add-events so far (observability; saturating).
+    pub add_events: u64,
+    /// Ticks since the last add (cooldown gate; saturating).
+    pub ticks_since_add: u64,
+    /// Ticks required between adds.
+    pub cooldown_ticks: u64,
+}
+
+/// Outcome of one policy tick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScaleTick {
+    /// Add one worker (bounded by max, gated by cooldown).
+    AddWorker,
+    /// Stay at the current count.
+    Hold,
+}
+
+impl AdaptiveWorkers {
+    /// Policy starting point: worker 0 running, ready declared, nothing
+    /// added yet. Ready-after-worker-0 is the initial state, not an
+    /// event that has to happen.
+    pub fn starting(max_workers: usize, cooldown_ticks: u64) -> Self {
+        AdaptiveWorkers {
+            running: 1,
+            max_workers: max_workers.clamp(1, MAX_WORKERS),
+            ready: true,
+            add_events: 0,
+            ticks_since_add: 0,
+            cooldown_ticks,
+        }
+    }
+
+    /// One policy tick with the observed pressure (queue depth summed
+    /// over workers). Pressure above `pressure_threshold` may add one
+    /// worker — bounded by max and cooldown; everything else holds.
+    pub fn tick(&mut self, pressure: usize, pressure_threshold: usize) -> ScaleTick {
+        self.ticks_since_add = self.ticks_since_add.saturating_add(1);
+        // No cooldown before the first add ever — only between adds.
+        let cooled = self.add_events == 0 || self.ticks_since_add > self.cooldown_ticks;
+        let room = self.running < self.max_workers;
+        if pressure > pressure_threshold && cooled && room {
+            self.running = self.running.saturating_add(1);
+            self.add_events = self.add_events.saturating_add(1);
+            self.ticks_since_add = 0;
+            return ScaleTick::AddWorker;
+        }
+        ScaleTick::Hold
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,5 +227,62 @@ mod tests {
             let parsed = ServiceProfile::parse(text).unwrap();
             assert_eq!(parsed.as_str(), text);
         }
+    }
+
+    #[test]
+    fn adaptive_starts_ready_after_worker_zero() {
+        // Serverless readiness: worker 0 IS the service. Ready is the
+        // initial state — no extra event has to happen first.
+        let a = AdaptiveWorkers::starting(8, 0);
+        assert!(a.ready);
+        assert_eq!(a.running, 1, "serverless starts exactly one worker");
+        assert_eq!(a.add_events, 0);
+    }
+
+    #[test]
+    fn pressure_adds_one_worker_per_tick() {
+        let mut a = AdaptiveWorkers::starting(8, 0); // no cooldown
+        assert_eq!(a.tick(10, 4), ScaleTick::AddWorker);
+        assert_eq!(a.running, 2);
+        assert_eq!(a.tick(10, 4), ScaleTick::AddWorker);
+        assert_eq!(a.running, 3);
+        assert_eq!(a.add_events, 2);
+    }
+
+    #[test]
+    fn max_workers_bounds_growth_exactly() {
+        let mut a = AdaptiveWorkers::starting(3, 0);
+        for _ in 0..10 {
+            a.tick(100, 4);
+        }
+        assert_eq!(
+            a.running, 3,
+            "never exceeds max even under extreme pressure"
+        );
+        assert_eq!(a.tick(100, 4), ScaleTick::Hold);
+    }
+
+    #[test]
+    fn cooldown_gates_bursts_against_oscillation() {
+        // Cooldown 2: after an add, two more ticks must Hold before the
+        // next add is allowed — a burst cannot spawn a burst.
+        let mut a = AdaptiveWorkers::starting(8, 2);
+        assert_eq!(a.tick(100, 4), ScaleTick::AddWorker);
+        assert_eq!(a.tick(100, 4), ScaleTick::Hold); // ticks_since_add=1
+        assert_eq!(a.tick(100, 4), ScaleTick::Hold); // ticks_since_add=2
+        assert_eq!(a.tick(100, 4), ScaleTick::AddWorker); // 3 > 2
+        assert_eq!(a.running, 3, "one add at start + one after cooldown");
+    }
+
+    #[test]
+    fn below_threshold_pressure_always_holds() {
+        let mut a = AdaptiveWorkers::starting(8, 0);
+        assert_eq!(
+            a.tick(4, 4),
+            ScaleTick::Hold,
+            "pressure == threshold holds (strictly above adds)"
+        );
+        assert_eq!(a.tick(0, 4), ScaleTick::Hold);
+        assert_eq!(a.running, 1);
     }
 }
