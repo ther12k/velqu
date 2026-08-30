@@ -4,7 +4,7 @@ parent_task: M3-004
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -112,3 +112,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-004-A) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-004-a (squash-merged; see git log for final hash)
+- Closes: #390
+
+### Changed files
+- `crates/q-pack/src/lib.rs`: `SharedPack` — the shared verified pack artifact (M3-004-A, ADR-0036 §3) —
+  - `SharedPack::freeze(pack, bytes)`: verify once, freeze forever. `pack: Arc<QPack>` + `bytes: Arc<[u8]>` + the SHA-256 identity pin computed at freeze time.
+  - `pack()` / `bytes()` / `sha256()` — Arc-shared reads with clone cost = refcount bump; every worker gets the SAME artifact.
+  - Explicit `impl q_capabilities::SharedAcrossWorkers for SharedPack` — the auditable sharing decision (shared-immutable discipline).
+- `mod shared_pack_tests` (4 tests) — worker parity, freeze immutability, cross-thread sharing.
+
+### Tests added (4)
+- `freeze_is_idempotent_per_bytes_and_shareable` (identity pin matches frozen bytes; `Arc::ptr_eq` proves workers share ONE verified artifact)
+- `worker_parities_hold_for_every_shared_clone` (4 "workers": identical routes/ABI/contract-version from the shared clone)
+- `shared_bytes_are_frozen_against_mutation` (a worker mutating its own clone cannot touch the frozen artifact — one worker failure does not corrupt others)
+- `cross_thread_sharing_never_blocks_and_never_shares_js` (8 threads, barrier-synchronized concurrent reads; identical identity hashes; reads never block; nothing shared is a JS value)
+
+### Command results
+- `cargo test -p q-pack` → **100 unit + 2 fuzz** (was 96+2) — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+101 · `-p velqu-runtime` → 17+5+44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**
+- `benchmarks/manifest.json` refreshed (`d24b1a7c…`) — SharedPack lands in the runtime artifact.
+
+### Guardrail mapping
+- **Workers execute identical contracts** — `worker_parities_hold_for_every_shared_clone`.
+- **One worker failure does not corrupt others** — `shared_bytes_are_frozen_against_mutation`.
+- **No JS object crosses workers** — the shared artifact is plain bytes (`T: Send` discipline; the compile_fail rule from M3-001-C still guards).
+- **Artifact memory sharing is measured** — Arc refcount semantics proven by `Arc::ptr_eq` + concurrent-read test; M3-004-D owns the measured report.
+
+### Disclosures
+- Three clippy/compile iterations on the new test module (module placement outside cfg(test), unused imports). No production behavior changed beyond the new frozen-artifact type.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
