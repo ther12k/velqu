@@ -14,8 +14,8 @@ pub mod serve;
 pub mod service_profile;
 pub use service_profile::{
     aggregate_readiness, startup_batches, startup_parallelism, AdaptiveWorkers, FleetReadiness,
-    Readiness, ScaleTick, ServiceProfile, MAX_STARTUP_PARALLELISM, MAX_WORKERS, MIN_WORKERS,
-    WORKER_INIT_DEADLINE_MS,
+    Readiness, ScaleThresholds, ScaleTick, ServiceProfile, WorkerBounds, MAX_STARTUP_PARALLELISM,
+    MAX_WORKERS, MIN_WORKERS, WORKER_INIT_DEADLINE_MS,
 };
 pub mod source_map;
 
