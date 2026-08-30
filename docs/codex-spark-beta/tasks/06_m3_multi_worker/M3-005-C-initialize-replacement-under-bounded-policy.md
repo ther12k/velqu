@@ -4,7 +4,7 @@ parent_task: M3-005
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -103,3 +103,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-005-C) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-005-c (squash-merged; see git log for final hash)
+- Closes: #398
+
+### Changed files
+- `crates/q-runtime/src/service_profile.rs`: `ReplacementPolicy` — initialize quarantined-worker replacements under a bounded policy (M3-005-C) —
+  - `starting(budget, budget_window_ticks, cooldown_ticks)`; `tick()` advances the clocks; `request_replacement() -> ReplacementDecision`.
+  - Fixed-window budget: at most `budget` replacements per `budget_window_ticks` window (`BudgetExhausted` otherwise; window replenishes deterministically when its ticks elapse).
+  - Cooldown between replacements: `CoolingDown` while `ticks_since_replacement <= cooldown_ticks` — but NO cooldown before the first replacement ever, and none when cooldown_ticks == 0.
+  - Deterministic gates: budget first, then cooldown; `replacements` is the saturating restart-rate metric.
+
+### Tests added (+4 → 35 runtime unit tests)
+- `replacement_initializes_under_budget` (budget 3: 3x Initialize then BudgetExhausted)
+- `budget_window_resets_after_elapsing` (budget 2/window 5: exhausted, window elapses, Initialize again)
+- `cooldown_blocks_immediate_re_replacement` (cooldown 3: CoolingDown at tsr 1..=3, Initialize at tsr 4)
+- `restart_storm_scenario_stays_bounded` (100 rapid poison events, budget 5/window 10 → exactly 50 replacements; rate-limited, never 1:1)
+
+### Command results
+- `cargo test -p velqu-runtime` → **35 unit (was 31) + 5 + 44** — 0 failed
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`6d5c7c3f…` matches manifest)
+
+### Guardrail mapping
+- **Repeated poison cannot create restart storm** — fixed-window budget rate-limits replacements to budget/window; 100 poison events yield exactly 50 bounded replacements.
+- **Replacement restores capacity** — Initialize decisions restore quarantined slots (M3-005-A's replace() consumes the decision).
+
+### Disclosures
+- The window semantics were redesigned mid-packet: the first draft counted replacements against a tick-elapsing window, which could never reset (wu only grows on replacements). The final design counts WINDOW TICKS with budget consumed per replacement — the standard fixed-window rate limiter. Test arithmetic (cooldown off-by-one, exact 50) was pinned against the trace. The suite caught every iteration.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

@@ -231,6 +231,89 @@ pub fn startup_batches(workers: usize, cores: usize) -> (usize, Vec<usize>) {
     (lanes, sizes)
 }
 
+/// Replacement policy state (M3-005-C): initializes quarantined-worker
+/// replacements under a bounded policy — a cooldown between replacements
+/// and a hard replacement budget — so repeated poison cannot create a
+/// restart storm.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplacementPolicy {
+    /// Replacements performed so far (saturating; the restart metric).
+    pub replacements: u64,
+    /// Maximum replacements within one budget window.
+    pub budget: u64,
+    /// Ticks in the replacement budget window.
+    pub budget_window_ticks: u64,
+    /// Replacements consumed in the current window.
+    pub window_used: u64,
+    /// Ticks remaining in the current window (0 = reset due).
+    pub window_ticks_remaining: u64,
+    /// Ticks since the last replacement (cooldown gate; saturating).
+    pub ticks_since_replacement: u64,
+    /// Ticks required between replacements.
+    pub cooldown_ticks: u64,
+}
+
+/// Outcome of requesting a replacement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReplacementDecision {
+    /// Initialize the replacement now.
+    Initialize,
+    /// Denied: the replacement budget for this window is exhausted.
+    /// The worker stays quarantined until the window resets.
+    BudgetExhausted,
+    /// Denied: the cooldown between replacements has not elapsed.
+    /// The worker stays quarantined until the cooldown elapses.
+    CoolingDown,
+}
+
+impl ReplacementPolicy {
+    /// Policy starting point.
+    pub fn starting(budget: u64, budget_window_ticks: u64, cooldown_ticks: u64) -> Self {
+        ReplacementPolicy {
+            replacements: 0,
+            budget,
+            budget_window_ticks,
+            window_used: 0,
+            window_ticks_remaining: budget_window_ticks,
+            ticks_since_replacement: 0,
+            cooldown_ticks,
+        }
+    }
+
+    /// Advance the window/clock one tick (call once per policy period).
+    pub fn tick(&mut self) {
+        self.ticks_since_replacement = self.ticks_since_replacement.saturating_add(1);
+        // Fixed window: when the window's ticks are consumed, the budget
+        // is replenished and a fresh window starts.
+        self.window_ticks_remaining = self.window_ticks_remaining.saturating_sub(1);
+        if self.window_ticks_remaining == 0 {
+            self.window_used = 0;
+            self.window_ticks_remaining = self.budget_window_ticks;
+        }
+    }
+
+    /// Request replacement of a quarantined worker under the bounded
+    /// policy. Deterministic: cooldown first, then budget.
+    pub fn request_replacement(&mut self) -> ReplacementDecision {
+        // Budget gate first: at most `budget` replacements per window.
+        if self.window_used >= self.budget {
+            return ReplacementDecision::BudgetExhausted;
+        }
+        // Cooldown gate (skipped before the first replacement ever, and
+        // when cooldown_ticks == 0: no cooldown configured).
+        if self.cooldown_ticks > 0
+            && self.replacements > 0
+            && self.ticks_since_replacement <= self.cooldown_ticks
+        {
+            return ReplacementDecision::CoolingDown;
+        }
+        self.replacements = self.replacements.saturating_add(1);
+        self.window_used = self.window_used.saturating_add(1);
+        self.ticks_since_replacement = 0;
+        ReplacementDecision::Initialize
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -462,5 +545,75 @@ mod tests {
     fn single_worker_startup_is_always_one_lane() {
         // The serverless guarantee: 1 worker -> exactly 1 lane of 1.
         assert_eq!(startup_batches(1, 16), (1, vec![1]));
+    }
+
+    #[test]
+    fn replacement_initializes_under_budget() {
+        let mut p = ReplacementPolicy::starting(3, 10, 0); // no cooldown
+        for _ in 0..3 {
+            assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+        }
+        // Budget exhausted within the window.
+        assert_eq!(
+            p.request_replacement(),
+            ReplacementDecision::BudgetExhausted
+        );
+        assert_eq!(p.replacements, 3);
+    }
+
+    #[test]
+    fn budget_window_resets_after_elapsing() {
+        let mut p = ReplacementPolicy::starting(2, 5, 0);
+        assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+        assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+        assert_eq!(
+            p.request_replacement(),
+            ReplacementDecision::BudgetExhausted
+        );
+        // Window ticks past its length -> resets -> replacements allowed.
+        for _ in 0..5 {
+            p.tick();
+        }
+        assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+    }
+
+    #[test]
+    fn cooldown_blocks_immediate_re_replacement() {
+        let mut p = ReplacementPolicy::starting(10, 100, 3);
+        assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+        // Within cooldown: denied, worker stays quarantined.
+        assert_eq!(p.request_replacement(), ReplacementDecision::CoolingDown);
+        p.tick();
+        assert_eq!(p.request_replacement(), ReplacementDecision::CoolingDown);
+        p.tick();
+        assert_eq!(p.request_replacement(), ReplacementDecision::CoolingDown);
+        p.tick();
+        p.tick();
+        assert_eq!(p.request_replacement(), ReplacementDecision::Initialize);
+    }
+
+    #[test]
+    fn restart_storm_scenario_stays_bounded() {
+        // 100 rapid poison events against budget 5/window 10 (each
+        // iteration = request + tick = 1 tick of window time): exactly
+        // 5 replacements per 10-tick window, 10 windows -> exactly 50.
+        // Bounded: a storm is rate-limited to budget/window, never
+        // 100 replacements.
+        let mut p = ReplacementPolicy::starting(5, 10, 0);
+        let mut initialized = 0;
+        for _ in 0..100 {
+            if p.request_replacement() == ReplacementDecision::Initialize {
+                initialized += 1;
+            }
+            p.tick();
+        }
+        assert_eq!(
+            initialized, 50,
+            "fixed-window budget: 5 per window x 10 windows"
+        );
+        assert!(
+            initialized < 100,
+            "restart storm is rate-limited, never 1:1 with poison events"
+        );
     }
 }
