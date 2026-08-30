@@ -166,6 +166,8 @@ pub struct QuickJsEngine {
     handle: Option<JoinHandle<()>>,
     last_error: Arc<Mutex<Option<String>>>,
     bridge_counters: Arc<BridgeCounters>,
+    /// M3-004-B: owner-thread label for diagnostics (e.g. "svc-0").
+    worker_label: Option<String>,
 }
 
 impl QuickJsEngine {
@@ -217,6 +219,7 @@ impl QuickJsEngine {
             handle: Some(handle),
             last_error,
             bridge_counters,
+            worker_label: None,
         }
     }
 
@@ -224,6 +227,32 @@ impl QuickJsEngine {
     /// the engine handle; request metadata and slab state remain worker-owned.
     pub fn bridge_snapshot(&self) -> CountersSnapshot {
         self.bridge_counters.snapshot()
+    }
+
+    /// M3-004-B: spawn N fully independent runtimes — each with its own
+    /// thread, context, heap, and module state (ADR-0036 §1/§2). The
+    /// `worker_name` labels the owner thread for diagnostics. No state is
+    /// shared between the spawned engines beyond the caller's own handles.
+    pub fn spawn_independent(
+        count: usize,
+        config: QuickJsConfig,
+        tokio_handle: tokio::runtime::Handle,
+        mapper: Arc<dyn SourceMapper>,
+        worker_name: &str,
+    ) -> Vec<QuickJsEngine> {
+        (0..count)
+            .map(|i| {
+                let mut e =
+                    QuickJsEngine::spawn(config.clone(), tokio_handle.clone(), Arc::clone(&mapper));
+                e.worker_label = Some(format!("{worker_name}-{i}"));
+                e
+            })
+            .collect()
+    }
+
+    /// M3-004-B: this engine's worker label (owner-thread diagnostics).
+    pub fn worker_label(&self) -> Option<&str> {
+        self.worker_label.as_deref()
     }
 
     /// Test/benchmark admission helper. Production request admission moves the
