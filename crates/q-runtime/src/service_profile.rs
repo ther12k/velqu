@@ -199,6 +199,38 @@ impl Readiness {
     }
 }
 
+/// Startup parallelism bounds (M3-004-D): initializing N workers may run
+/// in parallel, but never unbounded — the concurrency is clamped to the
+/// physical core count (up to [`MAX_STARTUP_PARALLELISM`]) and each
+/// in-flight worker has a bounded init deadline. This keeps a service:64
+/// deployment from spawning 64 simultaneous engine evaluations on a
+/// 2-core box, while still amortizing cold start.
+pub const MAX_STARTUP_PARALLELISM: usize = 8;
+
+/// Per-worker initialization deadline (ms) under the bounded policy.
+pub const WORKER_INIT_DEADLINE_MS: u64 = 10_000;
+
+/// Compute the effective startup parallelism for `workers` on a machine
+/// with `cores` logical cores. Deterministic: min(workers, cores, cap),
+/// floored at 1.
+pub fn startup_parallelism(workers: usize, cores: usize) -> usize {
+    workers.min(cores.max(1)).clamp(1, MAX_STARTUP_PARALLELISM)
+}
+
+/// The bounded batch plan: how many concurrent "lanes" the startup uses
+/// and how many workers each lane initializes (last lane may be short).
+/// Sum of lane sizes == workers.
+pub fn startup_batches(workers: usize, cores: usize) -> (usize, Vec<usize>) {
+    let lanes = startup_parallelism(workers, cores);
+    let per_lane = workers / lanes;
+    let remainder = workers % lanes;
+    let mut sizes = vec![per_lane; lanes];
+    for size in sizes.iter_mut().take(remainder) {
+        *size += 1;
+    }
+    (lanes, sizes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -391,5 +423,44 @@ mod tests {
             r.worker_initialized();
         }
         assert!(r.is_ready(), "ready at exactly the clamped requirement");
+    }
+
+    #[test]
+    fn startup_parallelism_is_bounded_by_cores_and_cap() {
+        // More workers than cores: parallelism clamps to cores.
+        assert_eq!(startup_parallelism(64, 8), 8);
+        // Few workers on many cores: parallelism = worker count.
+        assert_eq!(startup_parallelism(2, 16), 2);
+        // Cap applies even on huge machines.
+        assert_eq!(startup_parallelism(64, 128), MAX_STARTUP_PARALLELISM);
+        // Degenerate inputs stay >= 1.
+        assert_eq!(startup_parallelism(0, 0), 1);
+        assert_eq!(startup_parallelism(1, 0), 1);
+    }
+
+    #[test]
+    fn startup_batches_sum_exactly_to_workers() {
+        for workers in [1usize, 2, 3, 7, 8, 9, 16, 64] {
+            for cores in [1usize, 2, 4, 8, 16] {
+                let (lanes, sizes) = startup_batches(workers, cores);
+                assert_eq!(lanes, startup_parallelism(workers, cores));
+                assert_eq!(sizes.len(), lanes);
+                assert_eq!(
+                    sizes.iter().sum::<usize>(),
+                    workers,
+                    "workers={workers} cores={cores}"
+                );
+                // No lane exceeds the cap.
+                for size in &sizes {
+                    assert!(*size <= workers);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn single_worker_startup_is_always_one_lane() {
+        // The serverless guarantee: 1 worker -> exactly 1 lane of 1.
+        assert_eq!(startup_batches(1, 16), (1, vec![1]));
     }
 }

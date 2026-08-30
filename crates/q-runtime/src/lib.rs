@@ -12,6 +12,10 @@ pub mod fetch_stack;
 pub mod problems;
 pub mod serve;
 pub mod service_profile;
+pub use service_profile::{
+    startup_batches, startup_parallelism, AdaptiveWorkers, Readiness, ScaleTick, ServiceProfile,
+    MAX_STARTUP_PARALLELISM, MAX_WORKERS, MIN_WORKERS, WORKER_INIT_DEADLINE_MS,
+};
 pub mod source_map;
 
 use std::path::PathBuf;
