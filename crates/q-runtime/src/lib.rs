@@ -389,6 +389,9 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             ownership: q_capabilities::InvocationOwnership::new(1),
             // M3-007-B: starts Serving; flipped once by the signal task below.
             drain_gate: q_capabilities::DrainGate::new(),
+            // M3-008-C: per-reason load-shed counters, rendered in the
+            // shutdown report.
+            load_shed: q_capabilities::LoadShedCounters::new(),
             log_mode: serve::LogMode::parse_mode(&cfg.log),
             log_sample: cfg.log_sample,
             log_sequence: std::sync::atomic::AtomicU64::new(0),
@@ -479,6 +482,8 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     "completed": drain_completed,
                     "aborted": drain_aborted,
                 },
+                // M3-008-C: refusals by their closed-set load-shed kind.
+                "loadShed": state.load_shed.snapshot(),
                 "fetchPool": {
                     "initialized": fetch_pool.is_initialized(),
                     "drained": fetch_pool_drained,
