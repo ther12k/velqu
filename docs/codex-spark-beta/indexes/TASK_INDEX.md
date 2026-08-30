@@ -462,7 +462,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-008-B](../tasks/06_m3_multi_worker/M3-008-B-define-long-running-js-policy.md) | P1 | implement | PASS | M3-008-A | Define long-running JS policy |
 | [M3-008-C](../tasks/06_m3_multi_worker/M3-008-C-expose-load-shed-reasons.md) | P1 | implement | PASS | M3-008-B | Expose load-shed reasons |
 | [M3-008-D](../tasks/06_m3_multi_worker/M3-008-D-test-mixed-workloads.md) | P1 | implement | PASS | M3-008-C | Test mixed workloads |
-| [M3-008-V](../tasks/06_m3_multi_worker/M3-008-V-verify-add-fairness-and-overload-controls.md) | P1 | verify | TODO | M3-008-A, M3-008-B, M3-008-C, M3-008-D | Verify Add fairness and overload controls |
+| [M3-008-V](../tasks/06_m3_multi_worker/M3-008-V-verify-add-fairness-and-overload-controls.md) | P1 | verify | PASS | M3-008-A, M3-008-B, M3-008-C, M3-008-D | Verify Add fairness and overload controls |
 | [M3-008-Z](../tasks/06_m3_multi_worker/M3-008-Z-package-evidence-for-add-fairness-and-overload-controls.md) | P1 | evidence | TODO | M3-008-V | Package evidence for Add fairness and overload controls |
 | [M3-009-A](../tasks/06_m3_multi_worker/M3-009-A-measure-1-2-4-workers.md) | P1 | implement | TODO | M3-003-Z, M3-006-Z, M3-008-Z | Measure 1/2/4 workers |
 | [M3-009-B](../tasks/06_m3_multi_worker/M3-009-B-report-throughput-p50-p95-p99-queue-time-cpu-rss-errors.md) | P1 | implement | TODO | M3-009-A | Report throughput, p50/p95/p99, queue time, CPU, RSS, errors |
