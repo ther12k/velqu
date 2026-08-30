@@ -415,7 +415,21 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 );
             }
         });
-        let _ = host.serve(listener, handler, shutdown_rx).await;
+        // M3-007-C: in-flight connections are ALLOWED to complete — the
+        // host awaits them, bounded by the same ADR-0031 shutdown budget
+        // used for every other quiescence step.
+        let serve_drain = host
+            .serve(
+                listener,
+                handler,
+                shutdown_rx,
+                std::time::Duration::from_millis(q_capabilities::SHUTDOWN_BUDGET_MS),
+            )
+            .await;
+        let (drain_completed, drain_detached) = match serve_drain {
+            Ok(d) => (d.completed, d.detached),
+            Err(_) => (0, 0),
+        };
 
         // M28-009-C: quiescence includes the outbound pool. Drain the
         // shared fetch pool within the shutdown budget (ADR-0031
@@ -446,10 +460,13 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     "registered": ownership.registered,
                     "settled": ownership.settled,
                 },
-                // M3-007-B: admissions refused after the drain flip —
-                // clients honestly told to retry elsewhere.
+                // M3-007-B/C: admissions refused after the drain flip,
+                // and how in-flight completion ended (detached > 0 means
+                // the budget fired with connections still open).
                 "drain": {
                     "refused": state.drain_gate.refused(),
+                    "completed": drain_completed,
+                    "detached": drain_detached,
                 },
                 "fetchPool": {
                     "initialized": fetch_pool.is_initialized(),

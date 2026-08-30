@@ -14,6 +14,17 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
+/// M3-007-C: how in-flight completion ended after the shutdown signal.
+/// `completed` counts connections that reached a terminal state within
+/// the drain budget; `detached` counts stragglers detached at budget
+/// expiry (still running; reclaimed at process exit — the explicit
+/// abort-through-ownership replacement is M3-007-D).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ServeDrain {
+    pub completed: usize,
+    pub detached: usize,
+}
+
 /// Admission/body limits (RUN-005). Defaults per docs/specs/pack-format-v1.md.
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct Limits {
@@ -199,17 +210,31 @@ impl HttpHost {
     }
 
     /// Accept loop. Returns once `shutdown` fires AND in-flight work drained.
+    ///
+    /// M3-007-C: connection tasks are tracked; after the accept loop
+    /// stops, in-flight work is ALLOWED to complete — the drain wait is
+    /// bounded by `drain_budget` (ADR-0031 posture). Connections that
+    /// finish are counted; on budget expiry the stragglers are detached
+    /// (still running; process exit reclaims them) and counted, so the
+    /// caller can report both honestly. M3-007-D replaces the detach
+    /// with explicit abort-through-ownership and forced-abort reporting.
     pub async fn serve<H, F>(
         self,
         listener: TcpListener,
         handler: H,
         mut shutdown: tokio::sync::watch::Receiver<bool>,
-    ) -> std::io::Result<()>
+        drain_budget: std::time::Duration,
+    ) -> std::io::Result<ServeDrain>
     where
         H: Fn(NativeRequest) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = (HandlerResult, String, &'static str)> + Send,
     {
         let handler = Arc::new(handler);
+        let mut connections = tokio::task::JoinSet::new();
+        // M3-007-C: hyper's graceful-shutdown watcher. When triggered it
+        // closes IDLE keep-alive connections immediately and lets
+        // IN-FLIGHT requests finish before their connection closes.
+        let graceful = hyper_util::server::graceful::GracefulShutdown::new();
         loop {
             tokio::select! {
                 _ = shutdown.changed() => {
@@ -222,7 +247,8 @@ impl HttpHost {
                     };
                     let host = self.clone();
                     let handler = Arc::clone(&handler);
-                    tokio::spawn(async move {
+                    let watcher = graceful.watcher();
+                    connections.spawn(async move {
                         let io = TokioIo::new(stream);
                         let service = ReqService { host: host.clone(), handler: Arc::clone(&handler) };
                         let conn = hyper::server::conn::http1::Builder::new()
@@ -234,14 +260,43 @@ impl HttpHost {
                             .header_read_timeout(host.shared.limits.header_read_timeout)
                             .timer(hyper_util::rt::TokioTimer::new())
                             .serve_connection(io, service);
-                        if let Err(e) = conn.await {
+                        if let Err(e) = watcher.watch(conn).await {
                             let _ = e;
                         }
                     });
                 }
             }
         }
-        Ok(())
+        // M3-007-C: allow bounded in-flight completion. Idle keep-alive
+        // connections close at once; every in-flight request is allowed
+        // to finish; the whole wait is bounded by the drain budget.
+        let mut completed: usize = 0;
+        {
+            let wait = async {
+                graceful.shutdown().await;
+                while connections.join_next().await.is_some() {
+                    completed += 1;
+                }
+            };
+            if tokio::time::timeout(drain_budget, wait).await.is_err() {
+                // Budget fired with connections still open (an ACTIVE
+                // straggler, e.g. a stalled request): detach the tasks —
+                // dropping the watcher already told each connection to
+                // finish its current work and stop — and let the caller
+                // report the count. Explicit abort-through-ownership is
+                // M3-007-D.
+                let detached = connections.len();
+                connections.detach_all();
+                return Ok(ServeDrain {
+                    completed,
+                    detached,
+                });
+            }
+        }
+        Ok(ServeDrain {
+            completed,
+            detached: 0,
+        })
     }
 
     pub fn active_requests(&self) -> usize {

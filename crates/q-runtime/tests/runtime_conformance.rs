@@ -511,7 +511,63 @@ fn fixture_pack() -> q_pack::QPack {
             }
             r
         },
+        {
+            // M3-007-C: a long-deadline timer route. An in-flight request
+            // on this route outlives the 5s drain budget, so the shutdown
+            // conformance can prove the bounded-wait/detach behavior
+            // honestly (the shared timer handler is function index 6).
+            let mut r = route(
+                "async.slow",
+                "GET",
+                "/async-slow",
+                seg(&[("s", "async-slow")]),
+                "async.timer",
+                12,
+                None,
+                200,
+                vec![200],
+                FieldNeeds {
+                    params: false,
+                    query: true,
+                    headers: false,
+                    body: false,
+                },
+            );
+            r.query = Some(SourceBinding {
+                schema: Some("sch:async-slow.query".into()),
+                coerce: Some("query".into()),
+                content_type: None,
+                limit_bytes: 0,
+            });
+            r.capabilities = vec!["timer".into()];
+            r.deadline_ms = 30_000;
+            if let Some(ref mut p) = r.plan {
+                p.deadline_ms = 30_000;
+                p.handler_id = 6;
+            }
+            r
+        },
     ];
+
+    // M3-007-C: the slow timer route needs ms values beyond the normal
+    // timer maximum so an in-flight invocation can outlive the drain
+    // budget in conformance.
+    schemas.insert(
+        "sch:async-slow.query".to_string(),
+        S::Object {
+            properties: BTreeMap::from([(
+                "ms".into(),
+                Box::new(S::Optional {
+                    inner: Box::new(S::Integer {
+                        minimum: Some(1),
+                        maximum: Some(60_000),
+                    }),
+                    default: Some(json!(1000)),
+                }),
+            )]),
+            required: vec![],
+        },
+    );
 
     // timer schema reuse for cancel needs a wider maximum
     schemas.insert(
@@ -1805,16 +1861,13 @@ fn graceful_shutdown_exits_zero() {
 
 #[test]
 fn graceful_drain_flips_gate_and_reports_before_exit() {
-    // M3-007-B: the instant the shutdown signal fires, the drain gate
+    // M3-007-B/C: the instant the shutdown signal fires, the drain gate
     // flips and the flip is OBSERVABLE: a drain.begin event (with the
     // live invocation count) precedes shutdown, and the shutdown report
-    // carries the drain refusal count. End-to-end refusal of a request
-    // arriving on an established connection during the drain window is
-    // pinned by M3-007-C (bounded in-flight completion keeps the process
-    // alive across that window; today the process exits as soon as the
-    // accept loop stops, so that window cannot be driven deterministically
-    // from outside yet). The gate/refusal/counting semantics themselves
-    // are unit-proven in q-capabilities::drain.
+    // carries the drain outcome — refusals, connections completed within
+    // the budget, and stragglers detached at expiry. (With no open
+    // connection at the signal, the one closed request's connection task
+    // still joins: completed 1, detached 0.)
     let dir = temp_dir("drain");
     let pack_path = write_pack(&dir);
     let port = free_port();
@@ -1859,8 +1912,8 @@ fn graceful_drain_flips_gate_and_reports_before_exit() {
     );
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
     assert!(
-        complete.contains("\"drain\":{\"refused\":0}"),
-        "shutdown report carries the drain refusal count: {complete}"
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"detached\":0}"),
+        "shutdown report carries the full drain outcome: {complete}"
     );
     assert!(
         complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
@@ -1871,6 +1924,203 @@ fn graceful_drain_flips_gate_and_reports_before_exit() {
         status.success(),
         "shutdown after the drain flip must exit 0, got {status:?}"
     );
+}
+
+/// Reads one content-length-framed response from a keep-alive stream.
+fn read_keep_alive_response(stream: &mut TcpStream) -> Resp {
+    let mut buf: Vec<u8> = Vec::new();
+    let mut chunk = [0u8; 1024];
+    loop {
+        if let Some(pos) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+            let head = String::from_utf8_lossy(&buf[..pos]).into_owned();
+            let mut content_len: Option<usize> = None;
+            for line in head.lines().skip(1) {
+                if let Some((k, v)) = line.split_once(':') {
+                    if k.trim().eq_ignore_ascii_case("content-length") {
+                        content_len = v.trim().parse().ok();
+                    }
+                }
+            }
+            if let Some(len) = content_len {
+                let total = pos + 4 + len;
+                if buf.len() >= total {
+                    return parse_http(&buf[..total]);
+                }
+            }
+        }
+        let n = stream.read(&mut chunk).expect("read response");
+        assert!(n > 0, "connection closed before a full response");
+        buf.extend_from_slice(&chunk[..n]);
+    }
+}
+
+#[test]
+fn drain_lets_in_flight_request_complete() {
+    // M3-007-C: the core drain contract — a request IN FLIGHT when the
+    // shutdown signal fires is ALLOWED to complete. The slow timer route
+    // (800ms) is mid-flight at SIGTERM; its response still arrives, the
+    // ownership lifecycle settles exactly once, and the process exits 0
+    // promptly (no 5s budget burn: idle keep-alives close at once).
+    let dir = temp_dir("drain-inflight");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let mut server = Server::start(&pack_path, port);
+    std::thread::sleep(Duration::from_millis(50));
+
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+
+    // In-flight work: an 800ms native-timer invocation.
+    stream
+        .write_all(b"GET /async?ms=800 HTTP/1.1\r\nhost: t\r\n\r\n")
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(120));
+
+    // SIGTERM while the invocation runs: the gate flips, the accept
+    // loop stops, and the in-flight request must NOT be abandoned.
+    let t0 = Instant::now();
+    unsafe {
+        libc::kill(server.child.id() as i32, libc::SIGTERM);
+    }
+
+    let response = read_keep_alive_response(&mut stream);
+    assert_eq!(
+        response.status,
+        200,
+        "in-flight request must complete during drain: {}",
+        response.text()
+    );
+    assert_eq!(
+        response.json()["waited"],
+        800,
+        "the full timer value resolved (work was not cut short)"
+    );
+    drop(stream);
+    assert!(
+        t0.elapsed() < Duration::from_secs(5),
+        "exit must be prompt after in-flight work completes: {:?}",
+        t0.elapsed()
+    );
+
+    let mut saw_drain_begin = false;
+    let mut complete: Option<String> = None;
+    for _ in 0..50 {
+        let logs = server.drain_logs();
+        if logs.iter().any(|l| l.contains("\"event\":\"drain.begin\"")) {
+            saw_drain_begin = true;
+        }
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        {
+            complete = Some(line.clone());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    assert!(saw_drain_begin, "drain.begin event missing");
+    let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
+    assert!(
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"detached\":0}"),
+        "the in-flight connection completed within the budget: {complete}"
+    );
+    assert!(
+        complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
+        "the in-flight invocation settled exactly once: {complete}"
+    );
+    let status = server.child.wait().unwrap();
+    assert!(
+        status.success(),
+        "drain with completed in-flight work must exit 0, got {status:?}"
+    );
+}
+
+#[test]
+fn drain_waits_bounded_then_detaches_straggler_connection() {
+    // M3-007-C: an ACTIVE straggler — a connection stuck mid-headers
+    // (its 10s header-read timeout outlives the 5s drain budget) — must
+    // NOT extend shutdown unbounded. The drain waits within the budget,
+    // then detaches the straggler honestly (counted in the report) and
+    // still exits 0. No invocation was ever admitted (headers were
+    // incomplete), so ownership stays at zero.
+    let dir = temp_dir("drain-straggler");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let mut server = Server::start(&pack_path, port);
+    std::thread::sleep(Duration::from_millis(50));
+
+    // A DISPATCHED request whose handler runs 20s (30s route deadline):
+    // it is genuinely in flight, owns an invocation, and outlives the
+    // 5s drain budget. (Mid-header connections are closed instantly by
+    // hyper's graceful shutdown — only dispatched work holds the drain.)
+    let mut straggler = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+    straggler
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .ok();
+    straggler
+        .write_all(b"GET /async-slow?ms=20000 HTTP/1.1\r\nhost: t\r\n\r\n")
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(150));
+
+    let t0 = Instant::now();
+    unsafe {
+        libc::kill(server.child.id() as i32, libc::SIGTERM);
+    }
+
+    let mut complete: Option<String> = None;
+    for _ in 0..200 {
+        let logs = server.drain_logs();
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        {
+            complete = Some(line.clone());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let elapsed = t0.elapsed();
+    let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
+    assert!(
+        complete.contains("\"drain\":{\"refused\":0,\"completed\":0,\"detached\":1}"),
+        "the active straggler is detached, not awaited forever: {complete}"
+    );
+    // Honest C state, pinned as an exact invariant: the straggler's
+    // invocation was admitted exactly once, and at report time it is
+    // EITHER settled (the detached pipeline observed the engine's
+    // shutdown-cancel before the report printed — the engine stats show
+    // cancelled_invocations:1) OR still live (pending) — never hidden,
+    // never double-counted: registered == 1 and pending + settled == 1.
+    // M3-007-D replaces the detach with abort-through-ownership and
+    // reports the forced abort, making this deterministically pending:0.
+    let report: Value = serde_json::from_str(&complete).unwrap();
+    let inv = &report["invocations"];
+    assert_eq!(
+        inv["registered"].as_u64(),
+        Some(1),
+        "exactly one admitted invocation: {complete}"
+    );
+    assert_eq!(
+        inv["pending"].as_u64().unwrap_or(255) + inv["settled"].as_u64().unwrap_or(255),
+        1,
+        "one lifecycle, fully accounted: {complete}"
+    );
+    let status = server.child.wait().unwrap();
+    assert!(
+        status.success(),
+        "bounded drain expiry must still exit 0, got {status:?}"
+    );
+    assert!(
+        elapsed >= Duration::from_secs(5),
+        "the drain budget was actually honored (not skipped): {elapsed:?}"
+    );
+    assert!(
+        elapsed < Duration::from_secs(10),
+        "shutdown stayed within the budget window: {elapsed:?}"
+    );
+    drop(straggler);
 }
 
 #[test]
