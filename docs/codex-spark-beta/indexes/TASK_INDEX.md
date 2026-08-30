@@ -445,7 +445,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-005-C](../tasks/06_m3_multi_worker/M3-005-C-initialize-replacement-under-bounded-policy.md) | P0 | implement | PASS | M3-005-B | Initialize replacement under bounded policy |
 | [M3-005-D](../tasks/06_m3_multi_worker/M3-005-D-aggregate-readiness-from-usable-capacity.md) | P0 | implement | PASS | M3-005-C | Aggregate readiness from usable capacity |
 | [M3-005-V](../tasks/06_m3_multi_worker/M3-005-V-verify-implement-quarantine-replacement-and-readiness-aggregation.md) | P0 | verify | PASS | M3-005-A, M3-005-B, M3-005-C, M3-005-D | Verify Implement quarantine, replacement, and readiness aggregation |
-| [M3-005-Z](../tasks/06_m3_multi_worker/M3-005-Z-package-evidence-for-implement-quarantine-replacement-and-readiness-aggregation.md) | P0 | evidence | TODO | M3-005-V | Package evidence for Implement quarantine, replacement, and readiness aggregation |
+| [M3-005-Z](../tasks/06_m3_multi_worker/M3-005-Z-package-evidence-for-implement-quarantine-replacement-and-readiness-aggregation.md) | P0 | evidence | PASS | M3-005-V | Package evidence for Implement quarantine, replacement, and readiness aggregation |
 | [M3-006-A](../tasks/06_m3_multi_worker/M3-006-A-define-thresholds-hysteresis.md) | P1 | implement | TODO | M3-003-Z, M3-005-Z | Define thresholds/hysteresis |
 | [M3-006-B](../tasks/06_m3_multi_worker/M3-006-B-bound-min-max-workers.md) | P1 | implement | TODO | M3-006-A | Bound min/max workers |
 | [M3-006-C](../tasks/06_m3_multi_worker/M3-006-C-drain-before-scale-down.md) | P1 | implement | TODO | M3-006-B | Drain before scale-down |
