@@ -451,7 +451,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-006-C](../tasks/06_m3_multi_worker/M3-006-C-drain-before-scale-down.md) | P1 | implement | PASS | M3-006-B | Drain before scale-down |
 | [M3-006-D](../tasks/06_m3_multi_worker/M3-006-D-avoid-oscillation.md) | P1 | implement | PASS | M3-006-C | Avoid oscillation |
 | [M3-006-V](../tasks/06_m3_multi_worker/M3-006-V-verify-implement-adaptive-scale-up-and-scale-down.md) | P1 | verify | PASS | M3-006-A, M3-006-B, M3-006-C, M3-006-D | Verify Implement adaptive scale-up and scale-down |
-| [M3-006-Z](../tasks/06_m3_multi_worker/M3-006-Z-package-evidence-for-implement-adaptive-scale-up-and-scale-down.md) | P1 | evidence | TODO | M3-006-V | Package evidence for Implement adaptive scale-up and scale-down |
+| [M3-006-Z](../tasks/06_m3_multi_worker/M3-006-Z-package-evidence-for-implement-adaptive-scale-up-and-scale-down.md) | P1 | evidence | PASS | M3-006-V | Package evidence for Implement adaptive scale-up and scale-down |
 | [M3-007-A](../tasks/06_m3_multi_worker/M3-007-A-track-invocation-to-worker-ownership.md) | P0 | implement | TODO | M3-002-Z, M3-004-Z | Track invocation-to-worker ownership |
 | [M3-007-B](../tasks/06_m3_multi_worker/M3-007-B-stop-admission-on-drain.md) | P0 | implement | TODO | M3-007-A | Stop admission on drain |
 | [M3-007-C](../tasks/06_m3_multi_worker/M3-007-C-allow-bounded-in-flight-completion.md) | P0 | implement | TODO | M3-007-B | Allow bounded in-flight completion |
