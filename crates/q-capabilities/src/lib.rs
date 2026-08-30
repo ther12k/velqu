@@ -24,6 +24,7 @@ pub mod crypto;
 pub mod diagnostics;
 pub mod dispatch;
 pub mod drain;
+pub mod fairness;
 pub mod fetch_metrics;
 pub mod fetch_policy;
 pub mod harness;
@@ -55,6 +56,10 @@ pub use dispatch::{
     DEFAULT_WORKER_QUEUE_CAPACITY, MAX_WORKER_QUEUE_CAPACITY, RETRY_AFTER_OVERLOAD_SECS,
 };
 pub use drain::{AdmissionDrained, DrainGate};
+pub use fairness::{
+    FairAdmission, FairnessError, FairnessReject, FairnessStats, MAX_FAIR_CAPACITY,
+    MAX_FAIR_CLASSES,
+};
 pub use fetch_metrics::{FetchMetrics, FetchMetricsCollector, FetchMetricsSnapshot, FetchStage};
 pub use fetch_policy::{
     headers_surviving_redirect, is_credential_header, is_cross_origin_redirect,
