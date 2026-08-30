@@ -89,7 +89,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M3-005 | P0 | PASS | M3-002, M3-004 | M3 | Implement quarantine, replacement, and readiness aggregation |
 | M3-006 | P1 | PASS | M3-003, M3-005 | M3 | Implement adaptive scale-up and scale-down |
 | M3-007 | P0 | PASS | M3-002, M3-004 | M3 | Implement multi-worker cancellation and graceful shutdown |
-| M3-008 | P1 | TODO | M3-002, M3-006 | M3 | Add fairness and overload controls |
+| M3-008 | P1 | PASS | M3-002, M3-006 | M3 | Add fairness and overload controls |
 | M3-009 | P1 | TODO | M3-003, M3-006, M3-008 | M3 | Close multi-worker scaling and memory evidence |
 | M3-010 | P0 | TODO | M3-005, M3-007, M3-009 | M3 | Run multi-worker soak and recovery |
 | M3-GATE | P0 | TODO | M3-001, M3-002, M3-003, M3-004, M3-005, M3-006, M3-007, M3-008, M3-009, M3-010 | M3 | M3 — Multi-Worker Service Runtime exit gate |
