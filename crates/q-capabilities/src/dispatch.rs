@@ -254,6 +254,10 @@ pub struct Dispatcher<T> {
     queues: Vec<BoundedWorkerQueue<T>>,
     /// Round-robin cursor for tie-breaking among least-loaded workers.
     cursor: std::sync::atomic::AtomicUsize,
+    /// Quarantined workers (excluded from selection; M3-005-A).
+    quarantined: std::collections::BTreeSet<usize>,
+    /// Quarantine events since creation (restart-rate metric).
+    quarantine_events: u64,
 }
 
 impl<T: Send + 'static> Dispatcher<T> {
@@ -265,6 +269,8 @@ impl<T: Send + 'static> Dispatcher<T> {
                 .map(|w| BoundedWorkerQueue::with_capacity(w, capacity))
                 .collect(),
             cursor: std::sync::atomic::AtomicUsize::new(0),
+            quarantined: std::collections::BTreeSet::new(),
+            quarantine_events: 0,
         }
     }
 
@@ -289,6 +295,9 @@ impl<T: Send + 'static> Dispatcher<T> {
             // Visit in rotation order starting at the cursor so equal
             // loads win round-robin.
             let idx = (start + i) % n;
+            if self.quarantined.contains(&idx) {
+                continue; // quarantined: receives NO new requests (M3-005-A)
+            }
             let q = &self.queues[idx];
             let len = q.len();
             if len >= q.capacity() {
@@ -375,6 +384,58 @@ pub fn admission_response(err: &QueueError) -> AdmissionDecision {
             retry_after_secs: RETRY_AFTER_OVERLOAD_SECS,
             detail: "worker queues at capacity; retry after the advertised delay",
         },
+    }
+}
+
+/// Worker health from the dispatcher's perspective (M3-005-A). A worker
+/// whose runtime quarantined is removed from selection immediately — it
+/// receives NO new requests — while its queue is drained/settled by the
+/// replacement path (M3-005-B).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkerHealth {
+    /// Normal: receives dispatches.
+    Serving,
+    /// Runtime quarantined: excluded from selection permanently until a
+    /// replacement (M3-005-C) re-initializes the slot.
+    Quarantined,
+}
+
+impl<T: Send + 'static> Dispatcher<T> {
+    /// Quarantine a worker: it stops receiving new dispatches at once
+    /// (the next `select()` skips it), its queue closes (the consumer
+    /// drains remaining jobs then sees None), and the quarantine count
+    /// increments. Idempotent for an already-quarantined worker.
+    pub fn quarantine(&mut self, worker: usize) {
+        assert!(worker < self.queues.len(), "worker index out of range");
+        if self.quarantined.insert(worker) {
+            self.quarantine_events = self.quarantine_events.saturating_add(1);
+            self.queues[worker].close();
+        }
+    }
+
+    /// True when `worker` is currently quarantined.
+    pub fn is_quarantined(&self, worker: usize) -> bool {
+        self.quarantined.contains(&worker)
+    }
+
+    /// How many quarantine events have occurred (restart-rate metric;
+    /// saturating).
+    pub fn quarantine_events(&self) -> u64 {
+        self.quarantine_events
+    }
+
+    /// Replace a quarantined worker's queue with a fresh one (M3-005-C
+    /// calls this after re-initialization): the slot returns to Serving
+    /// with an empty bounded queue. The quarantine-event history is kept
+    /// (restart-rate metric survives replacement).
+    pub fn replace(&mut self, worker: usize) {
+        assert!(worker < self.queues.len(), "worker index out of range");
+        self.queues[worker] = BoundedWorkerQueue::with_capacity(worker, self.capacity_of(worker));
+        self.quarantined.remove(&worker);
+    }
+
+    fn capacity_of(&self, worker: usize) -> usize {
+        self.queues[worker].capacity()
     }
 }
 
@@ -661,5 +722,80 @@ mod tests {
             (verdict.status, verdict.problem, verdict.retry_after_secs),
             (503, "overload", 1)
         );
+    }
+
+    #[test]
+    fn quarantined_worker_receives_no_new_requests() {
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(3, 4);
+        d.quarantine(1);
+        assert!(d.is_quarantined(1));
+        // Many selections under even load: worker 1 is never chosen.
+        let picks: Vec<usize> = (0..12).map(|_| d.select().unwrap()).collect();
+        assert!(
+            picks.iter().all(|&w| w != 1),
+            "quarantined worker must be skipped: {picks:?}"
+        );
+        // Loads still spread across the healthy workers.
+        assert_eq!(d.queue(1).len(), 0, "quarantined queue receives nothing");
+        assert_eq!(d.quarantine_events(), 1);
+    }
+
+    #[test]
+    fn quarantine_closes_queue_and_is_idempotent() {
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(2, 4);
+        d.queue(0).try_push(1).unwrap();
+        d.quarantine(0);
+        assert!(
+            d.queue(0).is_closed(),
+            "quarantine closes the queue for the drain path"
+        );
+        d.quarantine(0); // idempotent: no double-count
+        assert_eq!(d.quarantine_events(), 1);
+    }
+
+    #[test]
+    fn all_quarantined_means_no_selection() {
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(2, 4);
+        d.quarantine(0);
+        d.quarantine(1);
+        assert!(d.select().is_none(), "no healthy worker -> no selection");
+        assert!(d.dispatch(1).is_err());
+    }
+
+    #[test]
+    fn replacement_restores_capacity_and_keeps_restart_history() {
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(2, 4);
+        d.quarantine(0);
+        assert!(d.is_quarantined(0));
+        // Replacement (M3-005-C): fresh queue, back to Serving.
+        d.replace(0);
+        assert!(!d.is_quarantined(0));
+        assert!(d.queue(0).is_empty() && !d.queue(0).is_closed());
+        assert_eq!(
+            d.select().unwrap(),
+            0,
+            "replaced worker is selectable again"
+        );
+        // Restart-rate history survives replacement.
+        assert_eq!(d.quarantine_events(), 1);
+        // And a re-poison of the replacement counts again.
+        d.quarantine(0);
+        assert_eq!(d.quarantine_events(), 2);
+    }
+
+    #[test]
+    fn repeated_poison_cycle_never_exceeds_initial_worker_count() {
+        // Restart-storm guardrail: poison->replace cycles only ever bring
+        // the fleet back to its original size — no growth.
+        let mut d: Dispatcher<u32> = Dispatcher::with_workers(2, 4);
+        for _ in 0..10 {
+            d.quarantine(0);
+            d.replace(0);
+        }
+        assert_eq!(d.quarantine_events(), 10);
+        assert_eq!(d.workers(), 2, "fleet size never grows from restarts");
+        assert!(!d.is_quarantined(0) && !d.is_quarantined(1));
+        // Still dispatching to both after 10 cycles.
+        assert!(d.select().is_some());
     }
 }

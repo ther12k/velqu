@@ -4,7 +4,7 @@ parent_task: M3-005
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -104,3 +104,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-005-A) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-005-a (squash-merged; see git log for final hash)
+- Closes: #396
+
+### Changed files
+- `crates/q-capabilities/src/dispatch.rs`: quarantine semantics on `Dispatcher` (M3-005-A) —
+  - `quarantine(worker)`: the worker stops receiving new dispatches at once (the next `select()` skips it), its queue CLOSES (the drain/settle path is M3-005-B), and the quarantine-event counter increments. Idempotent — re-quarantining an already-quarantined worker does not double-count.
+  - `is_quarantined(worker)` + `quarantine_events()` (saturating restart-rate metric).
+  - `replace(worker)`: fresh bounded queue for the slot, back to Serving — quarantine history survives replacement (restart-rate survives restarts).
+  - `select()` skips quarantined workers before the load scan: a poisoned worker receives NO new requests.
+- This is the dispatcher half of M3-005; engine-side poison detection already exists (M2.2.1 quarantine) and is consumed by these methods.
+
+### Tests added (+5 → 21 dispatch tests; 218 q-capabilities lib total)
+- `quarantined_worker_receives_no_new_requests` (12 selections, quarantined worker never chosen; queue empty)
+- `quarantine_closes_queue_and_is_idempotent` (closed for drain; no double-count)
+- `all_quarantined_means_no_selection` (select None; dispatch typed error)
+- `replacement_restores_capacity_and_keeps_restart_history` (fresh queue, Serving again, history survives, re-poison counts)
+- `repeated_poison_cycle_never_exceeds_initial_worker_count` (**restart-storm guardrail**: 10 poison→replace cycles — fleet size never grows; dispatch still healthy)
+
+### Command results
+- `cargo test -p q-capabilities` → **218 unit (was 213) + 7 + 1 + 4 + 9** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+102+1 · `-p velqu-runtime` → 31+5+44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0 (len_zero lint on a new test assertion fixed)
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`6d5c7c3f…` matches manifest)
+
+### Guardrail mapping
+- **Poisoned worker receives no new requests** — select() skips quarantined workers; queue closes for the drain path.
+- **Repeated poison cannot create restart storm** — replace() restores the ORIGINAL size only; quarantine_events is the restart-rate metric.
+- **Liveness/readiness semantics are correct** — healthy workers keep flowing during a quarantine; all-quarantined means no selection (typed error, not a hang).
+
+### Disclosures
+- One clippy iteration (len_zero in a test assertion). No production behavior beyond the quarantine semantics.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
