@@ -1197,3 +1197,118 @@ fn problem_response(status: u16, body: &Value) -> PlainResponse {
         .push(("content-type".into(), "application/problem+json".into()));
     resp
 }
+
+/// M3-002-D: extract the resolved route identity from a `CompiledRoute`
+/// BEFORE dispatch. The snapshot is `Copy` plain data carrying numeric IDs
+/// only — the worker that pops the job never re-runs the matcher, never
+/// re-links policies, and every worker derives the identical snapshot for
+/// the same route (ADR-0036 §3/§6: deterministic, shared-immutable plans).
+pub fn dispatch_route(compiled: &q_router::CompiledRoute) -> q_engine::DispatchRoute {
+    q_engine::DispatchRoute {
+        route_id: compiled.route_id,
+        handler_id: compiled.handler_id.unwrap_or(q_engine::HandlerId(0)),
+        policy_id: compiled.policy_id,
+        policy_handler_id: compiled.policy_handler_id,
+        params_schema_id: compiled.params_schema_id,
+        query_schema_id: compiled.query_schema_id,
+        headers_schema_id: compiled.headers_schema_id,
+        body_schema_id: compiled.body_schema_id,
+        default_status: compiled.default_status,
+        response_strategy: compiled.response_strategy,
+        deadline_ms: compiled.deadline_ms,
+    }
+}
+
+#[cfg(test)]
+mod dispatch_route_tests {
+    use super::*;
+    use q_engine::{DispatchRoute, HandlerId, PolicyId, RouteId, SchemaId};
+
+    fn fixture_route() -> q_router::CompiledRoute {
+        q_router::CompiledRoute {
+            index: 7,
+            route_id: RouteId(7),
+            method: "GET".into(),
+            segments: vec![],
+            param_name_ids: vec![],
+            has_params: false,
+            plan: None,
+            handler_id: Some(HandlerId(42)),
+            policy_id: Some(PolicyId(3)),
+            policy_handler_id: Some(HandlerId(9)),
+            params_schema_id: Some(SchemaId(11)),
+            query_schema_id: Some(SchemaId(12)),
+            headers_schema_id: None,
+            body_schema_id: Some(SchemaId(14)),
+            default_status: 201,
+            allowed_statuses: vec![200, 201],
+            response_strategy: q_engine::ResponseStrategy::Native,
+            deadline_ms: 5_000,
+        }
+    }
+
+    #[test]
+    fn snapshot_preserves_route_identity_exactly() {
+        let compiled = fixture_route();
+        let snap = dispatch_route(&compiled);
+        assert_eq!(snap.route_id, RouteId(7));
+        assert_eq!(snap.handler_id, HandlerId(42));
+        assert_eq!(snap.policy_id, Some(PolicyId(3)));
+        assert_eq!(snap.params_schema_id, Some(SchemaId(11)));
+        assert_eq!(snap.body_schema_id, Some(SchemaId(14)));
+        assert_eq!(snap.default_status, 201);
+        assert_eq!(snap.response_strategy, q_engine::ResponseStrategy::Native);
+        assert_eq!(snap.deadline_ms, 5_000);
+    }
+
+    #[test]
+    fn snapshot_is_copy_plain_data_shared_safe() {
+        fn assert_copy_send_sync<T: Copy + Send + Sync + 'static>() {}
+        assert_copy_send_sync::<DispatchRoute>();
+        // Copy semantics: two workers can hold the same snapshot with no
+        // clone cost and no shared mutable state.
+        let compiled = fixture_route();
+        let a = dispatch_route(&compiled);
+        let b = a; // Copy, not move
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn extraction_is_deterministic_across_calls() {
+        // The same CompiledRoute yields the identical snapshot every time:
+        // worker K and worker 0 receive the same plan data (ADR-0036 §6).
+        let compiled = fixture_route();
+        let first = dispatch_route(&compiled);
+        let second = dispatch_route(&compiled);
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn route_identity_survives_the_dispatch_queue_boundary() {
+        use q_capabilities::Dispatcher;
+        // The full M3-002 shape: snapshot extracted BEFORE dispatch, pushed
+        // as plain data, popped by another thread — identity intact, zero
+        // re-resolution on the consumer side.
+        let compiled = fixture_route();
+        let snap = dispatch_route(&compiled);
+        let dispatcher: std::sync::Arc<Dispatcher<(DispatchRoute, u64)>> =
+            std::sync::Arc::new(Dispatcher::with_workers(2, 4));
+        let worker = dispatcher.dispatch((snap, 12345)).expect("room");
+        // The queue borrows the dispatcher; share it with the consumer
+        // thread through the Arc.
+        let dispatcher_for_thread = dispatcher.clone();
+        let handle = std::thread::spawn(move || {
+            dispatcher_for_thread
+                .queue(worker)
+                .pop_timeout(std::time::Duration::from_secs(2))
+                .expect("job arrives")
+        });
+        let ((popped, req_id), _wait) = handle.join().unwrap();
+        assert_eq!(popped, snap, "identity preserved across the boundary");
+        assert_eq!(req_id, 12345);
+        // And admission verdicts remain typed when saturated.
+        let tiny: Dispatcher<DispatchRoute> = Dispatcher::with_workers(1, 1);
+        assert!(tiny.dispatch(snap).is_ok());
+        assert!(tiny.dispatch(snap).is_err());
+    }
+}
