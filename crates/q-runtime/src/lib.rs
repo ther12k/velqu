@@ -11,6 +11,7 @@
 pub mod fetch_stack;
 pub mod problems;
 pub mod serve;
+pub mod service_profile;
 pub mod source_map;
 
 use std::path::PathBuf;
