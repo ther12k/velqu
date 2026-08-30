@@ -4,7 +4,7 @@ parent_task: M3-007
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -103,3 +103,74 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-007-D) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-007-d (squash-merged; see git log for final hash)
+- Closes: #411
+
+### Changed files
+- `crates/q-http/src/lib.rs`: the C-era budget-expiry path now FORCE-ABORTS
+  through ownership instead of detaching. `connections.abort_all()` drops each
+  connection future, which drops the in-flight handler future and runs its
+  `CancelOnDrop` guard — the ownership binding settles and `Engine::cancel` is
+  delivered exactly once; the worker's settlement owner aborts pending native
+  ops. Aborted tasks are reaped WITHOUT counting as completed (this packet's
+  test run caught the double-count: the report showed completed:1,aborted:1 for
+  a single straggler). `ServeDrain.detached` → `ServeDrain.aborted`.
+- `crates/q-runtime/src/lib.rs`: after serve returns, a DEFENSIVE ownership
+  sweep settles any still-live binding (a leaked cancel path would be visible,
+  never silent) and counts it as a forced abort; the shutdown report now carries
+  `{"drain":{"refused":N,"completed":C,"aborted":A}}` — A is the forced-abort
+  count, and invocations are pinned to `pending:0` deterministically.
+- `crates/q-runtime/tests/runtime_conformance.rs`: straggler test upgraded from
+  the C-era scheduling-race invariant to the deterministic D assertions.
+- `benchmarks/manifest.json`: refreshed after rebuilding the release binary
+  with verify's exact `--remap-path-prefix` flags (a refresh against an
+  unremapped build recorded mismatching hashes — root-caused and fixed by
+  building with the verify environment before refreshing).
+
+### Tests changed
+- `drain_waits_bounded_then_detaches_straggler_connection`: now asserts
+  - `"drain":{"refused":0,"completed":0,"aborted":1}` (the straggler is
+    force-aborted at the budget — awaited forever it is not),
+  - `invocations: {pending:0, registered:1, settled:1}` — DETERMINISTIC (no
+    scheduling race): the abort runs CancelOnDrop inside `serve()` before the
+    report prints, closing the C/D boundary honestly,
+  - `stats.cancelled_invocations == 1` — the engine recorded the forced
+    cancellation,
+  - elapsed ≥ the 5s budget (the bound was honored) and < 10s (bounded exit 0).
+- The B/C-era drain tests follow the report-key rename (`detached` →
+  `aborted`), values unchanged.
+
+### Command results
+- `cargo test -p q-http` → 4 + 6 — 0 failed
+- `cargo test -p q-capabilities` → 237 + 7 + 1 + 4 + 9 — 0 failed
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 55 unit + 6 + 5 + 2 + 35 conformance — 0 failed
+- `./scripts/verify` → **ALL PASS** (fmt clean, clippy -D warnings clean, bun
+  183 tests / 21 files)
+
+### Guardrail mapping (parent M3-007 — complete)
+- **No orphan invocation/native task** — abort-through-ownership settles every
+  binding exactly once (report-pinned pending:0) and the worker aborts pending
+  native ops (`native_tasks_aborted` in the report); the defensive sweep makes
+  a silent orphan impossible.
+- **Shutdown deadline is honored** — the full chain (graceful close → bounded
+  wait → forced abort) is bounded by the ADR-0031 budget; the straggler test
+  pins both the lower bound (budget honored) and the upper bound (exit).
+- **Exit code/report reflects forced aborts** — `drain.aborted`,
+  `stats.cancelled_invocations`, and `stats.native_tasks_aborted` carry the
+  forced-abort record; exit stays 0 (a deadline-bounded shutdown that reports
+  honestly is a successful shutdown).
+- **All slots/queues/pools quiesce** — A (ownership) + B (admission gate) +
+  C (graceful completion) + D (bounded abort) close the parent's four
+  guardrails.
+
+### Disclosures
+- The straggler test now also surfaced and fixed a report double-count
+  (aborted tasks were reaped into `completed`) — caught by the test, fixed in
+  the same packet.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.

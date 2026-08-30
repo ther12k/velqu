@@ -426,10 +426,19 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 std::time::Duration::from_millis(q_capabilities::SHUTDOWN_BUDGET_MS),
             )
             .await;
-        let (drain_completed, drain_detached) = match serve_drain {
-            Ok(d) => (d.completed, d.detached),
+        let (drain_completed, mut drain_aborted) = match serve_drain {
+            Ok(d) => (d.completed, d.aborted),
             Err(_) => (0, 0),
         };
+        // M3-007-D: defensive ownership sweep. Every aborted connection's
+        // CancelOnDrop guard already settled its binding during the
+        // abort; anything still live here would be a leaked cancel path.
+        // Settle it and count it as a forced abort — the report never
+        // hides an invocation and never shows a phantom orphan.
+        for (id, _worker) in state.ownership.snapshot() {
+            state.ownership.settle(id);
+            drain_aborted += 1;
+        }
 
         // M28-009-C: quiescence includes the outbound pool. Drain the
         // shared fetch pool within the shutdown budget (ADR-0031
@@ -460,13 +469,15 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     "registered": ownership.registered,
                     "settled": ownership.settled,
                 },
-                // M3-007-B/C: admissions refused after the drain flip,
-                // and how in-flight completion ended (detached > 0 means
-                // the budget fired with connections still open).
+                // M3-007-B/C/D: admissions refused after the drain
+                // flip; in-flight connections completed within the
+                // budget; stragglers force-aborted at expiry (their
+                // invocations cancelled through ownership exactly once —
+                // no orphan, by construction and by sweep).
                 "drain": {
                     "refused": state.drain_gate.refused(),
                     "completed": drain_completed,
-                    "detached": drain_detached,
+                    "aborted": drain_aborted,
                 },
                 "fetchPool": {
                     "initialized": fetch_pool.is_initialized(),

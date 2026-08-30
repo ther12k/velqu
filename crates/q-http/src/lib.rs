@@ -14,15 +14,17 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-/// M3-007-C: how in-flight completion ended after the shutdown signal.
-/// `completed` counts connections that reached a terminal state within
-/// the drain budget; `detached` counts stragglers detached at budget
-/// expiry (still running; reclaimed at process exit — the explicit
-/// abort-through-ownership replacement is M3-007-D).
+/// M3-007-C/D: how in-flight completion ended after the shutdown
+/// signal. `completed` counts connections that reached a terminal state
+/// within the drain budget; `aborted` counts stragglers FORCE-ABORTED
+/// at budget expiry (M3-007-D): their tasks are aborted, which drops
+/// the in-flight handler futures — running each `CancelOnDrop` guard,
+/// settling the ownership binding and delivering `Engine::cancel`
+/// exactly once — so no invocation and no native task is orphaned.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ServeDrain {
     pub completed: usize,
-    pub detached: usize,
+    pub aborted: usize,
 }
 
 /// Admission/body limits (RUN-005). Defaults per docs/specs/pack-format-v1.md.
@@ -267,9 +269,10 @@ impl HttpHost {
                 }
             }
         }
-        // M3-007-C: allow bounded in-flight completion. Idle keep-alive
-        // connections close at once; every in-flight request is allowed
-        // to finish; the whole wait is bounded by the drain budget.
+        // M3-007-C/D: allow bounded in-flight completion. Idle
+        // keep-alive connections close at once; every in-flight request
+        // is allowed to finish; stragglers that outlive the drain
+        // budget are force-aborted (M3-007-D).
         let mut completed: usize = 0;
         {
             let wait = async {
@@ -279,23 +282,25 @@ impl HttpHost {
                 }
             };
             if tokio::time::timeout(drain_budget, wait).await.is_err() {
-                // Budget fired with connections still open (an ACTIVE
-                // straggler, e.g. a stalled request): detach the tasks —
-                // dropping the watcher already told each connection to
-                // finish its current work and stop — and let the caller
-                // report the count. Explicit abort-through-ownership is
-                // M3-007-D.
-                let detached = connections.len();
-                connections.detach_all();
-                return Ok(ServeDrain {
-                    completed,
-                    detached,
-                });
+                // M3-007-D: the budget fired with ACTIVE stragglers
+                // still open. Abort them THROUGH their tasks: tokio
+                // drops each connection future, which drops the in-flight
+                // handler future and runs its `CancelOnDrop` guard — the
+                // ownership binding settles and `Engine::cancel` is
+                // delivered exactly once; pending native ops are aborted
+                // by the worker's settlement owner. Reaping is bounded
+                // host-side work (guard drops only; no JS executes).
+                let aborted = connections.len();
+                connections.abort_all();
+                // Reap without counting: aborted stragglers are reported
+                // as aborted, never as completed.
+                while connections.join_next().await.is_some() {}
+                return Ok(ServeDrain { completed, aborted });
             }
         }
         Ok(ServeDrain {
             completed,
-            detached: 0,
+            aborted: 0,
         })
     }
 
