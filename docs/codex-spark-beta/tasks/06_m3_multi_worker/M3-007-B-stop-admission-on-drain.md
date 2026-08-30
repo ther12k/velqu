@@ -4,7 +4,7 @@ parent_task: M3-007
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -105,3 +105,83 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-007-B) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-007-b (squash-merged; see git log for final hash)
+- Closes: #409
+
+### Changed files
+- `crates/q-capabilities/src/drain.rs` (new): `DrainGate` — the serving/draining
+  lifecycle flag (M3-007-B, ADR-0036 §4 lifecycle-atomics discipline;
+  `SharedAcrossWorkers`).
+  - `begin() -> bool` — Serving -> Draining via an AcqRel swap: exactly ONE caller
+    wins (the runtime's `drain.begin` logger); every later call is an idempotent
+    no-op.
+  - `is_draining()` — lock-free Acquire load (hot path, same posture as the
+    engine-health quarantine check).
+  - `check_admission()` — `Ok` while serving; once draining, the refusal is
+    typed (`AdmissionDrained`, redacted Display) and counted with a checked
+    saturating increment (never wraps).
+  - `refused()` — the shutdown-report counter: clients honestly told to retry.
+- `crates/q-runtime/src/serve.rs`: `ServeState.drain_gate`; the pipeline checks
+  the gate AFTER native liveness (health probes keep answering so load
+  balancers observe the instance going away) and BEFORE the quarantine gate —
+  a draining instance refuses every request that would enter JS with the
+  FROZEN `overload` problem (503, `retry-after: 1`, detail "server is
+  draining"; the problem registry is frozen, so no new URN — the stage tag
+  `draining` distinguishes it internally). Refused requests never touch the
+  engine or the ownership registry.
+- `crates/q-runtime/src/lib.rs`: constructs the gate; a signal task clones the
+  shutdown watch and flips the gate the INSTANT the signal fires, logging
+  `{"event":"drain.begin","pending":N}`; `shutdown.complete` now carries
+  `"drain":{"refused":N}` after the invocations invariant block.
+- `benchmarks/manifest.json`: qRuntimeRelease hash refreshed (release binary
+  changed; standard flow, verify re-run after).
+
+### Tests added
+- `crates/q-capabilities/src/drain.rs` (6 unit tests): serving-by-default with
+  uncounted admissions; begin flips exactly once with typed+counted refusals;
+  refused counter saturates at u64::MAX (this test caught a wrapping
+  `fetch_add` — fixed to a checked saturating `fetch_update`); 8 concurrent
+  `begin()` threads produce exactly one winner; drain state crosses threads
+  immediately (AcqRel/Acquire); redacted Debug (no request data).
+- `crates/q-runtime/tests/runtime_conformance.rs`:
+  `graceful_drain_flips_gate_and_reports_before_exit` — one JS request, then
+  SIGTERM; asserts the `drain.begin` event (`"pending":0`), the
+  `"drain":{"refused":0}` key in `shutdown.complete`, the ownership invariant
+  intact (`registered:1, settled:1, pending:0`), and exit 0.
+
+### Scope note (honest)
+The end-to-end drain refusal of a request arriving on an ESTABLISHED
+keep-alive connection during the drain window is NOT pinned by this packet's
+integration test: today `host.serve` returns as soon as the accept loop stops
+and the process exits within milliseconds, so that window cannot be driven
+deterministically from outside. Wiring the refusal is proven by unit tests +
+the pipeline gate placement; the end-to-end assertion lands with M3-007-C
+(bounded in-flight completion keeps the process alive across the window).
+
+### Command results
+- `cargo test -p q-capabilities` → **237 lib (was 231; +6 drain tests) + 7 fuzz
+  + 1 + 4 + 9 WPT-manifest** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 55 unit + 6 + 5 + 2 + **33 conformance
+  (was 32)** — 0 failed
+- `cargo fmt --check` → clean; `cargo clippy -p q-capabilities -p velqu-runtime
+  --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS** (after the manifest refresh for the new
+  release hash)
+
+### Guardrail mapping (parent M3-007)
+- **All slots/queues/pools quiesce** — the drain boundary is defined per
+  request by a lock-free gate; the refusal is typed, counted, and reported.
+- Admission stops at the flip instant; in-flight completion bounding is
+  M3-007-C, deadline abort M3-007-D (ADR-0036 obligations table).
+
+### Disclosures
+- The drain refusal reuses the frozen `overload` problem URN (registry is
+  frozen by the pack-format spec) with drain-specific detail; internal stage
+  tag `draining` keeps them distinguishable in logs/metrics.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.

@@ -1804,6 +1804,76 @@ fn graceful_shutdown_exits_zero() {
 }
 
 #[test]
+fn graceful_drain_flips_gate_and_reports_before_exit() {
+    // M3-007-B: the instant the shutdown signal fires, the drain gate
+    // flips and the flip is OBSERVABLE: a drain.begin event (with the
+    // live invocation count) precedes shutdown, and the shutdown report
+    // carries the drain refusal count. End-to-end refusal of a request
+    // arriving on an established connection during the drain window is
+    // pinned by M3-007-C (bounded in-flight completion keeps the process
+    // alive across that window; today the process exits as soon as the
+    // accept loop stops, so that window cannot be driven deterministically
+    // from outside yet). The gate/refusal/counting semantics themselves
+    // are unit-proven in q-capabilities::drain.
+    let dir = temp_dir("drain");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let mut server = Server::start(&pack_path, port);
+    std::thread::sleep(Duration::from_millis(50));
+
+    // One full JS invocation while serving.
+    let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "serving before the signal");
+
+    // SIGTERM -> gate flips (signal task), accept loop stops.
+    unsafe {
+        libc::kill(server.child.id() as i32, libc::SIGTERM);
+    }
+
+    let mut saw_drain_begin = false;
+    let mut drain_begin_pending: Option<String> = None;
+    let mut complete: Option<String> = None;
+    for _ in 0..50 {
+        let logs = server.drain_logs();
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"drain.begin\""))
+        {
+            saw_drain_begin = true;
+            drain_begin_pending = Some(line.clone());
+        }
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        {
+            complete = Some(line.clone());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    assert!(saw_drain_begin, "drain.begin event missing");
+    let begin_line = drain_begin_pending.unwrap();
+    assert!(
+        begin_line.contains("\"pending\":0"),
+        "drain.begin reports the live invocation count: {begin_line}"
+    );
+    let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
+    assert!(
+        complete.contains("\"drain\":{\"refused\":0}"),
+        "shutdown report carries the drain refusal count: {complete}"
+    );
+    assert!(
+        complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
+        "ownership invariant intact through drain: {complete}"
+    );
+    let status = server.child.wait().unwrap();
+    assert!(
+        status.success(),
+        "shutdown after the drain flip must exit 0, got {status:?}"
+    );
+}
+
+#[test]
 fn source_mapped_exception_identifies_original_location() {
     use sourcemap::SourceMapBuilder;
     // generated bundle with the throw on line 2
