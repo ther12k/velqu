@@ -69,6 +69,8 @@ fn main() {
             log: args.log,
             log_sample: args.log_sample,
             no_bytecode: args.no_bytecode,
+            // Standalone serves the serverless posture by default.
+            service_profile: None,
         },
     );
     std::process::exit(code);

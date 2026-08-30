@@ -50,10 +50,42 @@ struct Args {
     /// construct it once (no dialing); exit 0.
     #[arg(long)]
     fetch_stack_info: bool,
+    /// M3-003-A/D: worker startup posture — `serverless` (default: one
+    /// worker, ready immediately) or `service:N` (N workers, ready when
+    /// all N initialized). Unknown names fail closed at startup.
+    #[arg(long)]
+    service_profile: Option<String>,
+    /// M3-003-D: print the service-profile surface (parse results for
+    /// probe values + bounds); exit 0. No pack required.
+    #[arg(long)]
+    profile_info: bool,
 }
 
 fn main() {
     let args = Args::parse();
+    if args.profile_info {
+        for probe in ["serverless", "service:4", "service:0", "bogus"] {
+            match velqu_runtime::service_profile::ServiceProfile::parse(probe) {
+                Ok(profile) => println!(
+                    "{}",
+                    serde_json::json!({
+                        "probe": probe,
+                        "parsed": profile.as_str(),
+                        "initialWorkers": profile.initial_workers(),
+                    })
+                ),
+                Err(e) => println!("{}", serde_json::json!({ "probe": probe, "error": e })),
+            }
+        }
+        println!(
+            "{}",
+            serde_json::json!({
+                "minWorkers": velqu_runtime::service_profile::MIN_WORKERS,
+                "maxWorkers": velqu_runtime::service_profile::MAX_WORKERS,
+            })
+        );
+        std::process::exit(0);
+    }
     if args.fetch_stack_info {
         println!("{}", velqu_runtime::fetch_stack::describe());
         std::process::exit(0);
@@ -75,6 +107,7 @@ fn main() {
             log_sample: args.log_sample,
             no_bytecode: args.no_bytecode,
             context_profile: args.context_profile,
+            service_profile: args.service_profile,
         },
     );
     std::process::exit(code);
