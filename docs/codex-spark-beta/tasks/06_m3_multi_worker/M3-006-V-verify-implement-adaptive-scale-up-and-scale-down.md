@@ -4,7 +4,7 @@ parent_task: M3-006
 milestone: M3
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -129,3 +129,29 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-006-V) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-006-v (squash-merged; see git log for final hash)
+- Closes: #406
+
+### Acceptance-criterion mapping (parent M3-006 guardrails)
+
+1. **Adaptive mode scales under load** — verified: `ScaleThresholds` + `HysteresisState.observe` fire scale-up on pressure strictly above threshold (after cooldown), one worker per tick under sustained pressure. Tests: `scale_up_fires_above_threshold_and_resets_hysteresis` (A), `pressure_adds_one_worker_per_tick` (M3-003-B).
+2. **Idle workers retire safely** — verified: scale-down requires SUSTAINED stability (full window; burst resets), never below min_workers, and the retirement lifecycle DRAINS before teardown (lossless; budget escalation bounded). Tests: `scale_down_requires_sustained_stability`, `scale_down_never_retires_below_min_workers`, `retirement_is_lossless_while_draining`, `drain_budget_escalates_a_wedged_worker` (C).
+3. **No request loss** — verified: drain re-homes every queued job before teardown (`retirement_is_lossless_while_draining`); WorkerBounds clamp keeps capacity inside [min, max] (`scaler_floor_and_ceiling_query_the_bounds`, B); drain-budget escalation settles leftovers typed (M3-005-B).
+4. **RSS and latency trade-off is documented** — verified: WorkerBounds.max IS the memory-budget ceiling enforced at construction (`bounds_fail_closed_on_invalid_configuration`, B); the M3-003-V live evidence (serverless 7.5ms ready, ~7.9 MB RSS) documents the single-worker point; profile-differentiated scaling numbers are M3-009's dedicated evidence.
+
+### Anti-oscillation (M3-006-D, composing guardrail)
+- Dead band between thresholds (== never scales), cooldown gating both directions, stability-window reset on burst, and the `ScaleGovernor` outer cap: an adversarial alternating signal over 20 ticks yields exactly 5 events (2/window + reset tick), not ~20. Tests: `dead_band_between_thresholds_never_scales`, `cooldown_gates_both_directions`, `event_cap_bounds_flip_flopping_structurally`, `window_reset_reallows_scaling`, `churn_metric_tracks_total_events`.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p velqu-runtime` → 55 unit + 5 + 44 (incl. 30 profile/scaler tests) — 0 failed
+- `cargo test -p q-capabilities` → 6 suites; `-p q-engine-quickjs` → 20+102+1 — pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary reproduced deterministically (`7c8b3f5b…` matches the M3-005-D manifest)
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of M3-006-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR. Local evidence above is complete.
