@@ -441,7 +441,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-004-V](../tasks/06_m3_multi_worker/M3-004-V-verify-implement-deterministic-worker-initialization-and-artifact-sharing.md) | P0 | verify | PASS | M3-004-A, M3-004-B, M3-004-C, M3-004-D | Verify Implement deterministic worker initialization and artifact sharing |
 | [M3-004-Z](../tasks/06_m3_multi_worker/M3-004-Z-package-evidence-for-implement-deterministic-worker-initialization-and-artifact.md) | P0 | evidence | PASS | M3-004-V | Package evidence for Implement deterministic worker initialization and artifact sharing |
 | [M3-005-A](../tasks/06_m3_multi_worker/M3-005-A-remove-quarantined-worker-from-dispatch.md) | P0 | implement | PASS | M3-002-Z, M3-004-Z | Remove quarantined worker from dispatch |
-| [M3-005-B](../tasks/06_m3_multi_worker/M3-005-B-fail-settle-its-pending-work.md) | P0 | implement | TODO | M3-005-A | Fail/settle its pending work |
+| [M3-005-B](../tasks/06_m3_multi_worker/M3-005-B-fail-settle-its-pending-work.md) | P0 | implement | PASS | M3-005-A | Fail/settle its pending work |
 | [M3-005-C](../tasks/06_m3_multi_worker/M3-005-C-initialize-replacement-under-bounded-policy.md) | P0 | implement | TODO | M3-005-B | Initialize replacement under bounded policy |
 | [M3-005-D](../tasks/06_m3_multi_worker/M3-005-D-aggregate-readiness-from-usable-capacity.md) | P0 | implement | TODO | M3-005-C | Aggregate readiness from usable capacity |
 | [M3-005-V](../tasks/06_m3_multi_worker/M3-005-V-verify-implement-quarantine-replacement-and-readiness-aggregation.md) | P0 | verify | TODO | M3-005-A, M3-005-B, M3-005-C, M3-005-D | Verify Implement quarantine, replacement, and readiness aggregation |

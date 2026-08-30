@@ -4,7 +4,7 @@ parent_task: M3-005
 milestone: M3
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -103,3 +103,33 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-005-B) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-005-b (squash-merged; see git log for final hash)
+- Closes: #397
+
+### Changed files
+- `crates/q-capabilities/src/dispatch.rs`: `settle_quarantined(worker) -> Vec<T>` (M3-005-B) —
+  - Recovers ALL pending jobs of a quarantined worker (in FIFO order) so the runtime quarantine path can settle each with a typed failure — no job is dropped silently, and NONE is ever executed by the poisoned runtime.
+  - The queue is empty and still closed afterwards; settling again is a no-op (nothing dropped twice).
+  - Contract-guarded: settling a HEALTHY worker panics (only quarantine may drain) — a serving queue is never disturbed.
+
+### Tests added (+3 → 24 dispatch tests; 221 q-capabilities lib total)
+- `settle_quarantined_drains_pending_jobs_for_typed_failure` (2 pending jobs recovered FIFO; queue empty + closed; second settle empty)
+- `settle_requires_quarantine_state` (settle on a serving worker is a contract panic; the healthy queue is untouched)
+- `quarantined_pending_work_never_reaches_the_poisoned_runtime` (after settle, pop returns nothing — the poisoned runtime can never receive those jobs)
+
+### Command results
+- `cargo test -p q-capabilities` → **221 unit (was 218) + 7 + 1 + 4 + 9** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+102+1 · `-p velqu-runtime` → 31+5+44 — all pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`6d5c7c3f…` matches manifest)
+
+### Guardrail mapping
+- **Poisoned worker receives no new requests** — pending jobs are recovered, never executed by the poisoned runtime (proven: pop after settle is None).
+- **Repeated poison cannot create restart storm** — settle is per-quarantine-event; no job duplication across cycles.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
