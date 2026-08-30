@@ -342,6 +342,106 @@ pub fn aggregate_readiness(usable: usize, total: usize) -> FleetReadiness {
     }
 }
 
+/// Adaptive scale thresholds with hysteresis (M3-006-A).
+///
+/// Scale-up fires when queue pressure is strictly ABOVE `scale_up`
+/// (same semantics as the M3-003-B adaptive add); scale-down fires only
+/// when pressure stays strictly BELOW `scale_down` for a full
+/// `down_stable_ticks` window (hysteresis: a single quiet sample must
+/// not retire a worker that a burst is about to need). The dead band
+/// between the two thresholds guarantees scale-up and scale-down never
+/// oscillate against each other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScaleThresholds {
+    /// Queue pressure strictly above this adds a worker.
+    pub scale_up: usize,
+    /// Queue pressure strictly below this (sustained) retires one.
+    pub scale_down: usize,
+    /// Consecutive stable ticks required before scale-down fires.
+    pub down_stable_ticks: u64,
+    /// Ticks required between any two scale events (cooldown).
+    pub cooldown_ticks: u64,
+}
+
+impl ScaleThresholds {
+    /// Validated constructor: `scale_down < scale_up` is the hysteresis
+    /// invariant — fail closed otherwise.
+    pub fn new(
+        scale_up: usize,
+        scale_down: usize,
+        down_stable_ticks: u64,
+        cooldown_ticks: u64,
+    ) -> Result<Self, String> {
+        if scale_down >= scale_up {
+            return Err(format!(
+                "hysteresis violated: scale_down ({scale_down}) must be < scale_up ({scale_up})"
+            ));
+        }
+        Ok(ScaleThresholds {
+            scale_up,
+            scale_down,
+            down_stable_ticks,
+            cooldown_ticks,
+        })
+    }
+}
+
+/// Tracks the sustained-stability window for scale-down.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HysteresisState {
+    /// Consecutive ticks with pressure below scale_down.
+    stable_down_ticks: u64,
+    /// Ticks since the last scale event (either direction).
+    ticks_since_event: u64,
+}
+
+impl HysteresisState {
+    pub fn new() -> Self {
+        HysteresisState::default()
+    }
+
+    /// Observe one pressure sample and decide the scale action.
+    /// Returns `Some(+1)` to add a worker, `Some(-1)` to retire one,
+    /// `None` to hold. Decision order: cooldown gate first, then
+    /// scale-up (pressure above threshold), then scale-down (pressure
+    /// below threshold sustained for the full stability window).
+    /// Scale-down requires cooldown too — retiring a worker mid-burst
+    /// would lose capacity exactly when it matters.
+    pub fn observe(
+        &mut self,
+        thresholds: &ScaleThresholds,
+        pressure: usize,
+        running: usize,
+        min_workers: usize,
+    ) -> Option<i32> {
+        self.ticks_since_event = self.ticks_since_event.saturating_add(1);
+        let cooled = self.ticks_since_event > thresholds.cooldown_ticks;
+
+        // Scale-up: immediate on pressure (after cooldown).
+        if pressure > thresholds.scale_up && cooled && running < i32::MAX as usize {
+            self.ticks_since_event = 0;
+            self.stable_down_ticks = 0;
+            return Some(1);
+        }
+
+        // Scale-down: sustained stability, after cooldown, and only if a
+        // worker can retire (never below min_workers).
+        if pressure < thresholds.scale_down && cooled && running > min_workers {
+            self.stable_down_ticks = self.stable_down_ticks.saturating_add(1);
+            if self.stable_down_ticks > thresholds.down_stable_ticks {
+                self.stable_down_ticks = 0;
+                self.ticks_since_event = 0;
+                return Some(-1);
+            }
+            return None;
+        }
+
+        // Any non-stable sample resets the sustained window.
+        self.stable_down_ticks = 0;
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -700,5 +800,92 @@ mod tests {
         usable = total;
         let restored = aggregate_readiness(usable, total);
         assert!(restored.ready && restored.usable == total);
+    }
+
+    #[test]
+    fn thresholds_reject_inverted_hysteresis() {
+        // scale_down >= scale_up would let both directions fire at once.
+        assert!(ScaleThresholds::new(4, 4, 2, 1).is_err());
+        assert!(ScaleThresholds::new(4, 6, 2, 1).is_err());
+        assert!(ScaleThresholds::new(4, 2, 2, 1).is_ok());
+    }
+
+    #[test]
+    fn scale_up_fires_above_threshold_and_resets_hysteresis() {
+        let th = ScaleThresholds::new(4, 2, 2, 0).unwrap();
+        let mut st = HysteresisState::new();
+        // Build partial scale-down stability (3 ticks below 2).
+        for _ in 0..3 {
+            st.observe(&th, 1, 2, 1);
+        }
+        // A burst sample above scale_up adds a worker AND wipes the
+        // accumulated scale-down stability.
+        assert_eq!(st.observe(&th, 9, 2, 1), Some(1));
+        // After the add, pressure below scale_down must rebuild the full
+        // stability window (not inherit the 3 ticks).
+        for _ in 0..2 {
+            assert_eq!(st.observe(&th, 1, 3, 1), None, "stability was reset");
+        }
+    }
+
+    #[test]
+    fn scale_down_requires_sustained_stability() {
+        let th = ScaleThresholds::new(4, 2, 3, 0).unwrap();
+        let mut st = HysteresisState::new();
+        // Two quiet ticks: below the 3-tick stability requirement.
+        assert_eq!(st.observe(&th, 1, 4, 1), None);
+        assert_eq!(st.observe(&th, 1, 4, 1), None);
+        // A burst sample is a scale-UP event (pressure 9 > 4): running
+        // grows to 5 AND the scale-down stability window resets entirely.
+        assert_eq!(st.observe(&th, 9, 4, 1), Some(1));
+        // Rebuild with the enlarged fleet: 3 sustained quiet ticks, then
+        // retire fires on the 4th stable tick (stable 4 > required 3).
+        assert_eq!(st.observe(&th, 1, 5, 1), None);
+        assert_eq!(st.observe(&th, 1, 5, 1), None);
+        assert_eq!(st.observe(&th, 1, 5, 1), None);
+        assert_eq!(st.observe(&th, 1, 5, 1), Some(-1));
+    }
+
+    #[test]
+    fn scale_down_never_retires_below_min_workers() {
+        let th = ScaleThresholds::new(4, 2, 1, 0).unwrap();
+        let mut st = HysteresisState::new();
+        // running == min_workers: sustained quiet never retires the last.
+        for _ in 0..10 {
+            assert_eq!(st.observe(&th, 1, 2, 2), None, "min_workers floor");
+        }
+    }
+
+    #[test]
+    fn dead_band_between_thresholds_never_scales() {
+        // pressure == scale_up and pressure == scale_down both hold.
+        let th = ScaleThresholds::new(4, 2, 0, 0).unwrap();
+        let mut st = HysteresisState::new();
+        for _ in 0..8 {
+            assert_eq!(st.observe(&th, 4, 2, 1), None, "at scale_up: hold");
+            assert_eq!(
+                st.observe(&th, 2, 2, 1),
+                None,
+                "at scale_down: hold (== not <)"
+            );
+        }
+    }
+
+    #[test]
+    fn cooldown_gates_both_directions() {
+        let th = ScaleThresholds::new(4, 2, 0, 3).unwrap();
+        let mut st = HysteresisState::new();
+        // observe() counts the tick BEFORE the gate: samples at tsr 1..=3
+        // are cooldown-gated even for extreme pressure; tsr 4 fires.
+        assert_eq!(st.observe(&th, 9, 2, 1), None); // tsr 1
+        assert_eq!(st.observe(&th, 9, 2, 1), None); // tsr 2
+        assert_eq!(st.observe(&th, 9, 2, 1), None); // tsr 3
+        assert_eq!(st.observe(&th, 9, 2, 1), Some(1)); // tsr 4 > 3
+                                                       // The same gate protects scale-down: quiet pressure, gated ticks
+                                                       // hold, and the 4th quiet tick (tsr 4 > 3) retires one.
+        assert_eq!(st.observe(&th, 0, 3, 1), None); // tsr 1
+        assert_eq!(st.observe(&th, 0, 3, 1), None); // tsr 2
+        assert_eq!(st.observe(&th, 0, 3, 1), None); // tsr 3
+        assert_eq!(st.observe(&th, 0, 3, 1), Some(-1)); // tsr 4 > 3
     }
 }
