@@ -4,7 +4,7 @@ parent_task: M3-006
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -105,3 +105,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-006-C) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-006-c (squash-merged; see git log for final hash)
+- Closes: #404
+
+### Changed files
+- `crates/q-runtime/src/service_profile.rs`: `RetirePhase` + `RetiringWorker` — the drain-before-scale-down lifecycle (M3-006-C) —
+  - A worker chosen for retirement starts in `Draining { remaining }` (admission stop is the M3-005-A quarantine's job — begin() starts IN Draining with the reported depth).
+  - `tick(remaining, _dispatch_out) -> RetirePhase`: lossless path — empty queue flips to `ReadyToTeardown`; the drain budget escalates a wedged worker to `ReadyToTeardown` anyway, and the CALLER settles leftovers with typed failures (M3-005-B semantics). Bounded: `ticks_in_retire` saturates; the budget is enforced by tick count.
+  - No request loss is proven (lossless test: 3 jobs re-homed 1/tick, teardown only at remaining==0).
+- Tests live in service_profile.rs tests module (3 tests).
+
+### Tests added (+2 net → 51 runtime unit tests)
+- `retirement_starts_in_draining_with_reported_depth`
+- `retirement_is_lossless_while_draining` (3 jobs re-homed 1/tick, teardown only at remaining==0)
+- `drain_budget_escalates_a_wedged_worker` (budget 2: tick 3 escalates to ReadyToTeardown with jobs still queued — bounded, never hung)
+
+### Command results
+- `cargo test -p velqu-runtime` → **51 unit (was 48) + 5 + 44** — 0 failed
+- `cargo test -p q-capabilities` → 6 suites — pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`6d5c7c3f…` matches manifest)
+
+### Guardrail mapping
+- **No request loss** — the lossless-drain test re-homes every queued job before teardown; budget escalation is the caller's typed-failure path (M3-005-B), not a silent drop.
+- **Idle workers retire safely** — the lifecycle is explicit (Draining -> ReadyToTeardown), bounded, and cannot hang the scaler.
+
+### Disclosures
+- The first lifecycle draft double-counted ticks through a recursive transition; redesigned to a flat begin/tick state machine where begin() starts IN Draining (admission stop is quarantine's job). One unused-param warning fixed. All caught before commit.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.
