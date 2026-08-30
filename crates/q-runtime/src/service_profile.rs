@@ -146,6 +146,59 @@ impl AdaptiveWorkers {
     }
 }
 
+/// Deterministic readiness tracking (M3-003-C): counts initialized
+/// workers against the profile's startup requirement. Readiness flips
+/// exactly when the requirement is met — serverless needs worker 0,
+/// service needs all configured workers — and never un-flips.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Readiness {
+    profile: ServiceProfile,
+    initialized: usize,
+    ready: bool,
+}
+
+impl Readiness {
+    /// Fresh tracker for `profile`: nothing initialized, not ready.
+    pub fn starting(profile: ServiceProfile) -> Self {
+        Readiness {
+            profile,
+            initialized: 0,
+            ready: false,
+        }
+    }
+
+    /// Profile requirement: how many workers must initialize before
+    /// ready. Serverless = 1 (worker 0 only); service = the full
+    /// configured count (clamped exactly like the profile itself).
+    pub fn required(&self) -> usize {
+        self.profile.initial_workers()
+    }
+
+    /// Record one worker finishing initialization. Returns `true` only on
+    /// the call that CAUSES the ready transition — exactly one caller gets
+    /// `true` (that caller announces readiness); calls before it get
+    /// `false`, and calls after it get `false` again (never re-triggered,
+    /// never un-set).
+    pub fn worker_initialized(&mut self) -> bool {
+        self.initialized = self.initialized.saturating_add(1);
+        if !self.ready && self.initialized >= self.required() {
+            self.ready = true;
+            return true;
+        }
+        false
+    }
+
+    /// Whether the readiness requirement is met.
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
+
+    /// Workers initialized so far.
+    pub fn initialized(&self) -> usize {
+        self.initialized
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,5 +337,59 @@ mod tests {
         );
         assert_eq!(a.tick(0, 4), ScaleTick::Hold);
         assert_eq!(a.running, 1);
+    }
+
+    #[test]
+    fn serverless_readiness_needs_exactly_worker_zero() {
+        let mut r = Readiness::starting(ServiceProfile::Serverless);
+        assert_eq!(r.required(), 1);
+        assert!(!r.is_ready());
+        assert!(
+            r.worker_initialized(),
+            "ready flips ON the meeting transition"
+        );
+        assert!(r.is_ready());
+        // Extra initializations never re-trigger (returns false) nor un-set.
+        assert!(!r.worker_initialized());
+        assert!(r.is_ready());
+        assert_eq!(r.initialized(), 2);
+    }
+
+    #[test]
+    fn throughput_readiness_needs_every_configured_worker() {
+        let mut r = Readiness::starting(ServiceProfile::Service { workers: 4 });
+        assert_eq!(r.required(), 4);
+        assert!(!r.worker_initialized(), "1st: not ready");
+        assert!(!r.worker_initialized(), "2nd: not ready");
+        assert!(!r.worker_initialized(), "3rd: not ready");
+        assert!(!r.is_ready(), "partial initialization is never ready");
+        assert!(
+            r.worker_initialized(),
+            "4th call flips readiness and returns true"
+        );
+        assert!(r.is_ready());
+        assert_eq!(r.initialized(), 4);
+    }
+
+    #[test]
+    fn readiness_is_one_way() {
+        let mut r = Readiness::starting(ServiceProfile::Serverless);
+        r.worker_initialized();
+        assert!(r.is_ready());
+        // There is no un-ready API; the flag is structural.
+        assert!(r.is_ready());
+    }
+
+    #[test]
+    fn throughput_out_of_range_fails_closed_direct_variants_clamp() {
+        // Parse fails closed outside [1,64].
+        assert!(ServiceProfile::parse("service:65").is_err());
+        // A directly constructed variant clamps its requirement.
+        let mut r = Readiness::starting(ServiceProfile::Service { workers: 65 });
+        assert_eq!(r.required(), MAX_WORKERS);
+        for _ in 0..64 {
+            r.worker_initialized();
+        }
+        assert!(r.is_ready(), "ready at exactly the clamped requirement");
     }
 }

@@ -4,7 +4,7 @@ parent_task: M3-003
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -114,3 +114,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-003-C) — PASS
+
+- Date: 2026-08-30
+- Branch/PR: m3-003-c (squash-merged; see git log for final hash)
+- Closes: #386
+
+### Changed files
+- `crates/q-runtime/src/service_profile.rs`: `Readiness` — deterministic readiness tracking per profile (M3-003-C) —
+  - `Readiness::starting(profile)`: nothing initialized, not ready.
+  - `required()`: serverless = 1 (worker 0 only); throughput = the full configured count (clamped exactly like the profile).
+  - `worker_initialized() -> bool`: returns `true` ONLY on the call that CAUSES the ready transition — exactly one caller announces readiness; earlier calls get false, later calls get false again (never re-triggered, never un-set).
+  - Readiness is one-way; partial initialization is never ready.
+- Tests cover both profiles, the one-way property, exact-call flip semantics, and out-of-range handling (parse fails closed; directly-constructed variants clamp their requirement to MAX_WORKERS).
+
+### Tests added (service_profile.rs, +4 → 28 runtime unit tests)
+- `serverless_readiness_needs_exactly_worker_zero`
+- `throughput_readiness_needs_every_configured_worker` (flip exactly on the 4th)
+- `readiness_is_one_way`
+- `throughput_out_of_range_fails_closed_direct_variants_clamp`
+
+### Command results
+- `cargo test -p velqu-runtime` → **28 unit (was 24) + 5 + 44** — 0 failed
+- `cargo test -p q-engine-quickjs` → 20+101 — pass
+- `cargo fmt --check` → clean; `cargo clippy --workspace --all-targets -- -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS (exit 0)**; release binary unchanged (`9c2ebc08…` matches manifest)
+
+### Guardrail mapping
+- **Profiles have deterministic readiness** — the requirement is a pure function of the profile; the flip happens exactly once, on the exact call that meets it.
+
+### Disclosures
+- Two test-authoring iterations: `worker_initialized` semantics refined to "returns true only on the flipping call" (strictly more useful — exactly one caller announces readiness), and an extra fixture call removed. The suite caught both before commit.
+- Standing: CI fails with zero executed steps on every PR since ~#714 (infrastructure-side); disclosed per PR.

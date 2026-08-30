@@ -430,7 +430,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-002-Z](../tasks/06_m3_multi_worker/M3-002-Z-package-evidence-for-implement-bounded-worker-dispatcher.md) | P0 | evidence | PASS | M3-002-V | Package evidence for Implement bounded worker dispatcher |
 | [M3-003-A](../tasks/06_m3_multi_worker/M3-003-A-serverless-starts-one-worker-only.md) | P1 | implement | PASS | M3-002-Z | Serverless starts one worker only |
 | [M3-003-B](../tasks/06_m3_multi_worker/M3-003-B-service-marks-ready-after-worker-0-and-adds-workers-adaptively.md) | P1 | implement | PASS | M3-003-A | Service marks ready after worker 0 and adds workers adaptively |
-| [M3-003-C](../tasks/06_m3_multi_worker/M3-003-C-throughput-initializes-configured-workers-before-ready.md) | P1 | implement | TODO | M3-003-B | Throughput initializes configured workers before ready |
+| [M3-003-C](../tasks/06_m3_multi_worker/M3-003-C-throughput-initializes-configured-workers-before-ready.md) | P1 | implement | PASS | M3-003-B | Throughput initializes configured workers before ready |
 | [M3-003-D](../tasks/06_m3_multi_worker/M3-003-D-expose-profile-in-inspect-config.md) | P1 | implement | TODO | M3-003-C | Expose profile in inspect/config |
 | [M3-003-V](../tasks/06_m3_multi_worker/M3-003-V-verify-implement-serverless-service-and-throughput-profiles.md) | P1 | verify | TODO | M3-003-A, M3-003-B, M3-003-C, M3-003-D | Verify Implement serverless, service, and throughput profiles |
 | [M3-003-Z](../tasks/06_m3_multi_worker/M3-003-Z-package-evidence-for-implement-serverless-service-and-throughput-profiles.md) | P1 | evidence | TODO | M3-003-V | Package evidence for Implement serverless, service, and throughput profiles |
