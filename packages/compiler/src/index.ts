@@ -9,7 +9,7 @@ import { reductionImpacts } from "./reduction-impact";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
 
-export { CompileError } from "./extract";
+export { CompileError, extractApp, type ExtractedApp, type RouteInfo, type PolicyInfo } from "./extract";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
 export { PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "./toolchain";
 export {
