@@ -467,7 +467,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-009-A](../tasks/06_m3_multi_worker/M3-009-A-measure-1-2-4-workers.md) | P1 | implement | PASS | M3-003-Z, M3-006-Z, M3-008-Z | Measure 1/2/4 workers |
 | [M3-009-B](../tasks/06_m3_multi_worker/M3-009-B-report-throughput-p50-p95-p99-queue-time-cpu-rss-errors.md) | P1 | implement | PASS | M3-009-A | Report throughput, p50/p95/p99, queue time, CPU, RSS, errors |
 | [M3-009-C](../tasks/06_m3_multi_worker/M3-009-C-run-c1-c2-c3-and-controlled-i-o.md) | P1 | implement | PASS | M3-009-B | Run C1/C2/C3 and controlled I/O |
-| [M3-009-D](../tasks/06_m3_multi_worker/M3-009-D-record-physical-core-topology.md) | P1 | implement | TODO | M3-009-C | Record physical core topology |
+| [M3-009-D](../tasks/06_m3_multi_worker/M3-009-D-record-physical-core-topology.md) | P1 | implement | PASS | M3-009-C | Record physical core topology |
 | [M3-009-V](../tasks/06_m3_multi_worker/M3-009-V-verify-close-multi-worker-scaling-and-memory-evidence.md) | P1 | verify | TODO | M3-009-A, M3-009-B, M3-009-C, M3-009-D | Verify Close multi-worker scaling and memory evidence |
 | [M3-009-Z](../tasks/06_m3_multi_worker/M3-009-Z-package-evidence-for-close-multi-worker-scaling-and-memory-evidence.md) | P1 | evidence | TODO | M3-009-V | Package evidence for Close multi-worker scaling and memory evidence |
 | [M3-010-A](../tasks/06_m3_multi_worker/M3-010-A-run-multi-hour-mixed-load.md) | P0 | implement | TODO | M3-005-Z, M3-007-Z, M3-009-Z | Run multi-hour mixed load |

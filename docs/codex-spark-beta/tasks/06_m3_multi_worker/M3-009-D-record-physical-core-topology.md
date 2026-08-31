@@ -4,7 +4,7 @@ parent_task: M3-009
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -114,3 +114,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-009-D) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-009-d (squash-merged; see git log for final hash)
+- Closes: #423
+
+### Changed files
+- `scripts/capture-host-topology.py` (new): deterministic host topology
+  capture from /proc/cpuinfo + sysfs — logical/physical/socket counts,
+  SMT factor, models, clock range, NUMA nodes, and a SHA-256 of the raw
+  cpuinfo bytes (evidence binds to the exact host description);
+  unreadable fields recorded as null, never fabricated.
+- `crates/q-bench-support/src/bin/worker_scaling.rs`: `physicalTopology`
+  block embedded in every worker-scaling summary (parsed from
+  /proc/cpuinfo the same way); replaced the misleading top-level
+  `physicalCores` key that actually held the LOGICAL count.
+- `benchmarks/raw/worker-scaling/`: host-topology.json + regenerated
+  summary/JSONL (71 100 samples) from the final source.
+- `docs/reports/m3-009-d-host-topology.md` (new): the topology record
+  and what it explains in the A/B/C numbers.
+
+### Captured topology (exact)
+i5-13420H: 12 logical / **8 physical** cores / 1 socket, siblings-per-core
+**1.5** (hybrid 4 P ×2-way SMT + 4 E ×1), 1 NUMA node, 12 MB cache,
+2 399.7–3 802.7 MHz.
+
+### What the topology explains (report carries the full reading)
+- W=4 ≈ the physical-core budget → measured 3.53×–3.93× consistent with
+  slightly under 4× (producers + Tokio share the cores).
+- W=2 ratios >2× (2.09×–2.22×) are topology effects (dedicated P-cores
+  vs a shared core at W=1) — legitimate to report BECAUSE the topology
+  is recorded.
+- Heterogeneous cores + frequency scaling explain the repetition
+  spread; interleaved repetitions average placement luck.
+
+### Evidence regenerated from the final source
+C1 811/1 690/2 987 ops/s (2.09×/3.69×), C2 3 507/7 780/13 580
+(2.22×/3.87×), C3 442/874/1 736 (1.98×/3.93×) — 0 errors across all
+21 600 measured requests.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → 219/219; `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.

@@ -195,6 +195,78 @@ fn process_cpu_secs() -> Option<f64> {
     Some(to_secs(u.ru_utime) + to_secs(u.ru_stime))
 }
 
+/// Physical core topology parsed from /proc/cpuinfo (M3-009-D): the
+/// scaling evidence must be interpretable against the real core layout
+/// (SMT and hybrid P/E-core designs make logical counts misleading).
+/// Fields that cannot be read are recorded as null — never fabricated.
+fn host_topology() -> Value {
+    let raw = std::fs::read_to_string("/proc/cpuinfo").unwrap_or_default();
+    let mut physical_ids: Vec<&str> = Vec::new();
+    let mut core_keys: Vec<(&str, &str)> = Vec::new();
+    let mut models: Vec<&str> = Vec::new();
+    let mut mhz: Vec<f64> = Vec::new();
+    let mut logical = 0usize;
+    for block in raw.split("\n\n") {
+        let mut physical_id = "0";
+        let mut core_id = "?";
+        let mut model = "";
+        for line in block.lines() {
+            let Some((k, v)) = line.split_once(':') else {
+                continue;
+            };
+            let v = v.trim();
+            match k.trim() {
+                "processor" if !v.is_empty() => logical += 1,
+                "physical id" => physical_id = v,
+                "core id" => core_id = v,
+                "model name" if model.is_empty() => model = v,
+                "cpu MHz" => {
+                    if let Ok(m) = v.parse::<f64>() {
+                        mhz.push(m);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !model.is_empty() {
+            physical_ids.push(physical_id);
+            core_keys.push((physical_id, core_id));
+            models.push(model);
+        }
+    }
+    physical_ids.sort_unstable();
+    physical_ids.dedup();
+    core_keys.sort_unstable();
+    core_keys.dedup();
+    models.sort_unstable();
+    models.dedup();
+    let physical = core_keys.len();
+    json!({
+        "logicalCpus": logical,
+        "sockets": physical_ids.len(),
+        "physicalCores": physical,
+        "siblingsPerCore": if physical > 0 {
+            serde_json::Value::from(logical as f64 / physical as f64)
+        } else {
+            Value::Null
+        },
+        "smt": if physical > 0 { serde_json::Value::from(logical > physical) } else { Value::Null },
+        "modelNames": models,
+        "cpuMhzMin": mhz.iter().cloned().fold(f64::INFINITY, f64::min),
+        "cpuMhzMax": mhz.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        "numaNodes": std::fs::read_dir("/sys/devices/system/node")
+            .map(|entries| {
+                entries.filter_map(|e| e.ok()).filter(|e| {
+                    e.file_name().to_string_lossy().starts_with("node")
+                }).count()
+            })
+            .ok(),
+        "availableParallelism": std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(0),
+    })
+}
+
 fn process_rss_kib() -> Option<u64> {
     // Linux /proc/self/status VmRSS (KiB); None elsewhere (recorded as
     // unavailable — never fabricated).
@@ -604,7 +676,7 @@ fn main() {
         "workerCounts": WORKER_COUNTS,
         "repetitionsPerConfig": REPETITIONS,
         "interleaved": true,
-        "physicalCores": std::thread::available_parallelism().map(|n| n.get()).unwrap_or(0),
+        "physicalTopology": host_topology(),
         "note": "invocation-boundary measurement of N real parallel QuickJS runtimes behind the M3-002 bounded Dispatcher; HTTP layer not exercised; C3 I/O is controlled (native timers, no network)",
     });
     std::fs::write(

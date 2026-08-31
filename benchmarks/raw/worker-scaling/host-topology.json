@@ -1,0 +1,19 @@
+{
+  "availableParallelism": 12,
+  "cacheSizeEntries": [
+    "12288 KB"
+  ],
+  "cpuMhzMax": 3634.569,
+  "cpuMhzMin": 398.551,
+  "cpuinfoSha256": "58b7f5adc43d8cf7249e48fee4667f3b0ee9bfdc7ff1900521705e4566a80f23",
+  "logicalCpus": 12,
+  "modelNames": [
+    "13th Gen Intel(R) Core(TM) i5-13420H"
+  ],
+  "numaNodes": 1,
+  "physicalCores": 8,
+  "siblingsPerCore": 1.5,
+  "smt": true,
+  "sockets": 1,
+  "sysfsCache": null
+}
