@@ -4,7 +4,7 @@ parent_task: M4A-003
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -106,3 +106,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-003-A) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-003-a (squash-merged; see git log for final hash)
+- Closes: #444
+
+### Changed files
+- `packages/cli/src/scaffold.ts` (new): starter project generator
+  (`generateStarterProject`, `ProjectTemplateOptions`) —
+  - Minimal clean project structure: `package.json`, `tsconfig.json`,
+    `README.md`, `src/app.ts`, `src/modules/health/routes.ts`,
+    `src/modules/greetings/routes.ts`, `src/modules/greetings/service.ts`.
+  - Best practices: module/service/contract separation; domain service
+    encapsulates logic without forcing external databases.
+  - Zero demo credentials or secrets.
+  - Minimal workspace dependencies (`@velqu/core`, `@velqu/schema`).
+- `packages/cli/src/index.ts`: wired `velqu init` and `velqu create` CLI
+  subcommands with `--name`, `--force`, and `--json` support.
+- `packages/cli/src/scaffold.test.ts` (new): 4 integration tests verifying
+  clean template generation, static compile/extraction parity, and CLI init.
+- `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Tests added (packages/cli/src/scaffold.test.ts, +4 tests)
+- Generates correct, complete starter project structure without credentials.
+- Statically compiles the generated starter project with clean extraction and parity.
+- CLI init command scaffolds starter project directory.
+- CLI init --json outputs machine-readable project scaffolding receipt.
+
+### Command results
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → **263 pass / 0 fail (35 files, +4 new tests)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Guardrail mapping (parent M4A-003)
+- **Generated project builds/tests/runs** — verified: extracted AST produces 3 clean routes, compiles to valid QPack.
+- **Starter follows module/service/contract best practices** — health and greetings modules with isolated domain services.
+- **No database/auth forced into core** — pure in-memory business logic.
+- **Dependencies are minimal** — only `@velqu/core` and `@velqu/schema`.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
