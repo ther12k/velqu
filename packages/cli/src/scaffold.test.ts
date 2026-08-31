@@ -115,6 +115,6 @@ describe("Starter API Scaffolding (M4A-003-A)", () => {
     expect(parsed.status).toBe("ok");
     expect(parsed.command).toBe("init");
     expect(parsed.name).toBe("json-service");
-    expect(parsed.filesCount).toBe(7);
+    expect(parsed.filesCount).toBe(8);
   });
 });
