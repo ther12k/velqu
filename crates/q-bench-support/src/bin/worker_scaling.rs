@@ -30,10 +30,11 @@
 //! per sample) + worker-scaling-summary.json. Constraint 12: raw
 //! samples retained.
 
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use q_engine::{BodyOut, Engine as _, InvocationSpec, Outcome, ResponseStrategy};
@@ -88,6 +89,8 @@ struct Sample {
 
 enum ConsumerMsg {
     Sample(Sample),
+    /// A measured outcome that did not verify (classified error).
+    Error(&'static str),
     /// Per-worker engine stats, sent when the queue closes and drains.
     Done {
         worker: usize,
@@ -111,6 +114,18 @@ fn percentiles(mut v: Vec<f64>, ps: &[f64]) -> Vec<f64> {
 fn median(mut v: Vec<f64>) -> f64 {
     v.sort_by(|a, b| a.partial_cmp(b).unwrap());
     v[v.len() / 2]
+}
+
+/// Process CPU seconds (user + system) via getrusage; None if the
+/// syscall fails (recorded as unavailable — never fabricated).
+fn process_cpu_secs() -> Option<f64> {
+    let mut usage = std::mem::MaybeUninit::<libc::rusage>::uninit();
+    if unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) } != 0 {
+        return None;
+    }
+    let u = unsafe { usage.assume_init() };
+    let to_secs = |t: libc::timeval| t.tv_sec as f64 + t.tv_usec as f64 / 1e6;
+    Some(to_secs(u.ru_utime) + to_secs(u.ru_stime))
 }
 
 fn process_rss_kib() -> Option<u64> {
@@ -148,6 +163,12 @@ fn main() {
     let mut rep_samples: Vec<Vec<Sample>> = vec![Vec::new(); WORKER_COUNTS.len()];
     let mut rep_avg_heap: Vec<Vec<usize>> = vec![Vec::new(); WORKER_COUNTS.len()];
     let mut rep_rss: Vec<Vec<Value>> = vec![Vec::new(); WORKER_COUNTS.len()];
+    // M3-009-B: CPU seconds per repetition, wall seconds per measured
+    // run, and classified error counts (never silently dropped).
+    let mut rep_cpu_secs: Vec<Vec<Option<f64>>> = vec![Vec::new(); WORKER_COUNTS.len()];
+    let mut rep_wall_secs: Vec<Vec<f64>> = vec![Vec::new(); WORKER_COUNTS.len()];
+    let mut rep_errors: Vec<BTreeMap<String, u64>> = vec![BTreeMap::new(); WORKER_COUNTS.len()];
+    let rep_error_count: Arc<Mutex<BTreeMap<String, u64>>> = Arc::new(Mutex::new(BTreeMap::new()));
 
     // INTERLEAVED repetition loop: each repetition visits every worker
     // count, so time-correlated host drift spreads over configs
@@ -155,6 +176,8 @@ fn main() {
     for rep in 0..REPETITIONS {
         for (ci, &workers) in WORKER_COUNTS.iter().enumerate() {
             let rss_before = process_rss_kib();
+            let rep_error_count = rep_error_count.clone();
+            rep_error_count.lock().unwrap().clear();
 
             rt.block_on(async {
                 // Real parallel runtimes: one thread + one QuickJS
@@ -246,6 +269,9 @@ fn main() {
                                 eprintln!("DEBUG outcome: {outcome:?}");
                             }
                             // Strategy Js hands back engine-stringified text.
+                            // Errors are classified, never silently
+                            // dropped: timeout (no outcome in budget) or
+                            // mismatch (wrong status/body/value).
                             let correct = matches!(
                                 &outcome,
                                 Some(Outcome::Response {
@@ -257,6 +283,13 @@ fn main() {
                                         && v["len"].as_f64() == Some(expected.1))
                                     .unwrap_or(false)
                             );
+                            if !correct {
+                                let class = match &outcome {
+                                    None | Some(Outcome::Timeout) => "timeout",
+                                    Some(_) => "mismatch",
+                                };
+                                let _ = tx.send(ConsumerMsg::Error(class));
+                            }
                             let total_us = enqueued_at.elapsed().as_secs_f64() * 1e6;
                             let _ = tx.send(ConsumerMsg::Sample(Sample {
                                 workers,
@@ -279,6 +312,7 @@ fn main() {
 
                 // Dispatch n requests from P producers; collect exactly
                 // n samples (closed loop, queue wait inside each).
+                // Errors (timeouts/mismatches) are counted, not sampled.
                 let dispatch_and_collect = |n: usize, id_base: u64, samples: &mut Vec<Sample>| {
                     let ids = Arc::new(AtomicU64::new(id_base));
                     let t0 = Instant::now();
@@ -305,15 +339,27 @@ fn main() {
                         p.join().unwrap();
                     }
                     let mut got = 0usize;
-                    while got < n {
+                    let mut errors = 0u64;
+                    let mut error_tally: BTreeMap<String, u64> = BTreeMap::new();
+                    while got + (errors as usize) < n {
                         match rx.recv().expect("consumer alive") {
                             ConsumerMsg::Sample(s) => {
                                 samples.push(s);
                                 got += 1;
                             }
+                            ConsumerMsg::Error(class) => {
+                                *error_tally.entry(class.to_string()).or_insert(0) += 1;
+                                errors += 1;
+                            }
                             ConsumerMsg::Done { .. } => {
                                 unreachable!("no consumer exits before close_all")
                             }
+                        }
+                    }
+                    {
+                        let mut tally = rep_error_count.lock().unwrap();
+                        for (k, v) in error_tally {
+                            *tally.entry(k).or_insert(0) += v;
                         }
                     }
                     t0.elapsed()
@@ -325,13 +371,18 @@ fn main() {
                 all_samples.append(&mut warm);
 
                 // ---- one measured run this repetition
+                let cpu_before = process_cpu_secs();
                 let mut batch = Vec::with_capacity(REQUESTS_PER_REP);
                 let elapsed = dispatch_and_collect(
                     REQUESTS_PER_REP,
                     1_000_000 + rep as u64 * 10_000_000,
                     &mut batch,
                 );
-                rep_throughputs[ci].push(REQUESTS_PER_REP as f64 / elapsed.as_secs_f64());
+                let cpu_after = process_cpu_secs();
+                let wall = elapsed.as_secs_f64();
+                rep_wall_secs[ci].push(wall);
+                rep_cpu_secs[ci].push(cpu_after.zip(cpu_before).map(|(a, b)| a - b));
+                rep_throughputs[ci].push(REQUESTS_PER_REP as f64 / wall);
                 for s in batch {
                     let tagged = Sample { rep, ..s };
                     rep_samples[ci].push(tagged.clone());
@@ -351,6 +402,7 @@ fn main() {
                             }
                         }
                         ConsumerMsg::Sample(_) => {}
+                        ConsumerMsg::Error(_) => {}
                     }
                 }
                 for h in handles {
@@ -358,6 +410,12 @@ fn main() {
                 }
 
                 let rss_after = process_rss_kib();
+                {
+                    let tally = rep_error_count.lock().unwrap();
+                    for (k, v) in tally.iter() {
+                        *rep_errors[ci].entry(k.clone()).or_insert(0) += v;
+                    }
+                }
                 rep_rss[ci].push(json!({"before": rss_before, "after": rss_after}));
                 rep_avg_heap[ci].push(per_worker_heap.iter().sum::<usize>() / workers.max(1));
             });
@@ -390,6 +448,12 @@ fn main() {
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
         let avg_heap = rep_avg_heap[ci].iter().sum::<usize>() / rep_avg_heap[ci].len().max(1);
+        // M3-009-B: process CPU seconds per repetition and CPU-per-op
+        // (process-level — the runtime, producers, and Tokio threads;
+        // attribution is disclosed, not per-worker).
+        let cpu_secs = &rep_cpu_secs[ci];
+        let total_cpu: f64 = cpu_secs.iter().filter_map(|c| *c).sum();
+        let ops = measured.len() as f64;
 
         let mut entry = json!({
             "workers": workers,
@@ -408,6 +472,16 @@ fn main() {
             "avgPerWorkerHeapBytes": avg_heap,
             "totalHeapBytes": avg_heap * workers,
             "processRssKibPerRepetition": rep_rss[ci],
+            "processCpuSecsPerRepetition": cpu_secs,
+            "processCpuSecsTotal": total_cpu,
+            "wallSecsPerRepetition": rep_wall_secs[ci],
+            "processCpuSecsPerOp": if ops > 0.0 { total_cpu / ops } else { 0.0 },
+            "errors": {
+                "byClass": rep_errors[ci],
+                "total": rep_errors[ci].values().sum::<u64>(),
+                "classes": ["timeout", "mismatch"],
+                "note": "every dispatched request is sampled or counted as a classified error; none dropped"
+            },
         });
         if workers > 1 {
             entry["scalingVs1WorkerMedian"] = json!(med / baseline_median);
@@ -434,7 +508,7 @@ fn main() {
         );
     }
     let summary = json!({
-        "format": "velqu-worker-scaling-v2",
+        "format": "velqu-worker-scaling-v3",
         "engine": "quickjs-ng/0.15.1 via rquickjs 0.12.2",
         "workload": "cpu.work: 20000-iteration deterministic arithmetic+string, verified per invocation",
         "workerCounts": WORKER_COUNTS,
