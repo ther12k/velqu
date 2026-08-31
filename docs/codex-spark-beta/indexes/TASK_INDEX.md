@@ -493,7 +493,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-002-C](../tasks/07_m4a_developer_preview/M4A-002-C-machine-readable-output-option.md) | P1 | implement | PASS | M4A-002-B | Machine-readable output option |
 | [M4A-002-D](../tasks/07_m4a_developer_preview/M4A-002-D-helpful-actionable-errors.md) | P1 | implement | PASS | M4A-002-C | Helpful actionable errors |
 | [M4A-002-V](../tasks/07_m4a_developer_preview/M4A-002-V-verify-complete-cli-command-surface.md) | P1 | verify | PASS | M4A-002-A, M4A-002-B, M4A-002-C, M4A-002-D | Verify Complete CLI command surface |
-| [M4A-002-Z](../tasks/07_m4a_developer_preview/M4A-002-Z-package-evidence-for-complete-cli-command-surface.md) | P1 | evidence | TODO | M4A-002-V | Package evidence for Complete CLI command surface |
+| [M4A-002-Z](../tasks/07_m4a_developer_preview/M4A-002-Z-package-evidence-for-complete-cli-command-surface.md) | P1 | evidence | PASS | M4A-002-V | Package evidence for Complete CLI command surface |
 | [M4A-003-A](../tasks/07_m4a_developer_preview/M4A-003-A-starter-api.md) | P1 | implement | TODO | M4A-002-Z | Starter API |
 | [M4A-003-B](../tasks/07_m4a_developer_preview/M4A-003-B-treaty-client-example.md) | P1 | implement | TODO | M4A-003-A | Treaty client example |
 | [M4A-003-C](../tasks/07_m4a_developer_preview/M4A-003-C-testing-setup.md) | P1 | implement | TODO | M4A-003-B | Testing setup |
