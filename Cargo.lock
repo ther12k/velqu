@@ -972,6 +972,7 @@ dependencies = [
  "bytes",
  "libc",
  "q-bridge",
+ "q-capabilities",
  "q-engine",
  "q-engine-quickjs",
  "q-schema-runtime",

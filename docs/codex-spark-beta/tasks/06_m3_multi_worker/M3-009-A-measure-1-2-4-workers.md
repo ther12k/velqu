@@ -4,7 +4,7 @@ parent_task: M3-009
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -116,3 +116,75 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-009-A) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-009-a (squash-merged; see git log for final hash)
+- Closes: #420
+
+### Changed files
+- `crates/q-bench-support/src/bin/worker_scaling.rs` (new, bin
+  `q-worker-scaling`): measures 1/2/4 REAL parallel QuickJS runtimes
+  (`spawn_independent`: one thread + one runtime each, ADR-0036 §1/§2)
+  behind the M3-002 bounded `Dispatcher` (least-outstanding selection,
+  per-worker capacity 1 024). 5 repetitions INTERLEAVED round-robin over
+  the worker counts; 3 000 measured requests per repetition after
+  100/worker warmup; every response verified host-side (45 000/45 000
+  correct).
+- `benchmarks/raw/worker-scaling/`: `worker-scaling.jsonl` (48 500 raw
+  samples: workers, rep, idx, totalUs, queueWaitUs, correct) +
+  `worker-scaling-summary.json` (velqu-worker-scaling-v2).
+- `docs/reports/m3-009-a-worker-scaling.md`: generated report with
+  artifact hashes.
+- `crates/q-bench-support/Cargo.toml`: bin registration + q-capabilities
+  dep. `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Headline results (exact values in the summary/report)
+- Throughput medians 705 / 1 589 / 2 752 ops/s for 1/2/4 workers →
+  **2.25× / 3.90× median scaling**, service p50 flat (~1.1–1.2 ms).
+- Service p99 flat (~2.2–3.0 ms) under full saturation — **no p99
+  collapse**; queue-wait reported separately (never hidden).
+- Per-worker heap identical across workers/configs/repetitions:
+  200 336 B each (W=4 total 801 344 B). Process RSS disclosed
+  process-level only.
+
+### Methodology incidents (root-caused, disclosed)
+1. Sequential config phases produced impossible >linear ratios on this
+   shared host (the W=1 phase ran under heavier load: service p50
+   1 645 µs vs ~1 300 µs elsewhere). Fixed by interleaving repetitions
+   round-robin (format bumped to v2). Residual 2.25× at W=2 is
+   host-scheduling relief (single consumer vs 8 producers + 2 Tokio
+   threads at W=1) — documented as "at least near-linear", not a
+   precise efficiency claim.
+2. The first raw dump contained only warmup samples (measured samples
+   never reached the JSONL — caught by line-count check 3 500 vs
+   expected 48 500). Fixed; final raw = 48 500 lines.
+3. Correctness initially failed 0/9000: `ResponseStrategy::Js` returns
+   `BodyOut::JsonText` (engine-stringified), and JS numbers are f64.
+   Fixed the check to parse the text and compare as f64.
+
+### Guardrail mapping (parent M3-009)
+- 2-worker scaling: measured; **no numeric approved target exists** —
+  flagged as an owner decision (tracked with REVIEW_INDEX open items).
+- 4-worker memory budgeted: linear, identical per-worker heaps.
+- Serverless profile unchanged: no runtime/profile path touched.
+- No p99 collapse: service p99 flat across all W under saturation.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → 219 pass / 0 fail; `bun run typecheck` → clean
+- `cargo fmt --check` clean; `cargo clippy --workspace --all-targets --
+  -D warnings` → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Scope boundary (explicit)
+Invocation-boundary measurement of the engine+dispatcher core (what
+ADR-0036 scoped for M3-009); the HTTP layer still drives one engine —
+multi-engine HTTP wiring is the M3 integration. Percentile report
+formatting, C1/C2/C3 workloads, topology recording: M3-009-B/C/D.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
