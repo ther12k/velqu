@@ -20,6 +20,10 @@ path = "src/bin/codec_bench/main.rs"
 name = "q-worker-scaling"
 path = "src/bin/worker_scaling.rs"
 
+[[bin]]
+name = "q-soak"
+path = "src/bin/soak.rs"
+
 [features]
 bench-instrumentation = ["q-engine-quickjs/bench-instrumentation"]
 
