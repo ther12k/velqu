@@ -4,7 +4,7 @@ parent_task: M3-010
 milestone: M3
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -124,3 +124,62 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-010-V) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-010-v (squash-merged; see git log for final hash)
+- Closes: #430
+
+### Acceptance-criterion mapping (parent M3-010 guardrails)
+
+1. **No monotonic leak** — verified:
+   - Sustained 30-minute soak (4.41 M requests): final per-worker heaps
+     203 853 / 201 427 B (flat in the ~201 KB band); process RSS ended
+     −388 KiB below start (M3-010-A report).
+   - 15-minute continuous chaos soak (2.43 M requests, 14 engine
+     replacements): initial heaps `[201376, 201376]` B vs final
+     `[206130, 202000]` B (net delta **+4.7 KB / +0.6 KB** across
+     2.43 M requests and 14 engine rebuilds); RSS drift 0.30 B/req
+     (bounded allocator retention; M3-010-C report).
+2. **Capacity recovers after replacement** — verified:
+   - 14/14 soak replacements initialized in 2.8–11.0 ms (median ~4 ms)
+     and resumed full ~2.4k ops/s throughput within the same window (A/B/C).
+   - Dedicated recovery test suite (`crates/q-capabilities/tests/recovery.rs`):
+     `capacity_recovers_to_full_parallelism_after_worker_replacement`,
+     `no_leaked_invocations_or_slots_across_repeated_poison_and_recovery`
+     (50 rapid poison/settle/replace cycles with zero leaks, `pending == 0`),
+     `least_outstanding_converges_loads_after_drain_and_rebuild` (D).
+3. **All errors are bounded and explained** — verified:
+   - 30-minute soak: 4 407 585 dispatched == 4 407 585 completed (100.0 %),
+     0 errors (A).
+   - 15-minute chaos soak: 2 431 643 dispatched == 2 407 340 completed +
+     12 136 disconnects + 12 167 timeouts (100.0 % exact accounting),
+     0 unexplained errors (C).
+4. **No boundary violations** — verified: verify's scheduler boundary
+   assertions pass; engine stats audit shows 0 boundary violations.
+
+### Evidence chain (all committed, raw + generated + hashed)
+- **A** #1030 (45ea7f2): `q-soak` harness + 30-minute soak (4.41 M requests,
+  100% verified, 0 errors, flat heaps, RSS −388 KiB).
+- **B** #1031 (859e763): chaos injection (worker poison every 60 s,
+  disconnects, timeouts); 14 engine rebuilds ~4 ms; 100% accounting.
+- **C** #1032 (886542e): retained memory tracking (initial vs final heaps,
+  delta +4.7 KB / +0.6 KB) + task/slot accounting (`InvocationOwnership`
+  quiescence: `pendingAtShutdown: 0`, `native_tasks_alive: 0`, `pending_ops: 0`).
+- **D** #1033 (4624f8d): recovery integration test suite (3 tests) +
+  recovery analysis report.
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-capabilities` → 260 lib + 6 workload + 3 recovery + 7 fuzz + 1 + 4 + 9 WPT — 0 failed
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → 219/219; `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of
+  M3-010-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR. Local evidence above is complete.
