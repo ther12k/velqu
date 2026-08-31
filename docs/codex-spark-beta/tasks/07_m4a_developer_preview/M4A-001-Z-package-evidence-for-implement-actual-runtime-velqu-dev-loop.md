@@ -4,7 +4,7 @@ parent_task: M4A-001
 milestone: M4A
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -116,3 +116,52 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-001-Z) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-001-z (squash-merged; see git log for final hash)
+- Closes: #437
+- Parent verification: M4A-001-V PASS (PR #1041, merged 9b6ba1b) on the
+  identical tree; this packet packages the evidence and flips the ledger.
+
+### Evidence package (parent M4A-001 — actual-runtime `velqu dev` loop)
+- **Implementation commits (squash-merged):**
+  - M4A-001-A watch source and contracts — #1037 → b254854
+  - M4A-001-B build incremental temporary QPack — #1038 → cd42ee1
+  - M4A-001-C load new worker before switching — #1039 → c6376a1
+  - M4A-001-D drain old worker & surface errors — #1040 → 4ddad04
+  - M4A-001-V verification closure — #1041 → 9b6ba1b
+- **Source implementations:**
+  - `packages/compiler/src/watch.ts`: static dependency discovery without
+    evaluating application code, directory-level file watching, debouncing,
+    and directory polling fallback for inotify resilience.
+  - `packages/compiler/src/incremental.ts`: fast-path temporary QPack
+    compilation (`buildTemporaryPack`, `IncrementalPackBuilder`) with linked
+    TypeScript source maps, contract change detection, and bounded temp disk
+    cleanup.
+  - `packages/cli/src/dev-server.ts`: `DevServer` worker swap & drain pipeline —
+    candidate worker verified healthy before atomic traffic switch, fail-safe
+    retention of prior worker on compile/startup failure, graceful old worker
+    drain via SIGTERM with 5s timeout, and formatted compiler/runtime diagnostics.
+  - `packages/cli/src/index.ts`: `velqu dev` and `velqu watch` CLI commands.
+- **Key test coverage (30 test files, 237 tests):**
+  - `packages/compiler/src/watch.test.ts` (7 tests): static discovery, file
+    classification, change/rename/delete detection, debounce coalescing.
+  - `packages/compiler/src/incremental.test.ts` (5 tests): fast compile,
+    contract change detection, contract stability on handler edit, temp cleanup.
+  - `packages/cli/src/dev-server.test.ts` (6 tests): proxying to real QuickJS
+    worker, candidate verification before switch, prior worker retention on
+    compile error, graceful drain of old worker, proof fixture proxying.
+- **Gate results (worktree-fresh):** `./scripts/verify` **ALL PASS** (incl.
+  q-pack 3 suites, q-engine-quickjs 20+102+1, velqu-runtime 7 suites, bun 237,
+  fmt, workspace clippy -D warnings).
+
+### Ledger
+- `docs/beta/04_TASK_LEDGER.md`: M4A-001 TODO → **PASS** (all four
+  guardrails proven; see the M4A-001-V mapping).
+
+### Disclosures (standing)
+- No runtime behavior changed in this packet: evidence-only closure.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
