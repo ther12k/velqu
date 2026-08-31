@@ -5,8 +5,11 @@
 import { build, contractDiff, CompileError, watchSourceAndContracts } from "@velqu/compiler";
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
+import { DevServer, type DevServerOptions, type ReloadResult, type WorkerInstance } from "./dev-server";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+
+export { DevServer, type DevServerOptions, type ReloadResult, type WorkerInstance };
 
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -149,10 +152,30 @@ async function main() {
       if (breaking) process.exit(2);
       break;
     }
-    case "dev":
+    case "dev": {
+      const port = args.has("port") ? parseInt(args.get("port")!, 10) : 3000;
+      const debounceMs = args.has("debounce-ms") ? parseInt(args.get("debounce-ms")!, 10) : 50;
+      const profile = args.get("profile") ?? "serverless";
+      const server = new DevServer({
+        project,
+        port,
+        debounceMs,
+        serviceProfile: profile,
+        onLog: (msg) => console.log(msg),
+        onReload: (r) => {
+          if (r.success) {
+            console.log(`[dev:reload] switched to worker gen ${r.generation} in ${r.totalMs}ms (compile ${r.compileMs}ms, init ${r.workerInitMs}ms)`);
+          } else {
+            console.error(`[dev:reload] reload failed: ${r.error}`);
+          }
+        },
+      });
+      await server.start(true);
+      break;
+    }
     case "watch": {
       const debounceMs = args.has("debounce-ms") ? parseInt(args.get("debounce-ms")!, 10) : 50;
-      console.log(`velqu dev: watching ${project} (debounce ${debounceMs}ms)...`);
+      console.log(`velqu watch: watching ${project} (debounce ${debounceMs}ms)...`);
       const watcher = await watchSourceAndContracts({
         project,
         debounceMs,

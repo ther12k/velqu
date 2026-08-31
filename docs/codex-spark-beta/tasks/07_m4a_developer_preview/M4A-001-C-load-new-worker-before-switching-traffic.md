@@ -4,7 +4,7 @@ parent_task: M4A-001
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -114,3 +114,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-001-C) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-001-c (squash-merged; see git log for final hash)
+- Closes: #434
+
+### Changed files
+- `packages/cli/src/dev-server.ts` (new): actual-runtime dev server and
+  worker swap pipeline (`DevServer`, `WorkerInstance`, `ReloadResult`) —
+  - `start()`: builds initial temporary QPack, spawns and verifies worker
+    generation 1, starts public HTTP gateway.
+  - `reload()`: builds updated temporary QPack, spawns candidate worker
+    runtime on ephemeral port, verifies readiness before switching traffic.
+  - Fail-safe retention: if build or candidate worker initialization fails,
+    retains the prior healthy worker serving traffic without dropping requests
+    (**"Failed reload keeps prior healthy app"**).
+  - Atomic traffic switch: updates `activeWorker` pointer only after the new
+    worker runtime is verified healthy and ready.
+  - Proxy gateway: forwards public HTTP requests to the active worker port
+    with standard forwarded headers and duplex streaming support.
+- `packages/cli/src/index.ts`: exports `DevServer` and wires `velqu dev`
+  CLI command to run `DevServer`.
+- `packages/cli/src/dev-server.test.ts` (new): 4 integration tests.
+- `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Tests added (packages/cli/src/dev-server.test.ts, +4 tests)
+- Starts dev server and proxies requests to QuickJS worker generation 1.
+- Loads candidate worker and verifies readiness before switching traffic on reload.
+- Retains prior healthy worker when reload compilation fails (failed reload keeps prior app).
+- Drives proof fixture end-to-end through dev server gateway.
+
+### Command results
+- `cargo test -p q-pack` → 3 suites — 0 failed
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `bun test` → **235 pass / 0 fail (30 files, +4 new tests)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Guardrail mapping (parent M4A-001)
+- **Failed reload keeps prior healthy app** — tested: syntax errors during
+  reload retain generation 1 and traffic continues uninterrupted.
+- **No Bun-only behavior mismatch** — dev server executes the real
+  `velqu-runtime` binary with temporary QPacks.
+- **Reload is bounded and observable** — reload latency measured (< 500ms).
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
