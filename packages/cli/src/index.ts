@@ -2,7 +2,7 @@
  * @velqu/cli — the `velqu` command: build / inspect / contract diff / dev-notes.
  * (Dev server is P1; M2 provides build + inspection + diff per DX-006.)
  */
-import { build, contractDiff, CompileError } from "@velqu/compiler";
+import { build, contractDiff, CompileError, watchSourceAndContracts } from "@velqu/compiler";
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
 import { readFileSync, existsSync } from "node:fs";
@@ -149,9 +149,33 @@ async function main() {
       if (breaking) process.exit(2);
       break;
     }
+    case "dev":
+    case "watch": {
+      const debounceMs = args.has("debounce-ms") ? parseInt(args.get("debounce-ms")!, 10) : 50;
+      console.log(`velqu dev: watching ${project} (debounce ${debounceMs}ms)...`);
+      const watcher = await watchSourceAndContracts({
+        project,
+        debounceMs,
+        onChange: (events) => {
+          for (const ev of events) {
+            console.log(`[watch:${ev.kind}] ${ev.action} ${ev.file} (+${ev.latencyMs}ms)`);
+          }
+        },
+        onError: (err) => {
+          console.error(`[watch:error] ${err.message}`);
+        },
+      });
+      const discovered = watcher.discover();
+      console.log(`  watched sources: ${discovered.sourceFiles.length} files`);
+      console.log(`  watched contracts: ${discovered.contractFiles.length} files`);
+      console.log(`  watched configs: ${discovered.configFiles.length} files`);
+      console.log(`  directories: ${watcher.watchedDirectoryCount()}`);
+      break;
+    }
     default:
-      console.log(`q — Velqu build & inspection CLI (M2 scope)
+      console.log(`q — Velqu build, dev & inspection CLI
 usage:
+  velqu dev --project <dir|entry> [--debounce-ms 50]
   velqu build --project <dir|entry> [--profile serverless] [--out <dir>]
   velqu inspect routes|route <id>|capabilities|fallbacks [--dist <dir>]
   velqu contract diff --against <contract.lock.json>
