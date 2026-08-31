@@ -7,8 +7,8 @@
  * actual-runtime dev loop.
  */
 
-import { watch, type FSWatcher, existsSync, statSync } from "node:fs";
-import { dirname, join, resolve, relative } from "node:path";
+import { watch, type FSWatcher, existsSync, statSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import * as ts from "typescript";
 
 export type WatchEventKind = "source" | "contract" | "config";
@@ -53,6 +53,9 @@ export class ProjectWatcher {
   private watchers: Map<string, FSWatcher> = new Map();
   private pendingEvents: Map<string, { event: WatchEvent; timer: ReturnType<typeof setTimeout> }> = new Map();
   private discovered: DiscoveredFiles | null = null;
+  private watchedDirs: Set<string> = new Set();
+  private mtimes: Map<string, number> = new Map();
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private running = false;
 
   constructor(opts: WatchOptions) {
@@ -133,16 +136,18 @@ export class ProjectWatcher {
     if (this.running) return this.discovered ?? this.discover();
     const discovered = this.discover();
 
-    // Determine unique directories to watch (more efficient and handles new files):
-    const dirsToWatch = new Set<string>();
+    // Determine unique directories to watch:
+    this.watchedDirs.clear();
     for (const f of discovered.allWatched) {
-      dirsToWatch.add(dirname(f));
+      this.watchedDirs.add(dirname(f));
     }
-    // Also watch project root:
     const projectDir = statSync(this.project).isDirectory() ? this.project : dirname(discovered.entryFile);
-    dirsToWatch.add(projectDir);
+    this.watchedDirs.add(projectDir);
 
-    for (const dir of dirsToWatch) {
+    // Initial mtimes snapshot:
+    this.updateMtimes();
+
+    for (const dir of this.watchedDirs) {
       if (!existsSync(dir)) continue;
       try {
         const watcher = watch(dir, { recursive: false }, (eventType, filename) => {
@@ -155,9 +160,15 @@ export class ProjectWatcher {
         });
         this.watchers.set(dir, watcher);
       } catch (e) {
+        // inotify ENOSPC / system limit fallback — polling handles it
         if (this.onError) this.onError(e as Error);
       }
     }
+
+    // Polling fallback interval: ensures robust event delivery even under inotify exhaustion
+    this.pollInterval = setInterval(() => {
+      this.pollCheck();
+    }, Math.max(30, Math.min(this.debounceMs, 50)));
 
     this.running = true;
     return discovered;
@@ -172,6 +183,11 @@ export class ProjectWatcher {
       watcher.close();
     }
     this.watchers.clear();
+    this.watchedDirs.clear();
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
     for (const pending of this.pendingEvents.values()) {
       clearTimeout(pending.timer);
     }
@@ -183,7 +199,7 @@ export class ProjectWatcher {
   }
 
   public watchedDirectoryCount(): number {
-    return this.watchers.size;
+    return this.watchedDirs.size;
   }
 
   public classifyFile(filePath: string): WatchEventKind | null {
@@ -206,7 +222,6 @@ export class ProjectWatcher {
     const kind = this.classifyFile(filePath);
     if (!kind) return;
 
-    // Check if the file still exists or was deleted:
     const finalAction: "change" | "rename" | "delete" = !existsSync(filePath) ? "delete" : action;
 
     const event: WatchEvent = {
@@ -217,7 +232,6 @@ export class ProjectWatcher {
       latencyMs: 0,
     };
 
-    // Coalesce rapid edits per file using debouncing:
     const existing = this.pendingEvents.get(filePath);
     if (existing) {
       clearTimeout(existing.timer);
@@ -236,6 +250,56 @@ export class ProjectWatcher {
     }, this.debounceMs);
 
     this.pendingEvents.set(filePath, { event, timer });
+  }
+
+  private updateMtimes(): void {
+    for (const dir of this.watchedDirs) {
+      if (!existsSync(dir)) continue;
+      try {
+        for (const entry of readdirSync(dir)) {
+          const fullPath = resolve(dir, entry);
+          if (this.classifyFile(fullPath)) {
+            try {
+              this.mtimes.set(fullPath, statSync(fullPath).mtimeMs);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+  }
+
+  private pollCheck(): void {
+    if (!this.running) return;
+    const currentFiles = new Set<string>();
+
+    for (const dir of this.watchedDirs) {
+      if (!existsSync(dir)) continue;
+      try {
+        for (const entry of readdirSync(dir)) {
+          const fullPath = resolve(dir, entry);
+          if (!this.classifyFile(fullPath)) continue;
+          currentFiles.add(fullPath);
+          try {
+            const currentMtime = statSync(fullPath).mtimeMs;
+            const prevMtime = this.mtimes.get(fullPath);
+            if (prevMtime == null) {
+              this.mtimes.set(fullPath, currentMtime);
+              this.handleRawEvent(fullPath, "change");
+            } else if (currentMtime !== prevMtime) {
+              this.mtimes.set(fullPath, currentMtime);
+              this.handleRawEvent(fullPath, "change");
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    for (const tracked of Array.from(this.mtimes.keys())) {
+      if (!currentFiles.has(tracked)) {
+        this.mtimes.delete(tracked);
+        this.handleRawEvent(tracked, "delete");
+      }
+    }
   }
 
   private resolveEntryPath(project: string): string {

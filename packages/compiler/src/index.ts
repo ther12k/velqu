@@ -29,6 +29,12 @@ export {
   type WatchOptions,
   type DiscoveredFiles,
 } from "./watch";
+export {
+  buildTemporaryPack,
+  IncrementalPackBuilder,
+  type TempPackOptions,
+  type TempPackResult,
+} from "./incremental";
 
 export interface BuildOptions {
   project: string;           // path to the app entry (app.ts) or its directory

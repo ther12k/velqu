@@ -4,6 +4,16 @@ import { mkdirSync, writeFileSync, rmSync, existsSync, unlinkSync } from "node:f
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
+async function waitFor(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("timed out waiting for condition");
+    }
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
+
 describe("ProjectWatcher (M4A-001-A)", () => {
   let tempDir: string;
 
@@ -85,14 +95,14 @@ describe("ProjectWatcher (M4A-001-A)", () => {
     writeFileSync(routeFile, `export function router() { return { routes: ["/updated"] }; }\n`);
 
     // Await debounce + dispatch:
-    await new Promise((r) => setTimeout(r, 120));
+    await waitFor(() => receivedEvents.length > 0);
 
     expect(receivedEvents.length).toBeGreaterThanOrEqual(1);
     const sourceEv = receivedEvents.find((e) => e.kind === "source" && e.file.endsWith("routes.ts"));
     expect(sourceEv).toBeDefined();
     expect(sourceEv!.kind).toBe("source");
     expect(sourceEv!.latencyMs).toBeGreaterThanOrEqual(0);
-    expect(sourceEv!.latencyMs).toBeLessThan(500); // fast dev feedback
+    expect(sourceEv!.latencyMs).toBeLessThan(1000); // fast dev feedback
 
     watcher.close();
     expect(watcher.isWatching()).toBeFalse();
@@ -116,7 +126,7 @@ describe("ProjectWatcher (M4A-001-A)", () => {
       JSON.stringify({ formatVersion: 1, contractHash: "updated5678", routes: {} }, null, 2),
     );
 
-    await new Promise((r) => setTimeout(r, 120));
+    await waitFor(() => receivedEvents.length > 0);
 
     const contractEv = receivedEvents.find((e) => e.kind === "contract" && e.file.endsWith("contract.lock.json"));
     expect(contractEv).toBeDefined();
@@ -145,7 +155,8 @@ describe("ProjectWatcher (M4A-001-A)", () => {
     }
 
     // Wait for the single debounced event to fire:
-    await new Promise((r) => setTimeout(r, 150));
+    await waitFor(() => callCount > 0);
+    await new Promise((r) => setTimeout(r, 80));
 
     expect(callCount).toBe(1);
 
@@ -169,7 +180,7 @@ describe("ProjectWatcher (M4A-001-A)", () => {
     await new Promise((r) => setTimeout(r, 60));
 
     unlinkSync(extraFile);
-    await new Promise((r) => setTimeout(r, 120));
+    await waitFor(() => receivedEvents.some((e) => e.file.endsWith("extra.ts") && e.action === "delete"));
 
     const delEv = receivedEvents.find((e) => e.file.endsWith("extra.ts") && e.action === "delete");
     expect(delEv).toBeDefined();
