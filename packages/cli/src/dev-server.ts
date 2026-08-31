@@ -1,15 +1,20 @@
 /**
- * @velqu/cli — actual-runtime dev server and worker swap pipeline (M4A-001-C).
+ * @velqu/cli — actual-runtime dev server, worker swap & drain pipeline (M4A-001-C/D).
  *
  * Implements the safe reload loop: builds a temporary QPack, spawns and
  * verifies the new QuickJS worker runtime, and switches traffic ONLY after
  * the new worker is verified healthy and ready. If build or worker initialization
  * fails, the prior healthy worker continues serving traffic uninterrupted.
+ *
+ * M4A-001-D:
+ * - Signals old workers via SIGTERM to enter graceful drain (DrainGate refuses
+ *   new admissions; in-flight requests complete within budget).
+ * - Surfaces source-located compiler diagnostics and runtime stderr errors.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
-import { IncrementalPackBuilder, type TempPackResult } from "@velqu/compiler";
+import { IncrementalPackBuilder, type TempPackResult, CompileError } from "@velqu/compiler";
 import { ProjectWatcher, type WatchEvent } from "@velqu/compiler";
 
 export interface DevServerOptions {
@@ -23,8 +28,8 @@ export interface DevServerOptions {
   qRuntimeBin?: string;
   /** Service profile for the worker (default: "serverless") */
   serviceProfile?: string;
-  /** Auto-start file watcher on start (default: false in programmatic mode) */
-  watch?: boolean;
+  /** Maximum milliseconds to allow an old worker to drain before SIGKILL (default: 5000) */
+  drainTimeoutMs?: number;
   /** Reload callback */
   onReload?: (result: ReloadResult) => void;
   /** Log callback */
@@ -41,6 +46,7 @@ export interface WorkerInstance {
   contractHash: string;
   createdAt: number;
   readyAt: number;
+  draining: boolean;
 }
 
 export interface ReloadResult {
@@ -52,7 +58,50 @@ export interface ReloadResult {
   workerInitMs: number;
   retainedPriorWorker: boolean;
   error?: string;
+  formattedError?: string;
   contractChanged?: boolean;
+}
+
+/**
+ * Format compiler diagnostics into actionable, source-located error messages.
+ */
+export function formatCompileError(err: unknown): string {
+  if (err instanceof CompileError) {
+    let msg = `[dev:compile-error] ${err.message}`;
+    if (err.location) {
+      msg += `\n  --> ${err.location.file}:${err.location.line}:${err.location.column}`;
+      try {
+        if (existsSync(err.location.file)) {
+          const lines = readFileSync(err.location.file, "utf8").split("\n");
+          const lineText = lines[err.location.line - 1];
+          if (lineText) {
+            msg += `\n   |\n${err.location.line.toString().padStart(3, " ")} | ${lineText}`;
+            msg += `\n   | ${" ".repeat(Math.max(0, err.location.column - 1))}^`;
+          }
+        }
+      } catch {}
+    }
+    if (err.hint) {
+      msg += `\n  hint: ${err.hint}`;
+    }
+    return msg;
+  }
+  if (err instanceof Error) {
+    return `[dev:compile-error] ${err.message}`;
+  }
+  return `[dev:compile-error] ${String(err)}`;
+}
+
+/**
+ * Format runtime worker initialization and crash diagnostics.
+ */
+export function formatRuntimeError(stderr: string): string {
+  const trimmed = stderr.trim();
+  if (!trimmed) return "[dev:runtime-error] worker exited prematurely without stderr";
+  return `[dev:runtime-error] worker startup failed:\n${trimmed
+    .split("\n")
+    .map((l) => `  ${l}`)
+    .join("\n")}`;
 }
 
 export class DevServer {
@@ -61,6 +110,7 @@ export class DevServer {
   private readonly debounceMs: number;
   private readonly runtimeBin: string;
   private readonly serviceProfile: string;
+  private readonly drainTimeoutMs: number;
   private readonly onReload?: (result: ReloadResult) => void;
   private readonly onLog?: (msg: string) => void;
 
@@ -78,6 +128,7 @@ export class DevServer {
     this.requestedPort = opts.port ?? 0;
     this.debounceMs = opts.debounceMs ?? 50;
     this.serviceProfile = opts.serviceProfile ?? "serverless";
+    this.drainTimeoutMs = opts.drainTimeoutMs ?? 5_000;
     this.onReload = opts.onReload;
     this.onLog = opts.onLog;
     this.runtimeBin = this.findRuntimeBinary(opts.qRuntimeBin);
@@ -97,9 +148,9 @@ export class DevServer {
     const packResult = await this.builder.build();
 
     this.log(`spawning initial worker generation 1...`);
-    const initialWorker = await this.spawnAndVerifyWorker(packResult, 1);
+    const { worker: initialWorker, error: initError } = await this.spawnAndVerifyWorker(packResult, 1);
     if (!initialWorker) {
-      throw new Error(`failed to start initial worker runtime from pack ${packResult.packPath}`);
+      throw new Error(initError ?? `failed to start initial worker runtime from pack ${packResult.packPath}`);
     }
 
     this.activeWorker = initialWorker;
@@ -151,8 +202,8 @@ export class DevServer {
     try {
       packResult = await this.builder.build();
     } catch (e) {
-      const err = e instanceof Error ? e.message : String(e);
-      this.log(`[reload:gen-${nextGen}] compile failed: ${err} — retaining prior worker gen ${this.generation}`);
+      const formatted = formatCompileError(e);
+      this.log(`[reload:gen-${nextGen}] compile failed:\n${formatted}\n  --> retaining prior worker gen ${this.generation}`);
       this.reloading = false;
       const res: ReloadResult = {
         success: false,
@@ -162,7 +213,8 @@ export class DevServer {
         compileMs: Math.round(performance.now() - t0),
         workerInitMs: 0,
         retainedPriorWorker: true,
-        error: `compile error: ${err}`,
+        error: e instanceof Error ? e.message : String(e),
+        formattedError: formatted,
       };
       if (this.onReload) this.onReload(res);
       return res;
@@ -171,10 +223,11 @@ export class DevServer {
     const compileMs = packResult.buildMs;
     this.log(`[reload:gen-${nextGen}] spawning candidate worker runtime...`);
     const workerT0 = performance.now();
-    const candidateWorker = await this.spawnAndVerifyWorker(packResult, nextGen);
+    const { worker: candidateWorker, error: runtimeError } = await this.spawnAndVerifyWorker(packResult, nextGen);
 
     if (!candidateWorker) {
-      this.log(`[reload:gen-${nextGen}] worker initialization failed — retaining prior worker gen ${this.generation}`);
+      const formatted = formatRuntimeError(runtimeError ?? "candidate worker failed health check before traffic switch");
+      this.log(`[reload:gen-${nextGen}] ${formatted}\n  --> retaining prior worker gen ${this.generation}`);
       this.reloading = false;
       const res: ReloadResult = {
         success: false,
@@ -184,7 +237,8 @@ export class DevServer {
         compileMs,
         workerInitMs: Math.round(performance.now() - workerT0),
         retainedPriorWorker: true,
-        error: "candidate worker failed health check before traffic switch",
+        error: runtimeError ?? "candidate worker failed health check",
+        formattedError: formatted,
       };
       if (this.onReload) this.onReload(res);
       return res;
@@ -199,7 +253,7 @@ export class DevServer {
 
     if (oldWorker) {
       this.drainingWorkers.push(oldWorker);
-      // Initiate drain of old worker:
+      // Initiate bounded drain of old worker (M4A-001-D):
       this.drainWorker(oldWorker);
     }
 
@@ -233,12 +287,16 @@ export class DevServer {
     return this.activeWorker;
   }
 
+  public getDrainingWorkers(): WorkerInstance[] {
+    return [...this.drainingWorkers];
+  }
+
   public isHealthy(): boolean {
     return this.running && this.activeWorker != null;
   }
 
   /**
-   * Stop the server, kill all active/draining workers, and close watchers.
+   * Stop the server, drain and terminate all workers, and close watchers.
    */
   public async stop(): Promise<void> {
     this.running = false;
@@ -252,14 +310,18 @@ export class DevServer {
     }
     if (this.activeWorker) {
       try {
-        this.activeWorker.proc.kill();
-        await this.activeWorker.proc.exited;
+        this.activeWorker.proc.kill("SIGTERM");
+        await Promise.race([
+          this.activeWorker.proc.exited,
+          new Promise((r) => setTimeout(r, 2000)),
+        ]);
+        this.activeWorker.proc.kill("SIGKILL");
       } catch {}
       this.activeWorker = null;
     }
     for (const w of this.drainingWorkers) {
       try {
-        w.proc.kill();
+        w.proc.kill("SIGKILL");
         await w.proc.exited;
       } catch {}
     }
@@ -321,9 +383,9 @@ export class DevServer {
   private async spawnAndVerifyWorker(
     packResult: TempPackResult,
     generation: number,
-  ): Promise<WorkerInstance | null> {
+  ): Promise<{ worker: WorkerInstance | null; error?: string }> {
     if (!packResult.packPath || !existsSync(packResult.packPath)) {
-      return null;
+      return { worker: null, error: `pack file not found: ${packResult.packPath}` };
     }
 
     const port = this.findFreePort();
@@ -354,8 +416,17 @@ export class DevServer {
 
     while (Date.now() < deadline) {
       if (proc.exitCode !== null) {
-        // Process exited prematurely (load failure / invalid pack)
-        return null;
+        // Read stderr to surface runtime startup error:
+        let stderr = "";
+        try {
+          const stream = proc.stderr as ReadableStream<Uint8Array>;
+          if (stream) {
+            const reader = stream.getReader();
+            const chunk = await reader.read();
+            if (chunk.value) stderr = new TextDecoder().decode(chunk.value);
+          }
+        } catch {}
+        return { worker: null, error: stderr.trim() || `process exited with code ${proc.exitCode}` };
       }
       try {
         const conn = await Bun.connect({
@@ -381,33 +452,50 @@ export class DevServer {
         proc.kill();
         await proc.exited;
       } catch {}
-      return null;
+      return { worker: null, error: "timeout waiting for worker ready line" };
     }
 
     return {
-      id: `worker-gen-${generation}-${port}`,
-      generation,
-      port,
-      proc,
-      packPath: packResult.packPath,
-      packSha256: packResult.packSha256,
-      contractHash: packResult.contractHash,
-      createdAt: t0,
-      readyAt: performance.now(),
+      worker: {
+        id: `worker-gen-${generation}-${port}`,
+        generation,
+        port,
+        proc,
+        packPath: packResult.packPath,
+        packSha256: packResult.packSha256,
+        contractHash: packResult.contractHash,
+        createdAt: t0,
+        readyAt: performance.now(),
+        draining: false,
+      },
     };
   }
 
   private drainWorker(worker: WorkerInstance): void {
-    // SIGTERM signals the worker's DrainGate to refuse new admissions,
-    // drain in-flight connections (M3-007-C), and shutdown deterministically.
-    setTimeout(async () => {
+    worker.draining = true;
+    this.log(`[drain:gen-${worker.generation}] signaling SIGTERM to drain in-flight requests on port ${worker.port}...`);
+
+    // SIGTERM activates the worker's DrainGate (M3-007-B/C) to refuse new
+    // admissions while letting in-flight connections finish gracefully.
+    try {
+      worker.proc.kill("SIGTERM");
+    } catch {}
+
+    // Bounded drain wait:
+    const deadlineTimer = setTimeout(() => {
+      this.log(`[drain:gen-${worker.generation}] drain budget exceeded (${this.drainTimeoutMs}ms); forcing SIGKILL...`);
       try {
-        worker.proc.kill("SIGTERM");
-        await worker.proc.exited;
+        worker.proc.kill("SIGKILL");
       } catch {}
+    }, this.drainTimeoutMs);
+
+    worker.proc.exited.then(() => {
+      clearTimeout(deadlineTimer);
+      const elapsed = Math.round(performance.now() - worker.readyAt);
+      this.log(`[drain:gen-${worker.generation}] worker exited cleanly after drain`);
       const idx = this.drainingWorkers.indexOf(worker);
       if (idx !== -1) this.drainingWorkers.splice(idx, 1);
-    }, 100);
+    });
   }
 
   private async startWatcher(): Promise<void> {
