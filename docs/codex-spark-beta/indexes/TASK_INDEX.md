@@ -482,7 +482,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 
 | ID | P | Kind | Status | Dependencies | Task |
 |---|---:|---|---|---|---|
-| [M4A-001-A](../tasks/07_m4a_developer_preview/M4A-001-A-watch-source-and-contracts.md) | P0 | implement | TODO | M3-GATE | Watch source and contracts |
+| [M4A-001-A](../tasks/07_m4a_developer_preview/M4A-001-A-watch-source-and-contracts.md) | P0 | implement | PASS | M3-GATE | Watch source and contracts |
 | [M4A-001-B](../tasks/07_m4a_developer_preview/M4A-001-B-build-incremental-temporary-qpack.md) | P0 | implement | TODO | M4A-001-A | Build incremental temporary QPack |
 | [M4A-001-C](../tasks/07_m4a_developer_preview/M4A-001-C-load-new-worker-before-switching-traffic.md) | P0 | implement | TODO | M4A-001-B | Load new worker before switching traffic |
 | [M4A-001-D](../tasks/07_m4a_developer_preview/M4A-001-D-drain-old-worker-and-surface-compile-runtime-errors.md) | P0 | implement | TODO | M4A-001-C | Drain old worker and surface compile/runtime errors |

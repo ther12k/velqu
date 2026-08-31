@@ -21,6 +21,14 @@ export {
   type RouteStrategyDecision,
   type AppStrategyReport,
 } from "./strategy";
+export {
+  ProjectWatcher,
+  watchSourceAndContracts,
+  type WatchEvent,
+  type WatchEventKind,
+  type WatchOptions,
+  type DiscoveredFiles,
+} from "./watch";
 
 export interface BuildOptions {
   project: string;           // path to the app entry (app.ts) or its directory
