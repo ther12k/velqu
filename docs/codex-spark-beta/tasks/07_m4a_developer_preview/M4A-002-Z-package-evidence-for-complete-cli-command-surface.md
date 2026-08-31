@@ -4,7 +4,7 @@ parent_task: M4A-002
 milestone: M4A
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -116,3 +116,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-002-Z) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-002-z (squash-merged; see git log for final hash)
+- Closes: #443
+- Parent verification: M4A-002-V PASS (PR #1047, merged 76dd6f7) on the
+  identical tree; this packet packages the evidence and flips the ledger.
+
+### Evidence package (parent M4A-002 — complete CLI command surface)
+- **Implementation commits (squash-merged):**
+  - M4A-002-A complete CLI command surface — #1043 → 50ad849
+  - M4A-002-B stable exit codes — #1044 → f7ee168
+  - M4A-002-C machine-readable output option — #1045 → 476bb24
+  - M4A-002-D helpful actionable errors — #1046 → aad613d
+  - M4A-002-V verification closure — #1047 → 76dd6f7
+- **Source implementations & documentation:**
+  - `packages/cli/src/index.ts`: complete CLI command dispatcher (`dev`, `build`,
+    `inspect`, `contract diff`, `test`, `check`, `pack inspect/migrate`, `help`)
+    supporting `--json`, standard `--project` / `--out` / `--port` flags.
+  - `packages/cli/src/exit-codes.ts`: deterministic exit code constants
+    (`ExitCode.SUCCESS = 0`, `GENERAL_ERROR = 1`, `BREAKING_CONTRACT = 2`,
+    `UNSUPPORTED_FORMAT = 3`).
+  - `packages/cli/src/pack-inspect.ts`: `inspectPack` helper.
+  - `packages/cli/src/errors.ts`: `formatActionableError` with `renderCodeFrame`.
+  - `docs/beta/08_CLI_REFERENCE.md`: comprehensive CLI reference document.
+- **Key test coverage (34 test files, 259 tests):**
+  - `packages/cli/src/cli-surface.test.ts` (6 tests): inspect, check, pack inspect.
+  - `packages/cli/src/exit-codes.test.ts` (6 tests): exact exit code verification.
+  - `packages/cli/src/json-output.test.ts` (6 tests): `--json` across commands.
+  - `packages/cli/src/actionable-errors.test.ts` (4 tests): code frames and hints.
+- **Gate results (worktree-fresh):** `./scripts/verify` **ALL PASS** (incl.
+  velqu-runtime 7 suites, bun 259, fmt, workspace clippy -D warnings).
+
+### Ledger
+- `docs/beta/04_TASK_LEDGER.md`: M4A-002 TODO → **PASS** (all four
+  guardrails proven; see the M4A-002-V mapping).
+
+### Disclosures (standing)
+- No runtime behavior changed in this packet: evidence-only closure.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
