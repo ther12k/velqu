@@ -550,7 +550,12 @@ impl WorkerInner {
                     plan,
                     reply,
                 } => {
-                    let _ = reply.send(self.load(&bundle, bytecode.as_deref(), &plan));
+                    let res = self.load(&bundle, bytecode.as_deref(), &plan);
+                    self.shared.heap_used.store(
+                        self.rt.memory_usage().memory_used_size as u64,
+                        Ordering::Relaxed,
+                    );
+                    let _ = reply.send(res);
                 }
                 WorkerMsg::Invoke(job) => {
                     let disposition = self.begin_invocation(*job);
