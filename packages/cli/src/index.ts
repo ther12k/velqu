@@ -5,11 +5,25 @@
 import { build, contractDiff, CompileError, watchSourceAndContracts } from "@velqu/compiler";
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
-import { DevServer, type DevServerOptions, type ReloadResult, type WorkerInstance } from "./dev-server";
+import {
+  DevServer,
+  formatCompileError,
+  formatRuntimeError,
+  type DevServerOptions,
+  type ReloadResult,
+  type WorkerInstance,
+} from "./dev-server";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-export { DevServer, type DevServerOptions, type ReloadResult, type WorkerInstance };
+export {
+  DevServer,
+  formatCompileError,
+  formatRuntimeError,
+  type DevServerOptions,
+  type ReloadResult,
+  type WorkerInstance,
+};
 
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);

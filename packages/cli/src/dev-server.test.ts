@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { DevServer } from "./dev-server";
+import { DevServer, formatCompileError, formatRuntimeError } from "./dev-server";
+import { CompileError } from "@velqu/compiler";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-describe("DevServer & Worker Swap Pipeline (M4A-001-C)", () => {
+describe("DevServer & Worker Swap Pipeline (M4A-001-C/D)", () => {
   let tempDir: string;
 
   beforeEach(() => {
@@ -51,6 +52,23 @@ describe("DevServer & Worker Swap Pipeline (M4A-001-C)", () => {
     if (existsSync(tempDir)) {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("formats compiler diagnostics and runtime startup errors with location and hints", () => {
+    const compileErr = new CompileError(
+      "unsupported import 'node:fs'",
+      { file: "src/app.ts", line: 1, column: 8 },
+      "Velqu apps run on QuickJS with no Node/Bun APIs",
+    );
+    const formatted = formatCompileError(compileErr);
+    expect(formatted).toContain("[dev:compile-error]");
+    expect(formatted).toContain("src/app.ts:1:8");
+    expect(formatted).toContain("unsupported import 'node:fs'");
+    expect(formatted).toContain("hint: Velqu apps run on QuickJS");
+
+    const runtimeErr = formatRuntimeError("thread 'main' panicked at 'failed to bind port 8080'");
+    expect(runtimeErr).toContain("[dev:runtime-error]");
+    expect(runtimeErr).toContain("failed to bind port 8080");
   });
 
   it("starts dev server and proxies requests to QuickJS worker generation 1", async () => {
@@ -116,7 +134,7 @@ describe("DevServer & Worker Swap Pipeline (M4A-001-C)", () => {
     await server.stop();
   });
 
-  it("retains prior healthy worker when reload compilation fails (failed reload keeps prior app)", async () => {
+  it("surfaces formatted compile errors and retains prior healthy worker when compilation fails", async () => {
     const server = new DevServer({
       project: tempDir,
     });
@@ -136,6 +154,7 @@ describe("DevServer & Worker Swap Pipeline (M4A-001-C)", () => {
     expect(reloadRes.switched).toBeFalse();
     expect(reloadRes.retainedPriorWorker).toBeTrue();
     expect(reloadRes.error).toBeDefined();
+    expect(reloadRes.formattedError).toContain("[dev:compile-error]");
 
     // Generation remains 1:
     expect(server.getGeneration()).toBe(1);
@@ -146,6 +165,46 @@ describe("DevServer & Worker Swap Pipeline (M4A-001-C)", () => {
     const body = (await res.json()) as { version: number; msg: string };
     expect(body.version).toBe(1);
     expect(body.msg).toBe("hello-v1");
+
+    await server.stop();
+  });
+
+  it("drains old worker gracefully and reaps process cleanly after reload switch", async () => {
+    const server = new DevServer({
+      project: tempDir,
+    });
+
+    const { port } = await server.start();
+    const worker1 = server.getActiveWorker()!;
+    expect(worker1.generation).toBe(1);
+
+    // Reload to generation 2:
+    writeFileSync(
+      join(tempDir, "src", "routes.ts"),
+      `import { route } from "@velqu/core";\n` +
+        `import { s } from "@velqu/schema";\n` +
+        `export const helloRoute = route({\n` +
+        `  id: "hello.get",\n` +
+        `  method: "GET",\n` +
+        `  path: "/hello",\n` +
+        `  response: { 200: s.object({ version: s.integer(), msg: s.string() }) },\n` +
+        `  handle: async () => ({ version: 2, msg: "hello-v2" }),\n` +
+        `});\n`,
+    );
+
+    const reloadRes = await server.reload();
+    expect(reloadRes.success).toBeTrue();
+
+    // Verify generation 2 is active:
+    expect(server.getGeneration()).toBe(2);
+    expect(server.getActiveWorker()!.generation).toBe(2);
+
+    // Wait for old worker 1 to finish drain and exit:
+    const start = Date.now();
+    while (server.getDrainingWorkers().length > 0 && Date.now() - start < 3000) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(server.getDrainingWorkers().length).toBe(0);
 
     await server.stop();
   });
