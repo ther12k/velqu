@@ -4,7 +4,7 @@ parent_task: M3-009
 milestone: M3
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -117,3 +117,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-009-Z) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-009-z (squash-merged; see git log for final hash)
+- Closes: #425
+- Parent verification: M3-009-V PASS (PR #1028, merged ba77906) on the
+  identical tree; this packet packages the evidence and flips the ledger.
+
+### Evidence package (parent M3-009 — multi-worker scaling & memory evidence)
+- **Implementation commits (squash-merged):**
+  - M3-009-A measure 1/2/4 workers — #1024 → ede475d
+  - M3-009-B metrics report — #1025 → 476b1fb
+  - M3-009-C C1/C2/C3 + controlled I/O — #1026 → cff83c0
+  - M3-009-D physical core topology — #1027 → bf8c8b0
+  - M3-009-V verification closure — #1028 → ba77906
+- **Raw evidence:** `benchmarks/raw/worker-scaling/` — v4
+  worker-scaling.jsonl (71 100 samples incl. per-sample queue wait),
+  worker-scaling-summary.json (velqu-worker-scaling-v4 with the
+  physicalTopology block), host-topology.json (cpuinfo-bound).
+- **Generated reports:** `docs/reports/m3-009-a-worker-scaling.md`,
+  `m3-009-b-multiworker-metrics.md`, `m3-009-c-controlled-workloads.md`,
+  `m3-009-d-host-topology.md` — each with SHA-256 artifact hashes.
+- **Headline measurements:** 1→2→4 workers scale 1.97–2.39× / 3.53–4.03×
+  (medians, per workload); service p99 flat across W on every run (no
+  p99 collapse); per-worker heap identical (201 339 B / 204 182 B C3)
+  and stable; 0 classified errors across 45 000 verified requests.
+- **Open item (owner decision):** the numeric 2-worker scaling target
+  is UNAPPROVED — the guardrail is satisfied via the documented-
+  limitation branch; tracked with REVIEW_INDEX open items.
+- **Gate results (this branch, worktree-fresh):** `./scripts/verify`
+  **ALL PASS** (incl. q-engine-quickjs, velqu-runtime, bun scoped tests,
+  fmt, workspace clippy -D warnings).
+
+### Ledger
+- `docs/beta/04_TASK_LEDGER.md`: M3-009 TODO → **PASS** (all four
+  guardrails proven; see the M3-009-V mapping).
+
+### Disclosures (standing)
+- No runtime behavior changed in this packet: evidence-only closure.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
