@@ -2,9 +2,19 @@
  * @velqu/cli — the `velqu` command: build / inspect / contract diff / dev-notes.
  * (Dev server is P1; M2 provides build + inspection + diff per DX-006.)
  */
-import { build, contractDiff, CompileError, watchSourceAndContracts } from "@velqu/compiler";
+import {
+  build,
+  contractDiff,
+  CompileError,
+  watchSourceAndContracts,
+  extractApp,
+  evaluateAppStrategies,
+  assertPinnedToolchain,
+  PINNED_TOOLCHAIN,
+} from "@velqu/compiler";
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
+import { inspectPack } from "./pack-inspect";
 import {
   DevServer,
   formatCompileError,
@@ -14,12 +24,14 @@ import {
   type WorkerInstance,
 } from "./dev-server";
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import * as ts from "typescript";
 
 export {
   DevServer,
   formatCompileError,
   formatRuntimeError,
+  inspectPack,
   type DevServerOptions,
   type ReloadResult,
   type WorkerInstance,
@@ -56,6 +68,32 @@ async function main() {
     }
     case "inspect": {
       const what = rest.find((a) => !a.startsWith("--"));
+
+      if (what === "diagnostics") {
+        try {
+          assertPinnedToolchain({ bun: Bun.version!, typescript: ts.version });
+          const entry = resolveEntryPath(project);
+          const app = extractApp(entry);
+          const { report: strategyReport } = evaluateAppStrategies(app.routes);
+          console.log(`diagnostics for ${app.appId} (${entry}):`);
+          console.log(`  routes: ${app.routes.length}`);
+          console.log(`  policies: ${app.policies.length}`);
+          console.log(`  modules: ${app.modules.length}`);
+          console.log(`  strategy fallbacks: ${strategyReport.fallbacks.length}`);
+          for (const f of strategyReport.fallbacks) {
+            console.log(`    - ${f.route} [${f.location}]: ${f.reason} (${f.description})`);
+          }
+          console.log("  verdict: OK (static contract extraction clean)");
+        } catch (e) {
+          if (e instanceof CompileError) {
+            console.error(e.toString());
+            process.exit(1);
+          }
+          throw e;
+        }
+        break;
+      }
+
       const dist = args.get("dist") ?? distFor(project);
       const manifestPath = join(dist, "route-manifest.json");
       if (!existsSync(manifestPath)) {
@@ -119,31 +157,78 @@ async function main() {
         }
         for (const n of strategies.notes || []) console.log(`  ${n}`);
       } else {
-        console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks>");
+        console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics>");
         process.exit(1);
       }
       break;
     }
     case "pack": {
-      // M26-008-B: rebuild/migration guidance for legacy packs.
       const sub = rest[0];
-      if (sub !== "migrate") {
-        console.error("usage: velqu pack migrate <app.qpack>");
-        process.exit(1);
-      }
-      const file = rest[1];
-      if (!file || !existsSync(file)) {
-        console.error(`pack not found: ${file ?? "(none given)"}`);
-        process.exit(1);
-      }
-      const report = assessPackMigrate(() => readFileSync(file, "utf8"));
-      if (report.status === "legacy-supported") {
-        console.log(`formatVersion ${report.formatVersion} (legacy JSON adapter, supported through M2.6):`);
-        for (const line of report.guidance) console.log(`  - ${line}`);
+      if (sub === "inspect") {
+        const file = rest[1] ?? join(distFor(project), "app.qpack");
+        const report = inspectPack(file);
+        if (report.status === "error") {
+          console.error(`pack inspection failed: ${report.error}`);
+          process.exit(1);
+        }
+        console.log(`pack: ${report.file}`);
+        console.log(`  appId: ${report.appId}`);
+        console.log(`  formatVersion: ${report.formatVersion}`);
+        console.log(`  contractHash: ${report.contractHash}`);
+        console.log(`  engine: ${report.engine?.name} ${report.engine?.version} (runtimeAbi=${report.engine?.runtimeAbi})`);
+        console.log(`  routes: ${report.routesCount}`);
+        console.log(`  schemas: ${report.schemasCount}`);
+        console.log(`  policies: ${report.policiesCount}`);
+        console.log(`  capabilities: [${(report.capabilities ?? []).join(", ")}]`);
+        console.log(`  bundleSha256: ${report.bundleSha256}`);
         break;
+      } else if (sub === "migrate") {
+        const file = rest[1];
+        if (!file || !existsSync(file)) {
+          console.error(`pack not found: ${file ?? "(none given)"}`);
+          process.exit(1);
+        }
+        const report = assessPackMigrate(() => readFileSync(file, "utf8"));
+        if (report.status === "legacy-supported") {
+          console.log(`formatVersion ${report.formatVersion} (legacy JSON adapter, supported through M2.6):`);
+          for (const line of report.guidance) console.log(`  - ${line}`);
+          break;
+        }
+        console.error(report.message);
+        process.exit(1);
+      } else {
+        console.error("usage: velqu pack <inspect [file]|migrate <file>>");
+        process.exit(1);
       }
-      console.error(report.message);
-      process.exit(1);
+      break;
+    }
+    case "test": {
+      const filter = rest.filter((a) => !a.startsWith("--")).join(" ");
+      const testCmd = ["bun", "test"];
+      if (filter) testCmd.push(filter);
+      const proc = Bun.spawn(testCmd, {
+        stdout: "inherit",
+        stderr: "inherit",
+        env: process.env,
+      });
+      const exitCode = await proc.exited;
+      process.exit(exitCode);
+      break;
+    }
+    case "check": {
+      try {
+        assertPinnedToolchain({ bun: Bun.version!, typescript: ts.version });
+        const entry = resolveEntryPath(project);
+        const app = extractApp(entry);
+        console.log(`velqu check: ${app.routes.length} routes in ${project} — clean`);
+      } catch (e) {
+        if (e instanceof CompileError) {
+          console.error(e.toString());
+          process.exit(1);
+        }
+        throw e;
+      }
+      break;
     }
     case "contract": {
       const sub = rest[0];
@@ -209,16 +294,45 @@ async function main() {
       console.log(`  directories: ${watcher.watchedDirectoryCount()}`);
       break;
     }
-    default:
-      console.log(`q — Velqu build, dev & inspection CLI
+    case "help":
+    case "--help":
+    case "-h":
+    default: {
+      const isHelp = !cmd || cmd === "help" || cmd === "--help" || cmd === "-h";
+      if (!isHelp) {
+        console.error(`unknown command: '${cmd}'\n`);
+      }
+      console.log(`velqu — Unified Velqu CLI
 usage:
-  velqu dev --project <dir|entry> [--debounce-ms 50]
-  velqu build --project <dir|entry> [--profile serverless] [--out <dir>]
-  velqu inspect routes|route <id>|capabilities|fallbacks [--dist <dir>]
+  velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50]
+  velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
+  velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
   velqu contract diff --against <contract.lock.json>
-  velqu pack migrate <app.qpack>`);
-      process.exit(cmd ? 1 : 0);
+  velqu test [filter]
+  velqu check [--project <dir|entry>]
+  velqu pack inspect <file> | migrate <file>`);
+      process.exit(isHelp ? 0 : 1);
+    }
   }
+}
+
+function resolveEntryPath(project: string): string {
+  const { statSync, existsSync } = require("node:fs") as typeof import("node:fs");
+  const { join } = require("node:path") as typeof import("node:path");
+  let st;
+  try {
+    st = statSync(project);
+  } catch {
+    throw new Error(`project path not found: ${project}`);
+  }
+  if (st.isDirectory()) {
+    for (const c of ["src/app.ts", "app.ts", "src/index.ts"]) {
+      const p = join(project, c);
+      if (existsSync(p)) return p;
+    }
+    throw new Error(`no app entry found in ${project} (looked for src/app.ts, app.ts, src/index.ts)`);
+  }
+  return project;
 }
 
 function distFor(project: string): string {
