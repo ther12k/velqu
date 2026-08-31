@@ -476,7 +476,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M3-010-D](../tasks/06_m3_multi_worker/M3-010-D-verify-recovery.md) | P0 | implement | PASS | M3-010-C | Verify recovery |
 | [M3-010-V](../tasks/06_m3_multi_worker/M3-010-V-verify-run-multi-worker-soak-and-recovery.md) | P0 | verify | PASS | M3-010-A, M3-010-B, M3-010-C, M3-010-D | Verify Run multi-worker soak and recovery |
 | [M3-010-Z](../tasks/06_m3_multi_worker/M3-010-Z-package-evidence-for-run-multi-worker-soak-and-recovery.md) | P0 | evidence | PASS | M3-010-V | Package evidence for Run multi-worker soak and recovery |
-| [M3-GATE](../gates/M3-GATE.md) | P0 | gate | TODO | M3-001-Z, M3-002-Z, M3-003-Z, M3-004-Z, M3-005-Z, M3-006-Z, M3-007-Z, M3-008-Z, M3-009-Z, M3-010-Z | M3 — Multi-Worker Service Runtime exit gate |
+| [M3-GATE](../gates/M3-GATE.md) | P0 | gate | PASS | M3-001-Z, M3-002-Z, M3-003-Z, M3-004-Z, M3-005-Z, M3-006-Z, M3-007-Z, M3-008-Z, M3-009-Z, M3-010-Z | M3 — Multi-Worker Service Runtime exit gate |
 
 ## M4A — Actual-Runtime Developer Preview and Private Alpha
 
