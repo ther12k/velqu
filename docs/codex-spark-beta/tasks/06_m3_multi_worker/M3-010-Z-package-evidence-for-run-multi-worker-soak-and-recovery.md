@@ -4,7 +4,7 @@ parent_task: M3-010
 milestone: M3
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -141,3 +141,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-010-Z) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-010-z (squash-merged; see git log for final hash)
+- Closes: #431
+- Parent verification: M3-010-V PASS (PR #1034, merged 7ea23bb) on the
+  identical tree; this packet packages the evidence and flips the ledger.
+
+### Evidence package (parent M3-010 — multi-worker soak & recovery)
+- **Implementation commits (squash-merged):**
+  - M3-010-A sustained mixed-load soak — #1030 → 45ea7f2
+  - M3-010-B chaos injection — #1031 → 859e763
+  - M3-010-C retained memory & slot tracking — #1032 → 886542e
+  - M3-010-D recovery verification — #1033 → 4624f8d
+  - M3-010-V verification closure — #1034 → 7ea23bb
+- **Raw evidence:** `benchmarks/raw/worker-scaling/` — soak.jsonl (window
+  samples), soak-summary.json (velqu-soak-v2 with chaos timeline,
+  retainedMemory, and taskSlotCounts blocks).
+- **Generated reports:** `docs/reports/m3-010-a-soak.md`,
+  `m3-010-b-chaos.md`, `m3-010-c-retained-memory-and-slots.md`,
+  `m3-010-d-recovery.md` — each with SHA-256 artifact hashes.
+- **Key proofs:**
+  - 30-minute soak: 4.41 M requests, 100% verified, 0 errors, flat heaps
+    (~201 KB), process RSS −388 KiB below start.
+  - 15-minute chaos soak: 2.43 M requests, 14 engine rebuilds (~4 ms each),
+    100% exact accounting (completed + disconnects + timeouts == dispatched),
+    0 unexplained errors, net heap delta +4.7 KB / +0.6 KB across 14 rebuilds.
+  - Task & slot quiescence: `ownership.pendingAtShutdown == 0`,
+    `native_tasks_alive == 0`, `pending_ops == 0`.
+  - Recovery integration tests: 3 tests in `crates/q-capabilities/tests/recovery.rs`
+    proving capacity recovery, load equalization, and 50 poison/replace cycles
+    with zero leaked slots.
+- **Gate results (worktree-fresh):** `./scripts/verify` **ALL PASS** (incl.
+  q-capabilities 260+6+3+7+1+4+9, q-engine-quickjs 20+102+1, velqu-runtime
+  7 suites, bun 219/219, fmt, workspace clippy -D warnings).
+
+### Ledger
+- `docs/beta/04_TASK_LEDGER.md`: M3-010 TODO → **PASS** (all four
+  guardrails proven; see the M3-010-V mapping).
+
+### Disclosures (standing)
+- No runtime behavior changed in this packet: evidence-only closure.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
