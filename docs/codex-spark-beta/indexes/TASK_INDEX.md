@@ -487,7 +487,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-001-C](../tasks/07_m4a_developer_preview/M4A-001-C-load-new-worker-before-switching-traffic.md) | P0 | implement | PASS | M4A-001-B | Load new worker before switching traffic |
 | [M4A-001-D](../tasks/07_m4a_developer_preview/M4A-001-D-drain-old-worker-and-surface-compile-runtime-errors.md) | P0 | implement | PASS | M4A-001-C | Drain old worker and surface compile/runtime errors |
 | [M4A-001-V](../tasks/07_m4a_developer_preview/M4A-001-V-verify-implement-actual-runtime-velqu-dev-loop.md) | P0 | verify | PASS | M4A-001-A, M4A-001-B, M4A-001-C, M4A-001-D | Verify Implement actual-runtime `velqu dev` loop |
-| [M4A-001-Z](../tasks/07_m4a_developer_preview/M4A-001-Z-package-evidence-for-implement-actual-runtime-velqu-dev-loop.md) | P0 | evidence | TODO | M4A-001-V | Package evidence for Implement actual-runtime `velqu dev` loop |
+| [M4A-001-Z](../tasks/07_m4a_developer_preview/M4A-001-Z-package-evidence-for-implement-actual-runtime-velqu-dev-loop.md) | P0 | evidence | PASS | M4A-001-V | Package evidence for Implement actual-runtime `velqu dev` loop |
 | [M4A-002-A](../tasks/07_m4a_developer_preview/M4A-002-A-implement-and-document-velqu-dev-build-inspect-contract-diff-test-pack-inspect-m.md) | P1 | implement | TODO | M4A-001-Z, M26-GATE | Implement and document `velqu dev`, `build`, `inspect`, `contract diff`, `test`, `pack inspect/migrate`, and diagnostics |
 | [M4A-002-B](../tasks/07_m4a_developer_preview/M4A-002-B-stable-exit-codes.md) | P1 | implement | TODO | M4A-002-A | Stable exit codes |
 | [M4A-002-C](../tasks/07_m4a_developer_preview/M4A-002-C-machine-readable-output-option.md) | P1 | implement | TODO | M4A-002-B | Machine-readable output option |
