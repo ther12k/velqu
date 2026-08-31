@@ -4,7 +4,7 @@ parent_task: M3-009
 milestone: M3
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -114,3 +114,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-009-C) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-009-c (squash-merged; see git log for final hash)
+- Closes: #422
+
+### Changed files
+- `crates/q-bench-support/src/bin/worker_scaling.rs`: the bench gains a
+  WORKLOAD dimension (format v4) with frozen definitions:
+  - **C1 — CPU-bound**: 100 % `cpu.work` (verified exactly);
+  - **C2 — mixed**: 80 % `light.work` + 20 % `cpu.work` by the
+    deterministic rule `id.is_multiple_of(5)` (consumer verifies every
+    response against the known kind);
+  - **C3 — I/O-bound**: 100 % `io.delay` — one 1 ms native timer op per
+    invocation; CONTROLLED I/O (deterministic, no external network;
+    1 200 requests per repetition).
+  9 configs (3 workloads × 1/2/4 workers) × 3 interleaved repetitions.
+- `benchmarks/raw/worker-scaling/`: v4 evidence (71 100 raw samples).
+- `docs/reports/m3-009-c-controlled-workloads.md` (new): report with
+  artifact hashes.
+- `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Headline (exact values in the summary/report; 21 600/21 600 verified, 0 errors)
+- **C1 CPU**: 802 / 1 583 / 2 835 ops/s → 1.97× / 3.53×.
+- **C2 mixed**: 3 545 / 7 508 / 13 911 ops/s → 2.12× / 3.92×; light
+  p50 ~23 µs at EVERY worker count while the CPU tail runs — no
+  light-class starvation (M3-008 fairness posture measured in situ).
+- **C3 controlled I/O**: 438 / 871 / 1 688 ops/s → 1.99× / 3.85×,
+  tightest repetition spread; CPU-per-op collapses (timers don't burn
+  CPU while waiting).
+- Service p99 in-band across worker counts within each workload — no
+  p99 collapse. Per-worker heap: 201 339 B (C1/C2) / 204 182 B (C3,
+  timer op table), stable across repetitions.
+
+### Command results
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → 219/219; `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+  (one `manual_is_multiple_of` lint fixed post-fmt; evidence then
+  REGENERATED from the final source so hashes match the shipped
+  binary)
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+- C3's controlled I/O uses native timers (deterministic, no network);
+  external-network I/O remains outside the controlled-workload scope.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
