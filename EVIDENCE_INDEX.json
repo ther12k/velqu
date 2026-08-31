@@ -1,17 +1,17 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-08-27T00:00:00Z",
+  "generatedAt": "2026-08-31T00:00:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M28-NATIVE-OUTBOUND-FETCH",
-  "reviewedImplementationCommit": "1cd63fc",
+  "milestone": "M3-MULTI-WORKER-SERVICE-RUNTIME",
+  "reviewedImplementationCommit": "8b36acc",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS \u2014 exit 0 at candidate commit 1cd63fc; artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
-    "rustTests": "workspace tests PASS (q-capabilities 192+7+1+4+9, q-engine-quickjs 18+101, velqu-runtime 12+5+44, q-http 4+6+1, q-bridge 11)",
+    "result": "PASS — exit 0 at candidate commit 8b36acc; artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
+    "rustTests": "workspace tests PASS (q-capabilities 260+6+3+7+1+4+9, q-engine-quickjs 20+102+1, velqu-runtime 55+6+5+2+35, q-http 4+6+1, q-bridge 11)",
     "typescriptTests": 219,
-    "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS; release binary b82960604ddf390d matches manifest"
+    "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS; release binary matches manifest"
   },
   "benchmarks": {
     "capabilityProfiles": "benchmarks/raw/profiles/capability-profiles.json",
@@ -22,21 +22,26 @@
     "realWorldW4": "benchmarks/raw/real-world/w4-latency/comparison.md",
     "realWorldFanout": "benchmarks/raw/real-world/fanout/comparison.md",
     "realWorldMixed": "benchmarks/raw/real-world/mixed/comparison.md",
-    "realWorldConcurrency": "benchmarks/raw/real-world/concurrency/comparison.md"
+    "realWorldConcurrency": "benchmarks/raw/real-world/concurrency/comparison.md",
+    "workerScaling": "benchmarks/raw/worker-scaling/worker-scaling-summary.json",
+    "soakSummary": "benchmarks/raw/worker-scaling/soak-summary.json",
+    "hostTopology": "benchmarks/raw/worker-scaling/host-topology.json"
   },
   "reports": [
-    "docs/reports/m28-gate-review.md",
-    "docs/reports/m27-gate-review.md",
-    "docs/reports/m27-010-wpt-wintertc-conformance.md",
-    "docs/reports/m27-011-capability-cost-budget-report.md",
-    "docs/reports/m27-005-wpt-url-report.md",
-    "docs/reports/m27-006-wpt-text-encoding-report.md",
-    "docs/reports/m27-003-context-profiles-compat.md",
-    "docs/reports/m27-002-d-prune-deltas.md"
+    "docs/reports/m3-gate-review.md",
+    "docs/reports/m3-009-a-worker-scaling.md",
+    "docs/reports/m3-009-b-multiworker-metrics.md",
+    "docs/reports/m3-009-c-controlled-workloads.md",
+    "docs/reports/m3-009-d-host-topology.md",
+    "docs/reports/m3-010-a-soak.md",
+    "docs/reports/m3-010-b-chaos.md",
+    "docs/reports/m3-010-c-retained-memory-and-slots.md",
+    "docs/reports/m3-010-d-recovery.md",
+    "docs/reports/m28-gate-review.md"
   ],
   "taskLedger": {
     "file": "docs/beta/04_TASK_LEDGER.md",
-    "result": "PASS \u2014 all M27-001 through M27-011 parent rows and M27-GATE marked PASS"
+    "result": "PASS — all M3-001 through M3-010 parent rows and M3-GATE marked PASS"
   },
   "release": {
     "script": "scripts/release-packet",
@@ -44,8 +49,9 @@
     "checksums": "sha256sum -c release/SHA256SUMS.txt"
   },
   "openItems": [
-    "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path (producer emit + runtime default load through the native reader) is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. Requires an owner-authorized follow-up packet."
+    "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path (producer emit + runtime default load through the native reader) is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. Requires an owner-authorized follow-up packet.",
+    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports)."
   ],
   "gates": [],
-  "evidenceCheckpoint": "1cd63fc"
+  "evidenceCheckpoint": "8b36acc"
 }

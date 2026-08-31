@@ -1,55 +1,58 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-08-27T00:00:00Z",
+  "generatedAt": "2026-08-31T00:00:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M28-NATIVE-OUTBOUND-FETCH",
+  "milestone": "M3-MULTI-WORKER-SERVICE-RUNTIME",
   "status": "PASS",
-  "reviewedImplementationCommit": "1cd63fc",
-  "evidenceCheckpoint": "1cd63fc",
+  "reviewedImplementationCommit": "8b36acc",
+  "evidenceCheckpoint": "8b36acc",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "M28 package dependency closure",
+      "gate": "M3 package dependency closure",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/05_m28_native_fetch/*-Z-*.md"
+        "docs/codex-spark-beta/tasks/06_m3_multi_worker/*-Z-*.md"
       ],
       "tests": [
         "scripts/spark-queue"
       ],
-      "evidence": "M28-001-Z through M28-011-Z all status PASS (PRs #914, #920, #926, #932, #938, #944, #950, #956, #962, #968, #974)"
+      "evidence": "M3-001-Z through M3-010-Z all status PASS (PRs #977, #983, #989, #995, #1001, #1011, #1017, #1023, #1029, #1035)"
     },
     {
-      "gate": "Fetch security policy, pool, Web subset, abort, streaming, redirect/compression, SSRF egress, lifecycle/observability/shutdown, conformance, and realistic-I/O evidence",
+      "gate": "Multi-Worker state ownership, bounded dispatch, profiles, quarantine/replacement, adaptive scaling, shutdown, fairness/overload, scaling evidence, soak and recovery",
       "status": "PASS",
       "source": [
-        "crates/q-capabilities/src/fetch_policy.rs",
-        "crates/q-capabilities/src/stream_buffer.rs",
-        "crates/q-capabilities/src/fetch_metrics.rs",
-        "crates/q-runtime/src/fetch_stack.rs",
+        "crates/q-capabilities/src/dispatch.rs",
+        "crates/q-capabilities/src/invocation.rs",
+        "crates/q-capabilities/src/drain.rs",
+        "crates/q-capabilities/src/fairness.rs",
+        "crates/q-capabilities/src/long_running.rs",
+        "crates/q-capabilities/src/load_shed.rs",
+        "crates/q-runtime/src/service_profile.rs",
+        "crates/q-runtime/src/serve.rs",
         "crates/q-runtime/src/lib.rs",
-        "crates/q-engine-quickjs/src/prelude.rs",
-        "crates/q-engine-quickjs/src/worker.rs"
+        "crates/q-engine-quickjs/src/lib.rs",
+        "crates/q-engine-quickjs/src/worker.rs",
+        "crates/q-pack/src/lib.rs"
       ],
       "tests": [
-        "crates/q-capabilities/tests/wpt_wintertc_conformance.rs",
-        "crates/q-capabilities/tests/fuzz_fetch_inputs.rs",
-        "crates/q-capabilities/tests/stream_backpressure.rs",
-        "crates/q-runtime/tests/fetch_pool_conformance.rs",
-        "crates/q-runtime/tests/fetch_fixture_conformance.rs",
-        "crates/q-runtime/tests/fetch_proxy_cancellation_conformance.rs",
+        "crates/q-capabilities/tests/fairness_workloads.rs",
+        "crates/q-capabilities/tests/recovery.rs",
+        "crates/q-engine-quickjs/tests/engine.rs",
         "crates/q-runtime/tests/runtime_conformance.rs"
       ],
-      "evidence": "M28-001..M28-011 V+Z packets; ADR-0033/0034/0035 accepted; WPT manifest v1.2.0 79/79 vectors; 4 benchmark matrices all-cells-clean; docs/reports/m28-gate-review.md"
+      "evidence": "M3-001..M3-010 V+Z packets; ADR-0036 accepted; scaling evidence C1/C2/C3; soak 4.41M reqs 0 errors; docs/reports/m3-gate-review.md"
     }
   ],
   "openItems": [
-    "PACK_FORMAT_CURRENT pinned to v1: compiler emits formatVersion 1 and runtime loads JSON packs by default; v2 binary sections/reader/bytecode path exist behind tests but are not the default production path. Carried forward from M26 gate review; requires owner-authorized follow-up packet."
+    "PACK_FORMAT_CURRENT pinned to v1: compiler emits formatVersion 1 and runtime loads JSON packs by default; v2 binary sections/reader/bytecode path exist behind tests but are not the default production path. Carried forward from M26 gate review; requires owner-authorized follow-up packet.",
+    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports)."
   ],
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS \u2014 exit 0 at candidate commit 2b7d00f",
-    "typescriptTests": 213
+    "result": "PASS — exit 0 at candidate commit 8b36acc",
+    "typescriptTests": 219
   }
 }

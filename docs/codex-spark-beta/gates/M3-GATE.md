@@ -4,7 +4,7 @@ parent_task: M3-GATE
 milestone: M3
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: PASS
 context_card: context/milestones/M3.md
 commit_required: true
 ---
@@ -120,3 +120,16 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M3-GATE) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m3-gate (squash-merged; see git log for final hash)
+- Candidate commit: 8b36acc (clean tree at gate time)
+
+### Gate decision: PASS
+- All 10 parents (M3-001..M3-010) have V+Z packets PASS; ledger row updated.
+- Full verification from the clean candidate commit: ./scripts/verify exit 0 (Rust: q-capabilities 260+6+3+7+1+4+9, q-engine-quickjs 20+102+1, velqu-runtime 55+6+5+2+35, q-http 4+6+1, q-bridge 11; TypeScript 219; fmt/clippy -D warnings clean; benchmark evidence current; release binary matches manifest).
+- Review packet: docs/reports/m3-gate-review.md; indexes EVIDENCE_INDEX.json / REVIEW_INDEX.json updated to the M3 checkpoint (commit rewritten by scripts/release-packet at release time).
+- Milestone report, source archive, Git bundle, and SHA-256 manifest produced via scripts/release-packet (release/ artifacts are untracked by design).
+- No unresolved P0/P1 findings hidden or waived: the PACK_FORMAT_CURRENT owner decision remains tracked in REVIEW_INDEX openItems (carried from M26); the numeric 2-worker scaling target is tracked in REVIEW_INDEX openItems.

@@ -464,7 +464,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [M3-010-D — Verify recovery](tasks/06_m3_multi_worker/M3-010-D-verify-recovery.md)
 - [x] [M3-010-V — Verify Run multi-worker soak and recovery](tasks/06_m3_multi_worker/M3-010-V-verify-run-multi-worker-soak-and-recovery.md)
 - [x] [M3-010-Z — Package evidence for Run multi-worker soak and recovery](tasks/06_m3_multi_worker/M3-010-Z-package-evidence-for-run-multi-worker-soak-and-recovery.md)
-- [ ] [M3-GATE — M3 — Multi-Worker Service Runtime exit gate](gates/M3-GATE.md)
+- [x] [M3-GATE — M3 — Multi-Worker Service Runtime exit gate](gates/M3-GATE.md)
 
 ## M4A — Actual-Runtime Developer Preview and Private Alpha
 
