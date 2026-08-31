@@ -1,11 +1,12 @@
 /**
- * @velqu/cli — starter project scaffolding template (M4A-003-A).
+ * @velqu/cli — starter project scaffolding template (M4A-003-A/B).
  *
  * Provides minimal, correct starter templates without demo credentials
  * or forced databases:
  * - Module/service/contract separation.
  * - Standard health/liveness route and greetings API.
- * - Minimal workspace dependencies (@velqu/core, @velqu/schema).
+ * - Minimal workspace dependencies (@velqu/core, @velqu/schema, @velqu/treaty).
+ * - End-to-end type-safe Treaty client example with route-id dot-navigation.
  */
 
 export interface ProjectTemplateOptions {
@@ -30,10 +31,12 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
         build: "velqu build",
         check: "velqu check",
         test: "velqu test",
+        client: "bun run src/client.ts",
       },
       dependencies: {
         "@velqu/core": "workspace:*",
         "@velqu/schema": "workspace:*",
+        "@velqu/treaty": "workspace:*",
       },
       devDependencies: {
         "@types/bun": "^1.3.4",
@@ -158,6 +161,91 @@ export function createGreeting(name: string, custom?: string): GreetingItem {
 }
 `;
 
+  const clientTs = `/**
+ * Type-safe Treaty client example (M4A-003-B).
+ *
+ * Demonstrates:
+ * - Route-ID dot-navigation: \`api.greetings.get({ name: "Ada" })\`
+ * - Strict 2xx data vs non-2xx error splitting: \`if (res.data) ... else res.error\`
+ * - Complete type inference from server route contracts with zero shared runtime code.
+ */
+
+import { treaty, type TreatyClient } from "@velqu/treaty";
+
+export type StarterApi = {
+  "health.live": {
+    path: "/health/live";
+    method: "GET";
+    params: never;
+    query: never;
+    body: never;
+    headers: never;
+    responses: { 200: { status: string } };
+  };
+  "greetings.get": {
+    path: "/greetings/:name";
+    method: "GET";
+    params: { name: string };
+    query: never;
+    body: never;
+    headers: never;
+    responses: { 200: { message: string } };
+  };
+  "greetings.create": {
+    path: "/greetings";
+    method: "POST";
+    params: never;
+    query: never;
+    body: { name: string; customGreeting?: string };
+    headers: never;
+    responses: { 201: { name: string; greeting: string } };
+  };
+}
+
+export const contract = {
+  "health.live": { path: "/health/live", method: "GET" },
+  "greetings.get": { path: "/greetings/:name", method: "GET" },
+  "greetings.create": { path: "/greetings", method: "POST" },
+} as const;
+
+export function createClient(baseUrl = "http://127.0.0.1:3000"): TreatyClient<StarterApi> {
+  return treaty<StarterApi>({
+    baseUrl,
+    contract,
+  });
+}
+
+export async function main() {
+  const api = createClient();
+  console.log("Calling health.live via Treaty...");
+  const health = await api.health.live.get();
+  if (health.data) {
+    console.log("Health OK:", health.data.status);
+  } else {
+    console.error("Health error:", health.error);
+  }
+
+  console.log("Creating custom greeting via Treaty...");
+  const created = await api.greetings.create.post({
+    name: "Ada",
+    customGreeting: "Greetings from Treaty!",
+  });
+  if (created.data) {
+    console.log("Created greeting:", created.data);
+  }
+
+  console.log("Fetching greeting by route param...");
+  const greeting = await api.greetings.get({ name: "Ada" }).get();
+  if (greeting.data) {
+    console.log("Message:", greeting.data.message);
+  }
+}
+
+if (import.meta.main) {
+  main().catch(console.error);
+}
+`;
+
   const readmeMd = `# ${opts.name}
 
 ${description}
@@ -173,6 +261,9 @@ bun run build
 
 # Static check
 bun run check
+
+# Run Treaty client example
+bun run client
 \`\`\`
 `;
 
@@ -184,5 +275,6 @@ bun run check
     "src/modules/health/routes.ts": healthRoutesTs,
     "src/modules/greetings/routes.ts": greetingsRoutesTs,
     "src/modules/greetings/service.ts": greetingsServiceTs,
+    "src/client.ts": clientTs,
   };
 }
