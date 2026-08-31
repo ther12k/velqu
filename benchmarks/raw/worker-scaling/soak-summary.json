@@ -2,853 +2,600 @@
   "format": "velqu-soak-v1",
   "engine": "quickjs-ng/0.15.1 via rquickjs 0.12.2",
   "workers": 2,
+  "chaos": {
+    "enabled": true,
+    "poisonEverySecs": 60,
+    "replacements": 14,
+    "disconnectPermille": 5,
+    "timeoutPermille": 5,
+    "timeline": [
+      {
+        "tSecs": 60.029946604,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 60.033916069,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 3.665996
+      },
+      {
+        "tSecs": 120.060725705,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 120.06486734,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 2.8306970000000002
+      },
+      {
+        "tSecs": 180.096342413,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 180.101791033,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 4.022259
+      },
+      {
+        "tSecs": 240.141267314,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 240.144616798,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 3.299185
+      },
+      {
+        "tSecs": 300.199348808,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 300.204547073,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 3.234511
+      },
+      {
+        "tSecs": 360.140285701,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 360.157540772,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 10.977171
+      },
+      {
+        "tSecs": 420.036367429,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 420.042365507,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 4.909255000000001
+      },
+      {
+        "tSecs": 480.168097432,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 480.436501753,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 266.520094
+      },
+      {
+        "tSecs": 540.026824066,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 540.031969405,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 5.024978
+      },
+      {
+        "tSecs": 600.073211989,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 600.076155341,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 2.7631040000000002
+      },
+      {
+        "tSecs": 660.132064152,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 660.137259616,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 3.9578740000000003
+      },
+      {
+        "tSecs": 720.005126977,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 720.01239458,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 5.8545869999999995
+      },
+      {
+        "tSecs": 780.077815403,
+        "event": "poison",
+        "worker": 0
+      },
+      {
+        "tSecs": 780.082162603,
+        "event": "replaced",
+        "worker": 0,
+        "engineInitMs": 4.158751
+      },
+      {
+        "tSecs": 840.1366093,
+        "event": "poison",
+        "worker": 1
+      },
+      {
+        "tSecs": 840.142782912,
+        "event": "replaced",
+        "worker": 1,
+        "engineInitMs": 4.02617
+      }
+    ],
+    "note": "engine-level poison: the slot's consumer drops its runtime and rebuilds it deterministically under live traffic; dispatcher-level quarantine/settle is M3-005 component evidence"
+  },
   "finalPerWorkerHeapBytes": [
-    203853,
-    201427
+    202104,
+    201880
   ],
-  "configuredDurationSecs": 1800,
+  "configuredDurationSecs": 900,
   "windowSecs": 30,
-  "actualDurationSecs": 1800.714596433,
+  "actualDurationSecs": 901.003682165,
   "mix": "60% light.work / 25% cpu.work / 15% io.delay(1ms timer), deterministic per id",
-  "totalDispatched": 4407585,
-  "totalCompletedVerified": 4407585,
-  "totalErrorsByClass": {},
-  "completionRate": 1.0,
-  "throughputOpsPerSecOverall": 2447.6866066010116,
+  "totalDispatched": 1703012,
+  "totalCompletedVerified": 1685983,
+  "totalErrorsByClass": {
+    "injected_disconnect": 8518,
+    "injected_timeout": 8511
+  },
+  "completionRate": 0.9900006576583136,
+  "throughputOpsPerSecOverall": 1871.2276468713114,
   "leakAnalysis": {
-    "firstWindowRssKib": 5764,
-    "lastWindowRssKib": 5376,
-    "rssGrowthKib": -388,
-    "maxWindowToWindowGrowthKib": 68,
-    "windows": 59,
+    "firstWindowRssKib": 5772,
+    "lastWindowRssKib": 5560,
+    "rssGrowthKib": -212,
+    "maxWindowToWindowGrowthKib": 348,
+    "windows": 29,
     "note": "RSS is process-level (producers+tokio+engines); small positive drift with bounded per-window steps is allocator retention, a monotonic climb across the full window set would be a leak signal"
   },
   "windows": [
     {
       "seq": 0,
-      "elapsedSecs": 30.027094181,
-      "windowSecs": 30.026584442,
-      "requests": 70857,
-      "throughputOpsPerSec": 2359.8088599410603,
-      "processRssKib": 5764,
-      "processCpuSecsCumulative": 216.037491,
+      "elapsedSecs": 30.015027105,
+      "windowSecs": 30.01462269,
+      "requests": 75017,
+      "throughputOpsPerSec": 2499.348426758451,
+      "processRssKib": 5772,
+      "processCpuSecsCumulative": 245.69500599999998,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 76467
+      "queueRejectedTotal": 84522
     },
     {
       "seq": 1,
-      "elapsedSecs": 60.049665671,
-      "windowSecs": 30.022476152,
-      "requests": 76684,
-      "throughputOpsPerSec": 2554.219698993468,
-      "processRssKib": 5832,
-      "processCpuSecsCumulative": 451.175608,
+      "elapsedSecs": 60.029941173,
+      "windowSecs": 30.014846343,
+      "requests": 72156,
+      "throughputOpsPerSec": 2404.0103079464234,
+      "processRssKib": 5836,
+      "processCpuSecsCumulative": 491.979421,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 162498
+      "queueRejectedTotal": 166769
     },
     {
       "seq": 2,
-      "elapsedSecs": 90.07682158,
-      "windowSecs": 30.027085328,
-      "requests": 74103,
-      "throughputOpsPerSec": 2467.8718960078218,
-      "processRssKib": 5848,
-      "processCpuSecsCumulative": 681.237342,
+      "elapsedSecs": 90.043505853,
+      "windowSecs": 30.0134892,
+      "requests": 69331,
+      "throughputOpsPerSec": 2309.9946673311147,
+      "processRssKib": 6184,
+      "processCpuSecsCumulative": 737.361641,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 244603
+      "queueRejectedTotal": 245897
     },
     {
       "seq": 3,
-      "elapsedSecs": 120.101587411,
-      "windowSecs": 30.024704407,
-      "requests": 79390,
-      "throughputOpsPerSec": 2644.1559231967294,
-      "processRssKib": 5856,
-      "processCpuSecsCumulative": 922.796902,
+      "elapsedSecs": 120.060719889,
+      "windowSecs": 30.01712493,
+      "requests": 62033,
+      "throughputOpsPerSec": 2066.5869947458687,
+      "processRssKib": 6216,
+      "processCpuSecsCumulative": 971.283644,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 333291
+      "queueRejectedTotal": 316031
     },
     {
       "seq": 4,
-      "elapsedSecs": 150.133355447,
-      "windowSecs": 30.03170107,
-      "requests": 70014,
-      "throughputOpsPerSec": 2331.3364713109804,
-      "processRssKib": 5868,
-      "processCpuSecsCumulative": 1152.0664550000001,
+      "elapsedSecs": 150.07560989,
+      "windowSecs": 30.014800087,
+      "requests": 70254,
+      "throughputOpsPerSec": 2340.6452748765228,
+      "processRssKib": 6368,
+      "processCpuSecsCumulative": 1218.782416,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 411662
+      "queueRejectedTotal": 395958
     },
     {
       "seq": 5,
-      "elapsedSecs": 180.16705199,
-      "windowSecs": 30.033599645,
-      "requests": 65197,
-      "throughputOpsPerSec": 2170.802060713159,
-      "processRssKib": 5896,
-      "processCpuSecsCumulative": 1370.389622,
+      "elapsedSecs": 180.096336341,
+      "windowSecs": 30.020471125,
+      "requests": 65969,
+      "throughputOpsPerSec": 2197.467179156403,
+      "processRssKib": 6384,
+      "processCpuSecsCumulative": 1458.305282,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 483752
+      "queueRejectedTotal": 470879
     },
     {
       "seq": 6,
-      "elapsedSecs": 210.186921348,
-      "windowSecs": 30.019811292,
-      "requests": 73810,
-      "throughputOpsPerSec": 2458.709659499748,
-      "processRssKib": 5912,
-      "processCpuSecsCumulative": 1608.964405,
+      "elapsedSecs": 210.122395729,
+      "windowSecs": 30.025983174,
+      "requests": 63491,
+      "throughputOpsPerSec": 2114.5352554176447,
+      "processRssKib": 6384,
+      "processCpuSecsCumulative": 1690.2859199999998,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 566928
+      "queueRejectedTotal": 542156
     },
     {
       "seq": 7,
-      "elapsedSecs": 240.224734658,
-      "windowSecs": 30.037731152,
-      "requests": 62203,
-      "throughputOpsPerSec": 2070.828841407296,
-      "processRssKib": 5428,
-      "processCpuSecsCumulative": 1818.517624,
+      "elapsedSecs": 240.141261957,
+      "windowSecs": 30.018789852,
+      "requests": 65500,
+      "throughputOpsPerSec": 2181.9667056177504,
+      "processRssKib": 6388,
+      "processCpuSecsCumulative": 1926.6318840000001,
       "queueLens": [
-        1024,
+        1023,
         1024
       ],
-      "queueRejectedTotal": 635205
+      "queueRejectedTotal": 617204
     },
     {
       "seq": 8,
-      "elapsedSecs": 270.272767034,
-      "windowSecs": 30.047954976,
-      "requests": 61527,
-      "throughputOpsPerSec": 2047.6268700862686,
-      "processRssKib": 5432,
-      "processCpuSecsCumulative": 2029.249256,
+      "elapsedSecs": 270.164736905,
+      "windowSecs": 30.02338942,
+      "requests": 59857,
+      "throughputOpsPerSec": 1993.6789668433112,
+      "processRssKib": 6396,
+      "processCpuSecsCumulative": 2151.994885,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 702629
+      "queueRejectedTotal": 684217
     },
     {
       "seq": 9,
-      "elapsedSecs": 300.301394163,
-      "windowSecs": 30.028548082,
-      "requests": 67047,
-      "throughputOpsPerSec": 2232.775284935936,
-      "processRssKib": 5444,
-      "processCpuSecsCumulative": 2257.1262970000002,
+      "elapsedSecs": 300.199343767,
+      "windowSecs": 30.034513023,
+      "requests": 56747,
+      "throughputOpsPerSec": 1889.3930444799942,
+      "processRssKib": 6400,
+      "processCpuSecsCumulative": 2365.3315190000003,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 778463
+      "queueRejectedTotal": 746316
     },
     {
       "seq": 10,
-      "elapsedSecs": 330.335210442,
-      "windowSecs": 30.033741331,
-      "requests": 63199,
-      "throughputOpsPerSec": 2104.266641424648,
-      "processRssKib": 5444,
-      "processCpuSecsCumulative": 2476.754806,
+      "elapsedSecs": 330.286913766,
+      "windowSecs": 30.08747718,
+      "requests": 26980,
+      "throughputOpsPerSec": 896.7185862274412,
+      "processRssKib": 6404,
+      "processCpuSecsCumulative": 2445.493856,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 848493
+      "queueRejectedTotal": 761533
     },
     {
       "seq": 11,
-      "elapsedSecs": 360.37991867,
-      "windowSecs": 30.044626069,
-      "requests": 57967,
-      "throughputOpsPerSec": 1929.3633366204635,
-      "processRssKib": 5448,
-      "processCpuSecsCumulative": 2670.196547,
+      "elapsedSecs": 360.340467719,
+      "windowSecs": 30.053447994,
+      "requests": 41970,
+      "throughputOpsPerSec": 1396.5119745454522,
+      "processRssKib": 6408,
+      "processCpuSecsCumulative": 2592.065972,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 909829
+      "queueRejectedTotal": 799353
     },
     {
       "seq": 12,
-      "elapsedSecs": 390.413175413,
-      "windowSecs": 30.033181931,
-      "requests": 63339,
-      "throughputOpsPerSec": 2108.967346367719,
-      "processRssKib": 5284,
-      "processCpuSecsCumulative": 2882.4356049999997,
+      "elapsedSecs": 390.391014771,
+      "windowSecs": 30.050449548,
+      "requests": 41797,
+      "throughputOpsPerSec": 1390.894333651717,
+      "processRssKib": 6412,
+      "processCpuSecsCumulative": 2743.777363,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 978255
+      "queueRejectedTotal": 838056
     },
     {
       "seq": 13,
-      "elapsedSecs": 420.43366677,
-      "windowSecs": 30.020397744,
-      "requests": 72494,
-      "throughputOpsPerSec": 2414.8247674196436,
-      "processRssKib": 5284,
-      "processCpuSecsCumulative": 3120.958877,
+      "elapsedSecs": 420.43658385,
+      "windowSecs": 30.045481968,
+      "requests": 44091,
+      "throughputOpsPerSec": 1467.4752113132752,
+      "processRssKib": 6088,
+      "processCpuSecsCumulative": 2904.594526,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1060321
+      "queueRejectedTotal": 879535
     },
     {
       "seq": 14,
-      "elapsedSecs": 450.466009046,
-      "windowSecs": 30.032280681,
-      "requests": 68798,
-      "throughputOpsPerSec": 2290.8017120233308,
-      "processRssKib": 5288,
-      "processCpuSecsCumulative": 3349.39552,
+      "elapsedSecs": 450.537838412,
+      "windowSecs": 30.101192964,
+      "requests": 38949,
+      "throughputOpsPerSec": 1293.9354279606684,
+      "processRssKib": 5604,
+      "processCpuSecsCumulative": 3032.8885490000002,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1137088
+      "queueRejectedTotal": 910959
     },
     {
       "seq": 15,
-      "elapsedSecs": 480.495986018,
-      "windowSecs": 30.029888418,
-      "requests": 65111,
-      "throughputOpsPerSec": 2168.206524569445,
-      "processRssKib": 5288,
-      "processCpuSecsCumulative": 3571.014919,
+      "elapsedSecs": 480.568302983,
+      "windowSecs": 30.030386214,
+      "requests": 58270,
+      "throughputOpsPerSec": 1940.3679854385239,
+      "processRssKib": 5680,
+      "processCpuSecsCumulative": 3252.0858420000004,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1209350
+      "queueRejectedTotal": 975092
     },
     {
       "seq": 16,
-      "elapsedSecs": 510.522549209,
-      "windowSecs": 30.026463559,
-      "requests": 63167,
-      "throughputOpsPerSec": 2103.7109440437785,
-      "processRssKib": 5292,
-      "processCpuSecsCumulative": 3790.4813839999997,
+      "elapsedSecs": 510.597731989,
+      "windowSecs": 30.029360585,
+      "requests": 61087,
+      "throughputOpsPerSec": 2034.2424483894486,
+      "processRssKib": 5684,
+      "processCpuSecsCumulative": 3480.408227,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1279620
+      "queueRejectedTotal": 1043473
     },
     {
       "seq": 17,
-      "elapsedSecs": 540.554457224,
-      "windowSecs": 30.031825636,
-      "requests": 55564,
-      "throughputOpsPerSec": 1850.1705714951227,
-      "processRssKib": 5296,
-      "processCpuSecsCumulative": 4006.039858,
+      "elapsedSecs": 540.627838865,
+      "windowSecs": 30.030018999,
+      "requests": 58193,
+      "throughputOpsPerSec": 1937.8276118286115,
+      "processRssKib": 5688,
+      "processCpuSecsCumulative": 3702.5361540000004,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1342038
+      "queueRejectedTotal": 1108327
     },
     {
       "seq": 18,
-      "elapsedSecs": 570.573519388,
-      "windowSecs": 30.018979121,
-      "requests": 67503,
-      "throughputOpsPerSec": 2248.677402649505,
-      "processRssKib": 5304,
-      "processCpuSecsCumulative": 4237.175859999999,
+      "elapsedSecs": 570.651087296,
+      "windowSecs": 30.023127721,
+      "requests": 57238,
+      "throughputOpsPerSec": 1906.4635947294812,
+      "processRssKib": 5692,
+      "processCpuSecsCumulative": 3923.380092,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1418568
+      "queueRejectedTotal": 1172251
     },
     {
       "seq": 19,
-      "elapsedSecs": 600.600422514,
-      "windowSecs": 30.026813626,
-      "requests": 66921,
-      "throughputOpsPerSec": 2228.708008566503,
-      "processRssKib": 5308,
-      "processCpuSecsCumulative": 4471.471443,
+      "elapsedSecs": 600.673462501,
+      "windowSecs": 30.022307896,
+      "requests": 57644,
+      "throughputOpsPerSec": 1920.0389323726893,
+      "processRssKib": 5696,
+      "processCpuSecsCumulative": 4143.773306,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1494831
+      "queueRejectedTotal": 1236730
     },
     {
       "seq": 20,
-      "elapsedSecs": 630.645187112,
-      "windowSecs": 30.044671789,
-      "requests": 59172,
-      "throughputOpsPerSec": 1969.4673456763853,
-      "processRssKib": 5312,
-      "processCpuSecsCumulative": 4687.345685,
+      "elapsedSecs": 630.707339539,
+      "windowSecs": 30.033762544,
+      "requests": 53420,
+      "throughputOpsPerSec": 1778.6649249070524,
+      "processRssKib": 5688,
+      "processCpuSecsCumulative": 4356.908247,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1561198
+      "queueRejectedTotal": 1294478
     },
     {
       "seq": 21,
-      "elapsedSecs": 660.664639424,
-      "windowSecs": 30.019361527,
-      "requests": 64531,
-      "throughputOpsPerSec": 2149.64598570691,
-      "processRssKib": 5316,
-      "processCpuSecsCumulative": 4925.384735,
+      "elapsedSecs": 660.733250347,
+      "windowSecs": 30.02582138,
+      "requests": 49907,
+      "throughputOpsPerSec": 1662.1360451189096,
+      "processRssKib": 5692,
+      "processCpuSecsCumulative": 4564.193502,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1635476
+      "queueRejectedTotal": 1348228
     },
     {
       "seq": 22,
-      "elapsedSecs": 690.701378908,
-      "windowSecs": 30.036666155,
-      "requests": 57432,
-      "throughputOpsPerSec": 1912.063066640959,
-      "processRssKib": 5260,
-      "processCpuSecsCumulative": 5140.494628,
+      "elapsedSecs": 690.777144823,
+      "windowSecs": 30.043237396,
+      "requests": 51021,
+      "throughputOpsPerSec": 1698.2523996163281,
+      "processRssKib": 5272,
+      "processCpuSecsCumulative": 4777.073665,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1701086
+      "queueRejectedTotal": 1403401
     },
     {
       "seq": 23,
-      "elapsedSecs": 720.724070358,
-      "windowSecs": 30.022623268,
-      "requests": 69896,
-      "throughputOpsPerSec": 2328.111017350691,
-      "processRssKib": 5260,
-      "processCpuSecsCumulative": 5381.026296,
+      "elapsedSecs": 720.805747443,
+      "windowSecs": 30.028531702,
+      "requests": 53100,
+      "throughputOpsPerSec": 1768.318229041594,
+      "processRssKib": 5540,
+      "processCpuSecsCumulative": 4996.9729050000005,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1780857
+      "queueRejectedTotal": 1462195
     },
     {
       "seq": 24,
-      "elapsedSecs": 750.744291427,
-      "windowSecs": 30.020140782,
-      "requests": 70140,
-      "throughputOpsPerSec": 2336.431414807214,
-      "processRssKib": 5264,
-      "processCpuSecsCumulative": 5621.69165,
+      "elapsedSecs": 750.836753077,
+      "windowSecs": 30.030914549,
+      "requests": 54946,
+      "throughputOpsPerSec": 1829.6479086691568,
+      "processRssKib": 5544,
+      "processCpuSecsCumulative": 5220.220244,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1860903
+      "queueRejectedTotal": 1522739
     },
     {
       "seq": 25,
-      "elapsedSecs": 780.766496389,
-      "windowSecs": 30.022135014,
-      "requests": 74796,
-      "throughputOpsPerSec": 2491.3617890640003,
-      "processRssKib": 5268,
-      "processCpuSecsCumulative": 5870.069545,
+      "elapsedSecs": 780.879115599,
+      "windowSecs": 30.042284572,
+      "requests": 49261,
+      "throughputOpsPerSec": 1639.7221683304413,
+      "processRssKib": 5548,
+      "processCpuSecsCumulative": 5422.179602,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 1946425
+      "queueRejectedTotal": 1575396
     },
     {
       "seq": 26,
-      "elapsedSecs": 810.794390281,
-      "windowSecs": 30.027826223,
-      "requests": 68404,
-      "throughputOpsPerSec": 2278.02037656677,
-      "processRssKib": 5264,
-      "processCpuSecsCumulative": 6106.621011,
+      "elapsedSecs": 810.906367638,
+      "windowSecs": 30.027165014,
+      "requests": 56870,
+      "throughputOpsPerSec": 1893.9516925252408,
+      "processRssKib": 5552,
+      "processCpuSecsCumulative": 5651.240662,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 2024054
+      "queueRejectedTotal": 1639491
     },
     {
       "seq": 27,
-      "elapsedSecs": 840.810900935,
-      "windowSecs": 30.016430775,
-      "requests": 75234,
-      "throughputOpsPerSec": 2506.427248594149,
-      "processRssKib": 5272,
-      "processCpuSecsCumulative": 6356.628073,
+      "elapsedSecs": 840.937622435,
+      "windowSecs": 30.031159562,
+      "requests": 54165,
+      "throughputOpsPerSec": 1803.6266594426747,
+      "processRssKib": 5556,
+      "processCpuSecsCumulative": 5869.022943,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 2109865
+      "queueRejectedTotal": 1699007
     },
     {
       "seq": 28,
-      "elapsedSecs": 870.836162013,
-      "windowSecs": 30.025198111,
-      "requests": 71503,
-      "throughputOpsPerSec": 2381.433079497458,
-      "processRssKib": 5276,
-      "processCpuSecsCumulative": 6600.096009000001,
+      "elapsedSecs": 870.963031459,
+      "windowSecs": 30.025306675,
+      "requests": 58805,
+      "throughputOpsPerSec": 1958.5145502930986,
+      "processRssKib": 5560,
+      "processCpuSecsCumulative": 6102.610326,
       "queueLens": [
         1024,
         1024
       ],
-      "queueRejectedTotal": 2191589
-    },
-    {
-      "seq": 29,
-      "elapsedSecs": 900.849752851,
-      "windowSecs": 30.013517456,
-      "requests": 76447,
-      "throughputOpsPerSec": 2547.0856627208645,
-      "processRssKib": 5284,
-      "processCpuSecsCumulative": 6851.217801999999,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2278941
-    },
-    {
-      "seq": 30,
-      "elapsedSecs": 930.863641716,
-      "windowSecs": 30.013812953,
-      "requests": 77290,
-      "throughputOpsPerSec": 2575.147653549782,
-      "processRssKib": 5284,
-      "processCpuSecsCumulative": 7101.993654,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2366862
-    },
-    {
-      "seq": 31,
-      "elapsedSecs": 960.878087539,
-      "windowSecs": 30.014376717,
-      "requests": 77981,
-      "throughputOpsPerSec": 2598.1215847081685,
-      "processRssKib": 5292,
-      "processCpuSecsCumulative": 7353.7297849999995,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2455849
-    },
-    {
-      "seq": 32,
-      "elapsedSecs": 990.889435553,
-      "windowSecs": 30.011275625,
-      "requests": 77727,
-      "throughputOpsPerSec": 2589.926565309068,
-      "processRssKib": 5296,
-      "processCpuSecsCumulative": 7605.234388000001,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2544639
-    },
-    {
-      "seq": 33,
-      "elapsedSecs": 1020.911253352,
-      "windowSecs": 30.021742344,
-      "requests": 70968,
-      "throughputOpsPerSec": 2363.8867853445327,
-      "processRssKib": 5304,
-      "processCpuSecsCumulative": 7846.737445000001,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2625678
-    },
-    {
-      "seq": 34,
-      "elapsedSecs": 1050.926138128,
-      "windowSecs": 30.014813434,
-      "requests": 79856,
-      "throughputOpsPerSec": 2660.5529358227227,
-      "processRssKib": 5308,
-      "processCpuSecsCumulative": 8099.237991,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2717035
-    },
-    {
-      "seq": 35,
-      "elapsedSecs": 1080.937137726,
-      "windowSecs": 30.010887859,
-      "requests": 81830,
-      "throughputOpsPerSec": 2726.677077481395,
-      "processRssKib": 5308,
-      "processCpuSecsCumulative": 8353.594356000001,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2810446
-    },
-    {
-      "seq": 36,
-      "elapsedSecs": 1110.948175472,
-      "windowSecs": 30.010964757,
-      "requests": 79901,
-      "throughputOpsPerSec": 2662.3935833773303,
-      "processRssKib": 5312,
-      "processCpuSecsCumulative": 8605.713821,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2901231
-    },
-    {
-      "seq": 37,
-      "elapsedSecs": 1140.966280593,
-      "windowSecs": 30.018018299,
-      "requests": 76405,
-      "throughputOpsPerSec": 2545.304598023558,
-      "processRssKib": 5312,
-      "processCpuSecsCumulative": 8853.373922,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 2988891
-    },
-    {
-      "seq": 38,
-      "elapsedSecs": 1170.982684279,
-      "windowSecs": 30.016337793,
-      "requests": 77134,
-      "throughputOpsPerSec": 2569.733873996718,
-      "processRssKib": 5320,
-      "processCpuSecsCumulative": 9099.736326999999,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3076610
-    },
-    {
-      "seq": 39,
-      "elapsedSecs": 1200.99705059,
-      "windowSecs": 30.014290715,
-      "requests": 81565,
-      "throughputOpsPerSec": 2717.5388142434736,
-      "processRssKib": 5320,
-      "processCpuSecsCumulative": 9353.757532,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3168910
-    },
-    {
-      "seq": 40,
-      "elapsedSecs": 1231.007764983,
-      "windowSecs": 30.010653697,
-      "requests": 79933,
-      "throughputOpsPerSec": 2663.4874670520912,
-      "processRssKib": 5324,
-      "processCpuSecsCumulative": 9606.050712,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3259713
-    },
-    {
-      "seq": 41,
-      "elapsedSecs": 1261.026817392,
-      "windowSecs": 30.018965919,
-      "requests": 80650,
-      "throughputOpsPerSec": 2686.6348500350555,
-      "processRssKib": 5328,
-      "processCpuSecsCumulative": 9858.401392,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3351697
-    },
-    {
-      "seq": 42,
-      "elapsedSecs": 1291.038928188,
-      "windowSecs": 30.01203901,
-      "requests": 81138,
-      "throughputOpsPerSec": 2703.5150784978273,
-      "processRssKib": 5328,
-      "processCpuSecsCumulative": 10111.90265,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3444457
-    },
-    {
-      "seq": 43,
-      "elapsedSecs": 1321.055734118,
-      "windowSecs": 30.016734981,
-      "requests": 77192,
-      "throughputOpsPerSec": 2571.632126174316,
-      "processRssKib": 5332,
-      "processCpuSecsCumulative": 10361.947892,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3532786
-    },
-    {
-      "seq": 44,
-      "elapsedSecs": 1351.071010209,
-      "windowSecs": 30.015213892,
-      "requests": 76458,
-      "throughputOpsPerSec": 2547.3081842797883,
-      "processRssKib": 5332,
-      "processCpuSecsCumulative": 10608.305804,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3619212
-    },
-    {
-      "seq": 45,
-      "elapsedSecs": 1381.088222516,
-      "windowSecs": 30.017145458,
-      "requests": 81562,
-      "throughputOpsPerSec": 2717.180423239164,
-      "processRssKib": 5340,
-      "processCpuSecsCumulative": 10861.411733,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3711648
-    },
-    {
-      "seq": 46,
-      "elapsedSecs": 1411.102297348,
-      "windowSecs": 30.014003254,
-      "requests": 79547,
-      "throughputOpsPerSec": 2650.3295587335115,
-      "processRssKib": 5340,
-      "processCpuSecsCumulative": 11113.468456999999,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3802403
-    },
-    {
-      "seq": 47,
-      "elapsedSecs": 1441.11668734,
-      "windowSecs": 30.014328652,
-      "requests": 79262,
-      "throughputOpsPerSec": 2640.8053606329254,
-      "processRssKib": 5348,
-      "processCpuSecsCumulative": 11366.200469,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3892908
-    },
-    {
-      "seq": 48,
-      "elapsedSecs": 1471.36763233,
-      "windowSecs": 30.010341923,
-      "requests": 79195,
-      "throughputOpsPerSec": 2638.9236151723003,
-      "processRssKib": 5348,
-      "processCpuSecsCumulative": 11619.144087,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 3983552
-    },
-    {
-      "seq": 49,
-      "elapsedSecs": 1501.377483598,
-      "windowSecs": 30.009771257,
-      "requests": 82615,
-      "throughputOpsPerSec": 2752.936678273729,
-      "processRssKib": 5356,
-      "processCpuSecsCumulative": 11874.0629,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4076686
-    },
-    {
-      "seq": 50,
-      "elapsedSecs": 1531.389525776,
-      "windowSecs": 30.011977269,
-      "requests": 80689,
-      "throughputOpsPerSec": 2688.559946476614,
-      "processRssKib": 5360,
-      "processCpuSecsCumulative": 12126.742064999999,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4168456
-    },
-    {
-      "seq": 51,
-      "elapsedSecs": 1561.401278157,
-      "windowSecs": 30.011684378,
-      "requests": 81081,
-      "throughputOpsPerSec": 2701.6477642100035,
-      "processRssKib": 5360,
-      "processCpuSecsCumulative": 12379.603859,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4260289
-    },
-    {
-      "seq": 52,
-      "elapsedSecs": 1591.41254382,
-      "windowSecs": 30.011200611,
-      "requests": 80615,
-      "throughputOpsPerSec": 2686.163777481538,
-      "processRssKib": 5364,
-      "processCpuSecsCumulative": 12632.684969,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4351307
-    },
-    {
-      "seq": 53,
-      "elapsedSecs": 1621.42883205,
-      "windowSecs": 30.016210643,
-      "requests": 81851,
-      "throughputOpsPerSec": 2726.893176940316,
-      "processRssKib": 5364,
-      "processCpuSecsCumulative": 12886.977855000001,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4443328
-    },
-    {
-      "seq": 54,
-      "elapsedSecs": 1651.450597238,
-      "windowSecs": 30.021683419,
-      "requests": 73952,
-      "throughputOpsPerSec": 2463.286251070037,
-      "processRssKib": 5368,
-      "processCpuSecsCumulative": 13132.153462,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4527449
-    },
-    {
-      "seq": 55,
-      "elapsedSecs": 1681.462600254,
-      "windowSecs": 30.01192956,
-      "requests": 81309,
-      "throughputOpsPerSec": 2709.22267218596,
-      "processRssKib": 5368,
-      "processCpuSecsCumulative": 13386.037212,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4620047
-    },
-    {
-      "seq": 56,
-      "elapsedSecs": 1711.475732456,
-      "windowSecs": 30.013063036,
-      "requests": 80226,
-      "throughputOpsPerSec": 2673.03606778724,
-      "processRssKib": 5372,
-      "processCpuSecsCumulative": 13638.730326,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4711410
-    },
-    {
-      "seq": 57,
-      "elapsedSecs": 1741.490921538,
-      "windowSecs": 30.015137709,
-      "requests": 79693,
-      "throughputOpsPerSec": 2655.0935988577576,
-      "processRssKib": 5372,
-      "processCpuSecsCumulative": 13891.225415,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4801896
-    },
-    {
-      "seq": 58,
-      "elapsedSecs": 1771.50306774,
-      "windowSecs": 30.01207131,
-      "requests": 79499,
-      "throughputOpsPerSec": 2648.9008099054795,
-      "processRssKib": 5376,
-      "processCpuSecsCumulative": 14144.091547,
-      "queueLens": [
-        1024,
-        1024
-      ],
-      "queueRejectedTotal": 4892556
+      "queueRejectedTotal": 1765977
     }
   ]
 }
