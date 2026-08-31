@@ -1,5 +1,5 @@
 {
-  "format": "velqu-worker-scaling-v2",
+  "format": "velqu-worker-scaling-v3",
   "engine": "quickjs-ng/0.15.1 via rquickjs 0.12.2",
   "workload": "cpu.work: 20000-iteration deterministic arithmetic+string, verified per invocation",
   "workerCounts": [
@@ -19,55 +19,80 @@
       "producers": 8,
       "queueCapacityPerWorker": 1024,
       "throughputPerRepetitionOpsPerSec": [
-        825.4086652159399,
-        811.0158038229655,
-        676.6936260497508,
-        704.9981502329034,
-        671.6155325815513
+        573.535884834086,
+        468.7125381503883,
+        444.1957533905784,
+        376.05391653172626,
+        503.76429997642157
       ],
-      "throughputOpsPerSecMedian": 704.9981502329034,
-      "throughputOpsPerSecBest": 825.4086652159399,
+      "throughputOpsPerSecMedian": 468.7125381503883,
+      "throughputOpsPerSecBest": 573.535884834086,
       "samples": 15000,
       "correct": 15000,
       "latencyUs": {
-        "p50": 1297407.7589999998,
-        "p95": 1849047.139,
-        "p99": 1992017.582
+        "p50": 2138760.8,
+        "p95": 2741301.8789999997,
+        "p99": 2801628.96
       },
       "serviceUs": {
-        "p50": 1189.8660000000382,
-        "p95": 2211.8280000002123,
-        "p99": 2972.532999999821
+        "p50": 1995.9949999999953,
+        "p95": 3377.7599999997765,
+        "p99": 5458.367999999784
       },
       "queueWaitUs": {
-        "p50": 1296416.725,
-        "p95": 1847408.314,
-        "p99": 1990137.865
+        "p50": 2136746.3419999997,
+        "p95": 2739127.9669999997,
+        "p99": 2798797.167
       },
       "avgPerWorkerHeapBytes": 200336,
       "totalHeapBytes": 200336,
       "processRssKibPerRepetition": [
         {
-          "before": 3036,
-          "after": 5676
+          "before": 3232,
+          "after": 5708
         },
         {
-          "before": 7544,
-          "after": 8136
+          "before": 7564,
+          "after": 8164
         },
         {
-          "before": 9288,
-          "after": 10120
+          "before": 9640,
+          "after": 10460
         },
         {
-          "before": 11160,
-          "after": 11872
+          "before": 11108,
+          "after": 11472
         },
         {
-          "before": 12528,
-          "after": 12880
+          "before": 11868,
+          "after": 12316
         }
-      ]
+      ],
+      "processCpuSecsPerRepetition": [
+        27.376407000000004,
+        28.015089000000003,
+        31.462778,
+        29.00072099999997,
+        31.00393500000004
+      ],
+      "processCpuSecsTotal": 146.85893000000002,
+      "wallSecsPerRepetition": [
+        5.230710195,
+        6.40051152,
+        6.75377911,
+        7.977579459,
+        5.955165938
+      ],
+      "processCpuSecsPerOp": 0.009790595333333334,
+      "errors": {
+        "byClass": {},
+        "total": 0,
+        "classes": [
+          "timeout",
+          "mismatch"
+        ],
+        "note": "every dispatched request is sampled or counted as a classified error; none dropped"
+      }
     },
     {
       "workers": 2,
@@ -76,57 +101,82 @@
       "producers": 8,
       "queueCapacityPerWorker": 1024,
       "throughputPerRepetitionOpsPerSec": [
-        1553.1079911588665,
-        1665.3531998223782,
-        1672.8670918510054,
-        1538.5597916788402,
-        1588.5849807324075
+        970.8573069690128,
+        849.3704417446988,
+        822.639388951074,
+        935.9891050344021,
+        1127.913307725954
       ],
-      "throughputOpsPerSecMedian": 1588.5849807324075,
-      "throughputOpsPerSecBest": 1672.8670918510054,
+      "throughputOpsPerSecMedian": 935.9891050344021,
+      "throughputOpsPerSecBest": 1127.913307725954,
       "samples": 15000,
       "correct": 15000,
       "latencyUs": {
-        "p50": 1035779.822,
-        "p95": 1333944.931,
-        "p99": 1388970.833
+        "p50": 1708985.509,
+        "p95": 2547654.979,
+        "p99": 2650282.426
       },
       "serviceUs": {
-        "p50": 1088.9139999999898,
-        "p95": 2002.2399999999907,
-        "p99": 2234.1149999999325
+        "p50": 1982.6709999998566,
+        "p95": 3343.1459999999497,
+        "p99": 5097.221999999951
       },
       "queueWaitUs": {
-        "p50": 1034583.233,
-        "p95": 1332837.931,
-        "p99": 1387840.9540000001
+        "p50": 1707089.675,
+        "p95": 2545470.81,
+        "p99": 2648623.161
       },
       "avgPerWorkerHeapBytes": 200336,
       "totalHeapBytes": 400672,
       "processRssKibPerRepetition": [
         {
-          "before": 5676,
-          "after": 6576
+          "before": 5708,
+          "after": 6592
         },
         {
-          "before": 7892,
-          "after": 8636
+          "before": 7920,
+          "after": 8672
         },
         {
-          "before": 10068,
-          "after": 10804
+          "before": 10408,
+          "after": 10560
         },
         {
-          "before": 11820,
-          "after": 12520
+          "before": 11420,
+          "after": 11840
         },
         {
-          "before": 12828,
-          "after": 13244
+          "before": 12264,
+          "after": 12104
         }
       ],
-      "scalingVs1WorkerMedian": 2.25331794162524,
-      "scalingVs1WorkerBest": 2.0267137508343906
+      "processCpuSecsPerRepetition": [
+        11.112253999999997,
+        11.780753000000004,
+        11.18981699999999,
+        10.724930000000029,
+        9.104861999999997
+      ],
+      "processCpuSecsTotal": 53.912616000000014,
+      "wallSecsPerRepetition": [
+        3.09005245,
+        3.532027785,
+        3.646798391,
+        3.205165513,
+        2.659778885
+      ],
+      "processCpuSecsPerOp": 0.003594174400000001,
+      "errors": {
+        "byClass": {},
+        "total": 0,
+        "classes": [
+          "timeout",
+          "mismatch"
+        ],
+        "note": "every dispatched request is sampled or counted as a classified error; none dropped"
+      },
+      "scalingVs1WorkerMedian": 1.9969363497890604,
+      "scalingVs1WorkerBest": 1.9665958792661067
     },
     {
       "workers": 4,
@@ -135,57 +185,82 @@
       "producers": 8,
       "queueCapacityPerWorker": 1024,
       "throughputPerRepetitionOpsPerSec": [
-        3126.649591011878,
-        2751.819545507374,
-        2946.431031698483,
-        2650.8941434135004,
-        2679.1610999689915
+        1660.2690357722927,
+        1731.2318555396062,
+        1277.3523046878468,
+        1567.141850490782,
+        2193.693523936071
       ],
-      "throughputOpsPerSecMedian": 2751.819545507374,
-      "throughputOpsPerSecBest": 3126.649591011878,
+      "throughputOpsPerSecMedian": 1660.2690357722927,
+      "throughputOpsPerSecBest": 2193.693523936071,
       "samples": 15000,
       "correct": 15000,
       "latencyUs": {
-        "p50": 509229.48199999996,
-        "p95": 992565.399,
-        "p99": 1078909.141
+        "p50": 879317.0009999999,
+        "p95": 1798090.7319999998,
+        "p99": 2101671.106
       },
       "serviceUs": {
-        "p50": 1233.2740000000922,
-        "p95": 2202.8310000000056,
-        "p99": 2378.6650000000373
+        "p50": 2282.7669999999925,
+        "p95": 3381.625999999931,
+        "p99": 5104.196000000011
       },
       "queueWaitUs": {
-        "p50": 507905.813,
-        "p95": 991363.041,
-        "p99": 1077586.8930000002
+        "p50": 877358.045,
+        "p95": 1795978.588,
+        "p99": 2098954.835
       },
       "avgPerWorkerHeapBytes": 200336,
       "totalHeapBytes": 801344,
       "processRssKibPerRepetition": [
         {
-          "before": 6388,
-          "after": 7836
+          "before": 6400,
+          "after": 7860
         },
         {
-          "before": 8544,
-          "after": 9484
+          "before": 8580,
+          "after": 9836
         },
         {
-          "before": 10712,
-          "after": 11372
+          "before": 10468,
+          "after": 11304
         },
         {
-          "before": 12420,
-          "after": 12736
+          "before": 11736,
+          "after": 12076
         },
         {
-          "before": 13144,
-          "after": 13740
+          "before": 12000,
+          "after": 12760
         }
       ],
-      "scalingVs1WorkerMedian": 3.903300376885077,
-      "scalingVs1WorkerBest": 3.7880018986642177
+      "processCpuSecsPerRepetition": [
+        6.776268999999992,
+        6.719701999999998,
+        8.12793000000002,
+        7.315339999999992,
+        5.249057000000022
+      ],
+      "processCpuSecsTotal": 34.188298000000025,
+      "wallSecsPerRepetition": [
+        1.806936066,
+        1.7328701469999999,
+        2.348608124,
+        1.914312989,
+        1.367556574
+      ],
+      "processCpuSecsPerOp": 0.0022792198666666684,
+      "errors": {
+        "byClass": {},
+        "total": 0,
+        "classes": [
+          "timeout",
+          "mismatch"
+        ],
+        "note": "every dispatched request is sampled or counted as a classified error; none dropped"
+      },
+      "scalingVs1WorkerMedian": 3.542190363253284,
+      "scalingVs1WorkerBest": 3.8248583601192947
     }
   ]
 }
