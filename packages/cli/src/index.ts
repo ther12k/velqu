@@ -17,6 +17,7 @@ import { inspectCapabilities } from "./capability-inspect";
 import { inspectPack } from "./pack-inspect";
 import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
+import { generateStarterProject, type ProjectTemplateOptions } from "./scaffold";
 import {
   DevServer,
   formatCompileError,
@@ -25,8 +26,8 @@ import {
   type ReloadResult,
   type WorkerInstance,
 } from "./dev-server";
-import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
 import * as ts from "typescript";
 
 export {
@@ -35,11 +36,13 @@ export {
   formatActionableError,
   formatCompileError,
   formatRuntimeError,
+  generateStarterProject,
   inspectPack,
   renderCodeFrame,
   type DevServerOptions,
   type ExitCodeValue,
   type FormattedDiagnostic,
+  type ProjectTemplateOptions,
   type ReloadResult,
   type WorkerInstance,
 };
@@ -600,6 +603,66 @@ async function main() {
       console.log(`  directories: ${watcher.watchedDirectoryCount()}`);
       break;
     }
+    case "init":
+    case "create": {
+      const targetDir = rest.find((a) => !a.startsWith("--")) ?? (args.has("project") ? project : ".");
+      const name = args.get("name") ?? (targetDir === "." ? "my-velqu-app" : targetDir.split(/[\\/]/).pop()) ?? "my-velqu-app";
+      const resolvedTarget = resolve(targetDir);
+
+      if (existsSync(resolvedTarget) && existsSync(join(resolvedTarget, "src", "app.ts")) && !args.has("force")) {
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "init",
+                error: `target directory already contains an app: ${resolvedTarget} (use --force to overwrite)`,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error(`target directory already contains an app: ${resolvedTarget} (use --force to overwrite)`);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+
+      const files = generateStarterProject({ name });
+      mkdirSync(resolvedTarget, { recursive: true });
+
+      const written: string[] = [];
+      for (const [relPath, content] of Object.entries(files)) {
+        const fullPath = join(resolvedTarget, relPath);
+        mkdirSync(dirname(fullPath), { recursive: true });
+        writeFileSync(fullPath, content);
+        written.push(relPath);
+      }
+
+      if (jsonOutput) {
+        console.log(
+          JSON.stringify(
+            {
+              status: "ok",
+              command: "init",
+              name,
+              targetDir: resolvedTarget,
+              filesCount: written.length,
+              files: written,
+            },
+            null,
+            2,
+          ),
+        );
+      } else {
+        console.log(`velqu init: created starter project '${name}' in ${resolvedTarget}`);
+        for (const f of written) {
+          console.log(`  + ${f}`);
+        }
+        console.log("\nNext steps:\n  cd " + targetDir + "\n  bun install\n  velqu dev");
+      }
+      break;
+    }
     case "help":
     case "--help":
     case "-h":
@@ -610,6 +673,7 @@ async function main() {
       }
       console.log(`velqu — Unified Velqu CLI
 usage:
+  velqu init [dir] [--name <app-name>]
   velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50]
   velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
   velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
