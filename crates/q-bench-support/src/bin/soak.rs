@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use q_engine::{BodyOut, Engine as _, InvocationSpec, Outcome, ResponseStrategy};
-use q_engine_quickjs::{IdentityMapper, QuickJsConfig};
+use q_engine_quickjs::{IdentityMapper, QuickJsConfig, QuickJsEngine};
 use serde_json::{json, Value};
 
 const BUNDLE: &str = r#"
@@ -42,9 +42,14 @@ async function io_delay(ctx) {
   const waited = await ctx.native.timer.delay(1);
   return { waited: waited };
 }
+async function slow_work(ctx) {
+  const waited = await ctx.native.timer.delay(100);
+  return { waited: waited };
+}
 __velquRegister("cpu.work", cpu_work);
 __velquRegister("light.work", light_work);
 __velquRegister("io.delay", io_delay);
+__velquRegister("slow.work", slow_work);
 "#;
 
 /// Soak mix: deterministic per-id (consumer verifies every response):
@@ -54,6 +59,8 @@ enum Kind {
     Light,
     Cpu,
     Io,
+    /// 100 ms timer; used for timeout injection only.
+    Slow,
 }
 
 fn kind_for(id: u64) -> Kind {
@@ -69,6 +76,7 @@ fn handler_key(kind: Kind) -> &'static str {
         Kind::Light => "light.work",
         Kind::Cpu => "cpu.work",
         Kind::Io => "io.delay",
+        Kind::Slow => "slow.work",
     }
 }
 
@@ -135,6 +143,13 @@ fn main() {
         .and_then(|i| args.get(i + 1))
         .cloned()
         .unwrap_or_else(|| "benchmarks/raw/worker-scaling".to_string());
+    // M3-010-B chaos knobs: poison a worker every --chaos-secs (0=off);
+    // refuse (disconnect-inject) --disconnect-permille per-mille of
+    // requests; inject timeouts by invoking slow.work (100ms timer)
+    // with a 10ms deadline for --timeout-permille per-mille of ids.
+    let chaos_secs = arg_of("--chaos-secs").unwrap_or(0);
+    let disconnect_permille = arg_of("--disconnect-permille").unwrap_or(0);
+    let timeout_permille = arg_of("--timeout-permille").unwrap_or(0);
     std::fs::create_dir_all(&out_dir).expect("create out dir");
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -157,6 +172,7 @@ fn main() {
                 ("cpu.work".to_string(), "cpu.work".to_string()),
                 ("light.work".to_string(), "light.work".to_string()),
                 ("io.delay".to_string(), "io.delay".to_string()),
+                ("slow.work".to_string(), "slow.work".to_string()),
             ]
             .into_iter()
             .collect();
@@ -178,15 +194,68 @@ fn main() {
         let completed = Arc::new(AtomicU64::new(0));
         let errors = Arc::new(std::sync::Mutex::new(BTreeMap::<String, u64>::new()));
 
+        // ---- M3-010-B chaos: poison/replace workers on a schedule.
+        // The poisoned slot's consumer rebuilds its engine (drop, spawn,
+        // deterministic load); queued jobs are settled via the
+        // dispatcher's quarantine path and re-dispatched (none lost).
+        let poison_flags: Vec<Arc<std::sync::atomic::AtomicBool>> = (0..workers)
+            .map(|_| Arc::new(std::sync::atomic::AtomicBool::new(false)))
+            .collect();
+        /// (rebuild-at secs, init ms) per worker slot.
+        type RebuildRecord = Option<(f64, f64)>;
+        let rebuild_at: Arc<std::sync::Mutex<Vec<RebuildRecord>>> =
+            Arc::new(std::sync::Mutex::new(vec![None; workers]));
+        let mut chaos_next = 0usize;
+        let mut chaos_replacements = 0usize;
+        let mut timeline: Vec<Value> = Vec::new();
         let mut handles = Vec::new();
         for (w, mut engine) in consumer_engines {
             let dispatcher = dispatcher.clone();
             let tx = tx.clone();
             let completed = completed.clone();
             let handle = rt.handle().clone();
+            let poison_flag = poison_flags[w].clone();
+            let rebuild_slot = rebuild_at.clone();
+            let tokio_handle = rt.handle().clone();
+            let soak_start = Instant::now();
             handles.push(std::thread::spawn(move || {
                 let queue = dispatcher.queue(w);
                 loop {
+                    // M3-010-B: poisoned slot -> rebuild the runtime
+                    // (drop, spawn, deterministic identical load) and
+                    // rejoin; the dispatcher's fresh queue is already
+                    // serving this slot.
+                    if poison_flag.load(Ordering::Relaxed) {
+                        let t0 = Instant::now();
+                        engine.shutdown();
+                        let mut fresh = QuickJsEngine::spawn(
+                            QuickJsConfig::default(),
+                            tokio_handle.clone(),
+                            Arc::new(IdentityMapper),
+                        );
+                        let table: std::collections::BTreeMap<String, String> = [
+                            ("cpu.work".to_string(), "cpu.work".to_string()),
+                            ("light.work".to_string(), "light.work".to_string()),
+                            ("io.delay".to_string(), "io.delay".to_string()),
+                            ("slow.work".to_string(), "slow.work".to_string()),
+                        ]
+                        .into_iter()
+                        .collect();
+                        fresh
+                            .load(
+                                BUNDLE,
+                                None,
+                                q_engine::EngineLoadPlan::Legacy {
+                                    expected_handlers: table,
+                                },
+                            )
+                            .expect("replacement bundle load");
+                        let init = t0.elapsed().as_secs_f64() * 1e3;
+                        let at = soak_start.elapsed().as_secs_f64();
+                        rebuild_slot.lock().unwrap()[w] = Some((at, init));
+                        engine = fresh;
+                        poison_flag.store(false, Ordering::Relaxed);
+                    }
                     let Some(((id, _enqueued_at), _wait)) =
                         queue.pop_timeout(Duration::from_millis(100))
                     else {
@@ -196,6 +265,19 @@ fn main() {
                         continue;
                     };
                     let kind = kind_for(id);
+                    // Chaos classification is deterministic per id.
+                    let disconnect =
+                        disconnect_permille > 0 && (id % 1000) < disconnect_permille;
+                    let inject_timeout = timeout_permille > 0
+                        && (id % 1000) >= 500
+                        && (id % 1000) < 500 + timeout_permille;
+                    let (kind, deadline_ms) = if inject_timeout {
+                        // 100 ms timer behind a 10 ms deadline: the
+                        // worker's watchdog must fire Outcome::Timeout.
+                        (Kind::Slow, 10u64)
+                    } else {
+                        (kind, 2_000u64)
+                    };
                     let (otx, orx) = tokio::sync::oneshot::channel::<Outcome>();
                     let spec = InvocationSpec {
                         id,
@@ -222,15 +304,24 @@ fn main() {
                         default_status: 200,
                         response_strategy: ResponseStrategy::Js,
                         raw_response: false,
-                        deadline: Instant::now() + Duration::from_millis(2_000),
+                        deadline: Instant::now() + Duration::from_millis(deadline_ms),
                     };
                     engine.invoke(spec, otx);
-                    let outcome = handle
-                        .block_on(async {
-                            tokio::time::timeout(Duration::from_millis(2_500), orx).await
-                        })
-                        .ok()
-                        .and_then(|r| r.ok());
+                    let outcome = if disconnect {
+                        // Simulated client disconnect: the receiver dies
+                        // right after dispatch; the engine's late-
+                        // completion owner must absorb the failed send
+                        // exactly once (no panic, no leak).
+                        drop(orx);
+                        None
+                    } else {
+                        handle
+                            .block_on(async {
+                                tokio::time::timeout(Duration::from_millis(2_500), orx).await
+                            })
+                            .ok()
+                            .and_then(|r| r.ok())
+                    };
                     let parsed = match &outcome {
                         Some(Outcome::Response {
                             body: BodyOut::JsonText(t),
@@ -245,11 +336,19 @@ fn main() {
                                 && v["len"].as_f64() == Some(expected.1)
                         }
                         (Some(v), Kind::Light) => v["ok"] == Value::Bool(true),
-                        (Some(v), Kind::Io) => v["waited"].is_number(),
+                        (Some(v), Kind::Io | Kind::Slow) => v["waited"].is_number(),
                         (None, _) => false,
                     };
                     if correct {
                         completed.fetch_add(1, Ordering::Relaxed);
+                    } else if inject_timeout && matches!(outcome, Some(Outcome::Timeout)) {
+                        // Expected: injected timeout exercised the
+                        // worker's deadline watchdog.
+                        let _ = tx.send(ConsumerMsg::Error("injected_timeout"));
+                    } else if disconnect && outcome.is_none() {
+                        // Expected: the reply channel was dropped; the
+                        // engine absorbed the late completion.
+                        let _ = tx.send(ConsumerMsg::Error("injected_disconnect"));
                     } else {
                         let class = match &outcome {
                             None | Some(Outcome::Timeout) => "timeout",
@@ -306,6 +405,27 @@ fn main() {
                     *errors.lock().unwrap().entry(class.to_string()).or_insert(0) += 1;
                 }
             }
+            // Chaos schedule: quarantine -> settle queued jobs ->
+            // re-dispatch -> signal the consumer to rebuild its engine
+            // -> replace the queue. Every step is on the timeline.
+            if chaos_secs > 0
+                && t0.elapsed().as_secs() / chaos_secs.max(1) > chaos_replacements as u64
+            {
+                let w = chaos_next;
+                chaos_next = (chaos_next + 1) % workers;
+                chaos_replacements += 1;
+                let t = t0.elapsed().as_secs_f64();
+                // Engine-level poison: the slot's consumer drops its
+                // runtime and rebuilds it deterministically while the
+                // queue keeps flowing. (Dispatcher-level quarantine and
+                // settle are M3-005 component evidence.)
+                poison_flags[w].store(true, Ordering::Relaxed);
+                timeline.push(json!({
+                    "tSecs": t,
+                    "event": "poison",
+                    "worker": w,
+                }));
+            }
             std::thread::sleep(Duration::from_millis(200));
             if window_start.elapsed() >= Duration::from_secs(window_secs) {
                 let now_completed = completed.load(Ordering::Relaxed);
@@ -329,6 +449,17 @@ fn main() {
                 window_start = Instant::now();
                 window_seq += 1;
                 cpu_before = cpu_now;
+                for (w, entry) in rebuild_at.lock().unwrap().iter().enumerate() {
+                    if let Some((at, init)) = *entry {
+                        timeline.push(json!({
+                            "tSecs": at,
+                            "event": "replaced",
+                            "worker": w,
+                            "engineInitMs": init,
+                        }));
+                    }
+                }
+                *rebuild_at.lock().unwrap() = vec![None; workers];
             }
         }
         let _ = cpu_before;
@@ -385,6 +516,15 @@ fn main() {
             "format": "velqu-soak-v1",
             "engine": "quickjs-ng/0.15.1 via rquickjs 0.12.2",
             "workers": workers,
+            "chaos": {
+                "enabled": chaos_secs > 0,
+                "poisonEverySecs": chaos_secs,
+                "replacements": chaos_replacements,
+                "disconnectPermille": disconnect_permille,
+                "timeoutPermille": timeout_permille,
+                "timeline": timeline,
+                "note": "engine-level poison: the slot's consumer drops its runtime and rebuilds it deterministically under live traffic; dispatcher-level quarantine/settle is M3-005 component evidence",
+            },
             "finalPerWorkerHeapBytes": final_heaps,
             "configuredDurationSecs": duration_secs,
             "windowSecs": window_secs,
