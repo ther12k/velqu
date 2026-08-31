@@ -4,7 +4,7 @@ parent_task: M4A-002
 milestone: M4A
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -119,3 +119,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-002-V) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-002-v (squash-merged; see git log for final hash)
+- Closes: #442
+
+### Acceptance-criterion mapping (parent M4A-002 guardrails)
+
+1. **Commands work in clean checkout** — verified:
+   - All `velqu` commands (`dev`, `build`, `inspect`, `contract diff`, `test`,
+     `check`, `pack inspect/migrate`, `help`) execute cleanly in a fresh worktree.
+   - Tested: `packages/cli/src/cli-surface.test.ts` (6 tests).
+2. **No compiler in production artifact** — verified:
+   - Production artifacts (`app.qpack`, `velqu-runtime`) perform zero TypeScript
+     compilation or route extraction (COMP-002/005). The `@velqu/compiler` package
+     remains build/dev tooling only.
+3. **CI use is documented** — verified:
+   - `docs/beta/08_CLI_REFERENCE.md` documents all CLI subcommands, flags, and
+     standard exit codes (0 = pass, 1 = general/user error, 2 = breaking contract
+     drift, 3 = unsupported format).
+   - Machine-readable `--json` output option tested across all commands in
+     `packages/cli/src/json-output.test.ts` (6 tests).
+4. **Invalid inputs fail clearly** — verified:
+   - Invalid syntax, missing files, unsupported imports, and bad route declarations
+     surface source-located code frames with line:col caret indicators and
+     actionable hints (`formatActionableError`, `renderCodeFrame`).
+   - Tested: `packages/cli/src/actionable-errors.test.ts` (4 tests).
+
+### Evidence chain (all committed, tested, verified)
+- **A** #1043 (50ad849): complete CLI command surface (`dev`, `build`, `inspect`,
+  `contract diff`, `test`, `check`, `pack inspect/migrate`, `help`), `inspectPack`
+  helper, CLI reference documentation (`08_CLI_REFERENCE.md`).
+- **B** #1044 (f7ee168): typed deterministic exit codes (`ExitCode`, 6 tests).
+- **C** #1045 (476bb24): `--json` machine-readable output option across all subcommands
+  and error paths (6 tests).
+- **D** #1046 (aad613d): source-located code frames, caret indicators, and actionable
+  diagnostic hints (`formatActionableError`, 4 tests).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-pack` → 3 suites — 0 failed
+- `bun test` → **259 pass / 0 fail (34 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of
+  M4A-002-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR. Local evidence above is complete.
