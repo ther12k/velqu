@@ -4,7 +4,7 @@ parent_task: M4A-001
 milestone: M4A
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -123,3 +123,64 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-001-V) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-001-v (squash-merged; see git log for final hash)
+- Closes: #436
+
+### Acceptance-criterion mapping (parent M4A-001 guardrails)
+
+1. **No Bun-only behavior mismatch by default** — verified:
+   - The `velqu dev` reload loop (`DevServer`, `packages/cli/src/dev-server.ts`)
+     spawns and drives the actual `velqu-runtime` binary with verified
+     temporary QPacks (`buildTemporaryPack`), executing handlers in real
+     QuickJS runtimes. Tested: `packages/cli/src/dev-server.test.ts` drives
+     real QuickJS workers across reload generations.
+2. **Failed reload keeps prior healthy app** — verified:
+   - When code with extraction/compile errors or syntax errors is introduced,
+     `reload()` returns `success: false, retainedPriorWorker: true`, leaving
+     the active generation 1 worker serving traffic without interruption.
+     Tested: `retains prior healthy worker when reload compilation fails`.
+3. **Source maps point to TypeScript** — verified:
+   - `buildTemporaryPack` generates linked source maps and writes debug
+     source sidecars (`temp-*.qpack.sources.json`) next to the temporary pack.
+     Tested: `builds temporary QPack for examples/proof with fast build latency
+     and TypeScript source maps` in `packages/compiler/src/incremental.test.ts`.
+4. **Reload is bounded and observable** — verified:
+   - Full reload latency is measured (< 500ms; compile < 100ms, worker
+     init < 150ms).
+   - Old workers enter graceful drain via `SIGTERM` (activating `DrainGate`),
+     enforcing a 5 000ms bounded drain timeout, and reaping cleanly upon exit.
+     Tested: `drains old worker gracefully and reaps process cleanly after
+     reload switch`.
+   - Compiler diagnostics (`CompileError`) format source file:line:column,
+     code snippet, and actionable hints (`formatCompileError`).
+
+### Evidence chain (all committed, tested, verified)
+- **A** #1037 (b254854): `ProjectWatcher` & `watchSourceAndContracts` (static
+  source/contract discovery without code execution, debouncing, directory
+  polling fallback for inotify resilience; 7 tests).
+- **B** #1038 (cd42ee1): `buildTemporaryPack` & `IncrementalPackBuilder` (fast-path
+  temporary QPack compilation with TypeScript source maps, contract change
+  detection, bounded temp file storage; 5 tests).
+- **C** #1039 (c6376a1): `DevServer` worker swap pipeline (loads and verifies
+  candidate worker readiness before atomic traffic switch; 4 tests).
+- **D** #1040 (4ddad04): graceful old worker drain, process reaping, and
+  formatted compiler/runtime error diagnostics (6 tests).
+
+### Verification runs (this branch, worktree-fresh)
+- `cargo test -p q-pack` → 3 suites — 0 failed
+- `cargo test -p q-engine-quickjs` → 20 + 102 + 1 — 0 failed
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → **237 pass / 0 fail (30 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures (standing)
+- No production code changed in this packet: verification-only closure of
+  M4A-001-A/B/C/D.
+- CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR. Local evidence above is complete.
