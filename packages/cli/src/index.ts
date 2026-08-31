@@ -16,6 +16,7 @@ import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
 import { inspectPack } from "./pack-inspect";
 import { ExitCode, type ExitCodeValue } from "./exit-codes";
+import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
 import {
   DevServer,
   formatCompileError,
@@ -31,11 +32,14 @@ import * as ts from "typescript";
 export {
   DevServer,
   ExitCode,
+  formatActionableError,
   formatCompileError,
   formatRuntimeError,
   inspectPack,
+  renderCodeFrame,
   type DevServerOptions,
   type ExitCodeValue,
+  type FormattedDiagnostic,
   type ReloadResult,
   type WorkerInstance,
 };
@@ -82,27 +86,26 @@ async function main() {
           for (const [k, v] of Object.entries(r.artifactBytes)) console.log(`  ${k}  ${v}B`);
         }
       } catch (e) {
-        if (e instanceof CompileError) {
-          if (jsonOutput) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  command: "build",
-                  error: e.message,
-                  location: e.location,
-                  hint: e.hint,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
-            console.error(e.toString());
-          }
-          process.exit(ExitCode.GENERAL_ERROR);
+        if (jsonOutput) {
+          const diag = formatActionableError(e, "build-error");
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "build",
+                error: diag.message,
+                location: diag.location,
+                hint: diag.hint,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          const diag = formatActionableError(e, "build-error");
+          console.error(diag.raw);
         }
-        throw e;
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
     }
@@ -460,27 +463,26 @@ async function main() {
           console.log(`velqu check: ${app.routes.length} routes in ${project} — clean`);
         }
       } catch (e) {
-        if (e instanceof CompileError) {
-          if (jsonOutput) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  command: "check",
-                  error: e.message,
-                  location: e.location,
-                  hint: e.hint,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
-            console.error(e.toString());
-          }
-          process.exit(ExitCode.GENERAL_ERROR);
+        if (jsonOutput) {
+          const diag = formatActionableError(e, "check-error");
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "check",
+                error: diag.message,
+                location: diag.location,
+                hint: diag.hint,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          const diag = formatActionableError(e, "check-error");
+          console.error(diag.raw);
         }
-        throw e;
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
     }

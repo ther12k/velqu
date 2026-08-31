@@ -4,7 +4,7 @@ parent_task: M4A-002
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -110,3 +110,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-002-D) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-002-d (squash-merged; see git log for final hash)
+- Closes: #441
+
+### Changed files
+- `packages/cli/src/errors.ts` (new): actionable diagnostic error formatting
+  (`formatActionableError`, `renderCodeFrame`, `FormattedDiagnostic`) —
+  - Source-located code frames with line numbers, context lines, and caret
+    pointing to column.
+  - Formats `CompileError`, TypeScript syntax errors, and toolchain errors
+    with actionable hints (e.g. ADR-0003 QuickJS import guidance).
+  - Integrates with `--json` mode to emit structured error objects
+    `{ status: "error", error, location, hint }`.
+- `packages/cli/src/index.ts`: wired `formatActionableError` across all CLI
+  command error handlers (`build`, `check`, `inspect`).
+- `packages/cli/src/actionable-errors.test.ts` (new): 4 integration tests
+  verifying code frame generation, diagnostic hints, and CLI error output.
+- `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Tests added (packages/cli/src/actionable-errors.test.ts, +4 tests)
+- Renders clean code frame with line number, context lines, and caret pointing to column.
+- Formats compile errors with actionable diagnostics, code frames, and hints.
+- CLI build surfaces actionable error frame on unsupported import.
+- CLI check surfaces actionable error frame on invalid route structure.
+
+### Command results
+- `cargo test -p q-pack` → 3 suites — 0 failed
+- `bun test` → **259 pass / 0 fail (34 files, +4 new tests)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Guardrail mapping (parent M4A-002 — complete)
+- **Invalid inputs fail clearly** — source-located code frames and actionable hints guide developers to fix syntax and declaration errors.
+- **Commands work in clean checkout** — verified in clean worktree.
+- **CI use is documented** — errors produce structured JSON in `--json` mode.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
