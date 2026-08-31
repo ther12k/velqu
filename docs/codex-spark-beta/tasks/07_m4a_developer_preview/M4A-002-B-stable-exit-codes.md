@@ -4,7 +4,7 @@ parent_task: M4A-002
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -110,3 +110,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-002-B) — PASS
+
+- Date: 2026-08-31
+- Branch/PR: m4a-002-b (squash-merged; see git log for final hash)
+- Closes: #439
+
+### Changed files
+- `packages/cli/src/exit-codes.ts` (new): typed exit code constants —
+  - `ExitCode.SUCCESS = 0`: clean build, inspect, diff without breaking changes, clean check, help.
+  - `ExitCode.GENERAL_ERROR = 1`: user error, compilation/syntax error, missing files, unknown commands.
+  - `ExitCode.BREAKING_CONTRACT = 2`: breaking contract difference detected by `contract diff`.
+  - `ExitCode.UNSUPPORTED_FORMAT = 3`: invalid pack version requiring migration.
+- `packages/cli/src/index.ts`: wired all `process.exit()` calls to explicit `ExitCode` constants.
+- `packages/cli/src/exit-codes.test.ts` (new): 6 integration tests verifying exact exit code behavior across all commands.
+- `benchmarks/manifest.json`: refreshed (standard remapped flow).
+
+### Tests added (packages/cli/src/exit-codes.test.ts, +6 tests)
+- Exits 0 on successful build.
+- Exits 0 on clean contract diff (no changes).
+- Exits 2 on breaking contract diff (e.g. route removed / changed).
+- Exits 1 on compilation error (syntax/extraction failure).
+- Exits 1 on unknown command or missing file.
+- Exits 0 on help command or --help flag.
+
+### Command results
+- `cargo test -p q-pack` → 3 suites — 0 failed
+- `bun test` → **249 pass / 0 fail (32 files, +6 new tests)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Guardrail mapping (parent M4A-002)
+- **CI use is documented** — deterministic exit codes (0 for pass, 1 for build/user errors, 2 for breaking contract drift) enable reliable CI automation.
+- **Invalid inputs fail clearly** — invalid inputs produce exit code 1 with actionable errors.
+
+### Disclosures
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.

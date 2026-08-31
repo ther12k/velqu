@@ -15,6 +15,7 @@ import {
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
 import { inspectPack } from "./pack-inspect";
+import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import {
   DevServer,
   formatCompileError,
@@ -29,10 +30,12 @@ import * as ts from "typescript";
 
 export {
   DevServer,
+  ExitCode,
   formatCompileError,
   formatRuntimeError,
   inspectPack,
   type DevServerOptions,
+  type ExitCodeValue,
   type ReloadResult,
   type WorkerInstance,
 };
@@ -60,7 +63,7 @@ async function main() {
       } catch (e) {
         if (e instanceof CompileError) {
           console.error(e.toString());
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         }
         throw e;
       }
@@ -87,7 +90,7 @@ async function main() {
         } catch (e) {
           if (e instanceof CompileError) {
             console.error(e.toString());
-            process.exit(1);
+            process.exit(ExitCode.GENERAL_ERROR);
           }
           throw e;
         }
@@ -98,7 +101,7 @@ async function main() {
       const manifestPath = join(dist, "route-manifest.json");
       if (!existsSync(manifestPath)) {
         console.error(`no route manifest at ${manifestPath} — run 'q build' first`);
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       const caps = JSON.parse(readFileSync(join(dist, "capability-manifest.json"), "utf8"));
@@ -119,7 +122,7 @@ async function main() {
         const r = manifest.find((x: { id: string }) => x.id === id);
         if (!r) {
           console.error(`route '${id}' not found`);
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         }
         console.log(JSON.stringify(r, null, 2));
       } else if (what === "capabilities") {
@@ -158,7 +161,7 @@ async function main() {
         for (const n of strategies.notes || []) console.log(`  ${n}`);
       } else {
         console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics>");
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
     }
@@ -169,7 +172,7 @@ async function main() {
         const report = inspectPack(file);
         if (report.status === "error") {
           console.error(`pack inspection failed: ${report.error}`);
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         }
         console.log(`pack: ${report.file}`);
         console.log(`  appId: ${report.appId}`);
@@ -186,7 +189,7 @@ async function main() {
         const file = rest[1];
         if (!file || !existsSync(file)) {
           console.error(`pack not found: ${file ?? "(none given)"}`);
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         }
         const report = assessPackMigrate(() => readFileSync(file, "utf8"));
         if (report.status === "legacy-supported") {
@@ -195,10 +198,10 @@ async function main() {
           break;
         }
         console.error(report.message);
-        process.exit(1);
+        process.exit(ExitCode.UNSUPPORTED_FORMAT);
       } else {
         console.error("usage: velqu pack <inspect [file]|migrate <file>>");
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
     }
@@ -224,7 +227,7 @@ async function main() {
       } catch (e) {
         if (e instanceof CompileError) {
           console.error(e.toString());
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         }
         throw e;
       }
@@ -234,7 +237,7 @@ async function main() {
       const sub = rest[0];
       if (sub !== "diff") {
         console.error("usage: velqu contract diff --against <contract.lock.json>");
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
       const dist = args.get("dist") ?? distFor(project);
       const against = args.get("against") ?? join(dist, "contract.lock.json");
@@ -248,7 +251,7 @@ async function main() {
         console.log(`${e.kind.padEnd(16)} ${e.routeId}: ${e.change}`);
         if (e.kind === "breaking") breaking++;
       }
-      if (breaking) process.exit(2);
+      if (breaking) process.exit(ExitCode.BREAKING_CONTRACT);
       break;
     }
     case "dev": {
@@ -311,7 +314,7 @@ usage:
   velqu test [filter]
   velqu check [--project <dir|entry>]
   velqu pack inspect <file> | migrate <file>`);
-      process.exit(isHelp ? 0 : 1);
+      process.exit(isHelp ? ExitCode.SUCCESS : ExitCode.GENERAL_ERROR);
     }
   }
 }
