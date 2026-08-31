@@ -47,6 +47,7 @@ async function main() {
     if (rest[i].startsWith("--")) args.set(rest[i].slice(2), rest[i + 1] ?? "");
   }
   const project = args.get("project") ?? "examples/proof";
+  const jsonOutput = args.has("json") || rest.includes("--json");
 
   switch (cmd) {
     case "build": {
@@ -57,12 +58,48 @@ async function main() {
           outDir: args.get("out") ?? undefined,
           updateLock: args.has("update-lock"),
         });
-        console.log(`velqu build [${profile}]: ${r.routes} routes → ${r.outDir} in ${r.buildMs}ms`);
-        if (r.lockPreserved) console.log("  contract.lock.json: PRESERVED (diff against it; --update-lock to refresh)");
-        for (const [k, v] of Object.entries(r.artifactBytes)) console.log(`  ${k}  ${v}B`);
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "ok",
+                command: "build",
+                profile,
+                project,
+                outDir: r.outDir,
+                routes: r.routes,
+                buildMs: r.buildMs,
+                lockPreserved: r.lockPreserved,
+                artifactBytes: r.artifactBytes,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.log(`velqu build [${profile}]: ${r.routes} routes → ${r.outDir} in ${r.buildMs}ms`);
+          if (r.lockPreserved) console.log("  contract.lock.json: PRESERVED (diff against it; --update-lock to refresh)");
+          for (const [k, v] of Object.entries(r.artifactBytes)) console.log(`  ${k}  ${v}B`);
+        }
       } catch (e) {
         if (e instanceof CompileError) {
-          console.error(e.toString());
+          if (jsonOutput) {
+            console.log(
+              JSON.stringify(
+                {
+                  status: "error",
+                  command: "build",
+                  error: e.message,
+                  location: e.location,
+                  hint: e.hint,
+                },
+                null,
+                2,
+              ),
+            );
+          } else {
+            console.error(e.toString());
+          }
           process.exit(ExitCode.GENERAL_ERROR);
         }
         throw e;
@@ -78,18 +115,57 @@ async function main() {
           const entry = resolveEntryPath(project);
           const app = extractApp(entry);
           const { report: strategyReport } = evaluateAppStrategies(app.routes);
-          console.log(`diagnostics for ${app.appId} (${entry}):`);
-          console.log(`  routes: ${app.routes.length}`);
-          console.log(`  policies: ${app.policies.length}`);
-          console.log(`  modules: ${app.modules.length}`);
-          console.log(`  strategy fallbacks: ${strategyReport.fallbacks.length}`);
-          for (const f of strategyReport.fallbacks) {
-            console.log(`    - ${f.route} [${f.location}]: ${f.reason} (${f.description})`);
+          if (jsonOutput) {
+            console.log(
+              JSON.stringify(
+                {
+                  status: "ok",
+                  command: "inspect",
+                  target: "diagnostics",
+                  appId: app.appId,
+                  entryFile: entry,
+                  routesCount: app.routes.length,
+                  policiesCount: app.policies.length,
+                  modulesCount: app.modules.length,
+                  fallbacksCount: strategyReport.fallbacks.length,
+                  fallbacks: strategyReport.fallbacks,
+                  verdict: "OK",
+                },
+                null,
+                2,
+              ),
+            );
+          } else {
+            console.log(`diagnostics for ${app.appId} (${entry}):`);
+            console.log(`  routes: ${app.routes.length}`);
+            console.log(`  policies: ${app.policies.length}`);
+            console.log(`  modules: ${app.modules.length}`);
+            console.log(`  strategy fallbacks: ${strategyReport.fallbacks.length}`);
+            for (const f of strategyReport.fallbacks) {
+              console.log(`    - ${f.route} [${f.location}]: ${f.reason} (${f.description})`);
+            }
+            console.log("  verdict: OK (static contract extraction clean)");
           }
-          console.log("  verdict: OK (static contract extraction clean)");
         } catch (e) {
           if (e instanceof CompileError) {
-            console.error(e.toString());
+            if (jsonOutput) {
+              console.log(
+                JSON.stringify(
+                  {
+                    status: "error",
+                    command: "inspect",
+                    target: "diagnostics",
+                    error: e.message,
+                    location: e.location,
+                    hint: e.hint,
+                  },
+                  null,
+                  2,
+                ),
+              );
+            } else {
+              console.error(e.toString());
+            }
             process.exit(ExitCode.GENERAL_ERROR);
           }
           throw e;
@@ -100,67 +176,147 @@ async function main() {
       const dist = args.get("dist") ?? distFor(project);
       const manifestPath = join(dist, "route-manifest.json");
       if (!existsSync(manifestPath)) {
-        console.error(`no route manifest at ${manifestPath} — run 'q build' first`);
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "inspect",
+                error: `no route manifest at ${manifestPath} — run 'velqu build' first`,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error(`no route manifest at ${manifestPath} — run 'q build' first`);
+        }
         process.exit(ExitCode.GENERAL_ERROR);
       }
       const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       const caps = JSON.parse(readFileSync(join(dist, "capability-manifest.json"), "utf8"));
       if (what === "routes") {
-        for (const r of manifest) {
-          const val = r.validationStrategy ?? "native";
-          const resp = r.responseStrategy ?? "native";
-          // M25-007-D: codec choice and bridge-crossing model per route
-          const valReason = r.validationFallbackReason ? `(${r.validationFallbackReason})` : "";
-          const respReason = r.responseFallbackReason ? `(${r.responseFallbackReason})` : "";
-          console.log(
-            `${r.method.padEnd(6)} ${r.path.padEnd(22)} ${r.id.padEnd(16)} val=${val}${valReason} resp=${resp}${respReason} codec=${r.validationCodec}/${r.responseCodec} bridge=${r.bridge ?? "single-prevalidated"} stage=${r.nativeStage} policy=${r.policy ?? "—"} caps=[${r.capabilities}]`,
-          );
+        if (jsonOutput) {
+          console.log(JSON.stringify({ status: "ok", command: "inspect", target: "routes", routes: manifest }, null, 2));
+        } else {
+          for (const r of manifest) {
+            const val = r.validationStrategy ?? "native";
+            const resp = r.responseStrategy ?? "native";
+            // M25-007-D: codec choice and bridge-crossing model per route
+            const valReason = r.validationFallbackReason ? `(${r.validationFallbackReason})` : "";
+            const respReason = r.responseFallbackReason ? `(${r.responseFallbackReason})` : "";
+            console.log(
+              `${r.method.padEnd(6)} ${r.path.padEnd(22)} ${r.id.padEnd(16)} val=${val}${valReason} resp=${resp}${respReason} codec=${r.validationCodec}/${r.responseCodec} bridge=${r.bridge ?? "single-prevalidated"} stage=${r.nativeStage} policy=${r.policy ?? "—"} caps=[${r.capabilities}]`,
+            );
+          }
+          console.log(`— ${manifest.length} routes`);
         }
-        console.log(`— ${manifest.length} routes`);
       } else if (what === "route") {
         const id = rest[1];
         const r = manifest.find((x: { id: string }) => x.id === id);
         if (!r) {
-          console.error(`route '${id}' not found`);
+          if (jsonOutput) {
+            console.log(JSON.stringify({ status: "error", command: "inspect", target: "route", error: `route '${id}' not found` }, null, 2));
+          } else {
+            console.error(`route '${id}' not found`);
+          }
           process.exit(ExitCode.GENERAL_ERROR);
         }
-        console.log(JSON.stringify(r, null, 2));
+        if (jsonOutput) {
+          console.log(JSON.stringify({ status: "ok", command: "inspect", target: "route", route: r }, null, 2));
+        } else {
+          console.log(JSON.stringify(r, null, 2));
+        }
       } else if (what === "capabilities") {
         // M27-002-D: report the pack's hash-verified linked inventory too
         const packPath = join(dist, "app.qpack");
         let pack: Record<string, unknown> = {};
         if (existsSync(packPath)) pack = JSON.parse(readFileSync(packPath, "utf8"));
-        for (const line of inspectCapabilities({
-          declared: caps.declared,
-          perRoute: caps.perRoute,
-          nativeOps: caps.nativeOps,
-          intrinsicRequirement: caps.intrinsicRequirement,
-          reductionImpact: caps.reductionImpact,
-          pack,
-        })) {
-          console.log(line);
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "ok",
+                command: "inspect",
+                target: "capabilities",
+                declared: caps.declared,
+                perRoute: caps.perRoute,
+                nativeOps: caps.nativeOps,
+                intrinsicRequirement: caps.intrinsicRequirement,
+                reductionImpact: caps.reductionImpact,
+                linkedModules: (pack as { linkedModules?: unknown }).linkedModules ?? [],
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          for (const line of inspectCapabilities({
+            declared: caps.declared,
+            perRoute: caps.perRoute,
+            nativeOps: caps.nativeOps,
+            intrinsicRequirement: caps.intrinsicRequirement,
+            reductionImpact: caps.reductionImpact,
+            pack,
+          })) {
+            console.log(line);
+          }
         }
       } else if (what === "fallbacks") {
         const report = JSON.parse(readFileSync(join(dist, "build-report.json"), "utf8"));
         const strategies = report.strategies || {};
         const fallbacks = strategies.fallbacks || [];
-        if (fallbacks.length === 0) {
-          console.log("fallbacks: none (0 routes using fallback; all routes use native strategy)");
-          console.log("strategy distribution:");
-          console.log(`  native validation: ${manifest.length} routes (100%)`);
-          console.log(`  native response: ${manifest.length} routes (100%)`);
-          console.log("measured fallback cost threshold: ~20–50 µs bridge crossing + 10–18 KB alloc per fallback");
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "ok",
+                command: "inspect",
+                target: "fallbacks",
+                activeFallbacksCount: fallbacks.length,
+                fallbacks,
+                strategyDistribution: {
+                  nativeValidationRoutes: manifest.length,
+                  nativeResponseRoutes: manifest.length,
+                },
+              },
+              null,
+              2,
+            ),
+          );
         } else {
-          console.log(`fallbacks: ${fallbacks.length} active`);
-          for (const f of fallbacks) {
-            console.log(
-              `  ${f.route} [${f.location}]: strategy=${f.strategy} reason=${f.reason} overhead=+${f.estimatedOverheadUs}µs (+${f.estimatedAllocBytes}B) — ${f.description}`,
-            );
+          if (fallbacks.length === 0) {
+            console.log("fallbacks: none (0 routes using fallback; all routes use native strategy)");
+            console.log("strategy distribution:");
+            console.log(`  native validation: ${manifest.length} routes (100%)`);
+            console.log(`  native response: ${manifest.length} routes (100%)`);
+            console.log("measured fallback cost threshold: ~20–50 µs bridge crossing + 10–18 KB alloc per fallback");
+          } else {
+            console.log(`fallbacks: ${fallbacks.length} active`);
+            for (const f of fallbacks) {
+              console.log(
+                `  ${f.route} [${f.location}]: strategy=${f.strategy} reason=${f.reason} overhead=+${f.estimatedOverheadUs}µs (+${f.estimatedAllocBytes}B) — ${f.description}`,
+              );
+            }
           }
+          for (const n of strategies.notes || []) console.log(`  ${n}`);
         }
-        for (const n of strategies.notes || []) console.log(`  ${n}`);
       } else {
-        console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics>");
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "inspect",
+                error: "missing or invalid inspect target; must be routes|route <id>|capabilities|fallbacks|diagnostics",
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics>");
+        }
         process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
@@ -171,36 +327,95 @@ async function main() {
         const file = rest[1] ?? join(distFor(project), "app.qpack");
         const report = inspectPack(file);
         if (report.status === "error") {
-          console.error(`pack inspection failed: ${report.error}`);
+          if (jsonOutput) {
+            console.log(JSON.stringify({ status: "error", command: "pack", target: "inspect", error: report.error }, null, 2));
+          } else {
+            console.error(`pack inspection failed: ${report.error}`);
+          }
           process.exit(ExitCode.GENERAL_ERROR);
         }
-        console.log(`pack: ${report.file}`);
-        console.log(`  appId: ${report.appId}`);
-        console.log(`  formatVersion: ${report.formatVersion}`);
-        console.log(`  contractHash: ${report.contractHash}`);
-        console.log(`  engine: ${report.engine?.name} ${report.engine?.version} (runtimeAbi=${report.engine?.runtimeAbi})`);
-        console.log(`  routes: ${report.routesCount}`);
-        console.log(`  schemas: ${report.schemasCount}`);
-        console.log(`  policies: ${report.policiesCount}`);
-        console.log(`  capabilities: [${(report.capabilities ?? []).join(", ")}]`);
-        console.log(`  bundleSha256: ${report.bundleSha256}`);
+        if (jsonOutput) {
+          console.log(JSON.stringify({ command: "pack", target: "inspect", ...report }, null, 2));
+        } else {
+          console.log(`pack: ${report.file}`);
+          console.log(`  appId: ${report.appId}`);
+          console.log(`  formatVersion: ${report.formatVersion}`);
+          console.log(`  contractHash: ${report.contractHash}`);
+          console.log(`  engine: ${report.engine?.name} ${report.engine?.version} (runtimeAbi=${report.engine?.runtimeAbi})`);
+          console.log(`  routes: ${report.routesCount}`);
+          console.log(`  schemas: ${report.schemasCount}`);
+          console.log(`  policies: ${report.policiesCount}`);
+          console.log(`  capabilities: [${(report.capabilities ?? []).join(", ")}]`);
+          console.log(`  bundleSha256: ${report.bundleSha256}`);
+        }
         break;
       } else if (sub === "migrate") {
         const file = rest[1];
         if (!file || !existsSync(file)) {
-          console.error(`pack not found: ${file ?? "(none given)"}`);
+          if (jsonOutput) {
+            console.log(JSON.stringify({ status: "error", command: "pack", target: "migrate", error: `pack not found: ${file ?? "(none given)"}` }, null, 2));
+          } else {
+            console.error(`pack not found: ${file ?? "(none given)"}`);
+          }
           process.exit(ExitCode.GENERAL_ERROR);
         }
         const report = assessPackMigrate(() => readFileSync(file, "utf8"));
         if (report.status === "legacy-supported") {
-          console.log(`formatVersion ${report.formatVersion} (legacy JSON adapter, supported through M2.6):`);
-          for (const line of report.guidance) console.log(`  - ${line}`);
+          if (jsonOutput) {
+            console.log(
+              JSON.stringify(
+                {
+                  status: "ok",
+                  command: "pack",
+                  target: "migrate",
+                  migrationStatus: report.status,
+                  formatVersion: report.formatVersion,
+                  guidance: report.guidance,
+                },
+                null,
+                2,
+              ),
+            );
+          } else {
+            console.log(`formatVersion ${report.formatVersion} (legacy JSON adapter, supported through M2.6):`);
+            for (const line of report.guidance) console.log(`  - ${line}`);
+          }
           break;
         }
-        console.error(report.message);
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "pack",
+                target: "migrate",
+                migrationStatus: report.status,
+                message: report.message,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error(report.message);
+        }
         process.exit(ExitCode.UNSUPPORTED_FORMAT);
       } else {
-        console.error("usage: velqu pack <inspect [file]|migrate <file>>");
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "pack",
+                error: "usage: velqu pack <inspect [file]|migrate <file>>",
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error("usage: velqu pack <inspect [file]|migrate <file>>");
+        }
         process.exit(ExitCode.GENERAL_ERROR);
       }
       break;
@@ -223,10 +438,46 @@ async function main() {
         assertPinnedToolchain({ bun: Bun.version!, typescript: ts.version });
         const entry = resolveEntryPath(project);
         const app = extractApp(entry);
-        console.log(`velqu check: ${app.routes.length} routes in ${project} — clean`);
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "ok",
+                command: "check",
+                project,
+                entryFile: entry,
+                appId: app.appId,
+                routesCount: app.routes.length,
+                policiesCount: app.policies.length,
+                modulesCount: app.modules.length,
+                clean: true,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.log(`velqu check: ${app.routes.length} routes in ${project} — clean`);
+        }
       } catch (e) {
         if (e instanceof CompileError) {
-          console.error(e.toString());
+          if (jsonOutput) {
+            console.log(
+              JSON.stringify(
+                {
+                  status: "error",
+                  command: "check",
+                  error: e.message,
+                  location: e.location,
+                  hint: e.hint,
+                },
+                null,
+                2,
+              ),
+            );
+          } else {
+            console.error(e.toString());
+          }
           process.exit(ExitCode.GENERAL_ERROR);
         }
         throw e;
@@ -236,20 +487,70 @@ async function main() {
     case "contract": {
       const sub = rest[0];
       if (sub !== "diff") {
-        console.error("usage: velqu contract diff --against <contract.lock.json>");
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "contract",
+                error: "usage: velqu contract diff --against <contract.lock.json>",
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error("usage: velqu contract diff --against <contract.lock.json>");
+        }
         process.exit(ExitCode.GENERAL_ERROR);
       }
       const dist = args.get("dist") ?? distFor(project);
       const against = args.get("against") ?? join(dist, "contract.lock.json");
       const entries = contractDiff(dist, against);
       if (!entries.length) {
-        console.log("contract diff: no changes");
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "ok",
+                command: "contract",
+                target: "diff",
+                changesCount: 0,
+                breakingCount: 0,
+                changes: [],
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.log("contract diff: no changes");
+        }
         break;
       }
       let breaking = 0;
       for (const e of entries) {
-        console.log(`${e.kind.padEnd(16)} ${e.routeId}: ${e.change}`);
         if (e.kind === "breaking") breaking++;
+      }
+      if (jsonOutput) {
+        console.log(
+          JSON.stringify(
+            {
+              status: breaking > 0 ? "breaking" : "ok",
+              command: "contract",
+              target: "diff",
+              changesCount: entries.length,
+              breakingCount: breaking,
+              changes: entries,
+            },
+            null,
+            2,
+          ),
+        );
+      } else {
+        for (const e of entries) {
+          console.log(`${e.kind.padEnd(16)} ${e.routeId}: ${e.change}`);
+        }
       }
       if (breaking) process.exit(ExitCode.BREAKING_CONTRACT);
       break;

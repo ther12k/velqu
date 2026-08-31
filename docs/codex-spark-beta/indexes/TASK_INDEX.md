@@ -490,7 +490,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-001-Z](../tasks/07_m4a_developer_preview/M4A-001-Z-package-evidence-for-implement-actual-runtime-velqu-dev-loop.md) | P0 | evidence | PASS | M4A-001-V | Package evidence for Implement actual-runtime `velqu dev` loop |
 | [M4A-002-A](../tasks/07_m4a_developer_preview/M4A-002-A-implement-and-document-velqu-dev-build-inspect-contract-diff-test-pack-inspect-m.md) | P1 | implement | PASS | M4A-001-Z, M26-GATE | Implement and document `velqu dev`, `build`, `inspect`, `contract diff`, `test`, `pack inspect/migrate`, and diagnostics |
 | [M4A-002-B](../tasks/07_m4a_developer_preview/M4A-002-B-stable-exit-codes.md) | P1 | implement | PASS | M4A-002-A | Stable exit codes |
-| [M4A-002-C](../tasks/07_m4a_developer_preview/M4A-002-C-machine-readable-output-option.md) | P1 | implement | TODO | M4A-002-B | Machine-readable output option |
+| [M4A-002-C](../tasks/07_m4a_developer_preview/M4A-002-C-machine-readable-output-option.md) | P1 | implement | PASS | M4A-002-B | Machine-readable output option |
 | [M4A-002-D](../tasks/07_m4a_developer_preview/M4A-002-D-helpful-actionable-errors.md) | P1 | implement | TODO | M4A-002-C | Helpful actionable errors |
 | [M4A-002-V](../tasks/07_m4a_developer_preview/M4A-002-V-verify-complete-cli-command-surface.md) | P1 | verify | TODO | M4A-002-A, M4A-002-B, M4A-002-C, M4A-002-D | Verify Complete CLI command surface |
 | [M4A-002-Z](../tasks/07_m4a_developer_preview/M4A-002-Z-package-evidence-for-complete-cli-command-surface.md) | P1 | evidence | TODO | M4A-002-V | Package evidence for Complete CLI command surface |
