@@ -116,6 +116,10 @@ pub fn redact_sensitive_text(text: &str) -> String {
             ("auth_token", ":"),
             ("token", "="),
             ("token", ":"),
+            ("authorization", "="),
+            ("authorization", ":"),
+            ("cookie", "="),
+            ("cookie", ":"),
         ]
         .iter()
         .find(|(k, s)| {
@@ -138,6 +142,35 @@ pub fn redact_sensitive_text(text: &str) -> String {
             } else {
                 None
             };
+            // Assignment-form Authorization may contain a scheme followed by
+            // a second token; both belong to the redacted value.
+            if in_quote.is_none() && key.eq_ignore_ascii_case("authorization") {
+                while i < len && bytes[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+                if text[i..].starts_with("Bearer ") || text[i..].starts_with("Basic ") {
+                    let scheme_start = i;
+                    while i < len && !bytes[i].is_ascii_whitespace() {
+                        i += 1;
+                    }
+                    let scheme = &text[scheme_start..i];
+                    while i < len && bytes[i].is_ascii_whitespace() {
+                        i += 1;
+                    }
+                    while i < len
+                        && !bytes[i].is_ascii_whitespace()
+                        && bytes[i] != b','
+                        && bytes[i] != b';'
+                        && bytes[i] != b'}'
+                    {
+                        i += 1;
+                    }
+                    out.truncate(out.len().saturating_sub("[REDACTED]".len()));
+                    out.push(' ');
+                    out.push_str(scheme);
+                    out.push_str(" [REDACTED]");
+                }
+            }
             while i < len {
                 if let Some(q) = in_quote {
                     if bytes[i] == q {
@@ -150,6 +183,23 @@ pub fn redact_sensitive_text(text: &str) -> String {
                     || bytes[i] == b';'
                     || bytes[i] == b'}'
                 {
+                    // Authorization assignments commonly contain a scheme
+                    // and a credential separated by a space; consume both.
+                    let rest = &text[i..];
+                    if rest.starts_with(" ") {
+                        let after_space = rest.trim_start();
+                        if after_space.starts_with("Bearer ") || after_space.starts_with("Basic ") {
+                            i += rest.len() - after_space.len();
+                            while i < len
+                                && !bytes[i].is_ascii_whitespace()
+                                && bytes[i] != b','
+                                && bytes[i] != b';'
+                                && bytes[i] != b'}'
+                            {
+                                i += 1;
+                            }
+                        }
+                    }
                     break;
                 }
                 i += 1;
@@ -381,6 +431,16 @@ mod tests {
         assert!(!redacted.contains("sk-live-999000"));
         assert!(redacted.contains("ghp_[REDACTED]"));
         assert!(redacted.contains("sk-live-[REDACTED]"));
+    }
+
+    #[test]
+    fn redact_header_and_cookie_assignment_values() {
+        let msg = "authorization=secret-value; cookie=session=private-cookie";
+        let redacted = redact_sensitive_text(msg);
+        assert!(!redacted.contains("secret-value"));
+        assert!(!redacted.contains("private-cookie"));
+        assert!(redacted.contains("authorization=[REDACTED]"));
+        assert!(redacted.contains("cookie=[REDACTED]"));
     }
 
     #[test]
