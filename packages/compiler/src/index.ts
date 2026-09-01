@@ -8,6 +8,7 @@ import { compileIntrinsicRequirement } from "./intrinsic-requirements";
 import { reductionImpacts } from "./reduction-impact";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
+export { verifyPublishedManifest, type PublishedArtifactRecord, type PublishedManifest, type PublishedVerification } from "./published";
 
 export { CompileError, extractApp, type ExtractedApp, type RouteInfo, type PolicyInfo } from "./extract";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
@@ -52,6 +53,8 @@ export interface BuildResult {
   artifactBytes: Record<string, number>;
   /** true when the contract lock was kept from a previous build */
   lockPreserved: boolean;
+  /** Paths and hashes of the published client artifacts. */
+  publishedArtifacts: Record<string, { path: string; sha256: string; bytes: number }>;
 }
 
 export async function build(opts: BuildOptions): Promise<BuildResult> {
@@ -243,10 +246,36 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     }),
   };
   const artifactBytes: Record<string, number> = {};
+  const publishedArtifacts: Record<string, { path: string; sha256: string; bytes: number }> = {};
   for (const [name, content] of Object.entries(files)) {
-    writeFileSync(join(outDir, name), content);
-    artifactBytes[name] = Buffer.byteLength(content);
+    const path = join(outDir, name);
+    writeFileSync(path, content);
+    const bytes = Buffer.byteLength(content);
+    artifactBytes[name] = bytes;
+    if (["contract.json", "contract.d.ts", "contract.meta.json", "openapi.json", "contract.lock.json"].includes(name)) {
+      publishedArtifacts[name] = {
+        path,
+        sha256: createHash("sha256").update(content).digest("hex"),
+        bytes,
+      };
+    }
   }
+  const publishedManifest = {
+    formatVersion: 1,
+    appId: app.appId,
+    contractHash: (pack as { contractHash: string }).contractHash,
+    artifacts: Object.fromEntries(
+      Object.entries(publishedArtifacts).map(([name, info]) => [name, { path: name, sha256: info.sha256, bytes: info.bytes }]),
+    ),
+  };
+  const publishedManifestText = JSON.stringify(publishedManifest, null, 2);
+  writeFileSync(join(outDir, "published-manifest.json"), publishedManifestText);
+  artifactBytes["published-manifest.json"] = Buffer.byteLength(publishedManifestText);
+  publishedArtifacts["published-manifest.json"] = {
+    path: join(outDir, "published-manifest.json"),
+    sha256: createHash("sha256").update(publishedManifestText).digest("hex"),
+    bytes: artifactBytes["published-manifest.json"],
+  };
   writeFileSync(join(outDir, "build-report.md"), renderBuildReportMd(buildReport, artifactBytes));
 
   return {
@@ -255,6 +284,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     routes: app.routes.length,
     buildMs: Math.round(performance.now() - t0),
     artifactBytes,
+    publishedArtifacts,
     lockPreserved: lockExists && !writeLock,
   };
 }
