@@ -53,6 +53,22 @@ export function verifyPublishedManifest(manifestPath: string): PublishedVerifica
   }
 
   const root = dirname(absoluteManifest);
+  const contractRecord = manifest.artifacts?.["contract.json"];
+  if (contractRecord) {
+    const contractPath = join(root, contractRecord.path);
+    if (existsSync(contractPath)) {
+      try {
+        const contract = JSON.parse(readFileSync(contractPath, "utf8")) as { contractHash?: unknown };
+        if (contract.contractHash !== manifest.contractHash) {
+          errors.push(
+            `contractHash mismatch with contract.json (manifest ${String(manifest.contractHash)}, artifact ${String(contract.contractHash)})`,
+          );
+        }
+      } catch {
+        errors.push("contract.json: invalid JSON while checking public contract hash");
+      }
+    }
+  }
   for (const [name, record] of Object.entries(manifest.artifacts ?? {})) {
     const artifactPath = join(root, record.path);
     if (!existsSync(artifactPath)) {
