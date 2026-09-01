@@ -35,6 +35,9 @@ impl SourceMapper for SourcemapMapper {
     }
 }
 
+/// A source-map mapper is deliberately optional: production packs do not
+/// carry source maps, and diagnostics must not make the success path parse or
+/// load a debug sidecar.
 pub fn mapper_for(pack: &q_pack::QPack) -> Arc<dyn SourceMapper> {
     match &pack.source_map {
         Some(json) => match SourcemapMapper::parse(json) {
@@ -42,5 +45,20 @@ pub fn mapper_for(pack: &q_pack::QPack) -> Arc<dyn SourceMapper> {
             Err(_) => Arc::new(q_engine_quickjs::IdentityMapper),
         },
         None => Arc::new(q_engine_quickjs::IdentityMapper),
+    }
+}
+
+/// Load an advisory `<pack>.sources.json` sidecar only when tooling requests
+/// symbolization. Binding is checked against the exact verified pack bytes;
+/// missing or malformed sidecars never affect serving.
+pub fn mapper_for_sidecar(
+    sidecar_path: &std::path::Path,
+    pack_bytes: &[u8],
+) -> Result<Arc<dyn SourceMapper>, String> {
+    let sidecar =
+        q_pack::sources_sidecar::SourcesSidecar::load_and_verify(sidecar_path, pack_bytes)?;
+    match sidecar.source_map {
+        Some(json) => SourcemapMapper::parse(&json).map(|m| Arc::new(m) as Arc<dyn SourceMapper>),
+        None => Ok(Arc::new(q_engine_quickjs::IdentityMapper)),
     }
 }
