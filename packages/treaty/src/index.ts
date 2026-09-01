@@ -15,11 +15,42 @@ export interface RouteInfo {
   readonly method: string;
 }
 
+// ---------------------------------------------------------------- direct dispatch (unit-local mode)
+
+/** One invocation routed to an in-process dispatcher instead of HTTP. */
+export interface DispatchRequest {
+  /** full route id, e.g. "greetings.create" */
+  routeId: string;
+  /** UPPERCASE HTTP method */
+  method: string;
+  /** path with params substituted (no baseUrl prefix) */
+  path: string;
+  query?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+/** What a dispatcher hands back: the same facts an HTTP response carries. */
+export type DispatchOutcome =
+  | { kind: "response"; status: number; bodyText: string }
+  | { kind: "network"; message: string }
+  | { kind: "abort" };
+
+export type DispatchImpl = (req: DispatchRequest) => Promise<DispatchOutcome>;
+
 export interface TreatyOptions {
   baseUrl: string;
   /** route-id -> {path, method}; the published contract's route table */
   contract: Readonly<Record<string, RouteInfo>>;
   fetchImpl?: TreatyFetch;
+  /**
+   * Direct in-process dispatcher (unit-local mode). When set, NO HTTP
+   * transport is used — every invocation goes through this function and
+   * results are status-split by the SAME contract machinery as the
+   * remote modes (M4A-004-A). Dispatcher throws are contract errors and
+   * propagate (fail loud) instead of becoming network errors.
+   */
+  dispatchImpl?: DispatchImpl;
 }
 
 // ---------------------------------------------------------------- status & response splitting
@@ -204,7 +235,8 @@ export function treaty<Api extends Record<string, AnyRouteContract>>(
 ): TreatyClient<Api> {
   const doFetch = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/$/, "");
-  return makeProxy(base, doFetch, options.contract, []) as TreatyClient<Api>;
+  const dispatch = options.dispatchImpl ?? null;
+  return makeProxy(base, doFetch, options.contract, [], dispatch) as TreatyClient<Api>;
 }
 
 function makeProxy(
@@ -212,6 +244,7 @@ function makeProxy(
   doFetch: typeof fetch,
   contract: Readonly<Record<string, RouteInfo>>,
   idSegments: string[],
+  dispatch: DispatchImpl | null,
 ): unknown {
   return new Proxy(function () {} as unknown as object, {
     get(_t, prop: string) {
@@ -222,12 +255,14 @@ function makeProxy(
         const info = contract[id];
         const expectedMethod = info.method.toUpperCase();
         if (methodUpper === expectedMethod) {
-          const routeUrl = `${base}/${info.path.replace(/^\//, "")}`;
+          const pathPart = info.path.replace(/^\//, "");
+          const routeUrl = `${base}/${pathPart}`;
           return (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
-            if (methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE") {
-              return request(doFetch, routeUrl, methodUpper, (bodyOrOpts ?? {}) as RequestOptions);
-            }
-            return request(doFetch, routeUrl, methodUpper, { ...(maybeOpts ?? {}), body: bodyOrOpts });
+            const opts =
+              methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE"
+                ? ((bodyOrOpts ?? {}) as RequestOptions)
+                : { ...(maybeOpts ?? {}), body: bodyOrOpts };
+            return request(doFetch, dispatch, id, routeUrl, pathPart, methodUpper, opts);
           };
         }
         if (["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].includes(methodUpper)) {
@@ -239,7 +274,7 @@ function makeProxy(
         }
       }
       const next = [...idSegments, prop];
-      return makeProxy(base, doFetch, contract, next);
+      return makeProxy(base, doFetch, contract, next, dispatch);
     },
     apply(_t, _thisArg, args: [Record<string, string | number>?]) {
       const id = idSegments.join(".");
@@ -265,19 +300,15 @@ function makeProxy(
         .join("/");
       const routeUrl = `${base}/${path}`;
       const declaredMethod = info.method.toLowerCase();
+      const invoke = (method: string, opts: RequestOptions & { body?: unknown }) =>
+        request(doFetch, dispatch, id, routeUrl, path, method, opts);
       const methodMap: Record<string, Function> = {
-        get: (opts?: RequestOptions & { query?: Record<string, unknown> }) =>
-          request(doFetch, routeUrl, "GET", opts),
-        post: (body?: unknown, opts?: RequestOptions) =>
-          request(doFetch, routeUrl, "POST", { ...opts, body }),
-        put: (body?: unknown, opts?: RequestOptions) =>
-          request(doFetch, routeUrl, "PUT", { ...opts, body }),
-        patch: (body?: unknown, opts?: RequestOptions) =>
-          request(doFetch, routeUrl, "PATCH", { ...opts, body }),
-        delete: (opts?: RequestOptions) =>
-          request(doFetch, routeUrl, "DELETE", opts),
-        head: (opts?: RequestOptions) =>
-          request(doFetch, routeUrl, "HEAD", opts),
+        get: (opts?: RequestOptions & { query?: Record<string, unknown> }) => invoke("GET", opts ?? {}),
+        post: (body?: unknown, opts?: RequestOptions) => invoke("POST", { ...opts, body }),
+        put: (body?: unknown, opts?: RequestOptions) => invoke("PUT", { ...opts, body }),
+        patch: (body?: unknown, opts?: RequestOptions) => invoke("PATCH", { ...opts, body }),
+        delete: (opts?: RequestOptions) => invoke("DELETE", opts ?? {}),
+        head: (opts?: RequestOptions) => invoke("HEAD", opts ?? {}),
       };
       return new Proxy({} as any, {
         get(_target, prop: string) {
@@ -301,42 +332,70 @@ function makeProxy(
 
 async function request<Resp extends Record<number, unknown>>(
   doFetch: typeof fetch,
+  dispatch: DispatchImpl | null,
+  routeId: string,
   url: string,
+  pathPart: string,
   method: string,
   opts: RequestOptions & { body?: unknown } = {},
 ): Promise<TreatyResult<Resp>> {
-  const qs = opts.query ? `?${new URLSearchParams(stripUndefined(opts.query))}` : "";
-  let res: Response;
-  try {
-    res = await doFetch(url + qs, {
+  let status: number;
+  let text: string;
+  if (dispatch) {
+    // Direct in-process dispatcher: no HTTP. Dispatcher throws are
+    // contract errors and propagate — they never masquerade as network
+    // failures (fail loud).
+    const outcome = await dispatch({
+      routeId,
       method,
-      headers: {
-        ...(opts.body !== undefined && opts.body !== null ? { "content-type": "application/json" } : {}),
-        ...(opts.headers ?? {}),
-      },
-      body: opts.body !== undefined && opts.body !== null ? JSON.stringify(opts.body) : undefined,
-      signal: opts.signal,
+      path: `/${pathPart.replace(/^\//, "")}`,
+      query: opts.query,
+      headers: opts.headers,
+      body: opts.body,
     });
-  } catch (e) {
-    if (e instanceof Error && e.name === "AbortError") {
+    if (outcome.kind === "abort") {
       return { data: null, error: { status: 0, kind: "abort" } } as const;
     }
-    return {
-      data: null,
-      error: { status: 0, kind: "network", message: e instanceof Error ? e.message : "network failure" },
-    } as const;
+    if (outcome.kind === "network") {
+      return { data: null, error: { status: 0, kind: "network", message: outcome.message } } as const;
+    }
+    status = outcome.status;
+    text = outcome.bodyText;
+  } else {
+    const qs = opts.query ? `?${new URLSearchParams(stripUndefined(opts.query))}` : "";
+    let res: Response;
+    try {
+      res = await doFetch(url + qs, {
+        method,
+        headers: {
+          ...(opts.body !== undefined && opts.body !== null ? { "content-type": "application/json" } : {}),
+          ...(opts.headers ?? {}),
+        },
+        body: opts.body !== undefined && opts.body !== null ? JSON.stringify(opts.body) : undefined,
+        signal: opts.signal,
+      });
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        return { data: null, error: { status: 0, kind: "abort" } } as const;
+      }
+      return {
+        data: null,
+        error: { status: 0, kind: "network", message: e instanceof Error ? e.message : "network failure" },
+      } as const;
+    }
+    status = res.status;
+    text = await res.text();
   }
-  const text = await res.text();
   let parsed: unknown = undefined;
   try {
     parsed = text ? JSON.parse(text) : undefined;
   } catch {
     parsed = text;
   }
-  if (res.ok) {
+  if (status >= 200 && status <= 299) {
     return { data: parsed as SuccessData<Resp>, error: null } as const;
   }
-  const err = { status: res.status as ExtractErrorStatuses<Resp>, problem: parsed };
+  const err = { status: status as ExtractErrorStatuses<Resp>, problem: parsed };
   return { data: null, error: err as unknown as TreatyErrorFor<Resp> } as const;
 }
 

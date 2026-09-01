@@ -1,11 +1,132 @@
 /**
- * @velqu/testing — Treaty local test adapters. The two modes are LABELED and
+ * @velqu/testing — Treaty local test adapters. The modes are LABELED and
  * reported separately (TRT-005): unit-local executes handlers in-process
- * under Bun; runtime-local drives the ACTUAL velqu-runtime binary over HTTP.
+ * (direct dispatcher or loopback transport) under Bun; runtime-local drives
+ * the ACTUAL velqu-runtime binary over HTTP.
  */
-import { treaty, type AnyRouteContract, type TreatyClient } from "@velqu/treaty";
+import {
+  treaty,
+  type AnyRouteContract,
+  type DispatchOutcome,
+  type DispatchRequest,
+  type TreatyClient,
+} from "@velqu/treaty";
 
-// ---------------------------------------------------------------- unit-local
+// ---------------------------------------------------------------- unit-local DIRECT (M4A-004-A)
+
+/** A route as seen by the direct unit-local dispatcher: handler + contract facts. */
+export interface UnitDirectRoute {
+  path: string;
+  method: string;
+  /**
+   * Declared response statuses from the contract (route `response` keys).
+   * A handler returning an undeclared status is a CONTRACT ERROR and fails
+   * loud — the runtime itself can never emit an undeclared status.
+   */
+  responses: Record<number, unknown>;
+  handle: (ctx: unknown) => Promise<unknown> | unknown;
+}
+
+export interface UnitDirectTreatyOptions {
+  routes: Record<string, UnitDirectRoute>;
+}
+
+/** Raised when a unit-local handler produces a status the contract never declared. */
+export class UndeclaredStatusError extends Error {
+  readonly routeId: string;
+  readonly status: number;
+  readonly declared: readonly number[];
+  constructor(routeId: string, status: number, declared: readonly number[]) {
+    super(
+      `treaty (unit-local): handler for "${routeId}" produced status ${status}, ` +
+        `which the contract never declared (declared: ${declared.join(", ") || "none"}). ` +
+        `Undeclared status is a contract error — declare it in the route response union.`,
+    );
+    this.name = "UndeclaredStatusError";
+    this.routeId = routeId;
+    this.status = status;
+    this.declared = declared;
+  }
+}
+
+/**
+ * UNIT-LOCAL DIRECT mode — a generated in-process dispatcher, NO HTTP
+ * transport at all: the Treaty client hands each call to the dispatcher,
+ * which runs the handler in THIS process and status-splits the result by
+ * the SAME contract machinery as the remote modes. Fast but NOT runtime
+ * conformance; results must be labeled unit-local.
+ */
+export function unitTreatyDirect<Api extends Record<string, AnyRouteContract> = Record<string, AnyRouteContract>>(
+  opts: UnitDirectTreatyOptions,
+): {
+  __mode: "unit-local (direct dispatcher, NOT runtime conformance)";
+  close: () => void;
+  api: TreatyClient<Api>;
+} {
+  const declaredOf = (routeId: string): readonly number[] =>
+    Object.keys(opts.routes[routeId]?.responses ?? {}).map(Number);
+
+  const dispatch = async (req: DispatchRequest): Promise<DispatchOutcome> => {
+    const route = opts.routes[req.routeId];
+    if (!route) {
+      throw new Error(`treaty (unit-local): unknown route id "${req.routeId}" (not in declared routes)`);
+    }
+    if (route.method.toUpperCase() !== req.method) {
+      throw new Error(
+        `treaty (unit-local): method "${req.method}" is not allowed on route "${req.routeId}" ` +
+          `(declared method: "${route.method}")`,
+      );
+    }
+    const params: Record<string, string> = {};
+    for (const seg of route.path.split("/").filter(Boolean)) {
+      if (seg.startsWith(":")) {
+        const name = seg.slice(1);
+        const idx = route.path.split("/").filter(Boolean).indexOf(seg);
+        const actual = req.path.split("/").filter(Boolean)[idx] ?? "";
+        params[name] = decodeURIComponent(actual);
+      }
+    }
+    const headers = Object.fromEntries(Object.entries(req.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
+    const out = await route.handle({
+      params,
+      query: req.query ?? {},
+      headers,
+      body: req.body,
+      json: () => req.body,
+      native: { timer: { delay: (ms: number) => Bun.sleep(ms).then(() => ms) } },
+    });
+    const asRecord = out as Record<string, unknown> | null | undefined;
+    let status: number;
+    let value: unknown;
+    if (asRecord && typeof asRecord === "object" && asRecord.__problem === true) {
+      status = Number(asRecord.status ?? 500);
+      value = asRecord;
+    } else if (asRecord && typeof asRecord === "object" && asRecord.__ok === true) {
+      status = Number(asRecord.status ?? 200);
+      value = asRecord.value ?? null;
+    } else {
+      status = 200;
+      value = out ?? null;
+    }
+    const declared = declaredOf(req.routeId);
+    if (!declared.includes(status)) {
+      throw new UndeclaredStatusError(req.routeId, status, declared);
+    }
+    return { kind: "response", status, bodyText: JSON.stringify(value ?? null) };
+  };
+
+  const contract = Object.fromEntries(
+    Object.entries(opts.routes).map(([id, r]) => [id, { path: r.path, method: r.method }]),
+  );
+  const api = treaty<Api>({ baseUrl: "unit-local://direct", contract, dispatchImpl: dispatch });
+  return {
+    __mode: "unit-local (direct dispatcher, NOT runtime conformance)" as const,
+    close: () => {},
+    api,
+  };
+}
+
+// ---------------------------------------------------------------- unit-local (loopback transport)
 
 export interface UnitTreatyOptions {
   /** app route table to expose; handlers run in THIS process */

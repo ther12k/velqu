@@ -500,7 +500,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-003-D](../tasks/07_m4a_developer_preview/M4A-003-D-optional-fetch-profile-choices.md) | P1 | implement | PASS | M4A-003-C | Optional fetch/profile choices |
 | [M4A-003-V](../tasks/07_m4a_developer_preview/M4A-003-V-verify-implement-project-scaffolding.md) | P1 | verify | PASS | M4A-003-A, M4A-003-B, M4A-003-C, M4A-003-D | Verify Implement project scaffolding |
 | [M4A-003-Z](../tasks/07_m4a_developer_preview/M4A-003-Z-package-evidence-for-implement-project-scaffolding.md) | P1 | evidence | PASS | M4A-003-V | Package evidence for Implement project scaffolding |
-| [M4A-004-A](../tasks/07_m4a_developer_preview/M4A-004-A-unit-local-direct-generated-dispatcher.md) | P0 | implement | TODO | M25-GATE, M4A-001-Z | Unit-local direct generated dispatcher |
+| [M4A-004-A](../tasks/07_m4a_developer_preview/M4A-004-A-unit-local-direct-generated-dispatcher.md) | P0 | implement | PASS | M25-GATE, M4A-001-Z | Unit-local direct generated dispatcher |
 | [M4A-004-B](../tasks/07_m4a_developer_preview/M4A-004-B-runtime-local-actual-rust-quickjs-process.md) | P0 | implement | TODO | M4A-004-A | Runtime-local actual Rust/QuickJS process |
 | [M4A-004-C](../tasks/07_m4a_developer_preview/M4A-004-C-remote-fetch-client.md) | P0 | implement | TODO | M4A-004-B | Remote fetch client |
 | [M4A-004-D](../tasks/07_m4a_developer_preview/M4A-004-D-exact-method-body-query-status-problem-typing.md) | P0 | implement | TODO | M4A-004-C | Exact method/body/query/status/problem typing |
