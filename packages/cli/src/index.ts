@@ -17,7 +17,12 @@ import { inspectCapabilities } from "./capability-inspect";
 import { inspectPack } from "./pack-inspect";
 import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
-import { generateStarterProject, type ProjectTemplateOptions } from "./scaffold";
+import {
+  generateStarterProject,
+  VALID_SERVICE_PROFILES,
+  type ProjectTemplateOptions,
+  type ServiceProfileChoice,
+} from "./scaffold";
 import {
   DevServer,
   formatCompileError,
@@ -607,6 +612,28 @@ async function main() {
     case "create": {
       const targetDir = rest.find((a) => !a.startsWith("--")) ?? (args.has("project") ? project : ".");
       const name = args.get("name") ?? (targetDir === "." ? "my-velqu-app" : targetDir.split(/[\\/]/).pop()) ?? "my-velqu-app";
+      const profile = (args.get("profile") ?? "serverless") as ServiceProfileChoice;
+      const withFetch = args.has("with-fetch") || args.has("fetch");
+
+      if (!VALID_SERVICE_PROFILES.includes(profile)) {
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                status: "error",
+                command: "init",
+                error: `invalid service profile '${profile}'; valid choices: ${VALID_SERVICE_PROFILES.join(", ")}`,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error(`invalid service profile '${profile}'; valid choices: ${VALID_SERVICE_PROFILES.join(", ")}`);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+
       const resolvedTarget = resolve(targetDir);
 
       if (existsSync(resolvedTarget) && existsSync(join(resolvedTarget, "src", "app.ts")) && !args.has("force")) {
@@ -628,7 +655,7 @@ async function main() {
         process.exit(ExitCode.GENERAL_ERROR);
       }
 
-      const files = generateStarterProject({ name });
+      const files = generateStarterProject({ name, profile, withFetch });
       mkdirSync(resolvedTarget, { recursive: true });
 
       const written: string[] = [];
@@ -647,6 +674,8 @@ async function main() {
               command: "init",
               name,
               targetDir: resolvedTarget,
+              profile,
+              withFetch,
               filesCount: written.length,
               files: written,
             },
@@ -655,7 +684,7 @@ async function main() {
           ),
         );
       } else {
-        console.log(`velqu init: created starter project '${name}' in ${resolvedTarget}`);
+        console.log(`velqu init: created starter project '${name}' in ${resolvedTarget} (profile: ${profile}, fetch: ${withFetch ? "enabled" : "disabled"})`);
         for (const f of written) {
           console.log(`  + ${f}`);
         }
@@ -673,8 +702,8 @@ async function main() {
       }
       console.log(`velqu — Unified Velqu CLI
 usage:
-  velqu init [dir] [--name <app-name>]
-  velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50]
+  velqu init [dir] [--name <app-name>] [--profile <serverless|service|throughput>] [--with-fetch]
+  velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50] [--profile serverless]
   velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
   velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
   velqu contract diff --against <contract.lock.json>
