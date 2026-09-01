@@ -202,22 +202,62 @@ export function unitTreaty<Api extends Record<string, AnyRouteContract> = Record
 
 // ---------------------------------------------------------------- runtime-local
 
+export interface RuntimeContractInfo {
+  readonly path: string;
+  readonly method: string;
+}
+
+/** Load the route table emitted in a published build's contract.json. */
+export function contractFromBuild(dist: string): Record<string, RuntimeContractInfo> {
+  const { readFileSync } = require("node:fs") as typeof import("node:fs");
+  const { join } = require("node:path") as typeof import("node:path");
+  const raw = JSON.parse(readFileSync(join(dist, "contract.json"), "utf8")) as {
+    routes: Record<string, RuntimeContractInfo>;
+  };
+  return Object.fromEntries(Object.entries(raw.routes).map(([id, r]) => [id, { path: r.path, method: r.method }]));
+}
+
 export interface RuntimeTreatyOptions {
   packPath: string;
   qRuntimeBin?: string;
   port?: number;
+  serviceProfile?: string;
+  drainTimeoutMs?: number;
 }
 
-/**
- * RUNTIME-LOCAL mode — spawns the actual velqu-runtime binary with the pack and
- * drives real HTTP. THIS is native-runtime conformance evidence.
- */
+export interface RuntimeReadyInfo {
+  appId?: string;
+  routes?: number;
+  serviceProfile?: string;
+  engine?: string;
+  startupMs?: number;
+}
+
+export interface RuntimeTreatyHandle<Api extends Record<string, AnyRouteContract>> {
+  api: TreatyClient<Api>;
+  ready: RuntimeReadyInfo | null;
+  close: () => Promise<number>;
+  __mode: "runtime-local";
+}
+
+/** RUNTIME-LOCAL mode — the actual Rust host + QuickJS worker over HTTP. */
 export async function runtimeTreaty<Api extends Record<string, AnyRouteContract> = Record<string, AnyRouteContract>>(
   opts: RuntimeTreatyOptions,
-  contract: Record<string, { path: string; method: string }>,
-): Promise<{ api: TreatyClient<Api>; close: () => Promise<void>; __mode: "runtime-local" }> {
-  const { resolve } = require("node:path");
-  const { existsSync } = require("node:fs");
+  contract?: Record<string, RuntimeContractInfo>,
+): Promise<RuntimeTreatyHandle<Api>> {
+  const { resolve, dirname } = require("node:path") as typeof import("node:path");
+  const { existsSync } = require("node:fs") as typeof import("node:fs");
+  const packRoot = resolve(opts.packPath);
+  const projectRoot = resolve(dirname(packRoot), "..", "..", "..");
+  // The helper is commonly called from a package/conformance cwd rather than
+  // the repository root. Search from the pack's checkout before cwd, while
+  // still honoring the explicit env/option overrides.
+  const packCandidates = [
+    resolve(dirname(packRoot), "..", "..", "target/release/velqu-runtime"),
+    resolve(dirname(packRoot), "..", "..", "target/debug/velqu-runtime"),
+    resolve(projectRoot, "target/release/velqu-runtime"),
+    resolve(projectRoot, "target/debug/velqu-runtime"),
+  ];
   const candidates = [
     opts.qRuntimeBin,
     process.env.VELQU_RUNTIME,
@@ -225,37 +265,63 @@ export async function runtimeTreaty<Api extends Record<string, AnyRouteContract>
     resolve("./target/debug/velqu-runtime"),
     resolve(process.cwd(), "target/release/velqu-runtime"),
     resolve(process.cwd(), "target/debug/velqu-runtime"),
+    ...packCandidates,
   ].filter(Boolean);
   const bin = candidates.find((p) => existsSync(p!));
-  if (!bin) {
-    throw new Error(`runtimeTreaty: velqu-runtime binary not found (looked in: ${candidates.join(", ")})`);
-  }
+  if (!bin) throw new Error(`runtimeTreaty: velqu-runtime binary not found (looked in: ${candidates.join(", ")})`);
   const port = opts.port ?? freePort();
-  const proc = Bun.spawn([bin, "--pack", opts.packPath, "--port", String(port)], {
-    stdout: "ignore",
-    stderr: "ignore",
-    env: process.env,
-  });
-  // wait ready
+  const resolvedContract = contract ?? contractFromBuild(dirname(packRoot));
+  const args = [bin, "--pack", opts.packPath, "--port", String(port)];
+  if (opts.serviceProfile) args.push("--service-profile", opts.serviceProfile);
+  const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe", env: process.env });
+  let ready: RuntimeReadyInfo | null = null;
+  const consume = async (stream: ReadableStream<Uint8Array>) => {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (ready === null && line.includes('"event":"ready"')) {
+          try { ready = JSON.parse(line) as RuntimeReadyInfo; } catch { /* leave null */ }
+        }
+      }
+    }
+  };
+  // The runtime writes the readiness identity to stdout and diagnostics to
+  // stderr. Consume both bounded pipes so either stream can never deadlock.
+  void Promise.all([
+    consume(proc.stdout as ReadableStream<Uint8Array>),
+    consume(proc.stderr as ReadableStream<Uint8Array>),
+  ]).catch(() => {});
   const deadline = Date.now() + 10_000;
   for (;;) {
     try {
       const c = await Bun.connect({ hostname: "127.0.0.1", port, socket: { data() {}, open() {} } });
-      c.end?.();
-      c.terminate?.();
-      break;
+      c.end?.(); c.terminate?.(); break;
     } catch {
       if (Date.now() > deadline) throw new Error("velqu-runtime did not start");
       await Bun.sleep(10);
     }
   }
-  const client = treaty<Api>({ baseUrl: `http://127.0.0.1:${port}`, contract });
+  const client = treaty<Api>({ baseUrl: `http://127.0.0.1:${port}`, contract: resolvedContract });
   return {
     __mode: "runtime-local",
     api: client,
+    get ready() { return ready; },
     close: async () => {
-      proc.kill();
-      await proc.exited;
+      proc.kill("SIGTERM");
+      const timer = setTimeout(() => {
+        try { proc.kill("SIGKILL"); } catch { /* already gone */ }
+      }, opts.drainTimeoutMs ?? 5_000);
+      const code = await proc.exited;
+      clearTimeout(timer);
+      return code;
     },
   };
 }

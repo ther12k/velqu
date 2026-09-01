@@ -8,7 +8,7 @@
 
 import { describe, expect, expectTypeOf, test } from "bun:test";
 import { treaty } from "@velqu/treaty";
-import { runtimeTreaty, unitTreaty } from "@velqu/testing";
+import { contractFromBuild, runtimeTreaty, unitTreaty } from "@velqu/testing";
 import type { RouteContract } from "@velqu/contract";
 import { readFileSync } from "node:fs";
 
@@ -31,13 +31,7 @@ expectTypeOf<ProofPublishedApi["users.get"]["responses"]>().toEqualTypeOf<{
   401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string };
 }>();
 
-const proofContract = {
-  "health.live": { path: "/health/live", method: "GET" },
-  "hello.get": { path: "/hello/:name", method: "GET" },
-  "users.create": { path: "/users", method: "POST" },
-  "users.get": { path: "/users/:id", method: "GET" },
-  "async.timer": { path: "/async", method: "GET" },
-};
+const proofContract = contractFromBuild("examples/proof/dist");
 
 describe("Treaty client bundle isolation (TRT-004)", () => {
   test("packages/treaty contains zero imports of server/compiler runtime", () => {
