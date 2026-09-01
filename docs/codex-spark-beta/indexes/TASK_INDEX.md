@@ -504,7 +504,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-004-B](../tasks/07_m4a_developer_preview/M4A-004-B-runtime-local-actual-rust-quickjs-process.md) | P0 | implement | PASS | M4A-004-A | Runtime-local actual Rust/QuickJS process |
 | [M4A-004-C](../tasks/07_m4a_developer_preview/M4A-004-C-remote-fetch-client.md) | P0 | implement | PASS | M4A-004-B | Remote fetch client |
 | [M4A-004-D](../tasks/07_m4a_developer_preview/M4A-004-D-exact-method-body-query-status-problem-typing.md) | P0 | implement | PASS | M4A-004-C | Exact method/body/query/status/problem typing |
-| [M4A-004-V](../tasks/07_m4a_developer_preview/M4A-004-V-verify-complete-treaty-unit-local-runtime-local-and-remote-modes.md) | P0 | verify | TODO | M4A-004-A, M4A-004-B, M4A-004-C, M4A-004-D | Verify Complete Treaty unit-local, runtime-local, and remote modes |
+| [M4A-004-V](../tasks/07_m4a_developer_preview/M4A-004-V-verify-complete-treaty-unit-local-runtime-local-and-remote-modes.md) | P0 | verify | PASS | M4A-004-A, M4A-004-B, M4A-004-C, M4A-004-D | Verify Complete Treaty unit-local, runtime-local, and remote modes |
 | [M4A-004-Z](../tasks/07_m4a_developer_preview/M4A-004-Z-package-evidence-for-complete-treaty-unit-local-runtime-local-and-remote-modes.md) | P0 | evidence | TODO | M4A-004-V | Package evidence for Complete Treaty unit-local, runtime-local, and remote modes |
 | [M4A-005-A](../tasks/07_m4a_developer_preview/M4A-005-A-generate-d-ts-client-openapi-contract-lock.md) | P1 | implement | TODO | M4A-004-Z | Generate d.ts/client/OpenAPI/contract lock |
 | [M4A-005-B](../tasks/07_m4a_developer_preview/M4A-005-B-tree-shakable-client.md) | P1 | implement | TODO | M4A-005-A | Tree-shakable client |
