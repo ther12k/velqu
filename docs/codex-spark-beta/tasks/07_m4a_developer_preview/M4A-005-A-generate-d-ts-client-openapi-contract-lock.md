@@ -4,7 +4,7 @@ parent_task: M4A-005
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -110,3 +110,58 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-005-A) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-005-a (squash-merged; see git log for final hash)
+- Closes: #456
+
+### Changed files
+- `packages/compiler/src/index.ts`: build output now returns a concrete
+  `publishedArtifacts` map and emits deterministic `published-manifest.json`
+  covering `contract.json`, `contract.d.ts`, `contract.meta.json`,
+  `openapi.json`, `contract.lock.json`, and the manifest itself; each record
+  includes relative artifact path, byte count, and SHA-256.
+- `packages/compiler/src/published.ts`: `verifyPublishedManifest` parses and
+  validates format/app/hash fields and rehashes every published artifact,
+  reporting missing files, byte drift, and digest drift diagnostically.
+- `packages/compiler/src/published.test.ts`: package-content/hash validation,
+  modified-artifact diagnostics, and deterministic two-output-directory
+  reproducibility tests (3 tests).
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Package content test**: published-manifest includes six client-facing
+  artifacts; `verifyPublishedManifest` passes, and deliberate d.ts mutation
+  reports both byte and SHA-256 mismatch.
+- **Type-scale report**: existing `scripts/typecheck-scale.ts` evidence
+  retained; no type surface weakened.
+- **Reproducibility check**: two independent output directories produce an
+  identical published manifest with identical artifact hashes.
+
+### Guardrail mapping (parent M4A-005)
+
+- **Client package contains no server runtime**: published manifest only
+  enumerates contract/type/OpenAPI/lock metadata; no server imports or
+  runtime code are emitted.
+- **Types remain responsive at large route counts**: existing type-scale
+  benchmark remains green; artifact metadata adds no client type complexity.
+- **Version mismatch is diagnosable**: verifier reports unsupported manifest
+  format, invalid hash, missing artifact, byte mismatch, and digest mismatch.
+- **Published artifact is deterministic**: identical source/toolchain output
+  yields equal manifest and artifact digests.
+
+### Command results
+
+- `cargo test -p q-pack` → 100 tests — 0 failed
+- `bun test` → **295 pass / 0 fail (44 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
