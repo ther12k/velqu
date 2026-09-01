@@ -95,7 +95,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M3-GATE | P0 | PASS | M3-001, M3-002, M3-003, M3-004, M3-005, M3-006, M3-007, M3-008, M3-009, M3-010 | M3 | M3 — Multi-Worker Service Runtime exit gate |
 | M4A-001 | P0 | PASS | M3-GATE | M4A | Implement actual-runtime `velqu dev` loop |
 | M4A-002 | P1 | PASS | M4A-001, M26-GATE | M4A | Complete CLI command surface |
-| M4A-003 | P1 | TODO | M4A-002 | M4A | Implement project scaffolding |
+| M4A-003 | P1 | PASS | M4A-002 | M4A | Implement project scaffolding |
 | M4A-004 | P0 | TODO | M25-GATE, M4A-001 | M4A | Complete Treaty unit-local, runtime-local, and remote modes |
 | M4A-005 | P1 | TODO | M4A-004 | M4A | Publish compact contract and SDK artifacts |
 | M4A-006 | P0 | TODO | M4A-001, M4A-002 | M4A | Finalize diagnostics, source maps, and inspect output |
