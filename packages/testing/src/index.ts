@@ -10,6 +10,7 @@ import {
   type DispatchOutcome,
   type DispatchRequest,
   type TreatyClient,
+  type TreatyFetch,
 } from "@velqu/treaty";
 
 // ---------------------------------------------------------------- unit-local DIRECT (M4A-004-A)
@@ -197,6 +198,30 @@ export function unitTreaty<Api extends Record<string, AnyRouteContract> = Record
     __mode: "unit-local (NOT runtime conformance)" as const,
     close: () => server.stop(true),
     api: client,
+  };
+}
+
+// ---------------------------------------------------------------- remote
+
+/** Options for a remote HTTP Treaty client. */
+export interface RemoteTreatyOptions {
+  baseUrl: string;
+  contract: Record<string, { path: string; method: string }>;
+  /** Inject a fetch implementation for tests; defaults to global fetch. */
+  fetchImpl?: TreatyFetch;
+}
+
+/**
+ * REMOTE mode — a thin adapter around the public Treaty HTTP transport.
+ * The returned client is the same type/contract surface used by the
+ * runtime-local adapter; no server/compiler code is imported.
+ */
+export function remoteTreaty<Api extends Record<string, AnyRouteContract> = Record<string, AnyRouteContract>>(
+  opts: RemoteTreatyOptions,
+): { __mode: "remote"; api: TreatyClient<Api> } {
+  return {
+    __mode: "remote" as const,
+    api: treaty<Api>({ baseUrl: opts.baseUrl, contract: opts.contract, fetchImpl: opts.fetchImpl }),
   };
 }
 

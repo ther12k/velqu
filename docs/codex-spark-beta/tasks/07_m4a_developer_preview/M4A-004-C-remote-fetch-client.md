@@ -4,7 +4,7 @@ parent_task: M4A-004
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -117,3 +117,59 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-004-C) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-004-c (squash-merged; see git log for final hash)
+- Closes: #452
+
+### Changed files
+- `packages/treaty/src/index.ts`: portable `TreatyFetch` function type
+  (excludes Bun-only `preconnect`, allowing standard remote fetch
+  implementations) while preserving the same status/error splitting.
+- `packages/testing/src/index.ts`: `remoteTreaty` adapter, explicitly labeled
+  `remote`, accepts base URL, published route contract, and injectable fetch;
+  delegates to the same Treaty client used by direct and runtime-local modes.
+- `packages/testing/src/remote.test.ts` (new): 4 tests — remote labeling and
+  HTTP success, typed non-2xx problem/status preservation, abort/network
+  classification, and direct-vs-remote parity for equivalent results.
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Negative type tests**: inherited M4A-004-A
+  `packages/treaty/src/types-negative.test-d.ts`; `bun run typecheck` remains
+  clean.
+- **Mode parity tests**: `packages/testing/src/remote.test.ts` compares
+  remote HTTP responses against the direct dispatcher for success and 201
+  results; runtime-local parity remains covered by generated-contract
+  conformance.
+- **Typecheck scale benchmark**: inherited M4A-004-A raw measurements; no
+  public type surface was weakened.
+
+### Guardrail mapping (parent M4A-004)
+
+- **No public `any`** — remote adapter exposes concrete options and mode
+  types; transport injection uses a portable function signature.
+- **2xx data and non-2xx errors narrow correctly** — remote tests prove
+  200/201 data and 404/422 typed errors plus status-0 abort/network forms.
+- **Undeclared status is a contract error** — direct dispatcher guard remains
+  enforced; remote status handling uses the declared Treaty error union.
+- **All modes share the same contract** — all adapters return the same
+  `TreatyClient<Api>` and route/status splitting implementation.
+
+### Command results
+
+- `cargo test -p q-http` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → **290 pass / 0 fail (41 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
