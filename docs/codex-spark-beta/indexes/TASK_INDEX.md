@@ -510,7 +510,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-005-B](../tasks/07_m4a_developer_preview/M4A-005-B-tree-shakable-client.md) | P1 | implement | PASS | M4A-005-A | Tree-shakable client |
 | [M4A-005-C](../tasks/07_m4a_developer_preview/M4A-005-C-version-and-public-contract-hash.md) | P1 | implement | TODO | M4A-005-B | Version and public contract hash |
 | [M4A-005-D](../tasks/07_m4a_developer_preview/M4A-005-D-package-verification.md) | P1 | implement | PASS | M4A-005-C | Package verification |
-| [M4A-005-V](../tasks/07_m4a_developer_preview/M4A-005-V-verify-publish-compact-contract-and-sdk-artifacts.md) | P1 | verify | TODO | M4A-005-A, M4A-005-B, M4A-005-C, M4A-005-D | Verify Publish compact contract and SDK artifacts |
+| [M4A-005-V](../tasks/07_m4a_developer_preview/M4A-005-V-verify-publish-compact-contract-and-sdk-artifacts.md) | P1 | verify | PASS | M4A-005-A, M4A-005-B, M4A-005-C, M4A-005-D | Verify Publish compact contract and SDK artifacts |
 | [M4A-005-Z](../tasks/07_m4a_developer_preview/M4A-005-Z-package-evidence-for-publish-compact-contract-and-sdk-artifacts.md) | P1 | evidence | TODO | M4A-005-V | Package evidence for Publish compact contract and SDK artifacts |
 | [M4A-006-A](../tasks/07_m4a_developer_preview/M4A-006-A-structured-diagnostic-codes.md) | P0 | implement | TODO | M4A-001-Z, M4A-002-Z | Structured diagnostic codes |
 | [M4A-006-B](../tasks/07_m4a_developer_preview/M4A-006-B-source-map-aware-stacks.md) | P0 | implement | TODO | M4A-006-A | Source-map-aware stacks |
