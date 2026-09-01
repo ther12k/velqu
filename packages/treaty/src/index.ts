@@ -124,11 +124,23 @@ type PathSegments<P extends string> =
 type ExtractParam<Segment> = Segment extends `:${infer N}` ? N : never;
 export type ParamNames<P extends string> = ExtractParam<PathSegments<P>[number]>;
 
-export interface RequestOptions<Q = Record<string, never>> {
-  query?: Q;
-  headers?: Record<string, string>;
+/** Required keys in an object type (optional query/header fields stay optional). */
+type RequiredKeys<T> = T extends object
+  ? { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T]
+  : never;
+
+/** Exact caller-selected query/header options for a route. */
+export type RequestOptions<
+  Q = Record<string, never>,
+  H = Record<string, string>,
+> = {
   signal?: AbortSignal;
-}
+} & ([RequiredKeys<Q>] extends [never]
+  ? { query?: Q }
+  : { query: Q })
+  & ([RequiredKeys<H>] extends [never]
+    ? { headers?: H }
+    : { headers: H });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyRouteContract = {
@@ -137,8 +149,8 @@ export type AnyRouteContract = {
   readonly params?: unknown;
   readonly query?: unknown;
   readonly body?: unknown;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly responses: Record<number, any>;
+  readonly headers?: unknown;
+  readonly responses: Record<number, unknown>;
 };
 
 // ---------------------------------------------------------------- method narrowing
@@ -149,6 +161,13 @@ type QueryOf<R extends AnyRouteContract> = R extends { query: infer Q }
     : Q
   : Record<string, never>;
 
+/** Header input is exact when a generated contract declares a header schema. */
+type HeadersOf<R extends AnyRouteContract> = R extends { headers: infer H }
+  ? H extends Record<string, never>
+    ? Record<string, never>
+    : H
+  : Record<string, string>;
+
 type BodyOf<R extends AnyRouteContract> = R extends { body: infer B }
   ? [B] extends [undefined]
     ? never
@@ -158,39 +177,39 @@ type BodyOf<R extends AnyRouteContract> = R extends { body: infer B }
   : never;
 
 type GetMethod<R extends AnyRouteContract> = {
-  get(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+  get(opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>): Promise<TreatyResult<R["responses"]>>;
 };
 
 type PostMethod<R extends AnyRouteContract> = {
   post(
     ...args: [BodyOf<R>] extends [never]
-      ? [opts?: RequestOptions<QueryOf<R>>]
-      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+      ? [opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
   ): Promise<TreatyResult<R["responses"]>>;
 };
 
 type PutMethod<R extends AnyRouteContract> = {
   put(
     ...args: [BodyOf<R>] extends [never]
-      ? [opts?: RequestOptions<QueryOf<R>>]
-      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+      ? [opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
   ): Promise<TreatyResult<R["responses"]>>;
 };
 
 type PatchMethod<R extends AnyRouteContract> = {
   patch(
     ...args: [BodyOf<R>] extends [never]
-      ? [opts?: RequestOptions<QueryOf<R>>]
-      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>>]
+      ? [opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
+      : [body: BodyOf<R>, opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>]
   ): Promise<TreatyResult<R["responses"]>>;
 };
 
 type DeleteMethod<R extends AnyRouteContract> = {
-  delete(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+  delete(opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>): Promise<TreatyResult<R["responses"]>>;
 };
 
 type HeadMethod<R extends AnyRouteContract> = {
-  head(opts?: RequestOptions<QueryOf<R>>): Promise<TreatyResult<R["responses"]>>;
+  head(opts?: RequestOptions<QueryOf<R>, HeadersOf<R>>): Promise<TreatyResult<R["responses"]>>;
 };
 
 export type MethodSuiteFor<R extends AnyRouteContract> =
@@ -304,7 +323,7 @@ function makeProxy(
       const invoke = (method: string, opts: RequestOptions & { body?: unknown }) =>
         request(doFetch, dispatch, id, routeUrl, path, method, opts);
       const methodMap: Record<string, Function> = {
-        get: (opts?: RequestOptions & { query?: Record<string, unknown> }) => invoke("GET", opts ?? {}),
+        get: (opts?: RequestOptions) => invoke("GET", opts ?? {}),
         post: (body?: unknown, opts?: RequestOptions) => invoke("POST", { ...opts, body }),
         put: (body?: unknown, opts?: RequestOptions) => invoke("PUT", { ...opts, body }),
         patch: (body?: unknown, opts?: RequestOptions) => invoke("PATCH", { ...opts, body }),
