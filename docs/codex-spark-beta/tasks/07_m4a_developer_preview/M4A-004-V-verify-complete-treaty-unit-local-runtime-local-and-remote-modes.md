@@ -4,7 +4,7 @@ parent_task: M4A-004
 milestone: M4A
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -118,3 +118,58 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-004-V) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-004-v (squash-merged; see git log for final hash)
+- Closes: #454
+
+### Acceptance-criterion mapping (parent M4A-004)
+
+1. **No public `any`** — `AnyRouteContract` uses
+   `Record<number, unknown>`; all new mode adapters expose concrete
+   options, handles, and outcome types. Existing internal proxy casts are
+   implementation-only.
+2. **2xx data and non-2xx errors narrow correctly** — negative type tests
+   pin method/body/query/header/status/problem unions; exact-typing tests
+   prove required headers and typed 400; direct/remote/runtime tests cover
+   200/201 success, 400/404/422/401 errors, and status-0 network/abort.
+3. **Undeclared status is a contract error** — direct dispatcher
+   `UndeclaredStatusError` fails loud with route, status, and declared set;
+   coverage remains green.
+4. **All modes share one contract** — direct, loopback, remote, and
+   runtime-local adapters return the same `TreatyClient<Api>`; runtime-local
+   and Treaty conformance now load the emitted `contract.json` route table
+   rather than a duplicate hand-written table.
+
+### Evidence package
+
+- `packages/testing/src/unit-direct.test.ts`: direct-vs-loopback parity,
+  typed problems, undeclared status, and method mismatch (6 tests).
+- `packages/testing/src/runtime-local.test.ts`: generated contract loading,
+  actual Rust + QuickJS process, ready identity, typed routes, bounded drain,
+  `service:2` profile (3 tests).
+- `packages/testing/src/remote.test.ts`: remote HTTP success/error,
+  abort/network classification, direct-vs-remote parity (4 tests).
+- `packages/treaty/src/exact-typing.test.ts`: exact query/header forwarding
+  and declared 400 problem (2 tests).
+- `packages/treaty/src/types-negative.test-d.ts`: typecheck-only negative
+  assertions for methods, body, query, headers, params, status, and problem.
+- `scripts/typecheck-scale.ts`: raw 3-repetition measurements:
+  25 routes 817.3/836.7/853.4 ms; 100 routes 1439.1/1012.3/1008.5 ms;
+  200 routes 822.1/1259.2/734.7 ms. Startup-dominated; no unsupported
+  performance claim.
+
+### Verification runs (fresh worktree)
+
+- `cargo test -p velqu-runtime` → 7 suites — 0 failed
+- `bun test` → **292 pass / 0 fail (42 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
