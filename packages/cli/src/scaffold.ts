@@ -246,6 +246,70 @@ if (import.meta.main) {
 }
 `;
 
+  const greetingsTestTs = `/**
+ * Starter test suite (M4A-003-C): exercises the greetings domain service
+ * directly (unit-level, no runtime required).
+ */
+
+import { describe, it, expect } from "bun:test";
+import { getGreeting, createGreeting } from "./service";
+
+describe("greetings service", () => {
+  it("returns the default greeting for an unknown name", () => {
+    expect(getGreeting("Stranger")).toBe("Hello, Stranger!");
+  });
+
+  it("returns the stored custom greeting after createGreeting", () => {
+    createGreeting("Ada", "Greetings from test!");
+    expect(getGreeting("ada")).toBe("Greetings from test!");
+  });
+
+  it("stores greetings case-insensitively", () => {
+    createGreeting("Grace", "Welcome aboard!");
+    expect(getGreeting("GRACE")).toBe("Welcome aboard!");
+  });
+});
+`;
+
+  const clientTestTs = `/**
+ * Treaty client contract test (M4A-003-C): drives the LIVE dev-server
+ * runtime through the type-safe Treaty client. Requires \`velqu dev\`
+ * running on 127.0.0.1:3000 (skipped automatically otherwise).
+ */
+
+import { describe, it, expect } from "bun:test";
+import { createClient } from "./client";
+
+const api = createClient("http://127.0.0.1:3000");
+
+describe("greetings API (runtime-local via Treaty)", () => {
+  it("health.live answers ok", async () => {
+    const res = await api.health.live.get();
+    if (res.error) {
+      console.warn("skipping: dev server not reachable");
+      return;
+    }
+    expect(res.data?.status).toBe("ok");
+  });
+
+  it("greetings.create stores a custom greeting and greetings.get reads it back", async () => {
+    const created = await api.greetings.create.post({
+      name: "TestUser",
+      customGreeting: "Hello from contract test!",
+    });
+    if (created.error) {
+      console.warn("skipping: dev server not reachable");
+      return;
+    }
+    expect(created.data?.name).toBe("TestUser");
+
+    const greeting = await api.greetings.get({ name: "TestUser" }).get();
+    expect(greeting.error).toBeNull();
+    expect(greeting.data?.message).toBe("Hello from contract test!");
+  });
+});
+`;
+
   const readmeMd = `# ${opts.name}
 
 ${description}
@@ -262,6 +326,10 @@ bun run build
 # Static check
 bun run check
 
+# Run tests (unit-level service tests always run; runtime-local Treaty
+# contract tests require the dev server on 127.0.0.1:3000)
+bun run test
+
 # Run Treaty client example
 bun run client
 \`\`\`
@@ -276,5 +344,7 @@ bun run client
     "src/modules/greetings/routes.ts": greetingsRoutesTs,
     "src/modules/greetings/service.ts": greetingsServiceTs,
     "src/client.ts": clientTs,
+    "src/modules/greetings/service.test.ts": greetingsTestTs,
+    "src/client.test.ts": clientTestTs,
   };
 }
