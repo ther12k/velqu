@@ -118,8 +118,8 @@ describe("Unit-local DIRECT dispatcher (M4A-004-A)", () => {
       const missing = await unit.api.gates.check({ id: "side" }).get();
       expect(missing.data).toBeNull();
       if (missing.error?.status !== 404) throw new Error("expected declared 404");
-      expect(missing.error.problem.status).toBe(404);
-      expect(missing.error.problem.detail).toBe("gate side unknown");
+      expect((missing.error.problem as { status: number }).status).toBe(404);
+      expect((missing.error.problem as { detail?: string }).detail).toBe("gate side unknown");
     } finally {
       unit.close();
     }

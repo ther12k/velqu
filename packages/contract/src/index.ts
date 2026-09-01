@@ -20,12 +20,15 @@ export interface RouteContract<
   Body = undefined,
   Resp extends ResponseMap = ResponseMap,
   Security extends string | undefined = undefined,
+  Headers = Record<string, string>,
 > {
   readonly path: Path;
   readonly method: Method;
   readonly params: Params;
   readonly query: Query;
   readonly body: Body;
+  /** Exact request header shape; defaults to an open string map for legacy contracts. */
+  readonly headers: Headers;
   readonly responses: Resp;
   readonly security: Security;
 }

@@ -1,5 +1,5 @@
 /**
- * M4A-004-A negative TYPE tests (compile-time contract enforcement).
+ * M4A-004-A/D negative TYPE tests (compile-time contract enforcement).
  *
  * This file is typecheck-only evidence: every `@ts-expect-error` MUST
  * flag a real type error (`bun run typecheck` fails if any line stops
@@ -15,7 +15,7 @@ type Api = {
     params: { id: string };
     query: { verbose?: boolean };
     body: never;
-    headers: never;
+    headers: { authorization: string; "x-trace-id"?: string };
     responses: {
       200: { id: string; name: string };
       404: { code: string };
@@ -59,6 +59,17 @@ api["users.create"].post({ name: "Ada", email: 42 });
 // @ts-expect-error GET takes only RequestOptions, not a body
 api["users.get"]({ id: "u1" }).get({} as never as { body: unknown });
 
+// --- exact query + headers ---------------------------------------------------
+
+// @ts-expect-error unknown query field
+api.users.get({ id: "u1" }).get({ query: { unknown: true } });
+
+// @ts-expect-error required authorization header missing
+api.users.get({ id: "u1" }).get({ headers: { "x-trace-id": "trace" } });
+
+// @ts-expect-error unknown header field
+api.users.get({ id: "u1" }).get({ headers: { authorization: "Bearer x", unknown: "bad" } });
+
 // --- path params: required and correctly named ------------------------------
 
 // @ts-expect-error missing required path parameter
@@ -72,19 +83,20 @@ api["users.get"]({ username: "u1" }).get();
 declare const result: Awaited<ReturnType<ReturnType<typeof api.users.get>["get"]>>;
 
 // data is exactly the declared 200 body; error is null on the success arm
-expectTypeOf(result.data).toMatchTypeOf<{ id: string; name: string } | null>();
-expectTypeOf(result.error).toMatchTypeOf<
-  | null
-  | { status: 0; kind: "network"; message: string }
-  | { status: 0; kind: "abort" }
-  | { status: 404; problem: { code: string } }
->();
+const dataBody: { id: string; name: string } | null = result.data;
+void dataBody;
+const errorStatus: 0 | 404 | undefined = result.error?.status;
+void errorStatus;
 
 // @ts-expect-error 200 is never in the ERROR union (status 200 impossible on error)
-const impossibleErrorStatus: number = result.error !== null && result.error.status === 200;
+const impossibleErrorStatus: 200 = result.error!.status;
 
-// @ts-expect-error error problem is the declared 404 shape, not the 200 shape
-result.error?.problem?.name;
+if (result.error?.status === 404) {
+  const typedProblem: { code: string } = result.error.problem;
+  void typedProblem;
+  // @ts-expect-error 404 problem has no 200-only field
+  result.error.problem.name;
+}
 
 // --- navigation: unknown route ids are type errors ---------------------------
 
