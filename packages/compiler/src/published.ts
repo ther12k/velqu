@@ -21,6 +21,26 @@ export interface PublishedVerification {
   readonly errors: readonly string[];
 }
 
+/** Verify a published package against an expected app/hash/version pin. */
+export function verifyPublishedPackage(
+  manifestPath: string,
+  expected?: { appId?: string; contractHash?: string; formatVersion?: 1 },
+): PublishedVerification {
+  const verified = verifyPublishedManifest(manifestPath);
+  if (!expected || !verified.manifest) return verified;
+  const errors = [...verified.errors];
+  if (expected.appId !== undefined && verified.manifest.appId !== expected.appId) {
+    errors.push(`appId mismatch (expected ${expected.appId}, got ${verified.manifest.appId})`);
+  }
+  if (expected.contractHash !== undefined && verified.manifest.contractHash !== expected.contractHash) {
+    errors.push(`contractHash mismatch (expected ${expected.contractHash}, got ${verified.manifest.contractHash})`);
+  }
+  if (expected.formatVersion !== undefined && verified.manifest.formatVersion !== expected.formatVersion) {
+    errors.push(`formatVersion mismatch (expected ${expected.formatVersion}, got ${verified.manifest.formatVersion})`);
+  }
+  return { ok: errors.length === 0, manifest: verified.manifest, errors };
+}
+
 /**
  * Read and verify a generated published-manifest.json. Every artifact is
  * rehashed from disk; mismatches are reported by artifact name and expected /
