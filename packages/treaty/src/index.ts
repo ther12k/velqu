@@ -8,7 +8,8 @@
  * - Dependency-free runtime (zero server/compiler imports)
  */
 
-export type TreatyFetch = typeof fetch;
+/** Portable fetch shape; deliberately excludes Bun-only helpers such as preconnect. */
+export type TreatyFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export interface RouteInfo {
   readonly path: string;
@@ -233,7 +234,7 @@ export type TreatyClient<Api extends Record<string, AnyRouteContract>> = {
 export function treaty<Api extends Record<string, AnyRouteContract>>(
   options: TreatyOptions,
 ): TreatyClient<Api> {
-  const doFetch = options.fetchImpl ?? fetch;
+  const doFetch: TreatyFetch = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/$/, "");
   const dispatch = options.dispatchImpl ?? null;
   return makeProxy(base, doFetch, options.contract, [], dispatch) as TreatyClient<Api>;
@@ -241,7 +242,7 @@ export function treaty<Api extends Record<string, AnyRouteContract>>(
 
 function makeProxy(
   base: string,
-  doFetch: typeof fetch,
+  doFetch: TreatyFetch,
   contract: Readonly<Record<string, RouteInfo>>,
   idSegments: string[],
   dispatch: DispatchImpl | null,
@@ -331,7 +332,7 @@ function makeProxy(
 }
 
 async function request<Resp extends Record<number, unknown>>(
-  doFetch: typeof fetch,
+  doFetch: TreatyFetch,
   dispatch: DispatchImpl | null,
   routeId: string,
   url: string,
