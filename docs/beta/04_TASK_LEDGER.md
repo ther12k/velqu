@@ -96,7 +96,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M4A-001 | P0 | PASS | M3-GATE | M4A | Implement actual-runtime `velqu dev` loop |
 | M4A-002 | P1 | PASS | M4A-001, M26-GATE | M4A | Complete CLI command surface |
 | M4A-003 | P1 | PASS | M4A-002 | M4A | Implement project scaffolding |
-| M4A-004 | P0 | TODO | M25-GATE, M4A-001 | M4A | Complete Treaty unit-local, runtime-local, and remote modes |
+| M4A-004 | P0 | PASS | M25-GATE, M4A-001 | M4A | Complete Treaty unit-local, runtime-local, and remote modes |
 | M4A-005 | P1 | TODO | M4A-004 | M4A | Publish compact contract and SDK artifacts |
 | M4A-006 | P0 | TODO | M4A-001, M4A-002 | M4A | Finalize diagnostics, source maps, and inspect output |
 | M4A-007 | P0 | TODO | M27-GATE, M3-GATE | M4A | Implement bounded `defer` and lifecycle hooks |
