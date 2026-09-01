@@ -250,6 +250,26 @@ export type TreatyClient<Api extends Record<string, AnyRouteContract>> = {
 
 // ---------------------------------------------------------------- implementation
 
+/**
+ * Build a client restricted to an allowlisted subset of route IDs. The
+ * generated function keeps the same contract object but only materializes
+ * selected route keys; bundlers can tree-shake the rest of a published
+ * client package (M4A-005-B).
+ */
+export function treatyRoutes<
+  Api extends Record<string, AnyRouteContract>,
+  const K extends keyof Api & string = keyof Api & string,
+>(
+  options: TreatyOptions,
+  routeIds: readonly K[],
+): Pick<TreatyClient<Api>, FirstSegment<K>> {
+  const selected = new Set(routeIds);
+  const contract = Object.fromEntries(
+    Object.entries(options.contract).filter(([id]) => selected.has(id as K)),
+  );
+  return treaty({ ...options, contract }) as Pick<TreatyClient<Api>, FirstSegment<K>>;
+}
+
 export function treaty<Api extends Record<string, AnyRouteContract>>(
   options: TreatyOptions,
 ): TreatyClient<Api> {
@@ -293,6 +313,11 @@ function makeProxy(
           };
         }
       }
+      // Do not expose a callable namespace for a route prefix that has no
+      // selected descendants (treatyRoutes tree-shaking allowlist).
+      const prefix = [...idSegments, prop].join(".");
+      const hasDescendant = Object.keys(contract).some((key) => key.startsWith(`${prefix}.`));
+      if (!hasDescendant && !contract[prefix]) return undefined;
       const next = [...idSegments, prop];
       return makeProxy(base, doFetch, contract, next, dispatch);
     },
