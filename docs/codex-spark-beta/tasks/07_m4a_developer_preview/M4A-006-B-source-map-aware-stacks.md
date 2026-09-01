@@ -4,7 +4,7 @@ parent_task: M4A-006
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -117,3 +117,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-006-B) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-006-b (squash-merged; see git log for final hash)
+- Closes: #463
+
+### Changed files
+- `crates/q-runtime/src/source_map.rs`: added an explicit advisory
+  `mapper_for_sidecar` symbolization path. It loads sidecar data only on
+  request, verifies format and exact pack SHA-256 binding, parses the map,
+  and fails closed for malformed/mismatched sidecars; default runtime mapper
+  remains identity when no map is present.
+- `crates/q-runtime/tests/source_map_conformance.rs` (new): valid bound
+  sidecar lookup, mismatch isolation/fail-closed, and invalid embedded-map
+  identity fallback (3 tests).
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Golden diagnostics**: existing CLI code-frame/diagnostic-code tests stay
+  green alongside real source-map lookup.
+- **Redaction tests**: sidecar errors expose only binding/format diagnostics;
+  runtime serving never consults the advisory sidecar.
+- **Source-map tests**: three Rust conformance tests prove lazy sidecar load,
+  exact pack binding, invalid-map fallback, and no effect on default mapper.
+
+### Guardrail mapping (parent M4A-006)
+
+- **No secrets in production diagnostics**: sidecar tooling is advisory and
+  does not add source contents to serving errors.
+- **Errors identify route/source/contract cause**: bound maps return original
+  source locations via the existing `SourceMapper` interface.
+- **Source maps are lazy on success path**: `mapper_for_sidecar` is separate
+  from startup `mapper_for`; only tooling requesting symbolization reads it.
+- **Diagnostic catalog exists**: M4A-006-A closed code catalog remains
+  unchanged and all diagnostic tests pass.
+
+### Command results
+
+- `cargo test -p q-pack` → PASS
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → PASS, including 3 source-map tests
+- `bun test` → **305 pass / 0 fail (47 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
