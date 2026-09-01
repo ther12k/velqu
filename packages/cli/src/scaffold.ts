@@ -1,5 +1,5 @@
 /**
- * @velqu/cli — starter project scaffolding template (M4A-003-A/B).
+ * @velqu/cli — starter project scaffolding template (M4A-003-A/B/C/D).
  *
  * Provides minimal, correct starter templates without demo credentials
  * or forced databases:
@@ -7,17 +7,40 @@
  * - Standard health/liveness route and greetings API.
  * - Minimal workspace dependencies (@velqu/core, @velqu/schema, @velqu/treaty).
  * - End-to-end type-safe Treaty client example with route-id dot-navigation.
+ * - Optional runtime service profile choices (serverless, service, throughput).
+ * - Optional outbound fetch capability integration (M4A-003-D).
  */
+
+export type ServiceProfileChoice = "serverless" | "service" | "throughput";
+
+export const VALID_SERVICE_PROFILES: readonly ServiceProfileChoice[] = [
+  "serverless",
+  "service",
+  "throughput",
+] as const;
 
 export interface ProjectTemplateOptions {
   name: string;
   appId?: string;
   description?: string;
+  profile?: ServiceProfileChoice;
+  withFetch?: boolean;
 }
 
 export function generateStarterProject(opts: ProjectTemplateOptions): Record<string, string> {
   const appId = opts.appId ?? opts.name.replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
   const description = opts.description ?? "A lightweight service powered by Velqu and QuickJS";
+  const profile: ServiceProfileChoice = opts.profile ?? "serverless";
+  const withFetch = Boolean(opts.withFetch);
+
+  if (!VALID_SERVICE_PROFILES.includes(profile)) {
+    throw new Error(
+      `Invalid service profile '${profile}'. Valid choices are: ${VALID_SERVICE_PROFILES.join(", ")}`,
+    );
+  }
+
+  const devScript = profile === "serverless" ? "velqu dev" : `velqu dev --profile ${profile}`;
+  const buildScript = profile === "serverless" ? "velqu build" : `velqu build --profile ${profile}`;
 
   const packageJson = JSON.stringify(
     {
@@ -27,11 +50,15 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
       description,
       type: "module",
       scripts: {
-        dev: "velqu dev",
-        build: "velqu build",
+        dev: devScript,
+        build: buildScript,
         check: "velqu check",
-        test: "velqu test",
+        test: "bun test",
         client: "bun run src/client.ts",
+      },
+      velqu: {
+        profile,
+        capabilities: withFetch ? ["fetch"] : [],
       },
       dependencies: {
         "@velqu/core": "workspace:*",
@@ -67,13 +94,27 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
 
   const appTs = `import { defineApp, defineModule } from "@velqu/core";
 import { healthRoutes } from "./modules/health/routes";
-import { greetingsRoutes } from "./modules/greetings/routes";
+import { greetingsRoutes } from "./modules/greetings/routes";${
+  withFetch
+    ? `
+import { upstreamRoutes } from "./modules/upstream/routes";`
+    : ""
+}
 
+/**
+ * Velqu Application Definition.
+ * Configured runtime profile: ${profile}
+ */
 export const app = defineApp({
   id: "${appId}",
   modules: [
     defineModule({ id: "health", routes: healthRoutes }),
-    defineModule({ id: "greetings", routes: greetingsRoutes }),
+    defineModule({ id: "greetings", routes: greetingsRoutes }),${
+  withFetch
+    ? `
+    defineModule({ id: "upstream", routes: upstreamRoutes }),`
+    : ""
+}
   ],
 });
 
@@ -161,8 +202,56 @@ export function createGreeting(name: string, custom?: string): GreetingItem {
 }
 `;
 
+  const upstreamRoutesTs = `import { route, status } from "@velqu/core";
+import { s } from "@velqu/schema";
+
+/**
+ * Upstream quote route (demonstrates outbound fetch capability).
+ */
+export const quote = route({
+  id: "upstream.quote",
+  method: "GET",
+  path: "/upstream/quote",
+  response: {
+    200: s.object({ quote: s.string(), source: s.string() }),
+    502: s.object({ error: s.string() }),
+  },
+  handle: async () => {
+    try {
+      const res = await fetch("https://api.github.com/zen", {
+        headers: { "user-agent": "velqu-starter" },
+      });
+      if (!res.ok) {
+        return status(502).value({ error: \`Upstream returned HTTP \${res.status}\` });
+      }
+      const text = await res.text();
+      return { quote: text.trim(), source: "github" };
+    } catch (e) {
+      return status(502).value({ error: (e as Error).message });
+    }
+  },
+});
+
+export const upstreamRoutes = [quote];
+`;
+
+  const upstreamTestTs = `/**
+ * Upstream route definition unit tests.
+ */
+import { describe, it, expect } from "bun:test";
+import { quote } from "./routes";
+
+describe("upstream module (withFetch)", () => {
+  it("declares upstream.quote GET route with schema contract", () => {
+    expect(quote.id).toBe("upstream.quote");
+    expect(quote.method).toBe("GET");
+    expect(quote.path).toBe("/upstream/quote");
+  });
+});
+`;
+
   const clientTs = `/**
- * Type-safe Treaty client example (M4A-003-B).
+ * Type-safe Treaty client example (M4A-003-B/D).
  *
  * Demonstrates:
  * - Route-ID dot-navigation: \`api.greetings.get({ name: "Ada" })\`
@@ -199,13 +288,31 @@ export type StarterApi = {
     body: { name: string; customGreeting?: string };
     headers: never;
     responses: { 201: { name: string; greeting: string } };
-  };
+  };${
+  withFetch
+    ? `
+  "upstream.quote": {
+    path: "/upstream/quote";
+    method: "GET";
+    params: never;
+    query: never;
+    body: never;
+    headers: never;
+    responses: { 200: { quote: string; source: string }; 502: { error: string } };
+  };`
+    : ""
+}
 }
 
 export const contract = {
   "health.live": { path: "/health/live", method: "GET" },
   "greetings.get": { path: "/greetings/:name", method: "GET" },
-  "greetings.create": { path: "/greetings", method: "POST" },
+  "greetings.create": { path: "/greetings", method: "POST" },${
+  withFetch
+    ? `
+  "upstream.quote": { path: "/upstream/quote", method: "GET" },`
+    : ""
+}
 } as const;
 
 export function createClient(baseUrl = "http://127.0.0.1:3000"): TreatyClient<StarterApi> {
@@ -314,6 +421,9 @@ describe("greetings API (runtime-local via Treaty)", () => {
 
 ${description}
 
+- **Runtime Service Profile**: \`${profile}\`
+- **Outbound Fetch Capability**: \`${withFetch ? "enabled" : "disabled"}\`
+
 ## Getting Started
 
 \`\`\`bash
@@ -326,8 +436,7 @@ bun run build
 # Static check
 bun run check
 
-# Run tests (unit-level service tests always run; runtime-local Treaty
-# contract tests require the dev server on 127.0.0.1:3000)
+# Run tests
 bun run test
 
 # Run Treaty client example
@@ -335,7 +444,7 @@ bun run client
 \`\`\`
 `;
 
-  return {
+  const result: Record<string, string> = {
     "package.json": packageJson,
     "tsconfig.json": tsconfigJson,
     "README.md": readmeMd,
@@ -347,4 +456,11 @@ bun run client
     "src/modules/greetings/service.test.ts": greetingsTestTs,
     "src/client.test.ts": clientTestTs,
   };
+
+  if (withFetch) {
+    result["src/modules/upstream/routes.ts"] = upstreamRoutesTs;
+    result["src/modules/upstream/routes.test.ts"] = upstreamTestTs;
+  }
+
+  return result;
 }
