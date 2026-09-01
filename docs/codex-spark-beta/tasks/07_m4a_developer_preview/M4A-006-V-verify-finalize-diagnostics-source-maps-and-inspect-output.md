@@ -4,7 +4,7 @@ parent_task: M4A-006
 milestone: M4A
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -126,3 +126,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-006-V) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-006-v (squash-merged; see git log for final hash)
+- Closes: #466
+
+### Acceptance-criterion mapping (parent M4A-006)
+
+1. **No secrets in production diagnostics** — console redaction covers
+   bearer/basic, API keys/passwords, prefix tokens, authorization, and cookie
+   assignments; existing runtime redaction suite remains green.
+2. **Errors identify route/source/contract cause** — closed CLI diagnostic
+   codes, source locations/code frames, route-plan IDs, codec/bridge/stage,
+   capability and fallback fields are all asserted by tests.
+3. **Source maps are lazy on success path** — default runtime mapper is
+   identity unless an embedded map exists; advisory sidecar parsing is a
+   separate explicit `mapper_for_sidecar` call with exact pack binding.
+4. **Diagnostic catalog exists** — `DiagnosticCode` is an exported closed
+   union with representative golden classification tests.
+
+### Evidence
+
+- `diagnostic-codes.test.ts` (2), `actionable-errors.test.ts` (4): stable
+  diagnostic catalog, source frames, hints, and redaction separation.
+- `source_map_conformance.rs` (3): valid sidecar lookup, mismatch
+  fail-closed, invalid map identity fallback.
+- `inspect-output.test.ts` (3): route-plan/debug fields, strategy accounting,
+  capability inventory.
+- q-capabilities `redact_` suite (4): sensitive assignment/prefix/scheme
+  forms.
+- Raw `typecheck-scale.ts` samples: 25 routes 776.7/1114.8/748.5 ms; 100
+  routes 696.1/511.6/513.6 ms; 200 routes 508.3/514.3/501.8 ms.
+  Startup-dominated; no unsupported performance claim.
+
+### Verification runs (fresh worktree)
+
+- `cargo test -p q-pack` → PASS
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → PASS, including source-map tests
+- `bun test` → **308 pass / 0 fail (48 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
