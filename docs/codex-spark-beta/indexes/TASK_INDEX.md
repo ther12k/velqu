@@ -515,7 +515,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-006-A](../tasks/07_m4a_developer_preview/M4A-006-A-structured-diagnostic-codes.md) | P0 | implement | PASS | M4A-001-Z, M4A-002-Z | Structured diagnostic codes |
 | [M4A-006-B](../tasks/07_m4a_developer_preview/M4A-006-B-source-map-aware-stacks.md) | P0 | implement | PASS | M4A-006-A | Source-map-aware stacks |
 | [M4A-006-C](../tasks/07_m4a_developer_preview/M4A-006-C-redaction-policy.md) | P0 | implement | PASS | M4A-006-B | Redaction policy |
-| [M4A-006-D](../tasks/07_m4a_developer_preview/M4A-006-D-inspect-route-plan-fields-codecs-capabilities-crossings-and-debug-names.md) | P0 | implement | TODO | M4A-006-C | Inspect route plan, fields, codecs, capabilities, crossings, and debug names |
+| [M4A-006-D](../tasks/07_m4a_developer_preview/M4A-006-D-inspect-route-plan-fields-codecs-capabilities-crossings-and-debug-names.md) | P0 | implement | PASS | M4A-006-C | Inspect route plan, fields, codecs, capabilities, crossings, and debug names |
 | [M4A-006-V](../tasks/07_m4a_developer_preview/M4A-006-V-verify-finalize-diagnostics-source-maps-and-inspect-output.md) | P0 | verify | TODO | M4A-006-A, M4A-006-B, M4A-006-C, M4A-006-D | Verify Finalize diagnostics, source maps, and inspect output |
 | [M4A-006-Z](../tasks/07_m4a_developer_preview/M4A-006-Z-package-evidence-for-finalize-diagnostics-source-maps-and-inspect-output.md) | P0 | evidence | TODO | M4A-006-V | Package evidence for Finalize diagnostics, source maps, and inspect output |
 | [M4A-007-A](../tasks/07_m4a_developer_preview/M4A-007-A-define-deferred-owner-queue-deadline-cancellation-shutdown.md) | P0 | implement | TODO | M27-GATE, M3-GATE | Define deferred owner, queue, deadline, cancellation, shutdown |

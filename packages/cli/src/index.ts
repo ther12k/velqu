@@ -218,7 +218,13 @@ async function main() {
       const caps = JSON.parse(readFileSync(join(dist, "capability-manifest.json"), "utf8"));
       if (what === "routes") {
         if (jsonOutput) {
-          console.log(JSON.stringify({ status: "ok", command: "inspect", target: "routes", routes: manifest }, null, 2));
+          console.log(JSON.stringify({
+            status: "ok",
+            command: "inspect",
+            target: "routes",
+            routeCount: manifest.length,
+            routes: manifest,
+          }, null, 2));
         } else {
           for (const r of manifest) {
             const val = r.validationStrategy ?? "native";
@@ -244,7 +250,13 @@ async function main() {
           process.exit(ExitCode.GENERAL_ERROR);
         }
         if (jsonOutput) {
-          console.log(JSON.stringify({ status: "ok", command: "inspect", target: "route", route: r }, null, 2));
+          console.log(JSON.stringify({
+            status: "ok",
+            command: "inspect",
+            target: "route",
+            routeId: id,
+            route: r,
+          }, null, 2));
         } else {
           console.log(JSON.stringify(r, null, 2));
         }
@@ -262,6 +274,7 @@ async function main() {
                 target: "capabilities",
                 declared: caps.declared,
                 perRoute: caps.perRoute,
+                declaredCount: Array.isArray(caps.declared) ? caps.declared.length : 0,
                 nativeOps: caps.nativeOps,
                 intrinsicRequirement: caps.intrinsicRequirement,
                 reductionImpact: caps.reductionImpact,
@@ -295,10 +308,13 @@ async function main() {
                 command: "inspect",
                 target: "fallbacks",
                 activeFallbacksCount: fallbacks.length,
+                routeCount: manifest.length,
                 fallbacks,
                 strategyDistribution: {
-                  nativeValidationRoutes: manifest.length,
-                  nativeResponseRoutes: manifest.length,
+                  nativeValidationRoutes: manifest.filter((r: { validationStrategy?: string }) => (r.validationStrategy ?? "native") === "native").length,
+                  jsValidationRoutes: manifest.filter((r: { validationStrategy?: string }) => r.validationStrategy === "js").length,
+                  nativeResponseRoutes: manifest.filter((r: { responseStrategy?: string }) => (r.responseStrategy ?? "native") === "native").length,
+                  jsResponseRoutes: manifest.filter((r: { responseStrategy?: string }) => r.responseStrategy === "js").length,
                 },
               },
               null,
