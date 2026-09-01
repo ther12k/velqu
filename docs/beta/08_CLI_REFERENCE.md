@@ -12,6 +12,7 @@ running on Bun.
 
 | Command | Purpose |
 |---|---|
+| `velqu init` | Scaffolds a minimal correct starter project (M4A-003) |
 | `velqu dev` | Starts live dev server with safe worker reload loop |
 | `velqu build` | Compiles application into immutable verified QPack and manifests |
 | `velqu inspect` | Inspects routes, capabilities, fallback reasons, or static diagnostics |
@@ -20,6 +21,33 @@ running on Bun.
 | `velqu check` | Fast static validation of routes and toolchain |
 | `velqu pack inspect` | Inspects a compiled QPack artifact headers, format, and manifests |
 | `velqu pack migrate` | Provides format migration guidance for legacy packs |
+
+---
+
+## 0. `velqu init`
+
+Scaffolds a minimal correct starter project: module/service/contract
+separation, a health route, a greetings API, a Treaty client example, and a
+`bun test` suite. No demo credentials, no forced database/auth, no extra
+dependencies.
+
+```bash
+velqu init [dir] [--name <app-name>] [--profile <serverless|service:N>] [--with-fetch] [--force] [--json]
+```
+
+- `--profile`: Runtime service profile written into the generated scripts.
+  The value mirrors the runtime's fail-closed grammar: `serverless`
+  (default) or `service:N` with an explicit worker count `N` in 1..64.
+  Bare `service` and unknown names are rejected with actionable guidance.
+- `--with-fetch` (alias `--fetch`): additionally generates an `upstream`
+  module demonstrating the outbound `fetch` capability and registers it in
+  the app and the Treaty client contract.
+- `--force`: allow scaffolding over a directory that already contains an app.
+
+**Private-alpha note**: the generated `@velqu/*` dependencies use the
+`workspace:*` protocol and are not yet published to npm; run scaffolded
+projects inside a Velqu monorepo checkout (or symlink the packages into
+`node_modules/@velqu/`) until the public beta release.
 
 ---
 

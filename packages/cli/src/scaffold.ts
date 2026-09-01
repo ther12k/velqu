@@ -7,17 +7,66 @@
  * - Standard health/liveness route and greetings API.
  * - Minimal workspace dependencies (@velqu/core, @velqu/schema, @velqu/treaty).
  * - End-to-end type-safe Treaty client example with route-id dot-navigation.
- * - Optional runtime service profile choices (serverless, service, throughput).
+ * - Optional runtime service profile choices (serverless, service:N).
  * - Optional outbound fetch capability integration (M4A-003-D).
  */
 
-export type ServiceProfileChoice = "serverless" | "service" | "throughput";
+/**
+ * Service profile choices mirror the runtime's fail-closed grammar
+ * (`ServiceProfile::parse`: `serverless` | `service:N`, N = 1..64).
+ * Bare `service` and invented names like `throughput` are rejected —
+ * the runtime itself refuses them (M3-003-D), so the scaffold must
+ * never generate a script the runtime would fail closed on.
+ */
+export type ServiceProfileChoice = "serverless" | `service:${number}`;
 
-export const VALID_SERVICE_PROFILES: readonly ServiceProfileChoice[] = [
-  "serverless",
-  "service",
-  "throughput",
-] as const;
+export const MIN_SERVICE_WORKERS = 1;
+export const MAX_SERVICE_WORKERS = 64;
+
+/** CLI-facing summary of the accepted profile grammar. */
+export const SERVICE_PROFILE_USAGE = "serverless | service:N (N = 1..64, e.g. service:4)";
+
+export type ResolvedServiceProfile =
+  | { ok: true; profile: ServiceProfileChoice; devFlag: string; buildFlag: string }
+  | { ok: false; error: string };
+
+/**
+ * Validate a user-supplied service profile against the runtime grammar.
+ * Returns the normalized profile plus the exact dev/build flag text to
+ * generate, or a fail-closed actionable error.
+ */
+export function resolveServiceProfile(input: string | undefined): ResolvedServiceProfile {
+  const text = (input ?? "serverless").trim();
+  if (text === "serverless") {
+    return { ok: true, profile: "serverless", devFlag: "", buildFlag: "" };
+  }
+  const match = /^service:(\d+)$/.exec(text);
+  if (match) {
+    const workers = Number(match[1]);
+    if (workers < MIN_SERVICE_WORKERS || workers > MAX_SERVICE_WORKERS) {
+      return {
+        ok: false,
+        error: `invalid service profile '${text}': worker count ${workers} outside [${MIN_SERVICE_WORKERS},${MAX_SERVICE_WORKERS}]`,
+      };
+    }
+    return {
+      ok: true,
+      profile: text as ServiceProfileChoice,
+      devFlag: ` --profile ${text}`,
+      buildFlag: ` --profile ${text}`,
+    };
+  }
+  if (text === "service") {
+    return {
+      ok: false,
+      error: `invalid service profile 'service': the runtime requires an explicit worker count — use ${SERVICE_PROFILE_USAGE}`,
+    };
+  }
+  return {
+    ok: false,
+    error: `invalid service profile '${text}': valid choices are ${SERVICE_PROFILE_USAGE}`,
+  };
+}
 
 export interface ProjectTemplateOptions {
   name: string;
@@ -33,14 +82,13 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
   const profile: ServiceProfileChoice = opts.profile ?? "serverless";
   const withFetch = Boolean(opts.withFetch);
 
-  if (!VALID_SERVICE_PROFILES.includes(profile)) {
-    throw new Error(
-      `Invalid service profile '${profile}'. Valid choices are: ${VALID_SERVICE_PROFILES.join(", ")}`,
-    );
+  const resolved = resolveServiceProfile(profile);
+  if (!resolved.ok) {
+    throw new Error(resolved.error);
   }
 
-  const devScript = profile === "serverless" ? "velqu dev" : `velqu dev --profile ${profile}`;
-  const buildScript = profile === "serverless" ? "velqu build" : `velqu build --profile ${profile}`;
+  const devScript = `velqu dev${resolved.devFlag}`;
+  const buildScript = `velqu build${resolved.buildFlag}`;
 
   const packageJson = JSON.stringify(
     {
@@ -442,6 +490,14 @@ bun run test
 # Run Treaty client example
 bun run client
 \`\`\`
+
+## Dependencies (private alpha)
+
+The \`@velqu/*\` packages are declared with the \`workspace:*\` protocol and are
+not yet published to npm. Until the public beta release, run this project
+inside a checkout of the Velqu monorepo (or symlink \`@velqu/core\`,
+\`@velqu/schema\`, and \`@velqu/treaty\` into \`node_modules/@velqu/\` from your
+local Velqu build) so \`bun install\` can resolve them.
 `;
 
   const result: Record<string, string> = {
