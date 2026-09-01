@@ -496,7 +496,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-002-Z](../tasks/07_m4a_developer_preview/M4A-002-Z-package-evidence-for-complete-cli-command-surface.md) | P1 | evidence | PASS | M4A-002-V | Package evidence for Complete CLI command surface |
 | [M4A-003-A](../tasks/07_m4a_developer_preview/M4A-003-A-starter-api.md) | P1 | implement | PASS | M4A-002-Z | Starter API |
 | [M4A-003-B](../tasks/07_m4a_developer_preview/M4A-003-B-treaty-client-example.md) | P1 | implement | PASS | M4A-003-A | Treaty client example |
-| [M4A-003-C](../tasks/07_m4a_developer_preview/M4A-003-C-testing-setup.md) | P1 | implement | TODO | M4A-003-B | Testing setup |
+| [M4A-003-C](../tasks/07_m4a_developer_preview/M4A-003-C-testing-setup.md) | P1 | implement | PASS | M4A-003-B | Testing setup |
 | [M4A-003-D](../tasks/07_m4a_developer_preview/M4A-003-D-optional-fetch-profile-choices.md) | P1 | implement | TODO | M4A-003-C | Optional fetch/profile choices |
 | [M4A-003-V](../tasks/07_m4a_developer_preview/M4A-003-V-verify-implement-project-scaffolding.md) | P1 | verify | TODO | M4A-003-A, M4A-003-B, M4A-003-C, M4A-003-D | Verify Implement project scaffolding |
 | [M4A-003-Z](../tasks/07_m4a_developer_preview/M4A-003-Z-package-evidence-for-implement-project-scaffolding.md) | P1 | evidence | TODO | M4A-003-V | Package evidence for Implement project scaffolding |
