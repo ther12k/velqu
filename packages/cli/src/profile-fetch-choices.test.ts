@@ -1,16 +1,24 @@
 /**
- * M4A-003-D: Optional fetch and service profile choices for scaffolding.
+ * M4A-003-D/V: Optional fetch and service profile choices for scaffolding.
+ *
+ * Profile choices mirror the runtime's fail-closed grammar
+ * (`serverless` | `service:N`, N = 1..64): the scaffold must never emit a
+ * script the runtime itself would reject (verified live in M4A-003-V).
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { generateStarterProject, VALID_SERVICE_PROFILES } from "./scaffold";
+import {
+  generateStarterProject,
+  resolveServiceProfile,
+  SERVICE_PROFILE_USAGE,
+} from "./scaffold";
 import { extractApp, build } from "@velqu/compiler";
 import { ExitCode } from "./exit-codes";
 import { mkdirSync, rmSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
+describe("Optional fetch & profile scaffolding choices (M4A-003-D/V)", () => {
   let tempDir: string;
 
   beforeEach(() => {
@@ -35,30 +43,45 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
     expect(files["src/app.ts"]).toContain("Configured runtime profile: serverless");
   });
 
-  it("configures dynamic multi-worker service profile when requested", () => {
-    const files = generateStarterProject({ name: "service-app", profile: "service" });
+  it("configures explicit-count service profile (service:N) matching the runtime grammar", () => {
+    const files = generateStarterProject({ name: "service-app", profile: "service:4" });
     const pkg = JSON.parse(files["package.json"]);
 
-    expect(pkg.scripts.dev).toBe("velqu dev --profile service");
-    expect(pkg.scripts.build).toBe("velqu build --profile service");
-    expect(pkg.velqu.profile).toBe("service");
-    expect(files["src/app.ts"]).toContain("Configured runtime profile: service");
+    expect(pkg.scripts.dev).toBe("velqu dev --profile service:4");
+    expect(pkg.scripts.build).toBe("velqu build --profile service:4");
+    expect(pkg.velqu.profile).toBe("service:4");
+    expect(files["src/app.ts"]).toContain("Configured runtime profile: service:4");
   });
 
-  it("configures pinned-worker throughput profile when requested", () => {
-    const files = generateStarterProject({ name: "throughput-app", profile: "throughput" });
-    const pkg = JSON.parse(files["package.json"]);
-
-    expect(pkg.scripts.dev).toBe("velqu dev --profile throughput");
-    expect(pkg.scripts.build).toBe("velqu build --profile throughput");
-    expect(pkg.velqu.profile).toBe("throughput");
-    expect(files["src/app.ts"]).toContain("Configured runtime profile: throughput");
+  it("accepts every in-bounds service:N worker count and rejects out-of-bounds counts", () => {
+    expect(resolveServiceProfile("service:1")).toMatchObject({ ok: true, profile: "service:1" });
+    expect(resolveServiceProfile("service:64")).toMatchObject({ ok: true, profile: "service:64" });
+    expect(resolveServiceProfile("service:0").ok).toBeFalse();
+    expect(resolveServiceProfile("service:65").ok).toBeFalse();
   });
 
-  it("fails closed on invalid profile option with actionable error naming valid options", () => {
+  it("fails closed on bare 'service' naming the explicit-count requirement", () => {
+    const resolved = resolveServiceProfile("service");
+    expect(resolved.ok).toBeFalse();
+    if (!resolved.ok) {
+      expect(resolved.error).toContain("requires an explicit worker count");
+      expect(resolved.error).toContain("service:N");
+    }
+    expect(() => generateStarterProject({ name: "bad-app", profile: "service" as any })).toThrow(
+      /explicit worker count/,
+    );
+  });
+
+  it("fails closed on unknown profile names (e.g. 'throughput') with the accepted grammar", () => {
+    const resolved = resolveServiceProfile("throughput");
+    expect(resolved.ok).toBeFalse();
+    if (!resolved.ok) {
+      expect(resolved.error).toContain("throughput");
+      expect(resolved.error).toContain(SERVICE_PROFILE_USAGE);
+    }
     expect(() =>
-      generateStarterProject({ name: "bad-app", profile: "unknown" as any }),
-    ).toThrow(/Invalid service profile 'unknown'/);
+      generateStarterProject({ name: "bad-app", profile: "throughput" as any }),
+    ).toThrow(/invalid service profile 'throughput'/);
   });
 
   it("generates upstream fetch module and updates Treaty client when withFetch is true", async () => {
@@ -108,7 +131,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
     expect(existsSync(buildRes.packPath)).toBeTrue();
   });
 
-  it("CLI init accepts --profile and --with-fetch flags and writes configured project", async () => {
+  it("CLI init accepts --profile service:N and --with-fetch flags and writes configured project", async () => {
     const target = join(tempDir, "cli-service-fetch");
 
     const proc = Bun.spawn(
@@ -120,7 +143,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
         "--name",
         "cli-service-app",
         "--profile",
-        "service",
+        "service:4",
         "--with-fetch",
       ],
       {
@@ -134,12 +157,12 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
     const exitCode = await proc.exited;
 
     expect(exitCode).toBe(ExitCode.SUCCESS);
-    expect(stdout).toContain("profile: service");
+    expect(stdout).toContain("profile: service:4");
     expect(stdout).toContain("fetch: enabled");
 
     const pkg = JSON.parse(await Bun.file(join(target, "package.json")).text());
-    expect(pkg.scripts.dev).toBe("velqu dev --profile service");
-    expect(pkg.velqu.profile).toBe("service");
+    expect(pkg.scripts.dev).toBe("velqu dev --profile service:4");
+    expect(pkg.velqu.profile).toBe("service:4");
     expect(pkg.velqu.capabilities).toEqual(["fetch"]);
     expect(existsSync(join(target, "src", "modules", "upstream", "routes.ts"))).toBeTrue();
   });
@@ -156,7 +179,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
         "--name",
         "json-choices-app",
         "--profile",
-        "throughput",
+        "service:2",
         "--fetch",
         "--json",
       ],
@@ -173,12 +196,12 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
     expect(exitCode).toBe(ExitCode.SUCCESS);
     const parsed = JSON.parse(stdout);
     expect(parsed.status).toBe("ok");
-    expect(parsed.profile).toBe("throughput");
+    expect(parsed.profile).toBe("service:2");
     expect(parsed.withFetch).toBe(true);
     expect(parsed.filesCount).toBe(12);
   });
 
-  it("CLI init rejects invalid service profile with error exit code", async () => {
+  it("CLI init rejects bare 'service' profile with the explicit-count guidance", async () => {
     const target = join(tempDir, "cli-bad-profile");
 
     const proc = Bun.spawn(
@@ -190,7 +213,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
         "--name",
         "bad-profile-app",
         "--profile",
-        "invalid-profile",
+        "service",
       ],
       {
         stdout: "pipe",
@@ -203,6 +226,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D)", () => {
     const exitCode = await proc.exited;
 
     expect(exitCode).toBe(ExitCode.GENERAL_ERROR);
-    expect(stderr).toContain("invalid service profile 'invalid-profile'");
+    expect(stderr).toContain("explicit worker count");
+    expect(stderr).toContain("service:N");
   });
 });

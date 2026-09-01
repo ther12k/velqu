@@ -43,6 +43,15 @@ describe("Starter API Scaffolding (M4A-003-A)", () => {
     expect(allContent).not.toContain("API_KEY");
   });
 
+  it("README discloses the private-alpha workspace resolution requirement (M4A-003-V)", () => {
+    const files = generateStarterProject({ name: "docs-disclosure" });
+
+    const readme = files["README.md"];
+    expect(readme).toContain("Dependencies (private alpha)");
+    expect(readme).toContain("not yet published to npm");
+    expect(readme).toContain("workspace:*");
+  });
+
   it("statically compiles the generated starter project with clean extraction and parity", async () => {
     const files = generateStarterProject({ name: "starter-test" });
     for (const [relPath, content] of Object.entries(files)) {

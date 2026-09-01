@@ -19,7 +19,7 @@ import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
 import {
   generateStarterProject,
-  VALID_SERVICE_PROFILES,
+  resolveServiceProfile,
   type ProjectTemplateOptions,
   type ServiceProfileChoice,
 } from "./scaffold";
@@ -63,7 +63,17 @@ async function main() {
 
   switch (cmd) {
     case "build": {
-      const profile = args.get("profile") ?? "serverless";
+      const profileInput = args.get("profile");
+      const resolvedProfile = resolveServiceProfile(profileInput);
+      if (!resolvedProfile.ok) {
+        if (jsonOutput) {
+          console.log(JSON.stringify({ status: "error", command: "build", error: resolvedProfile.error }, null, 2));
+        } else {
+          console.error(resolvedProfile.error);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+      const profile = resolvedProfile.profile;
       try {
         const r = await build({
           project,
@@ -568,7 +578,16 @@ async function main() {
     case "dev": {
       const port = args.has("port") ? parseInt(args.get("port")!, 10) : 3000;
       const debounceMs = args.has("debounce-ms") ? parseInt(args.get("debounce-ms")!, 10) : 50;
-      const profile = args.get("profile") ?? "serverless";
+      const resolvedProfile = resolveServiceProfile(args.get("profile"));
+      if (!resolvedProfile.ok) {
+        if (jsonOutput) {
+          console.log(JSON.stringify({ status: "error", command: "dev", error: resolvedProfile.error }, null, 2));
+        } else {
+          console.error(resolvedProfile.error);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+      const profile = resolvedProfile.profile;
       const server = new DevServer({
         project,
         port,
@@ -612,27 +631,28 @@ async function main() {
     case "create": {
       const targetDir = rest.find((a) => !a.startsWith("--")) ?? (args.has("project") ? project : ".");
       const name = args.get("name") ?? (targetDir === "." ? "my-velqu-app" : targetDir.split(/[\\/]/).pop()) ?? "my-velqu-app";
-      const profile = (args.get("profile") ?? "serverless") as ServiceProfileChoice;
       const withFetch = args.has("with-fetch") || args.has("fetch");
 
-      if (!VALID_SERVICE_PROFILES.includes(profile)) {
+      const resolvedProfile = resolveServiceProfile(args.get("profile"));
+      if (!resolvedProfile.ok) {
         if (jsonOutput) {
           console.log(
             JSON.stringify(
               {
                 status: "error",
                 command: "init",
-                error: `invalid service profile '${profile}'; valid choices: ${VALID_SERVICE_PROFILES.join(", ")}`,
+                error: resolvedProfile.error,
               },
               null,
               2,
             ),
           );
         } else {
-          console.error(`invalid service profile '${profile}'; valid choices: ${VALID_SERVICE_PROFILES.join(", ")}`);
+          console.error(resolvedProfile.error);
         }
         process.exit(ExitCode.GENERAL_ERROR);
       }
+      const profile: ServiceProfileChoice = resolvedProfile.profile;
 
       const resolvedTarget = resolve(targetDir);
 
@@ -688,7 +708,11 @@ async function main() {
         for (const f of written) {
           console.log(`  + ${f}`);
         }
-        console.log("\nNext steps:\n  cd " + targetDir + "\n  bun install\n  velqu dev");
+        console.log(
+          "\nNext steps:\n  cd " + targetDir + "\n  bun install\n  velqu dev" +
+          "\n\nNote (private alpha): @velqu/* packages are workspace-resolved and not yet on npm —" +
+          "\nrun inside a Velqu monorepo checkout or symlink them into node_modules/@velqu/.",
+        );
       }
       break;
     }
@@ -702,7 +726,7 @@ async function main() {
       }
       console.log(`velqu — Unified Velqu CLI
 usage:
-  velqu init [dir] [--name <app-name>] [--profile <serverless|service|throughput>] [--with-fetch]
+  velqu init [dir] [--name <app-name>] [--profile <serverless|service:N>] [--with-fetch]
   velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50] [--profile serverless]
   velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
   velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
