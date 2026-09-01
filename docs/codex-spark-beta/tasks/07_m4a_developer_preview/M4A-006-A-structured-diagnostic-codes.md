@@ -4,7 +4,7 @@ parent_task: M4A-006
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -118,3 +118,57 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-006-A) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-006-a (squash-merged; see git log for final hash)
+- Closes: #462
+
+### Changed files
+- `packages/cli/src/errors.ts`: added closed `DiagnosticCode` catalog and
+  deterministic classifier for compile import/contract/path/schema,
+  toolchain, runtime, and unknown failures; `FormattedDiagnostic` now always
+  carries a code while preserving source location, code frame, hint, and raw
+  message.
+- `packages/cli/src/actionable-errors.test.ts`: pins the import diagnostic
+  code while retaining code-frame/hint/redaction coverage.
+- `packages/cli/src/diagnostic-codes.test.ts` (new): golden representative
+  code classification and untrusted-message separation tests (2 tests).
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Golden diagnostics**: stable code assertions for six representative
+  compile/runtime categories.
+- **Redaction tests**: code is structural and separate from message content;
+  diagnostic output does not infer a code from user-controlled text beyond
+  the closed classifier.
+- **Source-map tests**: existing actionable code-frame tests remain green;
+  source frames are only rendered when a valid location exists.
+
+### Guardrail mapping (parent M4A-006)
+
+- **No secrets in production diagnostics**: no secret values are added to
+  structured fields; raw message behavior is unchanged and existing runtime
+  redaction suite remains green.
+- **Errors identify route/source/contract cause**: stable categories are
+  attached while existing source location/code frame/hint fields are retained.
+- **Source maps are lazy on success path**: code-frame rendering remains
+  conditional on an error location and valid source file.
+- **Diagnostic catalog exists**: `DiagnosticCode` is a closed exported union.
+
+### Command results
+
+- `cargo test -p q-pack` → PASS
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `bun test` → **305 pass / 0 fail (47 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.

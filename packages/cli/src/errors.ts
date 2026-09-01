@@ -15,8 +15,18 @@ export interface ErrorLocation {
   column: number;
 }
 
+export type DiagnosticCode =
+  | "VELQU-COMP-IMPORT"
+  | "VELQU-COMP-CONTRACT"
+  | "VELQU-COMP-PATH"
+  | "VELQU-COMP-SCHEMA"
+  | "VELQU-TOOLCHAIN"
+  | "VELQU-RUNTIME"
+  | "VELQU-UNKNOWN";
+
 export interface FormattedDiagnostic {
   title: string;
+  code: DiagnosticCode;
   message: string;
   location?: ErrorLocation;
   codeFrame?: string;
@@ -63,7 +73,19 @@ export function renderCodeFrame(filePath: string, line: number, column: number, 
 /**
  * Format any compiler error, syntax error, or toolchain error into an actionable diagnostic.
  */
+function diagnosticCode(err: unknown): DiagnosticCode {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/unsupported import|node:|bun:/.test(message)) return "VELQU-COMP-IMPORT";
+  if (/path|parameter/.test(message)) return "VELQU-COMP-PATH";
+  if (/schema|body|query/.test(message)) return "VELQU-COMP-SCHEMA";
+  if (/route|contract|response|method/.test(message)) return "VELQU-COMP-CONTRACT";
+  if (/toolchain|typescript|bun version/.test(message)) return "VELQU-TOOLCHAIN";
+  if (/runtime|worker|quickjs|pack/.test(message)) return "VELQU-RUNTIME";
+  return "VELQU-UNKNOWN";
+}
+
 export function formatActionableError(err: unknown, defaultTitle = "error"): FormattedDiagnostic {
+  const code = diagnosticCode(err);
   if (err instanceof CompileError) {
     const codeFrame = err.location
       ? renderCodeFrame(err.location.file, err.location.line, err.location.column) ?? undefined
@@ -75,6 +97,7 @@ export function formatActionableError(err: unknown, defaultTitle = "error"): For
 
     return {
       title: defaultTitle,
+      code,
       message: err.message,
       location: err.location,
       codeFrame,
@@ -104,6 +127,7 @@ export function formatActionableError(err: unknown, defaultTitle = "error"): For
 
     return {
       title: defaultTitle,
+      code,
       message: err.message,
       location,
       codeFrame,
@@ -113,6 +137,7 @@ export function formatActionableError(err: unknown, defaultTitle = "error"): For
 
   return {
     title: defaultTitle,
+    code,
     message: String(err),
     raw: `[velqu:${defaultTitle}] ${String(err)}`,
   };

@@ -65,6 +65,7 @@ describe("CLI Helpful Actionable Errors (M4A-002-D)", () => {
 
     const diag = formatActionableError(err, "compile-error");
     expect(diag.title).toBe("compile-error");
+    expect(diag.code).toBe("VELQU-COMP-IMPORT");
     expect(diag.message).toBe("unsupported import 'node:fs'");
     expect(diag.location?.file).toBe(file);
     expect(diag.hint).toContain("ADR-0003");
