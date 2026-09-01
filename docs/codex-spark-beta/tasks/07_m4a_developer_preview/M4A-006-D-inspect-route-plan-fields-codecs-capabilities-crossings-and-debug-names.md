@@ -4,7 +4,7 @@ parent_task: M4A-006
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -114,3 +114,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-006-D) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-006-d (squash-merged; see git log for final hash)
+- Closes: #465
+
+### Changed files
+- `packages/cli/src/index.ts`: inspect JSON output now includes explicit
+  `routeCount`, `routeId`, declared capability count, and actual native/JS
+  validation/response strategy distribution (rather than route-count
+  placeholders), while preserving detailed per-route codec, bridge, stage,
+  policy, capability, and fallback fields.
+- `packages/cli/src/inspect-output.test.ts` (new): 3 tests covering route-plan
+  fields/debug names, strategy distribution accounting, and capability
+  inventory output.
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Golden diagnostics**: inspect JSON assertions pin route count, route IDs,
+  codec/bridge/stage fields, and fallback counts.
+- **Redaction tests**: inherited q-capabilities redaction suite remains green.
+- **Source-map tests**: inherited q-runtime source-map conformance remains
+  green; inspect output does not load maps on the success path.
+
+### Guardrail mapping (parent M4A-006)
+
+- **No secrets in production diagnostics**: inspect outputs contain declared
+  plan/capability metadata only; source values are not introduced.
+- **Errors identify route/source/contract cause**: route IDs and detailed plan
+  fields make codec/crossing/fallback decisions diagnosable.
+- **Source maps are lazy on success path**: inspection reads generated
+  manifests only and does not parse source-map sidecars.
+- **Diagnostic catalog exists**: M4A-006-A structured code catalog remains
+  unchanged and tested.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-schema-runtime` → PASS
+- `bun test` → **308 pass / 0 fail (48 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
