@@ -8,7 +8,13 @@ import { compileIntrinsicRequirement } from "./intrinsic-requirements";
 import { reductionImpacts } from "./reduction-impact";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
-export { verifyPublishedManifest, type PublishedArtifactRecord, type PublishedManifest, type PublishedVerification } from "./published";
+export {
+  verifyPublishedManifest,
+  verifyPublishedPackage,
+  type PublishedArtifactRecord,
+  type PublishedManifest,
+  type PublishedVerification,
+} from "./published";
 
 export { CompileError, extractApp, type ExtractedApp, type RouteInfo, type PolicyInfo } from "./extract";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
