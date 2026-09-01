@@ -4,7 +4,7 @@ parent_task: M4A-005
 milestone: M4A
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -117,3 +117,65 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-005-Z) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-005-z (squash-merged; see git log for final hash)
+- Closes: #461
+- Parent verification: M4A-005-V PASS (PR #1065, merged 9be542b); this
+  packet packages the evidence and flips the M4A-005 ledger.
+
+### Evidence package (parent M4A-005 — Publish compact contract and SDK artifacts)
+
+- **Implementation commits (squash-merged):**
+  - M4A-005-A artifact publication — #1061 → bb14c5d
+  - M4A-005-B tree-shakable client — #1062 → c93a28c
+  - M4A-005-C public hash/version diagnostics — #1063 → 488158f
+  - M4A-005-D package verification — #1064 → 3d4ab10
+  - M4A-005-V verification closure — #1065 → 9be542b
+- **Source-backed artifacts:**
+  - `packages/compiler/src/index.ts`: deterministic
+    `published-manifest.json` and typed `BuildResult.publishedArtifacts`.
+  - `packages/compiler/src/published.ts`: per-artifact SHA-256/byte verifier,
+    manifest-vs-contract public hash check, and expected app/hash/version pin
+    verifier.
+  - `packages/compiler/src/treaty/index` plus tests: typed route allowlist
+    (`treatyRoutes`) and no server/compiler imports.
+- **Tests:**
+  - `published.test.ts`: package content, digest drift, and two-directory
+    reproducibility.
+  - `tree-shaking.test.ts`: allowlist runtime/type behavior and isolation.
+  - `public-contract.test.ts`: formatVersion/public hash consistency and drift.
+  - `package-verification.test.ts`: complete package acceptance and pin
+    mismatch diagnostics.
+- **Raw type-scale samples** (3 reps): 25 routes
+  585.3/590.9/615.7 ms; 100 routes 739.4/498.6/589.7 ms; 200 routes
+  665.0/574.3/468.5 ms. Startup-dominated; no unsupported performance claim.
+
+### Parent guardrail proofs
+
+- Client package contains no server runtime (source isolation test).
+- Types remain responsive at 25/100/200-route scale.
+- Version mismatch is diagnosable (format, app/hash, missing/byte/digest
+  verifier errors).
+- Published artifact deterministic (independent output manifest/hash test).
+
+### Gate results
+
+- `cargo test -p q-pack` → 100 tests — 0 failed
+- `bun test` → **303 pass / 0 fail (46 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: M4A-005 TODO → **PASS**.
+- STATUS.md and TASK_INDEX.md updated to PASS.
+
+### Disclosures
+
+- Evidence-only packet; no production behavior changes here.
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
