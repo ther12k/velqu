@@ -4,7 +4,7 @@ parent_task: M4A-005
 milestone: M4A
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -119,3 +119,49 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-005-V) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-005-v (squash-merged; see git log for final hash)
+- Closes: #460
+
+### Acceptance-criterion mapping (parent M4A-005)
+
+1. **Client package contains no server runtime** — tree-shaking source
+   isolation and published artifact tests pass; the package publishes only
+   contract/type/OpenAPI/lock metadata.
+2. **Types remain responsive at large route counts** — Treaty allowlist
+   preserves typed route projections; raw typecheck scale remains green.
+3. **Version mismatch is diagnosable** — published manifest verifier catches
+   unsupported format, app/hash pin drift, missing artifacts, byte drift, and
+   SHA-256 drift.
+4. **Published artifact is deterministic** — independent output directories
+   produce equal manifest/hash records; release-backed verification passes.
+
+### Evidence
+
+- `published.test.ts`: manifest package content, hash drift, and independent
+  output reproducibility.
+- `public-contract.test.ts`: formatVersion 1 and one stable 128-bit public
+  contract hash across contract/meta/manifest/d.ts; version/hash diagnostics.
+- `package-verification.test.ts`: matching pin acceptance and mismatch
+  diagnostics.
+- `tree-shaking.test.ts`: allowlisted route materialization and package
+  isolation.
+- Raw `typecheck-scale.ts` samples: 25 routes 631.3/698.4/490.3 ms; 100
+  routes 765.3/502.9/602.8 ms; 200 routes 512.4/477.4/530.2 ms.
+  Startup-dominated; no unsupported performance claim.
+
+### Verification runs (fresh worktree)
+
+- `cargo test -p q-pack` → 100 tests — 0 failed
+- `bun test` → **303 pass / 0 fail (46 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
