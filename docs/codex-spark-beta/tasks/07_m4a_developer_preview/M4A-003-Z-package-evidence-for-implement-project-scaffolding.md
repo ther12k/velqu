@@ -4,7 +4,7 @@ parent_task: M4A-003
 milestone: M4A
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -116,3 +116,70 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (M4A-003-Z) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-003-z (squash-merged; see git log for final hash)
+- Closes: #449
+- Parent verification: M4A-003-V PASS (PR #1053, merged ed4b069) on the
+  same verified surface; this packet packages the evidence and flips the ledger.
+
+### Evidence package (parent M4A-003 — Implement project scaffolding)
+- **Implementation commits (squash-merged):**
+  - M4A-003-A starter API — #1049 → f2a7b2b
+  - M4A-003-B treaty client example — #1050 → 9491614
+  - M4A-003-C testing setup — #1051 → f97a09f
+  - M4A-003-D optional fetch/profile choices — #1052 → 883774d
+  - M4A-003-V verification closure (incl. two defect fixes) — #1053 → ed4b069
+- **Source implementations:**
+  - `packages/cli/src/scaffold.ts`: `generateStarterProject` — 10-file
+    serverless starter (12 with fetch), module/service/contract separation,
+    Treaty client example (`StarterApi` + `createClient`), `bun:test` unit +
+    runtime-local contract suites, private-alpha dependency disclosure;
+    `resolveServiceProfile` enforcing the runtime's fail-closed profile
+    grammar (`serverless | service:N`, N = 1..64).
+  - `packages/cli/src/index.ts`: `velqu init` / `velqu create` with
+    `--name`, `--profile <serverless|service:N>` (fail closed on bare
+    `service`/unknown names), `--with-fetch` / `--fetch`, `--force`, `--json`
+    receipt; `dev`/`build` profile validation via the same resolver.
+  - `packages/cli/src/profile-fetch-choices.test.ts`: 10 tests proving the
+    optional choices end to end (templates → extraction → packaging → CLI).
+  - `docs/beta/08_CLI_REFERENCE.md`: `velqu init` section (grammar,
+    capability flag, private-alpha note).
+- **Guardrail proofs (parent acceptance):**
+  - Builds/tests/runs: static extraction + compile parity tests; scaffolded
+    suite green from a bare directory; LIVE `velqu dev` run of a scaffolded
+    `service:4` + fetch project answered `/health/live`, `POST /greetings`,
+    and `GET /greetings/:name` through the real QuickJS runtime.
+  - Module/service/contract best practices: per-module routes + service
+    files; client consumes contract shape with zero shared runtime code.
+  - No database/auth forced into core: no auth/db references;
+    `scaffold.test.ts` asserts no credentials/secret/API_KEY strings.
+  - Minimal dependencies: only `@velqu/core|schema|treaty` + dev tooling.
+- **Required evidence:**
+  - Scaffold snapshot tests: `scaffold.test.ts` (5), `testing-setup.test.ts` (2),
+    `treaty-example.test.ts` (2), `profile-fetch-choices.test.ts` (10).
+  - Fresh install test: init → symlinked `@velqu/*` → `bun test` 4/0 →
+    `velqu build` 4-route QPack; resolution requirement disclosed in README
+    and `init` output (regression-guarded).
+  - Bundle-size report (4-route service:4 + fetch scaffold): `app.qpack`
+    15070B, `route-manifest.json` 2131B, `schema-manifest.json` 1829B,
+    `capability-manifest.json` 547B, `contract.json` 2857B, `contract.d.ts`
+    1102B, `contract.meta.json` 748B, `openapi.json` 4389B,
+    `contract.lock.json` 2824B, `build-report.json` 7713B,
+    `app.qpack.sources.json` 38552B.
+- **Gate results (M4A-003-V worktree-fresh):** `./scripts/verify` **ALL PASS**
+  (velqu-runtime 7 suites, bun 277 across 38 files, typecheck, fmt,
+  workspace clippy -D warnings).
+
+### Ledger
+- `docs/beta/04_TASK_LEDGER.md`: M4A-003 TODO → **PASS** (all four
+  guardrails proven; see the M4A-003-V mapping).
+
+### Disclosures (standing)
+- No runtime behavior changed in this packet: evidence-only closure
+  (the profile-grammar and README-disclosure defect fixes were delivered in
+  the M4A-003-V packet and are recorded there).
+- Standing: CI fails with zero executed steps on every PR since ~#714
+  (infrastructure-side); disclosed per PR.
