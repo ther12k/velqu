@@ -95,6 +95,50 @@ describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
       const timer = await rt.api["async.timer"].get({ query: { ms: 20 } });
       expect(timer.error).toBeNull();
       expect(timer.data?.waited).toBe(20);
+
+      // 8. items feature module (M4A-009-A): cursor pagination, CRUD,
+      // declared 404 problem, and 422 validation — end-to-end on the
+      // actual runtime.
+      const page1 = await rt.api["items.list"].get({ query: { limit: 5 } });
+      expect(page1.error).toBeNull();
+      expect(page1.data?.items.length).toBe(5);
+      expect(page1.data?.items[0].id).toBe("itm_001");
+      expect(page1.data?.nextCursor).toBe("5");
+
+      const page2 = await rt.api["items.list"].get({
+        query: { limit: 5, cursor: page1.data!.nextCursor! },
+      });
+      expect(page2.error).toBeNull();
+      expect(page2.data?.items[0].id).toBe("itm_006");
+
+      const badPage = await rt.api["items.list"].get({ query: { limit: 500 } });
+      expect(badPage.data).toBeNull();
+      expect(badPage.error?.status).toBe(422);
+
+      const itemCreated = await rt.api["items.create"]({}).post({
+        name: "runtime-item",
+        tags: ["e2e"],
+      });
+      expect(itemCreated.error).toBeNull();
+      expect(itemCreated.data?.name).toBe("runtime-item");
+      const newId = itemCreated.data!.id;
+
+      const fetched = await rt.api["items.get"]({ id: newId }).get();
+      expect(fetched.error).toBeNull();
+      expect(fetched.data?.tags).toEqual(["e2e"]);
+
+      const renamed = await rt.api["items.update"]({ id: newId }).patch({ name: "renamed" });
+      expect(renamed.error).toBeNull();
+      expect(renamed.data?.name).toBe("renamed");
+
+      const deleted = await rt.api["items.delete"]({ id: newId }).delete();
+      expect(deleted.error).toBeNull();
+      expect(deleted.data).toEqual({ deleted: true, id: newId });
+
+      const missing = await rt.api["items.get"]({ id: newId }).get();
+      expect(missing.data).toBeNull();
+      if (missing.error?.status !== 404) throw new Error("expected declared 404");
+      expect(missing.error.problem.type).toBe("https://velqu.dev/problems/not-found");
     } finally {
       await rt.close();
     }
