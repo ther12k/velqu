@@ -86,6 +86,10 @@ describe("projection parity (M25-008-B)", () => {
       // response fields: contract.json IR == pack schema IR
       for (const [status, decl] of Object.entries(r.responses)) {
         const contractIr = c.responses[status];
+        // Problem-tagged statuses (e.g. auto-tagged 404 "not-found") carry
+        // the registry envelope on the wire — the pack intentionally stores
+        // no schema for them; the contract keeps the authored placeholder IR.
+        if ((decl as { problem?: string | null }).problem) continue;
         const packIr = decl.schema ? packSchemas[decl.schema] : null;
         expect(irFields(packIr)).toEqual(irFields(contractIr));
 

@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -122,3 +122,82 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-A) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-a (squash-merged; see git log for final hash)
+- Closes: #483
+
+### Changed files
+- `examples/proof/src/modules/items/service.ts` (new): lazy `defineService`
+  item store with deterministic 12-item seed, cursor pagination, and
+  create/get/update/remove. In-memory learning fixture, not durable state.
+- `examples/proof/src/modules/items/routes.ts` (new): five routes covering
+  `GET`+pagination (`items.list`), `POST`+201 (`items.create`),
+  `GET`+declared 404 problem (`items.get`), `PATCH`+404 (`items.update`), and
+  `DELETE`+404 (`items.delete`); every param/query/body bound is validated
+  (patterns, min/max lengths, integer ranges, array bounds).
+- `examples/proof/src/app.ts`: items module registered (proof now exposes 14
+  application routes).
+- `examples/proof/src/modules/items/service.test.ts` (new): pagination cursors,
+  page-size clamping, and CRUD lifecycle unit tests (3 tests).
+- `conformance/treaty/treaty.conformance.test.ts`: runtime-local scenario
+  extended with end-to-end pagination (cursor continuation), 422 validation
+  rejection, create/read/patch/delete, and the exact declared 404 not-found
+  problem envelope — all on the actual Rust/QuickJS runtime binary.
+- Pinned inventory tests updated to the new canonical facts:
+  `inspect-output.test.ts` (routeCount 14), `compiler.test.ts` (dense query
+  table `["cursor","limit","ms"]` with per-route dense IDs),
+  `projection-parity.test.ts` (problem-tagged statuses carry the registry
+  envelope, not an authored schema), `package-verification.test.ts` (current
+  proof contract hash).
+- `benchmarks/manifest.json`: refreshed executable hashes.
+
+### Required evidence
+
+- **Proof app source**: the items module and registration above; proof route
+  count now 14 with fully declared error/status contracts (no undeclared
+  statuses; 404s use the typed not-found problem).
+- **Scenario tests**:
+  - `items service > seeds a deterministic corpus and paginates with cursors`
+  - `items service > clamps page size to the store and returns an empty last
+    page safely`
+  - `items service > creates, reads, updates, and deletes items`
+  - `Treaty runtime-local mode > drives compiled proof pack end-to-end`
+    (now including pagination continuation, 422 validation, full CRUD, and
+    declared-404 scenarios over actual HTTP on the actual runtime).
+- **Benchmark report**: `benchmarks/manifest.json` refreshed (release runtime
+  rebuilt with the reproducibility remap); no new performance claim is made —
+  this packet adds routes, not measured numbers.
+
+### Guardrail mapping
+- **Runs entirely on actual runtime**: the new scenarios run through
+  `runtimeTreaty` against `target/release/velqu-runtime` serving the compiled
+  QPack.
+- **No hidden Bun production path**: no Bun-specific imports added; the pack
+  build remains the only production artifact path.
+- **All error/status contracts declared**: every items route declares its
+  success statuses; 404s are typed not-found problems; validation failures
+  are the standard declared 422 path.
+- **Load and failure scenarios pass**: pagination edge cases (empty last
+  page, oversized pages, out-of-range cursors), missing-item 404s, and 422
+  rejections are covered; failure-path cleanup suites stay green.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → PASS (113 tests)
+- `cargo test -p q-http` → PASS
+- `cargo test -p q-schema-runtime` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **312 pass / 0 fail (49 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check`, workspace clippy `-D warnings` → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.

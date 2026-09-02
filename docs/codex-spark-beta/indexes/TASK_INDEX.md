@@ -533,7 +533,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-008-G](../tasks/07_m4a_developer_preview/M4A-008-G-limits-and-non-goals.md) | P1 | implement | PASS | M4A-008-F | Limits and non-goals |
 | [M4A-008-V](../tasks/07_m4a_developer_preview/M4A-008-V-verify-build-documentation-and-examples.md) | P1 | verify | PASS | M4A-008-A, M4A-008-B, M4A-008-C, M4A-008-D, M4A-008-E, M4A-008-F, M4A-008-G | Verify Build documentation and examples |
 | [M4A-008-Z](../tasks/07_m4a_developer_preview/M4A-008-Z-package-evidence-for-build-documentation-and-examples.md) | P1 | evidence | PASS | M4A-008-V | Package evidence for Build documentation and examples |
-| [M4A-009-A](../tasks/07_m4a_developer_preview/M4A-009-A-feature-modules.md) | P0 | implement | TODO | M4A-004-Z, M4A-007-Z, M28-GATE | Feature modules |
+| [M4A-009-A](../tasks/07_m4a_developer_preview/M4A-009-A-feature-modules.md) | P0 | implement | PASS | M4A-004-Z, M4A-007-Z, M28-GATE | Feature modules |
 | [M4A-009-B](../tasks/07_m4a_developer_preview/M4A-009-B-jwt-like-policy-reference.md) | P0 | implement | TODO | M4A-009-A | JWT-like policy reference |
 | [M4A-009-C](../tasks/07_m4a_developer_preview/M4A-009-C-controlled-upstream.md) | P0 | implement | TODO | M4A-009-B | Controlled upstream |
 | [M4A-009-D](../tasks/07_m4a_developer_preview/M4A-009-D-metrics-readiness-shutdown.md) | P0 | implement | TODO | M4A-009-C | Metrics/readiness/shutdown |
