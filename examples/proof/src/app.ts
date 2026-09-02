@@ -5,6 +5,7 @@ import usersRoutes from "./modules/users/routes";
 import itemsRoutes from "./modules/items/routes";
 import authRoutes from "./modules/auth/routes";
 import upstreamRoutes from "./modules/upstream/routes";
+import opsRoutes from "./modules/ops/routes";
 import asyncRoutes from "./modules/async/routes";
 import benchRoutes from "./modules/bench/routes";
 import { sessionPolicy } from "./policy/session";
@@ -19,6 +20,7 @@ export const app = defineApp({
     defineModule({ id: "items", routes: [...itemsRoutes] }),
     defineModule({ id: "auth", routes: [...authRoutes] }),
     defineModule({ id: "upstream", routes: [...upstreamRoutes] }),
+    defineModule({ id: "ops", routes: [...opsRoutes] }),
     defineModule({ id: "async", routes: [asyncRoutes] }),
     defineModule({ id: "bench", routes: [...benchRoutes] }),
   ],

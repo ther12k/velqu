@@ -62,6 +62,9 @@ pub fn any_js_to_json(v: &Value<'_>) -> rquickjs::Result<Json> {
             return Ok(Json::Number(Number::from(i)));
         }
         let f = v.as_float().unwrap_or(f64::NAN);
+        if f.is_finite() && f.fract() == 0.0 && f >= (i64::MIN as f64) && f <= (i64::MAX as f64) {
+            return Ok(Json::Number(Number::from(f as i64)));
+        }
         return Ok(Number::from_f64(f).map(Json::Number).unwrap_or(Json::Null));
     }
     if v.is_string() {
