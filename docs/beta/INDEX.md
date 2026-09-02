@@ -19,6 +19,7 @@ tags:
 - [Quickstart](QUICKSTART.md)
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
 - [Treaty client](TREATY.md)
+- [Fetch and capabilities](FETCH-CAPABILITIES.md)
 - [Beta definition](01_BETA_DEFINITION.md)
 - [Scope matrix](02_SCOPE_MATRIX.md)
 - [Critical path](03_CRITICAL_PATH.md)

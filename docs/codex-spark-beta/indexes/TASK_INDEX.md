@@ -527,7 +527,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-008-A](../tasks/07_m4a_developer_preview/M4A-008-A-quickstart.md) | P1 | implement | PASS | M4A-002-Z, M4A-004-Z, M4A-006-Z | Quickstart |
 | [M4A-008-B](../tasks/07_m4a_developer_preview/M4A-008-B-routes-schemas-policies-services.md) | P1 | implement | PASS | M4A-008-A | Routes/schemas/policies/services |
 | [M4A-008-C](../tasks/07_m4a_developer_preview/M4A-008-C-treaty.md) | P1 | implement | PASS | M4A-008-B | Treaty |
-| [M4A-008-D](../tasks/07_m4a_developer_preview/M4A-008-D-fetch-capabilities.md) | P1 | implement | TODO | M4A-008-C | Fetch/capabilities |
+| [M4A-008-D](../tasks/07_m4a_developer_preview/M4A-008-D-fetch-capabilities.md) | P1 | implement | PASS | M4A-008-C | Fetch/capabilities |
 | [M4A-008-E](../tasks/07_m4a_developer_preview/M4A-008-E-runtime-profiles.md) | P1 | implement | TODO | M4A-008-D | Runtime profiles |
 | [M4A-008-F](../tasks/07_m4a_developer_preview/M4A-008-F-deployment-behind-reverse-proxy.md) | P1 | implement | TODO | M4A-008-E | Deployment behind reverse proxy |
 | [M4A-008-G](../tasks/07_m4a_developer_preview/M4A-008-G-limits-and-non-goals.md) | P1 | implement | TODO | M4A-008-F | Limits and non-goals |

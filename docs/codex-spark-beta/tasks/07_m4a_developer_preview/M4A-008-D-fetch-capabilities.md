@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -117,3 +117,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-D) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-d (squash-merged; see git log for final hash)
+- Closes: #477
+
+### Changed files
+- `docs/beta/FETCH-CAPABILITIES.md`: source-backed private-alpha fetch guide
+  covering explicit `--with-fetch` opt-in, generated upstream route, typed
+  200/502 handling, capability-linker/egress boundary, timeout/body-limit/
+  SSRF limitations, and verification commands.
+- `packages/cli/src/scaffold.test.ts`: verifies optional fetch scaffold route,
+  test, README capability notice, and `velqu.capabilities` metadata.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: fetch guide links.
+
+### Evidence
+- Documentation local-link check: PASS.
+- `packages/cli/src/scaffold.test.ts`: **6 pass / 0 fail** (including
+  `--with-fetch adds the upstream route, test, and capability metadata`).
+- `bun test`: **309 pass / 0 fail**
+- `bun run typecheck`: clean
+- `cargo test -p q-http`: PASS
+- `cargo test -p q-capabilities`: PASS
+- `cargo test -p velqu-runtime`: PASS
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** the fetch example mirrors the generated
+  scaffold and its route metadata is asserted by the scaffold test.
+- **Measured facts vs targets:** no network-performance claim.
+- **No production-ready claim:** private alpha and fixture/egress caveats are
+  explicit.
+- **Known limitations prominent:** security policy, SSRF, network ownership,
+  timeouts, response limits, and unavailable upstreams are called out.
+
+### Disclosures
+- Documentation/test packet; no production runtime behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.
