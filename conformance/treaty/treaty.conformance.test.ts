@@ -139,6 +139,41 @@ describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
       expect(missing.data).toBeNull();
       if (missing.error?.status !== 404) throw new Error("expected declared 404");
       expect(missing.error.problem.type).toBe("https://velqu.dev/problems/not-found");
+
+      // 9. JWT-like policy reference (M4A-009-B): login issues a signed
+      // reference token; the protected profile route enforces it end-to-end.
+      const badLogin = await rt.api["auth.login"]({}).post({
+        username: "ada",
+        demoSecret: "wrong-secret",
+      });
+      expect(badLogin.data).toBeNull();
+      expect(badLogin.error?.status).toBe(401);
+
+      const deniedProfile = await rt.api["auth.profile"].get();
+      expect(deniedProfile.data).toBeNull();
+      expect(deniedProfile.error?.status).toBe(401);
+
+      const login = await rt.api["auth.login"]({}).post({
+        username: "ada",
+        demoSecret: "jwt-reference-demo-secret",
+      });
+      expect(login.error).toBeNull();
+      const token = login.data!.token;
+      expect(token.split(".")).toHaveLength(3);
+
+      const authedProfile = await rt.api["auth.profile"].get({
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(authedProfile.error).toBeNull();
+      expect(authedProfile.data).toEqual({ userId: "usr_ada", scope: "items:read profile:read" });
+
+      // tampered token signature is rejected by the runtime
+      const [h, body] = token.split(".");
+      const forged = await rt.api["auth.profile"].get({
+        headers: { authorization: `Bearer ${h}.${body}.forged-signature` },
+      });
+      expect(forged.data).toBeNull();
+      expect(forged.error?.status).toBe(401);
     } finally {
       await rt.close();
     }
