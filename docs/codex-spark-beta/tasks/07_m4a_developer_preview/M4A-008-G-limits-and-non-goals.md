@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -106,3 +106,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-G) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-g (squash-merged; see git log for final hash)
+- Closes: #480
+
+### Changed files
+- `docs/beta/LIMITS-AND-NON-GOALS.md`: canonical private-alpha boundary
+  covering runtime/platform limits, bounded-resource semantics, explicit
+  deferred features, API/contract limits, evidence wording rules, and
+  production-readiness/non-goal language.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: boundary guide links.
+
+### Evidence
+- Documentation local-link check: PASS.
+- Content review: PASS (scope matrix/backlog cross-reference, trusted-code
+  statement, reverse-proxy-first posture, non-durable defer, no universal
+  benchmark/SLA/GA claims).
+- `cargo test -p velqu-runtime`: PASS
+- `bun test`: 309 pass / 0 fail
+- `bun run typecheck`, fmt, workspace clippy: clean
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** only verification commands and wording
+  examples are included; command paths are covered by the full gate.
+- **Measured facts vs targets:** explicit evidence/writing rules prohibit
+  unsupported performance claims.
+- **No production-ready claim:** beta/non-SLA status is repeated and
+  “production-ready” is listed under prohibited wording.
+- **Known limitations prominent:** platform, runtime, API, feature, security,
+  and deployment limitations are the main content of the guide.
+
+### Disclosures
+- Documentation-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.
