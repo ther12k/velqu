@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -120,3 +120,67 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-D) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-d (squash-merged; see git log for final hash)
+- Closes: #486
+
+### Changed files
+- `crates/q-engine-quickjs/src/convert.rs`: fixed JS-to-JSON number conversion
+  where integer floats (e.g. `f.fract() == 0.0`) are preserved as integer `Json::Number`
+  instead of converting to floating-point numbers, satisfying declared integer schema
+  contracts across the bridge.
+- `examples/proof/src/modules/ops/routes.ts` (new): 5 ops routes:
+  - `ops.readiness`: GET application-level readiness probe reporting user/item service health
+  - `ops.metrics`: GET in-memory inventory counts (users, items) and process uptime
+  - `ops.version`: GET runtime environment metadata
+  - `ops.ping`: GET lightweight pong
+  - `ops.check`: POST diagnostic health check simulation with component validation
+- `examples/proof/src/modules/ops/routes.test.ts` (new): 3 route contract unit tests.
+- `examples/proof/src/app.ts`: registered `ops` module (proof app now exposes 24 routes).
+- `examples/proof/src/tests/metrics-readiness-shutdown.scenario.test.ts` (new): end-to-end
+  scenario driving native readiness (`/health/ready`), operational readiness/metrics
+  routes, and bounded graceful SIGTERM shutdown on the actual Rust/QuickJS runtime binary.
+- `packages/cli/src/inspect-output.test.ts`: updated routeCount pin from 19 to 24.
+- `packages/compiler/src/package-verification.test.ts`: updated published contract hash.
+- `benchmarks/manifest.json`: refreshed release binary hash.
+
+### Required evidence
+
+- **Proof app source**: `examples/proof/src/modules/ops/` with 5 operational endpoints.
+- **Scenario tests**:
+  - `examples/proof/src/modules/ops/routes.test.ts`: 3 unit tests verifying contract
+    shapes, readiness status, and metrics calculations.
+  - `examples/proof/src/tests/metrics-readiness-shutdown.scenario.test.ts`: live
+    scenario verifying `/health/ready` (native), `/ops/readiness`, `/ops/metrics`,
+    and clean SIGTERM exit code 0 on the actual release runtime binary.
+- **Benchmark report**: `benchmarks/manifest.json` updated and verified.
+
+### Guardrail mapping
+
+- **Runs entirely on actual runtime**: operational endpoints and bounded shutdown
+  run against the release Rust binary loading `app.qpack`.
+- **No hidden Bun production path**: production execution remains Rust + QuickJS.
+- **All error/status contracts declared**: all ops routes declare exact 200 schemas.
+- **Load and failure scenarios pass**: bounded shutdown unblocks connections without
+  hanging; readiness reports accurate health.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-http` → PASS
+- `cargo test -p q-schema-runtime` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **325 pass / 0 fail (53 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
