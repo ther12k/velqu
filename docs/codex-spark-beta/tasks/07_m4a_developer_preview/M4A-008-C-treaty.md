@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -109,3 +109,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-C) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-c (squash-merged; see git log for final hash)
+- Closes: #476
+
+### Changed files
+- `docs/beta/TREATY.md`: source-backed Treaty guide covering generated
+  contract use, route-ID/path/query/body/status typing, unit-local/runtime-
+  local/remote mode distinctions, portable Fetch transport, allowlists, and
+  proof verification.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: Treaty guide linked from beta
+  entry points.
+
+### Evidence
+- Documentation local-link check: PASS.
+- `conformance/treaty/treaty.conformance.test.ts`: PASS (runtime-local actual
+  binary, generated type shape, status/path/body typing, unit/remote parity,
+  bundle isolation).
+- `bun test`: **308 pass / 0 fail (48 files)**
+- `bun run typecheck`: clean
+- `cargo test -p velqu-runtime`: PASS
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** examples mirror proof routes and Treaty
+  conformance exercises them end-to-end.
+- **Measured facts vs targets:** no performance claim.
+- **No production-ready claim:** private-alpha status and fixture credentials
+  are explicit.
+- **Known limitations prominent:** mode boundaries, network ownership,
+  workspace package status, and trusted-code runtime are called out.
+
+### Disclosures
+- Documentation-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.

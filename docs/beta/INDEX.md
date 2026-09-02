@@ -18,6 +18,7 @@ tags:
 - [Current baseline](00_CURRENT_BASELINE.md)
 - [Quickstart](QUICKSTART.md)
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
+- [Treaty client](TREATY.md)
 - [Beta definition](01_BETA_DEFINITION.md)
 - [Scope matrix](02_SCOPE_MATRIX.md)
 - [Critical path](03_CRITICAL_PATH.md)
