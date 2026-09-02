@@ -525,7 +525,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-007-V](../tasks/07_m4a_developer_preview/M4A-007-V-verify-implement-bounded-defer-and-lifecycle-hooks.md) | P0 | verify | PASS | M4A-007-A, M4A-007-B, M4A-007-C, M4A-007-D | Verify Implement bounded `defer` and lifecycle hooks |
 | [M4A-007-Z](../tasks/07_m4a_developer_preview/M4A-007-Z-package-evidence-for-implement-bounded-defer-and-lifecycle-hooks.md) | P0 | evidence | PASS | M4A-007-V | Package evidence for Implement bounded `defer` and lifecycle hooks |
 | [M4A-008-A](../tasks/07_m4a_developer_preview/M4A-008-A-quickstart.md) | P1 | implement | PASS | M4A-002-Z, M4A-004-Z, M4A-006-Z | Quickstart |
-| [M4A-008-B](../tasks/07_m4a_developer_preview/M4A-008-B-routes-schemas-policies-services.md) | P1 | implement | TODO | M4A-008-A | Routes/schemas/policies/services |
+| [M4A-008-B](../tasks/07_m4a_developer_preview/M4A-008-B-routes-schemas-policies-services.md) | P1 | implement | PASS | M4A-008-A | Routes/schemas/policies/services |
 | [M4A-008-C](../tasks/07_m4a_developer_preview/M4A-008-C-treaty.md) | P1 | implement | TODO | M4A-008-B | Treaty |
 | [M4A-008-D](../tasks/07_m4a_developer_preview/M4A-008-D-fetch-capabilities.md) | P1 | implement | TODO | M4A-008-C | Fetch/capabilities |
 | [M4A-008-E](../tasks/07_m4a_developer_preview/M4A-008-E-runtime-profiles.md) | P1 | implement | TODO | M4A-008-D | Runtime profiles |

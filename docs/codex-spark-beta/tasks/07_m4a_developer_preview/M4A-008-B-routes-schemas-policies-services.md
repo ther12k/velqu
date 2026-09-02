@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -117,3 +117,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-B) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-b (squash-merged; see git log for final hash)
+- Closes: #475
+
+### Changed files
+- `docs/beta/ROUTES-SCHEMAS.md`: source-backed guide for route declarations,
+  schema contracts, params/responses, policies, and lazy services; includes
+  runnable TypeScript examples, explicit private-alpha/fixture limitations,
+  and verification commands.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: route/schema guide linked from
+  the beta documentation entry points.
+
+### Evidence
+- Documentation content/link check: PASS (all local links resolve; examples
+  use the proof app's `route`, `s`, `definePolicy`, `status`, and
+  `defineService` APIs).
+- `bun test examples/proof`: PASS
+- `bun run typecheck`: clean
+- `cargo test -p q-engine-quickjs`: PASS
+- `cargo test -p q-schema-runtime`: PASS
+- `cargo test -p velqu-runtime`: PASS
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** examples mirror `examples/proof` and the
+  proof build/tests are included in the gate.
+- **Measured facts vs targets:** no performance claim is made.
+- **No production-ready claim:** the guide is explicitly private-alpha and
+  calls the in-memory service a learning fixture.
+- **Known limitations prominent:** workspace-only dependencies, trusted-code
+  QuickJS, fixture auth, and durable-state limitations are called out.
+
+### Disclosures
+- Documentation-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.

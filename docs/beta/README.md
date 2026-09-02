@@ -43,16 +43,17 @@ The target is **`0.1.0-beta.1`**:
 ## Start here
 
 1. [Quickstart](QUICKSTART.md)
-2. [Master agent prompt](MASTER_AGENT_PROMPT.md)
-3. [Current state and baseline](00_CURRENT_BASELINE.md)
-4. [Beta definition](01_BETA_DEFINITION.md)
-5. [Scope matrix](02_SCOPE_MATRIX.md)
-6. [Critical path](03_CRITICAL_PATH.md)
-7. [Task ledger](04_TASK_LEDGER.md)
-8. [Dependency map](05_DEPENDENCY_MAP.md)
-9. [Milestone plans](milestones/00_M23R2_GATE_CLOSE.md)
-10. [Evidence standard](governance/EVIDENCE_STANDARD.md)
-11. [Final review packet template](governance/FINAL_REVIEW_PACKET_TEMPLATE.md)
+2. [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
+3. [Master agent prompt](MASTER_AGENT_PROMPT.md)
+4. [Current state and baseline](00_CURRENT_BASELINE.md)
+5. [Beta definition](01_BETA_DEFINITION.md)
+6. [Scope matrix](02_SCOPE_MATRIX.md)
+7. [Critical path](03_CRITICAL_PATH.md)
+8. [Task ledger](04_TASK_LEDGER.md)
+9. [Dependency map](05_DEPENDENCY_MAP.md)
+10. [Milestone plans](milestones/00_M23R2_GATE_CLOSE.md)
+11. [Evidence standard](governance/EVIDENCE_STANDARD.md)
+12. [Final review packet template](governance/FINAL_REVIEW_PACKET_TEMPLATE.md)
 
 ## Milestone path
 
