@@ -795,21 +795,32 @@ globalThis.__velquIsThenable = function (v) {
 // M4A-007-B: only the invocation owner may admit deferred work — cleanup
 // reactions and the deferred drain itself cannot enqueue (host-side
 // `__velquCanAdmitDefer` predicate, backed by the execution phase).
-globalThis.__velquDeferred = [];
-globalThis.__velquDefer = function (fn) {
-  if (typeof fn !== "function") { __velquDeferRejected(); throw new TypeError("defer expects a function"); }
-  if (!__velquCanAdmitDefer()) { __velquDeferRejected(); throw new Error("defer queue unavailable outside the invocation owner"); }
-  if (globalThis.__velquDeferred.length >= 64) { __velquDeferRejected(); throw new Error("defer queue capacity reached"); }
-  __velquDeferAdmitted();
-  globalThis.__velquDeferred.push(fn);
-};
-globalThis.__velquDrainDeferred = function () {
-  const pending = globalThis.__velquDeferred;
-  globalThis.__velquDeferred = [];
-  for (const fn of pending) {
-    try { fn(); } catch (_) { /* best effort: isolate callback failures */ }
-  }
-};
+// M4A-007-D: the queue is closure-private. Pushing deferred work directly is
+// impossible — admission through the phase- and cap-checked `__velquDefer` is
+// the ONLY entry point, so unbounded recursive spawning is forbidden
+// structurally, not by convention. Admission consults the host-configured
+// capacity (`__velquDeferCap`), never a hardcoded literal.
+(function () {
+  let pending = [];
+  globalThis.__velquDefer = function (fn) {
+    if (typeof fn !== "function") { __velquDeferRejected(); throw new TypeError("defer expects a function"); }
+    if (!__velquCanAdmitDefer()) { __velquDeferRejected(); throw new Error("defer queue unavailable outside the invocation owner"); }
+    if (pending.length >= __velquDeferCap()) { __velquDeferRejected(); throw new Error("defer queue capacity reached"); }
+    __velquDeferAdmitted();
+    pending.push(fn);
+  };
+  globalThis.__velquDrainDeferred = function () {
+    const batch = pending;
+    pending = [];
+    for (const fn of batch) {
+      try { fn(); } catch (_) { /* best effort: isolate callback failures */ }
+    }
+  };
+  globalThis.__velquDeferredLen = function () { return pending.length; };
+  globalThis.__velquDrainTrim = function (cap) {
+    if (pending.length > cap) pending.length = cap;
+  };
+})();
 
 globalThis.__velquRun = function (handlerFn, policyFn, ctx, req) {
   if (!policyFn) return handlerFn(ctx);

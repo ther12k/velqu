@@ -250,6 +250,44 @@ function defer_pending_watch(ctx) {
   globalThis.__velquDefer(() => { __deferRan += 1; });
   return new Promise(() => {});
 }
+function defer_queue_hidden(ctx) {
+  // M4A-007-D: the queue is closure-private — there is no global array to
+  // push to, so direct spawning attempts fail closed
+  try {
+    globalThis.__velquDeferred.push(() => {});
+    return { typeofQueue: typeof globalThis.__velquDeferred, pushed: true };
+  } catch (e) {
+    return {
+      typeofQueue: typeof globalThis.__velquDeferred,
+      lenFn: typeof globalThis.__velquDeferredLen,
+      pushed: false,
+      error: String(e),
+    };
+  }
+}
+function defer_recursive_spam(ctx) {
+  // M4A-007-D: self-recursion through defer is bounded — the queue fills to
+  // its cap, the next admission throws, and the handler reports
+  let admitted = 0;
+  const spawn = () => {
+    globalThis.__velquDefer(spawn);
+    admitted += 1;
+  };
+  try {
+    while (true) { spawn(); }
+  } catch (e) {
+    return { admitted, error: String(e) };
+  }
+}
+function defer_spam10(ctx) {
+  // M4A-007-D: admission consults the host-configured capacity
+  let admitted = 0, rejected = 0;
+  for (let i = 0; i < 10; i++) {
+    try { globalThis.__velquDefer(() => {}); admitted += 1; }
+    catch (e) { rejected += 1; }
+  }
+  return { admitted, rejected };
+}
 var __chainCount = 0;
 function chain_forever_catch(ctx) {
   // rejection reaction reschedules itself FOREVER via microtasks during
@@ -450,6 +488,9 @@ __velquRegister("defer.nativeop_in_drain", defer_nativeop_in_drain);
 __velquRegister("defer.from_reaction", defer_from_reaction);
 __velquRegister("defer.check_spied", defer_check_spied);
 __velquRegister("defer.pending_watch", defer_pending_watch);
+__velquRegister("defer.queue_hidden", defer_queue_hidden);
+__velquRegister("defer.recursive_spam", defer_recursive_spam);
+__velquRegister("defer.spam10", defer_spam10);
 "#;
 
 fn expected_table() -> BTreeMap<String, String> {
@@ -495,6 +536,9 @@ fn expected_table() -> BTreeMap<String, String> {
         "defer.from_reaction",
         "defer.check_spied",
         "defer.pending_watch",
+        "defer.queue_hidden",
+        "defer.recursive_spam",
+        "defer.spam10",
         "chain.forever",
         "chain.count",
         "timer.zero",
@@ -539,7 +583,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 65);
+    assert_eq!(stats.handlers_registered, 68);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -4237,4 +4281,114 @@ async fn defer_metrics_expose_lifecycle() {
         s.defers_dropped_at_shutdown, 2,
         "both queued callbacks dropped"
     );
+}
+
+/// M4A-007-D: the deferred queue is closure-private — handlers cannot push to
+/// it directly, so spawning deferred work outside the checked admission is
+/// impossible (fail closed on the probe).
+#[tokio::test]
+async fn defer_queue_is_hidden_from_handlers() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(930, "defer.queue_hidden", &[200], 2000)).await;
+    match out {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert_eq!(v["typeofQueue"], "undefined", "no global queue array");
+            assert_eq!(v["pushed"], false, "direct push must fail closed");
+            assert_eq!(v["lenFn"], "function", "host observer stays available");
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+
+    // nothing was admitted by the failed push attempt
+    let out = run(&mut eng, spec(931, "requestless", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 0);
+    assert_eq!(s.defers_drained, 0);
+    eng.shutdown();
+}
+
+/// M4A-007-D: recursive spawning through defer is bounded twice — within the
+/// invocation by the queue cap, and at the drain by the owner rule (each
+/// drained callback's re-defer attempt is rejected and counted).
+#[tokio::test]
+async fn defer_recursive_spawning_is_bounded() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(932, "defer.recursive_spam", &[200], 2000)).await;
+    match out {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert_eq!(v["admitted"], 64, "admissions stop at the queue cap");
+            assert!(
+                v["error"]
+                    .as_str()
+                    .unwrap()
+                    .contains("defer queue capacity reached"),
+                "recursion fails closed at the cap: {v}"
+            );
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+
+    // the drain runs all 64 callbacks; every re-defer attempt is rejected
+    let out = run(&mut eng, spec(933, "requestless", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 64);
+    assert_eq!(
+        s.defers_rejected, 65,
+        "1 cap rejection + 64 drain owner-rejections"
+    );
+    assert_eq!(s.defer_drains, 1);
+    assert_eq!(s.defers_drained, 64);
+    assert_eq!(s.defer_drains_interrupted, 0);
+    eng.shutdown();
+}
+
+/// M4A-007-D: admission consults the host-configured capacity, not a
+/// hardcoded literal — a cap of 4 admits exactly 4 of 10 attempts.
+#[tokio::test]
+async fn defer_admission_enforces_configured_capacity() {
+    let mut eng = QuickJsEngine::spawn(
+        QuickJsConfig {
+            defer_queue_capacity: 4,
+            ..Default::default()
+        },
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    );
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(934, "defer.spam10", &[200], 2000)).await;
+    match out {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert_eq!(v["admitted"], 4, "configured cap enforced at admission");
+            assert_eq!(v["rejected"], 6);
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+
+    let out = run(&mut eng, spec(935, "requestless", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 4);
+    assert_eq!(s.defers_rejected, 6);
+    assert_eq!(s.defer_drains, 1);
+    assert_eq!(s.defers_drained, 4);
+    eng.shutdown();
 }
