@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -108,3 +108,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-F) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-f (squash-merged; see git log for final hash)
+- Closes: #479
+
+### Changed files
+- `docs/beta/DEPLOYMENT-REVERSE-PROXY.md`: reverse-proxy-first deployment
+  guide with bounded runtime build/run commands, loopback binding, Nginx TLS
+  termination example, health/readiness/drain rollout sequence, trusted
+  forwarding-header boundary, ownership split, and explicit beta limitations.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: deployment guide links.
+
+### Evidence
+- Documentation local-link check: PASS.
+- Nginx/configuration sample review: PASS (loopback upstream, edge size and
+  timeout limits, TLS paths, health endpoints, explicit no-direct-public-TLS
+  posture).
+- `cargo test -p velqu-runtime`: PASS
+- `bun test`: 309 pass / 0 fail
+- `bun run typecheck`, fmt, workspace clippy: clean
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** runtime commands and health/readiness paths
+  are exercised by the runtime/proof gates; proxy config is explicitly marked
+  as an operator example requiring environment validation.
+- **Measured facts vs targets:** no deployment-performance claim.
+- **No production-ready claim:** private-alpha/non-SLA posture is explicit.
+- **Known limitations prominent:** plain HTTP runtime, trusted proxy boundary,
+  no native TLS/HTTP2, no direct public exposure, and bounded drain are called
+  out.
+
+### Disclosures
+- Documentation-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.

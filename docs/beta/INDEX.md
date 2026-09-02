@@ -21,6 +21,7 @@ tags:
 - [Treaty client](TREATY.md)
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
 - [Runtime profiles](RUNTIME-PROFILES.md)
+- [Deployment behind a reverse proxy](DEPLOYMENT-REVERSE-PROXY.md)
 - [Beta definition](01_BETA_DEFINITION.md)
 - [Scope matrix](02_SCOPE_MATRIX.md)
 - [Critical path](03_CRITICAL_PATH.md)
