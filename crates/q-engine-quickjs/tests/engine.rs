@@ -179,6 +179,25 @@ async function cancel_catch_spawns(ctx) {
 function check_spawn_flag(ctx) {
   return { flag: String(__syncSideEffect) };
 }
+var __deferRan = 0;
+function defer_simple(ctx) {
+  globalThis.__velquDefer(() => { __deferRan += 1; });
+  // the response is fixed BEFORE the deferred callback runs
+  return { ok: true, ranAtResponse: __deferRan };
+}
+function defer_check(ctx) {
+  return { ran: __deferRan };
+}
+function defer_overload(ctx) {
+  for (let i = 0; i < 70; i++) {
+    globalThis.__velquDefer(() => { __deferRan += 1; });
+  }
+  return { ok: true };
+}
+function defer_spin(ctx) {
+  globalThis.__velquDefer(() => { while (true) {} });
+  return { ok: true };
+}
 var __chainCount = 0;
 function chain_forever_catch(ctx) {
   // rejection reaction reschedules itself FOREVER via microtasks during
@@ -370,6 +389,10 @@ __velquRegister("resp.getter_spin_async", resp_getter_spin_async);
 __velquRegister("resp.getter_microtask", resp_getter_microtask);
 __velquRegister("check.mapping_flag", check_mapping_flag);
 __velquRegister("problem.getter_spin", problem_getter_spin);
+__velquRegister("defer.simple", defer_simple);
+__velquRegister("defer.check", defer_check);
+__velquRegister("defer.overload", defer_overload);
+__velquRegister("defer.spin", defer_spin);
 "#;
 
 fn expected_table() -> BTreeMap<String, String> {
@@ -406,6 +429,10 @@ fn expected_table() -> BTreeMap<String, String> {
         "floating.catch",
         "cancel.catch",
         "check.spawn_flag",
+        "defer.simple",
+        "defer.check",
+        "defer.overload",
+        "defer.spin",
         "chain.forever",
         "chain.count",
         "timer.zero",
@@ -450,7 +477,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 56);
+    assert_eq!(stats.handlers_registered, 60);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -3897,4 +3924,98 @@ async fn independent_engines_share_source_but_not_module_state() {
     let _ = (&a, &b);
     a.shutdown();
     b.shutdown();
+}
+
+/// M4A-007-A: deferred work runs AFTER the response is handed off — the
+/// response body is fixed before any deferred callback executes.
+#[tokio::test]
+async fn defer_runs_after_response_handoff() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(900, "defer.simple", &[200], 2000)).await;
+    match out {
+        Outcome::Response { status, body, .. } => {
+            assert_eq!(status, 200);
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            // side effect NOT yet applied at response time
+            assert_eq!(v["ranAtResponse"], 0);
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+
+    // the next invocation observes the drained side effect
+    let check = run(&mut eng, spec(901, "defer.check", &[200], 2000)).await;
+    match check {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert_eq!(v["ran"], 1, "deferred callback ran exactly once");
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+    eng.shutdown();
+}
+
+/// M4A-007-A: the queue is bounded — exceeding capacity fails closed in the
+/// handler instead of growing without limit.
+#[tokio::test]
+async fn defer_queue_is_bounded() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(902, "defer.overload", &[200], 2000)).await;
+    match out {
+        Outcome::EngineFailure { detail, .. } => {
+            assert!(detail.contains("defer queue capacity reached"), "{detail}");
+        }
+        o => panic!("expected bounded failure, got {o:?}"),
+    }
+    eng.shutdown();
+}
+
+/// M4A-007-A: a spinning deferred callback is killed by the drain deadline —
+/// the worker stays usable and later requests succeed.
+#[tokio::test]
+async fn defer_drain_deadline_bounds_spinning_callback() {
+    let mut eng = QuickJsEngine::spawn(
+        QuickJsConfig {
+            defer_deadline_ms: 100,
+            ..Default::default()
+        },
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    );
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(903, "defer.spin", &[200], 2000)).await;
+    assert!(
+        matches!(out, Outcome::Response { status: 200, .. }),
+        "response hands off before the spin: {out:?}"
+    );
+
+    // worker survived: next invocation serves normally
+    let next = run(&mut eng, spec(904, "defer.check", &[200], 2000)).await;
+    assert!(matches!(next, Outcome::Response { .. }), "got {next:?}");
+    eng.shutdown();
+}
+
+/// M4A-007-A: shutdown aborts outstanding deferred work deterministically —
+/// the worker exits even with queued callbacks that never drained.
+#[tokio::test]
+async fn shutdown_aborts_queued_deferred_work() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    // queue deferred work whose drain would spin; response still arrives
+    let out = run(&mut eng, spec(905, "defer.spin", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+
+    // shutdown joins the worker thread: deterministic termination
+    eng.shutdown();
 }

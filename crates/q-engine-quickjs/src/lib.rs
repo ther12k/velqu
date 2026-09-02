@@ -130,6 +130,11 @@ pub struct QuickJsConfig {
     /// M27-003-A: intrinsic set for the worker's QuickJS context.
     /// Default `Full` preserves all prior behavior byte-for-byte.
     pub profile: ContextProfile,
+    /// M4A-007-A: maximum deferred callbacks retained per worker. Deferred
+    /// work is best-effort and bounded; it is not a durable job queue.
+    pub defer_queue_capacity: usize,
+    /// M4A-007-A: deadline for one deferred callback during shutdown/drain.
+    pub defer_deadline_ms: u64,
 }
 
 impl Default for QuickJsConfig {
@@ -143,6 +148,8 @@ impl Default for QuickJsConfig {
             request_slot_capacity: 256,
             embedded_prelude: false,
             profile: ContextProfile::Full,
+            defer_queue_capacity: 64,
+            defer_deadline_ms: 100,
         }
     }
 }
