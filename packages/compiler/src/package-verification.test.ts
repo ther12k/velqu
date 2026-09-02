@@ -37,7 +37,7 @@ describe("Published package verification (M4A-005-D)", () => {
       expect(checked.ok).toBeFalse();
       expect(checked.errors).toContain("appId mismatch (expected different-app, got proof)");
       expect(checked.errors).toContain(
-        "contractHash mismatch (expected aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, got a6c92b750b28cc6a78c037374c7980af)",
+        "contractHash mismatch (expected aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, got cec56f2ef6dd4977205ab389c3178e93)",
       );
     } finally {
       rmSync(out, { recursive: true, force: true });

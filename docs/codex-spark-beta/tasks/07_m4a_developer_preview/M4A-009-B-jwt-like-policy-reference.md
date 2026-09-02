@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -120,3 +120,66 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-B) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-b (squash-merged; see git log for final hash)
+- Closes: #484
+
+### Changed files
+- `examples/proof/src/policy/jwt.ts` (new): JWT-*like* bearer policy
+  reference — JWS-compact-shaped three-segment token (header.payload.signature,
+  base64url), HMAC-SHA-256 verification, expiry enforcement with a 5 s
+  clock-skew allowance, timing-safe MAC comparison, and a typed session
+  (`userId`, `scope`). The runtime intentionally has NO SubtleCrypto (M28:
+  crypto is getRandomValues/randomUUID only, mocks forbidden — asserted in the
+  engine tests), so the packet includes a compact pure-JS SHA-256/HMAC
+  reference implementation pinned by RFC 4231 vectors.
+- `examples/proof/src/modules/auth/routes.ts` (new): `auth.login` (POST, issues
+  a reference token; declared 401 on bad fixture credentials) and
+  `auth.profile` (GET, guarded by the JWT-like policy with typed session).
+- `examples/proof/src/app.ts`: auth module + jwtPolicy registered (proof now
+  16 routes, 2 policies).
+- `examples/proof/src/modules/auth/service.test.ts` (new): 6 tests — issuance
+  + session, missing/malformed/tampered/expired rejections, fixture-secret
+  disclosure, and RFC 4231 HMAC vectors (cases 1 & 2) + a Node-crypto
+  cross-check.
+- `conformance/treaty/treaty.conformance.test.ts`: runtime-local scenario
+  extended with bad-credential 401, unauthenticated 401, real login → token →
+  authorized profile (`usr_ada`, scoped), and forged-signature 401 — all over
+  HTTP on the actual runtime.
+- Pinned inventory tests updated (inspect routeCount 16, current proof
+  contract hash); `benchmarks/manifest.json` refreshed.
+
+### Required evidence
+
+- **Scenario tests**: auth unit suite (6) + runtime-local treaty auth flow
+  (login/verify/reject paths on the actual binary).
+- **Fixture discipline**: the demo secret contains "demo", is published in the
+  repository, and the generated route's 401s are declared; docs/notes state it
+  is not production authentication.
+- **No crypto mocks**: `crypto.subtle` remains undefined in the runtime
+  (engine test asserts it); signing is pure JS validated against RFC 4231.
+
+### Guardrail mapping
+- **Runs entirely on actual runtime**: auth login/profile/verify/reject flow
+  runs through `runtimeTreaty` on the release `velqu-runtime` binary.
+- **No hidden Bun production path**: none added; token logic runs inside
+  QuickJS.
+- **All error/status contracts declared**: login declares 200/401; profile
+  declares 200 + policy 401.
+- **Load and failure scenarios pass**: malformed/tampered/expired tokens and
+  wrong credentials all fail closed with typed 401s; worker stays healthy.
+
+### Command results
+
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **318 pass / 0 fail (50 files)**
+- `bun run typecheck`, fmt, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR.
