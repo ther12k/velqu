@@ -198,6 +198,52 @@ function defer_spin(ctx) {
   globalThis.__velquDefer(() => { while (true) {} });
   return { ok: true };
 }
+var __deferSpied = "";
+function defer_reenqueue_in_drain(ctx) {
+  // M4A-007-B: a deferred callback runs OUTSIDE the invocation owner —
+  // re-enqueueing from the drain must fail closed
+  globalThis.__velquDefer(() => {
+    try {
+      globalThis.__velquDefer(() => { __deferRan += 1; });
+      __deferSpied += "enqueued;";
+    } catch (e) {
+      __deferSpied += String(e) + ";";
+    }
+  });
+  return { ok: true };
+}
+function defer_nativeop_in_drain(ctx) {
+  // M4A-007-B: the deferred drain is op-free — native ops must be rejected
+  // there as they are in settlement cleanup
+  globalThis.__velquDefer(() => {
+    // TimerStart throws inside the promise executor, so the guard surfaces
+    // as a promise rejection rather than a synchronous throw
+    ctx.native.timer.delay(5).then(
+      () => { __deferSpied += "started;"; },
+      (e) => { __deferSpied += String(e) + ";"; },
+    );
+  });
+  return { ok: true };
+}
+function defer_from_reaction(ctx) {
+  // M4A-007-B: a floating timer op is aborted at settlement; its rejection
+  // reaction runs in the Cleanup phase — it must not be able to admit
+  // deferred work. (Handler-scheduled microtasks deliberately still run in
+  // the Invocation phase microtask checkpoint, so a resolved-promise
+  // reaction would NOT exercise the cleanup gate.)
+  ctx.native.timer.delay(60000).catch(() => {
+    try {
+      globalThis.__velquDefer(() => { __deferRan += 1; });
+      __deferSpied += "enqueued;";
+    } catch (e) {
+      __deferSpied += String(e) + ";";
+    }
+  });
+  return { ok: true };
+}
+function defer_check_spied(ctx) {
+  return { spied: __deferSpied, ran: __deferRan };
+}
 var __chainCount = 0;
 function chain_forever_catch(ctx) {
   // rejection reaction reschedules itself FOREVER via microtasks during
@@ -393,6 +439,10 @@ __velquRegister("defer.simple", defer_simple);
 __velquRegister("defer.check", defer_check);
 __velquRegister("defer.overload", defer_overload);
 __velquRegister("defer.spin", defer_spin);
+__velquRegister("defer.reenqueue_in_drain", defer_reenqueue_in_drain);
+__velquRegister("defer.nativeop_in_drain", defer_nativeop_in_drain);
+__velquRegister("defer.from_reaction", defer_from_reaction);
+__velquRegister("defer.check_spied", defer_check_spied);
 "#;
 
 fn expected_table() -> BTreeMap<String, String> {
@@ -433,6 +483,10 @@ fn expected_table() -> BTreeMap<String, String> {
         "defer.check",
         "defer.overload",
         "defer.spin",
+        "defer.reenqueue_in_drain",
+        "defer.nativeop_in_drain",
+        "defer.from_reaction",
+        "defer.check_spied",
         "chain.forever",
         "chain.count",
         "timer.zero",
@@ -477,7 +531,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 60);
+    assert_eq!(stats.handlers_registered, 64);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -4017,5 +4071,80 @@ async fn shutdown_aborts_queued_deferred_work() {
     assert!(matches!(out, Outcome::Response { status: 200, .. }));
 
     // shutdown joins the worker thread: deterministic termination
+    eng.shutdown();
+}
+
+/// M4A-007-B: deferred work may only be admitted by the invocation owner —
+/// a promise reaction running in settlement Cleanup cannot enqueue.
+#[tokio::test]
+async fn defer_admission_requires_invocation_owner() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(&mut eng, spec(906, "defer.from_reaction", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+
+    // the reaction ran during settlement cleanup; its defer attempt was
+    // rejected and nothing was enqueued
+    let check = run(&mut eng, spec(907, "defer.check_spied", &[200], 2000)).await;
+    match check {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            assert!(
+                v["spied"]
+                    .as_str()
+                    .unwrap()
+                    .contains("defer queue unavailable outside the invocation owner"),
+                "cleanup reaction must be rejected: {v}"
+            );
+            assert_eq!(
+                v["ran"], 0,
+                "no deferred callback may be admitted from cleanup"
+            );
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
+    eng.shutdown();
+}
+
+/// M4A-007-B: the deferred drain is its own phase — a deferred callback can
+/// neither re-enqueue (owner rule) nor start native ops (op-free drain).
+#[tokio::test]
+async fn deferred_drain_is_op_free_and_cannot_reenqueue() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    let out = run(
+        &mut eng,
+        spec(908, "defer.reenqueue_in_drain", &[200], 2000),
+    )
+    .await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    let out = run(&mut eng, spec(909, "defer.nativeop_in_drain", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+
+    let check = run(&mut eng, spec(910, "defer.check_spied", &[200], 2000)).await;
+    match check {
+        Outcome::Response { body, .. } => {
+            let BodyOut::JsonText(t) = body else {
+                panic!("json body")
+            };
+            let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+            let spied = v["spied"].as_str().unwrap();
+            assert!(
+                spied.contains("defer queue unavailable outside the invocation owner"),
+                "drain must not admit re-enqueues: {v}"
+            );
+            assert!(
+                spied.contains("native operations are unavailable while deferred work drains"),
+                "drain must be op-free: {v}"
+            );
+            assert_eq!(v["ran"], 0, "neither rejected callback may have run");
+        }
+        o => panic!("expected response, got {o:?}"),
+    }
     eng.shutdown();
 }

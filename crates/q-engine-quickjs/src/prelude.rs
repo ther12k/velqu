@@ -792,9 +792,13 @@ globalThis.__velquIsThenable = function (v) {
 // M4A-007-A: deferred callbacks are owned by this worker and admitted through
 // a bounded queue. They run after response handoff; this is best-effort work,
 // not a durable job system.
+// M4A-007-B: only the invocation owner may admit deferred work — cleanup
+// reactions and the deferred drain itself cannot enqueue (host-side
+// `__velquCanAdmitDefer` predicate, backed by the execution phase).
 globalThis.__velquDeferred = [];
 globalThis.__velquDefer = function (fn) {
   if (typeof fn !== "function") throw new TypeError("defer expects a function");
+  if (!__velquCanAdmitDefer()) throw new Error("defer queue unavailable outside the invocation owner");
   if (globalThis.__velquDeferred.length >= 64) throw new Error("defer queue capacity reached");
   globalThis.__velquDeferred.push(fn);
 };
