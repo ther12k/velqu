@@ -22,6 +22,7 @@ tags:
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
 - [Runtime profiles](RUNTIME-PROFILES.md)
 - [Deployment behind a reverse proxy](DEPLOYMENT-REVERSE-PROXY.md)
+- [Limits and non-goals](LIMITS-AND-NON-GOALS.md)
 - [Beta definition](01_BETA_DEFINITION.md)
 - [Scope matrix](02_SCOPE_MATRIX.md)
 - [Critical path](03_CRITICAL_PATH.md)
