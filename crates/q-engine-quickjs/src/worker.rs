@@ -512,6 +512,7 @@ impl WorkerInner {
                 Arc::clone(&shared),
                 Arc::clone(&ops),
                 tokio_handle,
+                config.defer_queue_capacity,
             )
             .map_err(|e| format!("natives failed: {e:?}"))?;
             // M26-004-D: embedded-prelude packs carry the prelude inside the
@@ -1352,13 +1353,12 @@ impl WorkerInner {
                     Ok(len_fn) => len_fn.call(()).unwrap_or(0),
                     Err(_) => 0,
                 };
-                // host-side cap: the JS-side check is the first line of
-                // defense; this truncation is the enforced bound for drift.
-                let trim = format!(
-                    "if (globalThis.__velquDeferred.length > {cap}) \
-                     globalThis.__velquDeferred.length = {cap};"
-                );
-                ctx.eval::<(), _>(trim.as_str())?;
+                // host-side cap: the JS-side admission check is the first line
+                // of defense; this truncation is the enforced bound for drift.
+                let Ok(trim) = globals.get::<_, Function>("__velquDrainTrim") else {
+                    return Ok(());
+                };
+                trim.call::<_, ()>((cap as f64,))?;
                 // arm the interrupt so a spinning deferred callback cannot
                 // outlive the drain budget
                 *deadline_cell.lock().unwrap() = Some(deadline);
@@ -2377,6 +2377,7 @@ fn install_natives(
     shared: Arc<WorkerShared>,
     ops: Arc<OpRegistry>,
     tokio_handle: tokio::runtime::Handle,
+    defer_queue_capacity: usize,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
 
@@ -2410,11 +2411,11 @@ fn install_natives(
         globals.set("__velquDeferRejected", Function::new(ctx.clone(), f)?)?;
     }
     {
-        let f = |ctx: rquickjs::Ctx<'_>| -> rquickjs::Result<u64> {
-            let queue: rquickjs::Array = ctx.globals().get("__velquDeferred")?;
-            Ok(queue.len() as u64)
-        };
-        globals.set("__velquDeferredLen", Function::new(ctx.clone(), f)?)?;
+        // M4A-007-D: admission consults the host-configured capacity — the
+        // queue length observer itself lives in the prelude closure now.
+        let cap = defer_queue_capacity as u64;
+        let f = move || -> rquickjs::Result<u64> { Ok(cap) };
+        globals.set("__velquDeferCap", Function::new(ctx.clone(), f)?)?;
     }
 
     // request field access: JSON-encoded object string (engine-side JSON.parse)
@@ -3346,7 +3347,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test URL constructor and properties
@@ -3386,7 +3387,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test TextEncoder encode
@@ -3468,7 +3469,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test AbortController basic abort & signal state
@@ -3524,7 +3525,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. ctx.signal is accessible and of type AbortSignal
@@ -3567,7 +3568,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test crypto.getRandomValues fills array
@@ -3619,7 +3620,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Web Crypto SubtleCrypto is NOT implemented in M28; must be undefined (never a mock/stub)
@@ -3670,7 +3671,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. Headers case-insensitivity and mutation
@@ -3797,7 +3798,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Verify constructor functions are present on globalThis without instantiating any objects
@@ -3848,7 +3849,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. The limit binding exposes the pinned policy constant.

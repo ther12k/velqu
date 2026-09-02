@@ -39,17 +39,20 @@ inside a deferred callback is isolated and swallowed.
   MAY defer; only work that runs after settlement (cleanup reactions, the
   drain itself) is gated.
 
-## 3. Bounds
+## 3. Bounds and forbidden recursion (M4A-007-D)
 
 | Bound | Default | Enforcement |
 | --- | --- | --- |
-| Queue capacity | 64 (`QuickJsConfig::defer_queue_capacity`) | `__velquDefer` throws `defer queue capacity reached` when full; the host additionally truncates to the cap before draining so drift can never grow the queue |
+| Queue capacity | 64 (`QuickJsConfig::defer_queue_capacity`) | Admission consults the host-configured capacity (`__velquDeferCap`); `__velquDefer` throws `defer queue capacity reached` when full; the host additionally truncates to the cap before draining so drift can never grow the queue |
 | Drain deadline | 100 ms (`QuickJsConfig::defer_deadline_ms`) | The drain arms the worker's defer-deadline interrupt; a spinning or long-running callback is interrupted and the drain ends |
 | Re-enqueue | not permitted | Phase-gated: only the Invocation phase may admit; the drain and cleanup reactions are rejected |
 | Native ops during drain | not permitted | Dedicated `DeferredDrain` phase guard rejects op starts |
+| Direct queue access | not permitted | The queue is closure-private (M4A-007-D): `__velquDefer` is the only entry point, so recursive spawning is forbidden structurally, not by convention |
 
-Both bounds are host-enforced configuration on the engine profile; the
-JS-visible check is the first line of defense, not the only one.
+Unbounded recursive spawning is forbidden on every vector: a handler that
+self-recurses through `__velquDefer` fills the bounded queue and then fails
+closed; a drained callback's re-defer attempt is rejected by the owner rule;
+and no JS-reachable alias of the queue exists to push through.
 
 ## 4. Cancellation and shutdown
 
@@ -86,8 +89,9 @@ concurrently with a handoff may see the pre-drain values for that handoff.
 
 ## 6. Operational notes
 
-- `__velquDefer` and the queue are engine globals of the private alpha
-  runtime; they are not part of any published contract and may change.
+- `__velquDefer` and its observers are engine globals of the private alpha
+  runtime; they are not part of any published contract and may change. The
+  queue itself is deliberately NOT exposed as a global.
 - Deferred callback failures are deliberately silent (isolated, best-effort).
   Code that must observe failures should handle them inside the callback.
 - The drain happens once per invocation handoff (success, failure, immediate,
