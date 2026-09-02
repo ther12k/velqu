@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -118,3 +118,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-V) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-v (squash-merged; see git log for final hash)
+- Closes: #481
+
+### Acceptance-criterion mapping
+
+1. **Every code sample is tested** — the Quickstart, Routes/Schemas, Treaty,
+   Fetch, Runtime Profiles, Reverse Proxy, and Limits guides were reviewed
+   against the current CLI/runtime APIs; proof/scaffold/Treaty conformance
+   suites and the proof build passed.
+2. **Docs distinguish measured facts from targets** — no guide makes a
+   performance claim; Quickstart/Profile/Limits explicitly require retained
+   matched p50/p95/p99 evidence for any future claim.
+3. **No production-ready claim** — every new guide is private-alpha/beta
+   scoped and repeats the no-SLA/no-GA posture where relevant.
+4. **Known limitations prominent** — workspace-only package availability,
+   trusted-code QuickJS, bounded defer, fetch/egress policy, profile grammar,
+   reverse-proxy-first TLS, unsupported platform/API surface, and fixture
+   credentials are explicit.
+
+### Evidence
+
+- Documentation local-link check: **PASS** (all new and linked beta Markdown
+  targets resolve).
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **309 pass / 0 fail (48 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy `-D warnings` → clean
+- Proof build: `bun packages/cli/src/index.ts build --project examples/proof`
+  → PASS; generated QPack/contract/OpenAPI/lock artifacts validated by the
+  full gate.
+- `./scripts/verify` → **ALL PASS**
+
+### Changed files
+
+- `docs/codex-spark-beta/tasks/07_m4a_developer_preview/M4A-008-V-verify-build-documentation-and-examples.md`
+  (this source-backed acceptance mapping and evidence record).
+
+No runtime or example behavior changes were needed; the implementation packets
+A–G provide the documented behavior and the proof/scaffold tests provide the
+executable examples.
+
+### Disclosures
+
+- Verification-only packet; no production runtime behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.
