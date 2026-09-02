@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -108,3 +108,47 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-A) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-a (squash-merged; see git log for final hash)
+- Closes: #474
+
+### Changed files
+- `docs/beta/QUICKSTART.md`: runnable private-alpha path covering pinned
+  prerequisites, frozen install, CLI init, serverless/service:N profiles,
+  develop/check/test, QPack build/inspect/runtime, next steps, and prominent
+  limitations (not production-ready, trusted-code QuickJS, non-durable defer,
+  evidence-bound performance claims).
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: quickstart links added to the
+  beta documentation entry points.
+
+### Evidence
+- Documentation content/link validator: PASS (all referenced local links
+  exist; commands, profile grammar, limitations, and private-alpha notice
+  asserted).
+- `packages/cli/src/scaffold.test.ts`: **5 pass / 0 fail** (generated
+  starter structure, no credentials, workspace disclosure, compile/extraction,
+  CLI init receipt).
+- `bun test`: **308 pass / 0 fail (48 files)**
+- `bun run typecheck`: clean
+- `cargo test -p velqu-runtime`: PASS
+- `cargo fmt --check`, workspace clippy `-D warnings`: clean
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** starter commands and generated project path
+  are covered by scaffold tests and proof build in verify.
+- **Measured facts vs targets:** quickstart makes no performance claims and
+  points to retained raw p50/p95/p99 evidence.
+- **No production-ready claim:** explicitly labeled private alpha and beta
+  finish line.
+- **Known limitations prominent:** package availability, trusted-code
+  QuickJS, non-durable defer, and supported scope are called out.
+
+### Disclosures
+- Documentation-only packet; no production runtime behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.
