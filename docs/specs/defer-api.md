@@ -53,10 +53,12 @@ JS-visible check is the first line of defense, not the only one.
 
 ## 4. Cancellation and shutdown
 
-- **Per-invocation cancel:** cancelled invocations settle like any other
-  settlement; deferred callbacks that were already queued for a *completed*
-  invocation still belong to the worker, not the invocation — the next drain
-  after the cancel path completes runs them. Settlement cleanup (rejection
+- **Timeout and cancel paths perform no drain:** only resolved handoffs
+  (Immediate, Failed, resolved watches) drain. Callbacks queued by an
+  invocation that times out or is cancelled stay in the worker-owned queue and
+  are drained by the **next** handoff — or discarded (and counted) at shutdown.
+- **Per-invocation cancel:** deferred callbacks belong to the worker, not the
+  invocation — a cancel does not remove them. Settlement cleanup (rejection
   reactions, aborted floating ops) remains on its own `Cleanup` phase and
   budget (`SETTLEMENT_GRACE`, `MAX_CLEANUP_JOBS`); the best-effort drain does
   not share it.
@@ -64,7 +66,25 @@ JS-visible check is the first line of defense, not the only one.
   deferred callbacks are discarded and never run. Shutdown does not wait for
   deferred work beyond the armed drain deadline.
 
-## 5. Operational notes
+## 5. Metrics (M4A-007-C)
+
+Bounded-defer lifecycle counters are exposed on `EngineStats` (thus in the
+runtime's `shutdown.complete` report):
+
+| Field | Meaning |
+| --- | --- |
+| `defers_admitted` | callbacks admitted to the bounded queue |
+| `defers_rejected` | `__velquDefer` calls that threw (non-function, non-owner phase, capacity) |
+| `defer_drains` | non-empty drains (every handoff performs a drain attempt; attempts with an empty queue are not counted) |
+| `defers_drained` | callbacks executed during drains |
+| `defer_drains_interrupted` | drains ended by the defer-deadline interrupt |
+| `defers_dropped_at_shutdown` | queued-but-never-drained callbacks discarded at shutdown |
+
+Counters update on the worker thread after (or, on the Failed handoff path,
+before) the response leaves the worker; observers reading `EngineStats`
+concurrently with a handoff may see the pre-drain values for that handoff.
+
+## 6. Operational notes
 
 - `__velquDefer` and the queue are engine globals of the private alpha
   runtime; they are not part of any published contract and may change.

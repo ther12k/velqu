@@ -797,9 +797,10 @@ globalThis.__velquIsThenable = function (v) {
 // `__velquCanAdmitDefer` predicate, backed by the execution phase).
 globalThis.__velquDeferred = [];
 globalThis.__velquDefer = function (fn) {
-  if (typeof fn !== "function") throw new TypeError("defer expects a function");
-  if (!__velquCanAdmitDefer()) throw new Error("defer queue unavailable outside the invocation owner");
-  if (globalThis.__velquDeferred.length >= 64) throw new Error("defer queue capacity reached");
+  if (typeof fn !== "function") { __velquDeferRejected(); throw new TypeError("defer expects a function"); }
+  if (!__velquCanAdmitDefer()) { __velquDeferRejected(); throw new Error("defer queue unavailable outside the invocation owner"); }
+  if (globalThis.__velquDeferred.length >= 64) { __velquDeferRejected(); throw new Error("defer queue capacity reached"); }
+  __velquDeferAdmitted();
   globalThis.__velquDeferred.push(fn);
 };
 globalThis.__velquDrainDeferred = function () {

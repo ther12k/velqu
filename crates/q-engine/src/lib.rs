@@ -304,6 +304,20 @@ pub struct EngineStats {
     pub legacy_map_dispatches: u64,
     /// JS heap bytes in use (last observation)
     pub heap_used: usize,
+    /// M4A-007-C: deferred callbacks admitted to the bounded worker queue
+    pub defers_admitted: u64,
+    /// M4A-007-C: `__velquDefer` calls rejected (non-function, non-owner
+    /// phase, or capacity) — each is a thrown error in JS
+    pub defers_rejected: u64,
+    /// M4A-007-C: best-effort deferred drains that found queued callbacks
+    /// (non-empty drains; every handoff performs an empty drain attempt)
+    pub defer_drains: u64,
+    /// M4A-007-C: deferred callbacks executed during drains
+    pub defers_drained: u64,
+    /// M4A-007-C: drains ended by the defer-deadline interrupt
+    pub defer_drains_interrupted: u64,
+    /// M4A-007-C: queued-but-undrained callbacks discarded at shutdown
+    pub defers_dropped_at_shutdown: u64,
 }
 
 /// Internal engine boundary. The handle lives on the caller side; the
