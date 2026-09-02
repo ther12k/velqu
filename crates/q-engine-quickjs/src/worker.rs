@@ -116,11 +116,16 @@ impl OpRegistry {
 /// invocations. Cleanup/Shutdown phases reject new ops so cancellation and
 /// settlement reactions cannot spawn second-generation (potentially ownerless)
 /// native operations.
+///
+/// M4A-007-B: the best-effort deferred-callback drain is its own phase
+/// (`DeferredDrain`), separate from settlement `Cleanup` — the two run under
+/// different budgets and are independently phase-gated and countable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ExecutionPhase {
     Idle,
     Invocation,
     Cleanup,
+    DeferredDrain,
     Shutdown,
 }
 
@@ -1292,21 +1297,24 @@ impl WorkerInner {
     }
 
     /// M4A-007-A: run worker-owned deferred callbacks (best-effort, bounded)
-    /// after the response has been handed off. Drains in the Cleanup phase so
-    /// reactions cannot spawn new native operations; the drain is bounded by
-    /// the armed `defer_deadline` interrupt and the queue cap.
+    /// after the response has been handed off. M4A-007-B: the drain runs in
+    /// its own `DeferredDrain` phase — separate from settlement `Cleanup` so
+    /// the two budgets and guards stay independent — and is bounded by the
+    /// armed `defer_deadline` interrupt and the queue cap.
     fn drain_deferred(&mut self) {
         let deadline = Instant::now() + self.defer_deadline;
-        if self.prelude.is_none() {
-            return;
-        }
         let cap = self.defer_queue_capacity;
         {
-            let _phase = PhaseScope::enter(ExecutionPhase::Cleanup);
+            let _phase = PhaseScope::enter(ExecutionPhase::DeferredDrain);
             let deadline_cell = Arc::clone(&self.sync_deadline);
             let _ = self.ctx.with(|ctx| -> rquickjs::Result<()> {
                 let globals = ctx.globals();
-                let drain: Function = globals.get("__velquDrainDeferred")?;
+                // the queue lives in the evaluated prelude (source or
+                // embedded in the pack); its absence just means there is
+                // nothing to drain.
+                let Ok(drain) = globals.get::<_, Function>("__velquDrainDeferred") else {
+                    return Ok(());
+                };
                 // host-side cap: the JS-side check is the first line of
                 // defense; this truncation is the enforced bound for drift.
                 let trim = format!(
@@ -1328,7 +1336,7 @@ impl WorkerInner {
                     invocation_id: 0,
                     deadline,
                 },
-                ExecutionPhase::Cleanup,
+                ExecutionPhase::DeferredDrain,
             );
         }
     }
@@ -2315,6 +2323,18 @@ fn install_natives(
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
 
+    // M4A-007-B: admission ownership for deferred work — the prelude consults
+    // this before enqueueing, so only the invocation owner (Invocation phase)
+    // can admit deferred callbacks. Cleanup reactions and the drain itself
+    // cannot.
+    {
+        let f = |ctx: rquickjs::Ctx<'_>| -> rquickjs::Result<bool> {
+            let _ = ctx;
+            Ok(CURRENT_PHASE.with(|p| p.get()) == ExecutionPhase::Invocation)
+        };
+        globals.set("__velquCanAdmitDefer", Function::new(ctx.clone(), f)?)?;
+    }
+
     // request field access: JSON-encoded object string (engine-side JSON.parse)
     {
         let store = Rc::clone(&store);
@@ -2588,12 +2608,20 @@ fn install_natives(
             // start inside a LIVE invocation. Cleanup/Shutdown reactions that
             // try to spawn second-generation ops fail deterministically, and
             // nothing can start ownerless ops while the worker is idle.
+            // M4A-007-B: the best-effort deferred drain is likewise op-free —
+            // distinct from cleanup so the two are separately gated.
             match CURRENT_PHASE.with(|p| p.get()) {
                 ExecutionPhase::Invocation => {}
                 ExecutionPhase::Cleanup => {
                     return Err(rquickjs::Exception::throw_message(
                         &ctx,
                         "native operations are unavailable during invocation cleanup",
+                    ));
+                }
+                ExecutionPhase::DeferredDrain => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable while deferred work drains",
                     ));
                 }
                 ExecutionPhase::Shutdown => {

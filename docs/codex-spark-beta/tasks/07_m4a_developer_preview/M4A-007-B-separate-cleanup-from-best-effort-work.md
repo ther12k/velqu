@@ -4,7 +4,7 @@ parent_task: M4A-007
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -99,3 +99,77 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-007-B) — PASS (2026-09-01)
+
+- Branch/PR: m4a-007-b (squash-merged; see git log for final hash)
+- Closes: #469
+
+### Changed files
+- `crates/q-engine-quickjs/src/worker.rs`: new `ExecutionPhase::DeferredDrain`
+  variant; the best-effort deferred drain (`drain_deferred`, including its
+  follow-up job drain) now runs in that dedicated phase instead of settlement
+  `Cleanup`; the native-op phase guard rejects op starts during the drain with
+  a distinct message (`native operations are unavailable while deferred work
+  drains`); new `__velquCanAdmitDefer` native predicate exposes the execution
+  phase to the prelude; `drain_deferred` no longer keys off the prelude handle
+  cache (embedded-prelude packs now drain; a missing queue global is simply
+  nothing to drain).
+- `crates/q-engine-quickjs/src/prelude.rs`: `__velquDefer` enforces admission
+  ownership via `__velquCanAdmitDefer` — only the Invocation phase may enqueue
+  (`defer queue unavailable outside the invocation owner`).
+- `crates/q-engine-quickjs/tests/engine.rs`: four new handlers
+  (`defer.reenqueue_in_drain`, `defer.nativeop_in_drain`,
+  `defer.from_reaction`, `defer.check_spied`) and two tests:
+  `defer_admission_requires_invocation_owner`,
+  `deferred_drain_is_op_free_and_cannot_reenqueue`.
+- `docs/specs/defer-api.md`: ownership/dedicated-phase/op-free-drain bounds
+  documented; bounds table extended.
+- `benchmarks/manifest.json`: refreshed.
+
+### Required evidence
+
+- **Lifecycle tests**:
+  - `defer_admission_requires_invocation_owner` — a rejection reaction of an
+    aborted floating timer (settlement Cleanup) cannot admit deferred work;
+    nothing is enqueued and nothing runs.
+  - `deferred_drain_is_op_free_and_cannot_reenqueue` — inside the drain, both
+    re-enqueue (owner rule) and native op start (op-free drain) are rejected
+    with their distinct phase messages; neither callback effect occurs.
+  - Existing A tests stay green (`defer_runs_after_response_handoff`,
+    `defer_queue_is_bounded`, `defer_drain_deadline_bounds_spinning_callback`,
+    `shutdown_aborts_queued_deferred_work`) — the response is still handed off
+    before any drain, and the drain is still deadline-bounded.
+- **Load/cleanup tests** — handler-table load test now pins 64 registered
+  handlers (was 60); settlement cleanup still runs on `ExecutionPhase::Cleanup`
+  with `SETTLEMENT_GRACE`/`MAX_CLEANUP_JOBS`, untouched by the drain phase.
+- **Operational docs** — `docs/specs/defer-api.md` updated (dedicated
+  DeferredDrain phase, admission rule now enforced, op-free drain, promise-
+  executor rejection nuance, embedded-prelude drain parity).
+
+### Guardrail mapping (parent M4A-007)
+
+- **Response is not delayed beyond defined handoff**: unchanged handoff-first
+  ordering on all settlement paths; A tests re-verified green.
+- **Deferred work is bounded**: cap + deadline unchanged; the separation adds
+  no unbounded path (drain re-enqueue is now rejected outright).
+- **Shutdown handles or aborts it deterministically**: shutdown semantics
+  unchanged; embedded-prelude packs now participate in the same bounded drain.
+- **Docs warn against durable-job use**: `docs/specs/defer-api.md` warning
+  retained; ownership/phase semantics documented to match the enforced code.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → **108 pass / 0 fail** (was 106; +2)
+- `cargo test -p velqu-runtime --test runtime_conformance` → 35 pass / 0 fail
+- `bun test` + `bun run typecheck` → clean (via verify)
+- `cargo fmt --all --check` clean; workspace clippy -D warnings → exit 0
+- `./scripts/verify` → **ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
