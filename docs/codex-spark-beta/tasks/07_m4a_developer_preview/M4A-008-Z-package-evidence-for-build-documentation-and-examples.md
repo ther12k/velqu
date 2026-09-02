@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -113,3 +113,62 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-Z) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-z (squash-merged; see git log for final hash)
+- Closes: #482
+- Parent verification: M4A-008-V PASS (PR #1086); this packet packages the
+  source-backed documentation/example evidence and flips the M4A-008 parent
+  ledger.
+
+### Evidence package
+
+- **Documentation set:** `docs/beta/QUICKSTART.md`, `ROUTES-SCHEMAS.md`,
+  `TREATY.md`, `FETCH-CAPABILITIES.md`, `RUNTIME-PROFILES.md`,
+  `DEPLOYMENT-REVERSE-PROXY.md`, and `LIMITS-AND-NON-GOALS.md`; linked from
+  `docs/beta/INDEX.md` and `README.md`.
+- **Source-backed proofs:** CLI init/build/inspect/dev paths; canonical route
+  and schema contracts; policy/service fixtures; Treaty unit/runtime/remote
+  modes; explicit fetch capability; serverless/service:N profiles;
+  reverse-proxy-first deployment; bounded limits and non-goals.
+- **Executable coverage:** proof app, scaffold, Treaty, runtime, schema,
+  capability, and web conformance suites; generated QPack/contract/OpenAPI/
+  lock artifacts through the proof build.
+
+### Parent guardrail proofs
+
+1. **Every code sample is tested** — docs examples mirror generated scaffold,
+   proof routes/policy/service, Treaty conformance, fetch scaffold, and runtime
+   CLI commands.
+2. **Measured facts vs targets** — no performance claim appears in the guide
+   set; limits/profile docs require retained matched p50/p95/p99 evidence.
+3. **No production-ready claim** — all guides use private-alpha/beta/non-SLA
+   wording; production-ready is explicitly prohibited in the limits guide.
+4. **Known limitations prominent** — workspace packages, trusted-code QuickJS,
+   fixture credentials, bounded defer/fetch, platform/API limits, reverse-
+   proxy-first TLS, and no implicit autoscaling are explicit.
+
+### Gate results
+
+- Documentation local-link check → **PASS**
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **309 pass / 0 fail (48 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check` clean; workspace clippy `-D warnings` → clean
+- Proof build → PASS
+- `./scripts/verify` → **ALL PASS**
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: M4A-008 is now **PASS** through child A–G/V/Z
+  evidence; subsequent M4A-009 and M4A-010 remain TODO.
+- STATUS.md and TASK_INDEX.md: Z flipped TODO → PASS.
+
+### Disclosures
+
+- Evidence-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.

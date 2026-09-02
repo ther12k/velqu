@@ -100,7 +100,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M4A-005 | P1 | PASS | M4A-004 | M4A | Publish compact contract and SDK artifacts |
 | M4A-006 | P0 | PASS | M4A-001, M4A-002 | M4A | Finalize diagnostics, source maps, and inspect output |
 | M4A-007 | P0 | TODO | M27-GATE, M3-GATE | M4A | Implement bounded `defer` and lifecycle hooks |
-| M4A-008 | P1 | TODO | M4A-002, M4A-004, M4A-006 | M4A | Build documentation and examples |
+| M4A-008 | P1 | PASS | M4A-002, M4A-004, M4A-006 | M4A | Build documentation and examples |
 | M4A-009 | P0 | TODO | M4A-004, M4A-007, M28-GATE | M4A | Build realistic private-alpha proof service |
 | M4A-010 | P1 | TODO | M4A-003, M4A-008, M4A-009 | M4A | Run invited developer alpha and close P0/P1 feedback |
 | M4A-GATE | P0 | TODO | M4A-001, M4A-002, M4A-003, M4A-004, M4A-005, M4A-006, M4A-007, M4A-008, M4A-009, M4A-010 | M4A | M4A — Developer Preview and Private Alpha exit gate |
