@@ -522,7 +522,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-007-B](../tasks/07_m4a_developer_preview/M4A-007-B-separate-cleanup-from-best-effort-work.md) | P0 | implement | PASS | M4A-007-A | Separate cleanup from best-effort work |
 | [M4A-007-C](../tasks/07_m4a_developer_preview/M4A-007-C-expose-metrics.md) | P0 | implement | PASS | M4A-007-B | Expose metrics |
 | [M4A-007-D](../tasks/07_m4a_developer_preview/M4A-007-D-forbid-unbounded-recursive-spawning.md) | P0 | implement | PASS | M4A-007-C | Forbid unbounded recursive spawning |
-| [M4A-007-V](../tasks/07_m4a_developer_preview/M4A-007-V-verify-implement-bounded-defer-and-lifecycle-hooks.md) | P0 | verify | TODO | M4A-007-A, M4A-007-B, M4A-007-C, M4A-007-D | Verify Implement bounded `defer` and lifecycle hooks |
+| [M4A-007-V](../tasks/07_m4a_developer_preview/M4A-007-V-verify-implement-bounded-defer-and-lifecycle-hooks.md) | P0 | verify | PASS | M4A-007-A, M4A-007-B, M4A-007-C, M4A-007-D | Verify Implement bounded `defer` and lifecycle hooks |
 | [M4A-007-Z](../tasks/07_m4a_developer_preview/M4A-007-Z-package-evidence-for-implement-bounded-defer-and-lifecycle-hooks.md) | P0 | evidence | TODO | M4A-007-V | Package evidence for Implement bounded `defer` and lifecycle hooks |
 | [M4A-008-A](../tasks/07_m4a_developer_preview/M4A-008-A-quickstart.md) | P1 | implement | TODO | M4A-002-Z, M4A-004-Z, M4A-006-Z | Quickstart |
 | [M4A-008-B](../tasks/07_m4a_developer_preview/M4A-008-B-routes-schemas-policies-services.md) | P1 | implement | TODO | M4A-008-A | Routes/schemas/policies/services |

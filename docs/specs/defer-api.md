@@ -83,8 +83,8 @@ runtime's `shutdown.complete` report):
 | `defer_drains_interrupted` | drains ended by the defer-deadline interrupt |
 | `defers_dropped_at_shutdown` | queued-but-never-drained callbacks discarded at shutdown |
 
-Counters update on the worker thread after (or, on the Failed handoff path,
-before) the response leaves the worker; observers reading `EngineStats`
+Counters update on the worker thread after the response leaves the worker on
+all handoff paths (including Failed); observers reading `EngineStats`
 concurrently with a handoff may see the pre-drain values for that handoff.
 
 ## 6. Operational notes

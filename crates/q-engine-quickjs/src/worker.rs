@@ -1135,8 +1135,11 @@ impl WorkerInner {
                 };
                 self.abort_floating_ops(spec.id);
                 self.settle_request(handle);
-                self.drain_deferred();
                 let _ = reply.send(o);
+                // M4A-007-V: uniform handoff-first ordering — the Failed path
+                // also drains only after the response leaves the worker, so
+                // best-effort work can never delay any response.
+                self.drain_deferred();
                 InvocationDisposition::Resolved
             }
             Step::Immediate(outcome) => {
