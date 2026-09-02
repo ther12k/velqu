@@ -789,6 +789,23 @@ globalThis.__velquIsThenable = function (v) {
     typeof v.then === "function";
 };
 
+// M4A-007-A: deferred callbacks are owned by this worker and admitted through
+// a bounded queue. They run after response handoff; this is best-effort work,
+// not a durable job system.
+globalThis.__velquDeferred = [];
+globalThis.__velquDefer = function (fn) {
+  if (typeof fn !== "function") throw new TypeError("defer expects a function");
+  if (globalThis.__velquDeferred.length >= 64) throw new Error("defer queue capacity reached");
+  globalThis.__velquDeferred.push(fn);
+};
+globalThis.__velquDrainDeferred = function () {
+  const pending = globalThis.__velquDeferred;
+  globalThis.__velquDeferred = [];
+  for (const fn of pending) {
+    try { fn(); } catch (_) { /* best effort: isolate callback failures */ }
+  }
+};
+
 globalThis.__velquRun = function (handlerFn, policyFn, ctx, req) {
   if (!policyFn) return handlerFn(ctx);
 

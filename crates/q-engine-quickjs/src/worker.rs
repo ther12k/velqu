@@ -431,6 +431,11 @@ pub(crate) struct WorkerInner {
     /// per-drain job cap (M2.2.1-r4.1, configurable for tests; default
     /// `QuickJsConfig::max_invocation_jobs`)
     max_invocation_jobs: usize,
+    /// M4A-007-A: deferred callbacks are drained from the JS-owned bounded
+    /// queue after response handoff.
+    defer_deadline: Duration,
+    /// M4A-007-A: enforced queue cap for deferred callbacks.
+    defer_queue_capacity: usize,
 }
 
 thread_local! {
@@ -510,6 +515,8 @@ impl WorkerInner {
             pending: BTreeMap::new(),
             job_deadline: Duration::from_millis(config.job_deadline_ms),
             max_invocation_jobs: config.max_invocation_jobs,
+            defer_deadline: Duration::from_millis(config.defer_deadline_ms),
+            defer_queue_capacity: config.defer_queue_capacity,
         })
     }
 
@@ -1093,6 +1100,7 @@ impl WorkerInner {
                 };
                 self.abort_floating_ops(spec.id);
                 self.settle_request(handle);
+                self.drain_deferred();
                 let _ = reply.send(o);
                 InvocationDisposition::Resolved
             }
@@ -1132,6 +1140,7 @@ impl WorkerInner {
                 self.abort_floating_ops(spec.id);
                 self.settle_request(handle);
                 let _ = reply.send(final_outcome);
+                self.drain_deferred();
                 InvocationDisposition::Resolved
             }
             Step::Watched => {
@@ -1280,6 +1289,48 @@ impl WorkerInner {
     /// against it. No other worker code may call the store's settle directly.
     fn settle_request(&mut self, handle: q_bridge::RequestHandle) {
         self.store.settle(handle);
+    }
+
+    /// M4A-007-A: run worker-owned deferred callbacks (best-effort, bounded)
+    /// after the response has been handed off. Drains in the Cleanup phase so
+    /// reactions cannot spawn new native operations; the drain is bounded by
+    /// the armed `defer_deadline` interrupt and the queue cap.
+    fn drain_deferred(&mut self) {
+        let deadline = Instant::now() + self.defer_deadline;
+        if self.prelude.is_none() {
+            return;
+        }
+        let cap = self.defer_queue_capacity;
+        {
+            let _phase = PhaseScope::enter(ExecutionPhase::Cleanup);
+            let deadline_cell = Arc::clone(&self.sync_deadline);
+            let _ = self.ctx.with(|ctx| -> rquickjs::Result<()> {
+                let globals = ctx.globals();
+                let drain: Function = globals.get("__velquDrainDeferred")?;
+                // host-side cap: the JS-side check is the first line of
+                // defense; this truncation is the enforced bound for drift.
+                let trim = format!(
+                    "if (globalThis.__velquDeferred.length > {cap}) \
+                     globalThis.__velquDeferred.length = {cap};"
+                );
+                ctx.eval::<(), _>(trim.as_str())?;
+                // arm the interrupt so a spinning deferred callback cannot
+                // outlive the drain budget
+                *deadline_cell.lock().unwrap() = Some(deadline);
+                let r: rquickjs::Result<()> = drain.call(());
+                *deadline_cell.lock().unwrap() = None;
+                r
+            });
+        }
+        if self.rt.is_job_pending() {
+            let _ = self.drain_jobs_for(
+                JobBudget {
+                    invocation_id: 0,
+                    deadline,
+                },
+                ExecutionPhase::Cleanup,
+            );
+        }
     }
 
     fn cancel_invocation(&mut self, id: u64) {
@@ -1788,6 +1839,7 @@ impl WorkerInner {
             if let Some(reply) = p.reply {
                 let _ = reply.send(final_outcome);
             }
+            self.drain_deferred();
         }
         if self.rt.is_job_pending() && !self.pending.is_empty() {
             self.settle_background();
