@@ -4,7 +4,7 @@ parent_task: M4A-008
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -113,3 +113,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-008-E) — PASS (2026-09-01)
+
+- Branch/PR: m4a-008-e (squash-merged; see git log for final hash)
+- Closes: #478
+
+### Changed files
+- `docs/beta/RUNTIME-PROFILES.md`: source-backed runtime profile guide for
+  bounded `serverless` and `service:N` startup, fail-closed grammar, readiness
+  semantics, explicit selection guidance, and evidence/limitation policy.
+- `docs/beta/INDEX.md`, `docs/beta/README.md`: profile guide links.
+
+### Evidence
+- Documentation local-link check: PASS.
+- `packages/cli/src/profile-fetch-choices.test.ts`: PASS (serverless default,
+  service:4 generation, invalid profile/count rejection, CLI profile output).
+- `cargo test -p q-engine-quickjs`: PASS
+- `cargo test -p velqu-runtime`: PASS
+- `bun test`: 309 pass / 0 fail
+- `bun run typecheck`, fmt, workspace clippy: clean
+- `./scripts/verify`: **ALL PASS**
+
+### Guardrail mapping
+- **Every code sample is tested:** commands mirror the existing CLI profile
+  tests and runtime readiness conformance.
+- **Measured facts vs targets:** profile semantics only; no performance claim.
+- **No production-ready claim:** private-alpha status is explicit.
+- **Known limitations prominent:** bounded worker range, fail-closed names,
+  trusted-code QuickJS, and no implicit autoscaling are documented.
+
+### Disclosures
+- Documentation-only packet; no production behavior changes.
+- Standing: CI verify workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.
