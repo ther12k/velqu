@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -120,3 +120,86 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-C) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-c (squash-merged; see git log for final hash)
+- Closes: #485
+
+### Changed files
+- `crates/q-engine-quickjs/src/lib.rs`: defined `FetchDialer` trait and
+  `FetchDialerHandle` config hook so the engine links no HTTP dependencies
+  directly; QuickJS prelude fails closed (never a silent mock 200) when no
+  dialer is installed.
+- `crates/q-engine-quickjs/src/worker.rs`: installed `__velquFetchStart`
+  bridge native; added `WorkerMsg::FetchComplete` and kind-attributed
+  `OpKind::Fetch` with unified terminal completion and lifecycle metrics
+  (`fetch_ops_started`, `fetch_ops_completed`).
+- `crates/q-engine-quickjs/src/prelude.rs`: rewired `globalThis.fetch` to
+  invoke `__velquFetchStart` and register promise resolution with the native
+  bridge; fail closed with `TypeError` when no bridge is active.
+- `crates/q-runtime/src/fetch_bridge.rs` (new): `PoolFetchDialer` bridging the
+  engine to `q_capabilities::fetch_policy` and `q_runtime::fetch_stack::shared_pool()`
+  with SSRF validation, loopback trust, redirect limits, credential stripping,
+  timeout bounds, and response body caps.
+- `crates/q-runtime/src/lib.rs`: registered `fetch_bridge` module and wired
+  `PoolFetchDialer` into runtime engine startup.
+- `crates/q-pack/src/lib.rs`: fixed canonical `query_name_table` and
+  `header_name_table` pack verification by separating global name collection
+  from per-route index verification (fixing an incremental binary search bug
+  when routes had non-alphabetical query param names across modules).
+- `examples/proof/src/modules/upstream/routes.ts` (new): `upstream.quote` (GET),
+  `upstream.relay` (GET with target query), and `upstream.fanout` (GET with
+  parallel count).
+- `examples/proof/src/modules/upstream/routes.test.ts` (new): 3 route contract
+  unit tests.
+- `examples/proof/src/app.ts`: registered `upstream` module (proof now 19 routes).
+- `conformance/treaty/treaty.conformance.test.ts`: added type-level pins and
+  actual runtime-local Treaty scenario driving quote, relay, fanout, and 502
+  upstream failure against a live controlled upstream server.
+- Pinned inventory tests updated: `inspect-output.test.ts` (routeCount 19),
+  `compiler.test.ts` (`queryNameTable` sorted across 5 query params),
+  `package-verification.test.ts` (new contract hash).
+- `benchmarks/manifest.json`: refreshed with release binary rebuild.
+
+### Required evidence
+
+- **Proof app source**: `examples/proof/src/modules/upstream/` with 3 routes
+  exercising real outbound fetch.
+- **Scenario tests**:
+  - `upstream module (controlled upstream M4A-009-C)` unit suite (3 tests)
+  - `Treaty runtime-local mode > drives compiled proof pack end-to-end` with
+    live HTTP controlled-upstream scenarios (relay, fanout, error handling)
+- **Benchmark report**: `benchmarks/manifest.json` refreshed with release
+  binary matching verification gate.
+
+### Guardrail mapping
+
+- **Runs entirely on actual runtime**: outbound fetch runs on the Rust/QuickJS
+  worker via the native fetch bridge and shared Tokio connection pool.
+- **No hidden Bun production path**: fetch implementation in production is
+  Rust `hyper` + `hyper-rustls`.
+- **All error/status contracts declared**: upstream routes declare 200 and 502;
+  unreachable upstream maps to declared 502.
+- **Load and failure scenarios pass**: upstream 500 fails closed as 502; SSRF
+  and address classification guards remain active.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-http` → PASS
+- `cargo test -p q-schema-runtime` → PASS
+- `cargo test -p q-capabilities` → PASS
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **321 pass / 0 fail (51 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check`, workspace clippy `-D warnings` → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.

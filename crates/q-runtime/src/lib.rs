@@ -8,6 +8,9 @@
 //! Both modes run the IDENTICAL load-verify-serve pipeline below; they
 //! differ only in where the pack bytes come from.
 
+/// M4A-009-C: policy-gated outbound fetch dialer bridging the engine to the
+/// shared outbound pool.
+pub mod fetch_bridge;
 pub mod fetch_stack;
 pub mod problems;
 pub mod serve;
@@ -236,6 +239,11 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 None => service_profile::ServiceProfile::default(),
             };
         let startup_workers = service_profile.initial_workers();
+        let fetch_dialer = Some(q_engine_quickjs::FetchDialerHandle(Arc::new(
+            fetch_bridge::PoolFetchDialer::new(
+                q_capabilities::FetchPolicy::trusted_loopback_explicit(),
+            ),
+        )));
         let config = QuickJsConfig {
             request_slot_capacity: limits.max_queue.max(1),
             // M26-004-D: embedded-prelude bytecode skips host prelude eval;
@@ -243,6 +251,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             embedded_prelude: pack.bundle_prelude.as_deref() == Some("embedded")
                 && !cfg.no_bytecode,
             profile,
+            fetch_dialer,
             ..Default::default()
         };
         let mut engine =

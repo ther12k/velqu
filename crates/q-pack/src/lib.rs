@@ -4321,6 +4321,32 @@ impl QPack {
         {
             let mut expected_table: Vec<String> = Vec::new();
             for route in &self.routes {
+                let mut escape_hatch = false;
+                if let Some(binding) = &route.headers {
+                    match &binding.schema {
+                        None => escape_hatch = true,
+                        Some(key) => {
+                            if let Some(q_schema_runtime::SchemaIr::Object { properties, .. }) =
+                                self.schemas.get(key)
+                            {
+                                for k in properties.keys() {
+                                    if let Err(pos) = expected_table.binary_search(k) {
+                                        expected_table.insert(pos, k.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if !escape_hatch {
+                    for sec in &route.security {
+                        if let Err(pos) = expected_table.binary_search(&sec.header) {
+                            expected_table.insert(pos, sec.header.clone());
+                        }
+                    }
+                }
+            }
+            for route in &self.routes {
                 let mut names: Vec<String> = route
                     .security
                     .iter()
@@ -4351,13 +4377,7 @@ impl QPack {
                 } else {
                     names
                         .iter()
-                        .map(|n| match expected_table.binary_search(n) {
-                            Ok(pos) => pos as u32,
-                            Err(pos) => {
-                                expected_table.insert(pos, n.clone());
-                                pos as u32
-                            }
-                        })
+                        .map(|n| expected_table.binary_search(n).unwrap() as u32)
                         .collect()
                 };
                 if let Some(plan) = &route.plan {
@@ -4400,18 +4420,31 @@ impl QPack {
                         _ => None,
                     })
                     .unwrap_or_default();
+                for name in names {
+                    if let Err(pos) = expected_query_table.binary_search(&name) {
+                        expected_query_table.insert(pos, name);
+                    }
+                }
+            }
+            for route in &self.routes {
+                let names = route
+                    .query
+                    .as_ref()
+                    .and_then(|binding| binding.schema.as_ref())
+                    .and_then(|key| self.schemas.get(key))
+                    .and_then(|ir| match ir {
+                        q_schema_runtime::SchemaIr::Object { properties, .. } => {
+                            Some(properties.keys().cloned().collect::<Vec<_>>())
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or_default();
                 let mut names = names;
                 names.sort();
                 names.dedup();
                 let ids: Vec<u32> = names
                     .iter()
-                    .map(|name| match expected_query_table.binary_search(name) {
-                        Ok(pos) => pos as u32,
-                        Err(pos) => {
-                            expected_query_table.insert(pos, name.clone());
-                            pos as u32
-                        }
-                    })
+                    .map(|name| expected_query_table.binary_search(name).unwrap() as u32)
                     .collect();
                 if let Some(plan) = &route.plan {
                     if plan.query_name_ids != ids {

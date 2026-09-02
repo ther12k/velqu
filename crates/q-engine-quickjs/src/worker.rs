@@ -54,6 +54,11 @@ pub(crate) enum WorkerMsg {
         op_id: u64,
         result: Result<u64, String>,
     },
+    /// M4A-009-C: outbound fetch dial completed (bridge task → worker loop).
+    FetchComplete {
+        op_id: u64,
+        result: Result<String, String>,
+    },
     QuerySettlementTableSize {
         reply: std::sync::mpsc::Sender<usize>,
     },
@@ -79,6 +84,31 @@ pub(crate) struct PendingOp {
     pub abort_handle: tokio::task::AbortHandle,
     pub state: Arc<AtomicU8>,
     pub op: q_capabilities::NativeOp,
+    /// M4A-009-C: op family for honest completion attribution.
+    pub kind: OpKind,
+}
+
+/// M4A-009-C: which native family a pending op belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OpKind {
+    Timer,
+    Fetch,
+}
+
+/// M4A-009-C: JS-side resolve payload for a completed op.
+pub(crate) enum OpValue {
+    F64(f64),
+    Str(String),
+}
+
+/// M4A-009-C: terminal completion routed to a pending op.
+pub(crate) enum OpCompletion {
+    /// timer resolved with its duration
+    Timer(Result<u64, String>),
+    /// fetch resolved with the wire JSON string
+    Fetch(Result<String, String>),
+    /// settlement/cancel path: reject with the canned aborted reason
+    Aborted,
 }
 
 /// Bounded pending-op registry. Worker-thread only (holds Persistent JS
@@ -241,6 +271,9 @@ pub(crate) struct WorkerShared {
     pub numeric_dispatches: AtomicU64,
     pub legacy_map_dispatches: AtomicU64,
     pub heap_used: AtomicU64,
+    /// M4A-009-C: outbound fetch op accounting (see EngineStats)
+    pub fetch_ops_started: AtomicU64,
+    pub fetch_ops_completed: AtomicU64,
     /// M4A-007-C: bounded-defer lifecycle metrics (see EngineStats)
     pub defers_admitted: AtomicU64,
     pub defers_rejected: AtomicU64,
@@ -282,6 +315,8 @@ impl WorkerShared {
             numeric_dispatches: AtomicU64::new(0),
             legacy_map_dispatches: AtomicU64::new(0),
             heap_used: AtomicU64::new(0),
+            fetch_ops_started: AtomicU64::new(0),
+            fetch_ops_completed: AtomicU64::new(0),
             defers_admitted: AtomicU64::new(0),
             defers_rejected: AtomicU64::new(0),
             defer_drains: AtomicU64::new(0),
@@ -513,6 +548,7 @@ impl WorkerInner {
                 Arc::clone(&ops),
                 tokio_handle,
                 config.defer_queue_capacity,
+                config.fetch_dialer.clone(),
             )
             .map_err(|e| format!("natives failed: {e:?}"))?;
             // M26-004-D: embedded-prelude packs carry the prelude inside the
@@ -630,6 +666,31 @@ impl WorkerInner {
                 WorkerMsg::Cancel { id } => {
                     self.cancel_invocation(id);
                     self.settle_background();
+                }
+                WorkerMsg::FetchComplete { op_id, result } => {
+                    // Mirror the TimerFired continuation contract: the
+                    // completion runs under the owning invocation, and an
+                    // interrupted continuation maps to the unified timeout
+                    // cleanup (M2.2.1 terminal path).
+                    if let Some((budget, phase)) =
+                        self.complete_op(op_id, OpCompletion::Fetch(result))
+                    {
+                        let drain_res = self.drain_jobs_for(budget, phase);
+                        if matches!(drain_res.outcome, DrainOutcome::RuntimeQuarantined) {
+                            // quarantine already failed and settled the owner
+                        } else if drain_res.interrupted {
+                            if let Some(p) = self.pending.remove(&budget.invocation_id) {
+                                self.finish_timeout(budget.invocation_id, p);
+                            }
+                        }
+                    }
+                    if !self.pending.is_empty() {
+                        self.finish_resolved();
+                    }
+                    // chained continuations queued by settlements unwind scoped
+                    if self.rt.is_job_pending() && !self.pending.is_empty() {
+                        self.settle_background();
+                    }
                 }
                 WorkerMsg::TimerFired { op_id, result } => {
                     if let Some((budget, phase)) = self.complete_timer(op_id, result) {
@@ -1248,6 +1309,17 @@ impl WorkerInner {
         op_id: u64,
         result: Result<u64, String>,
     ) -> Option<(JobBudget, ExecutionPhase)> {
+        self.complete_op(op_id, OpCompletion::Timer(result))
+    }
+
+    /// M4A-009-C: unified terminal completion for timer and fetch ops.
+    /// Attribution follows the op's family, not the completion path, so
+    /// settlement aborts are never miscounted as timer completions.
+    fn complete_op(
+        &mut self,
+        op_id: u64,
+        completion: OpCompletion,
+    ) -> Option<(JobBudget, ExecutionPhase)> {
         let op = self.ops.ops.lock().unwrap().remove(&op_id);
         let Some(mut op) = op else {
             self.shared
@@ -1259,19 +1331,39 @@ impl WorkerInner {
             slot: 0,
             generation: op.invocation_id,
         };
-        match &result {
-            Ok(_) => {
-                let _ = op.op.settle(owner);
+        let ok = match &completion {
+            OpCompletion::Timer(Ok(_)) | OpCompletion::Fetch(Ok(_)) => true,
+            OpCompletion::Timer(Err(_)) | OpCompletion::Fetch(Err(_)) | OpCompletion::Aborted => {
+                false
             }
-            Err(_) => {
-                let _ = op.op.cancel();
-            }
+        };
+        if ok {
+            let _ = op.op.settle(owner);
+        } else {
+            let _ = op.op.cancel();
         }
         self.shared.pending_ops.fetch_sub(1, Ordering::Relaxed);
-        self.shared
-            .timer_ops_completed
-            .fetch_add(1, Ordering::Relaxed);
-        if result.is_err() {
+        match op.kind {
+            OpKind::Timer => {
+                self.shared
+                    .timer_ops_completed
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            OpKind::Fetch => {
+                self.shared
+                    .fetch_ops_completed
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+        }
+        // Normalize the completion into (resolve value | reject reason).
+        let outcome: Result<OpValue, String> = match completion {
+            OpCompletion::Timer(Ok(ms)) => Ok(OpValue::F64(ms as f64)),
+            OpCompletion::Timer(Err(reason)) => Err(reason),
+            OpCompletion::Fetch(Ok(json)) => Ok(OpValue::Str(json)),
+            OpCompletion::Fetch(Err(reason)) => Err(reason),
+            OpCompletion::Aborted => Err("aborted: invocation settled".into()),
+        };
+        if outcome.is_err() {
             abort_op_task(&op.state, &op.abort_handle);
         }
         let budget = JobBudget {
@@ -1284,7 +1376,7 @@ impl WorkerInner {
         // resolution continuation runs as a live invocation (the owner may
         // legitimately await another op); a rejection continuation cannot
         // start new ops (Cleanup phase).
-        let phase = if result.is_ok() {
+        let phase = if outcome.is_ok() {
             ExecutionPhase::Invocation
         } else {
             ExecutionPhase::Cleanup
@@ -1294,10 +1386,14 @@ impl WorkerInner {
         let deadline_cell = Arc::clone(&self.sync_deadline);
         let _ = self.ctx.with(|ctx| -> rquickjs::Result<()> {
             *deadline_cell.lock().unwrap() = Some(budget.deadline);
-            let r = match result {
-                Ok(ms) => {
+            let r = match outcome {
+                Ok(OpValue::F64(ms)) => {
                     let f: Function = resolve_fn.restore(&ctx)?;
-                    f.call::<_, ()>((op_id as f64, ms as f64))
+                    f.call::<_, ()>((op_id as f64, ms))
+                }
+                Ok(OpValue::Str(json)) => {
+                    let f: Function = resolve_fn.restore(&ctx)?;
+                    f.call::<_, ()>((op_id as f64, json))
                 }
                 Err(reason) => {
                     let f: Function = reject_fn.restore(&ctx)?;
@@ -1457,7 +1553,7 @@ impl WorkerInner {
         }
         let _phase = PhaseScope::enter(ExecutionPhase::Cleanup);
         for op_id in ids {
-            self.complete_timer(op_id, Err("aborted: invocation settled".into()));
+            self.complete_op(op_id, OpCompletion::Aborted);
         }
         if self.rt.is_job_pending() {
             self.drain_jobs_for(cleanup_budget(invocation_id), ExecutionPhase::Cleanup);
@@ -2381,6 +2477,7 @@ fn install_natives(
     ops: Arc<OpRegistry>,
     tokio_handle: tokio::runtime::Handle,
     defer_queue_capacity: usize,
+    fetch_dialer: Option<crate::FetchDialerHandle>,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
 
@@ -2807,11 +2904,141 @@ fn install_natives(
                     abort_handle: task.abort_handle(),
                     state,
                     op: native_op,
+                    kind: OpKind::Timer,
                 },
             );
             Ok(op_id as f64)
         };
         globals.set("__velquTimerStart", Function::new(ctx.clone(), f)?)?;
+    }
+
+    // M4A-009-C: outbound fetch bridge. Installed ONLY when the host wired a
+    // dialer — without one, `fetch()` rejects (no mock). The op reuses the
+    // timer lifecycle/promise table: same phase guard, same owner-based
+    // cancellation at settlement, same terminal completion path.
+    if let Some(dialer_handle) = fetch_dialer {
+        let shared_fetch = Arc::clone(&shared);
+        let ops2 = Arc::clone(&ops);
+        let tokio = tokio_handle.clone();
+        let f = move |ctx: rquickjs::Ctx,
+                      method: String,
+                      url: String,
+                      headers_json: String,
+                      body_json: Option<String>|
+              -> rquickjs::Result<f64> {
+            // Same execution-phase guard as the timer native (M2.2.1-r3 +
+            // M4A-007-B): ops start only inside a LIVE invocation.
+            match CURRENT_PHASE.with(|p| p.get()) {
+                ExecutionPhase::Invocation => {}
+                ExecutionPhase::Cleanup => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable during invocation cleanup",
+                    ));
+                }
+                ExecutionPhase::DeferredDrain => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable while deferred work drains",
+                    ));
+                }
+                ExecutionPhase::Shutdown => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable during shutdown",
+                    ));
+                }
+                ExecutionPhase::Idle => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operation started outside an invocation",
+                    ));
+                }
+            }
+            let invocation_id = CURRENT_INVOCATION.with(|c| c.get());
+            let deadline = CURRENT_DEADLINE
+                .with(|c| c.get())
+                .unwrap_or_else(|| Instant::now() + ops2.job_watchdog);
+
+            let lifecycle = ops2.timer_lifecycle.lock().unwrap();
+            let native_op = match q_capabilities::NativeOp::start(
+                &lifecycle,
+                q_capabilities::OpOwner {
+                    slot: 0,
+                    generation: invocation_id,
+                },
+                q_capabilities::CancellationClass::Cancellable,
+                q_capabilities::MAX_OP_DEADLINE_MS,
+            ) {
+                Ok(op) => op,
+                Err(e) => {
+                    return Err(rquickjs::Exception::throw_message(&ctx, &e.to_string()));
+                }
+            };
+            drop(lifecycle);
+
+            let op_id = ops2.op_clock.fetch_add(1, Ordering::SeqCst);
+            if ops2.ops.lock().unwrap().len() >= ops2.op_cap {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "pending operation limit reached",
+                ));
+            }
+            let tx = WORKER_TX.with(|c| c.borrow().clone());
+            let Some(tx) = tx else {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "fetch capability unavailable",
+                ));
+            };
+
+            let state = Arc::new(AtomicU8::new(NativeTaskState::Running as u8));
+            shared_fetch
+                .native_tasks_started
+                .fetch_add(1, Ordering::Relaxed);
+            shared_fetch
+                .native_tasks_alive
+                .fetch_add(1, Ordering::Relaxed);
+            shared_fetch.pending_ops.fetch_add(1, Ordering::Relaxed);
+            shared_fetch
+                .fetch_ops_started
+                .fetch_add(1, Ordering::Relaxed);
+
+            let guard = TaskLivenessGuard {
+                shared: Arc::clone(&shared_fetch),
+                state: Arc::clone(&state),
+            };
+            let task_state = Arc::clone(&state);
+            let dialer = Arc::clone(&dialer_handle.0);
+            let task = tokio.spawn(async move {
+                let _guard = guard;
+                let result = dialer.dial(method, url, headers_json, body_json).await;
+                if task_state
+                    .compare_exchange(
+                        NativeTaskState::Running as u8,
+                        NativeTaskState::Completed as u8,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
+                    let _ = tx.send(WorkerMsg::FetchComplete { op_id, result });
+                }
+            });
+            ops2.ops.lock().unwrap().insert(
+                op_id,
+                PendingOp {
+                    invocation_id,
+                    deadline,
+                    abort_handle: task.abort_handle(),
+                    state,
+                    op: native_op,
+                    kind: OpKind::Fetch,
+                },
+            );
+            Ok(op_id as f64)
+        };
+        globals.set("__velquFetchStart", Function::new(ctx.clone(), f)?)?;
     }
 
     // M27-004-B/C: structured console logging with redaction, bounds, and bounded async sink
@@ -3350,7 +3577,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test URL constructor and properties
@@ -3390,7 +3617,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test TextEncoder encode
@@ -3472,7 +3699,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test AbortController basic abort & signal state
@@ -3528,7 +3755,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. ctx.signal is accessible and of type AbortSignal
@@ -3571,7 +3798,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test crypto.getRandomValues fills array
@@ -3623,7 +3850,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Web Crypto SubtleCrypto is NOT implemented in M28; must be undefined (never a mock/stub)
@@ -3674,7 +3901,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. Headers case-insensitivity and mutation
@@ -3801,7 +4028,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Verify constructor functions are present on globalThis without instantiating any objects
@@ -3852,7 +4079,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. The limit binding exposes the pinned policy constant.

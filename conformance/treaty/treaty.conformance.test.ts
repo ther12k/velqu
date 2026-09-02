@@ -30,6 +30,10 @@ expectTypeOf<ProofPublishedApi["users.get"]["responses"]>().toEqualTypeOf<{
   200: { id: string; name: string; email: string };
   401: { type: "https://velqu.dev/problems/unauthorized"; title: "Unauthorized"; status: 401; instance: string; detail?: string };
 }>();
+expectTypeOf<ProofPublishedApi["upstream.quote"]["responses"]>().toEqualTypeOf<{
+  200: { quote: string; source: string };
+  502: { error: string };
+}>();
 
 const proofContract = contractFromBuild("examples/proof/dist");
 
@@ -46,6 +50,25 @@ describe("Treaty client bundle isolation (TRT-004)", () => {
 
 describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
   test("drives compiled proof pack end-to-end", async () => {
+    // Start controlled upstream on port 8791 (W4 standard port)
+    const upstream = Bun.serve({
+      port: 8791,
+      hostname: "127.0.0.1",
+      fetch(req) {
+        const u = new URL(req.url);
+        if (u.pathname === "/health") {
+          return Response.json({ status: "ok" });
+        }
+        if (u.pathname === "/io") {
+          return Response.json({ status: "ok", ms: 5 });
+        }
+        if (u.pathname === "/error") {
+          return new Response("upstream failure", { status: 500 });
+        }
+        return new Response("not found", { status: 404 });
+      },
+    });
+
     const rt = await runtimeTreaty<ProofPublishedApi>(
       { packPath: "examples/proof/dist/app.qpack" },
       proofContract,
@@ -174,7 +197,33 @@ describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
       });
       expect(forged.data).toBeNull();
       expect(forged.error?.status).toBe(401);
+
+      // 10. Controlled upstream (M4A-009-C): quote relay, parameterized relay,
+      // fanout aggregation, and typed 502 failure against unavailable upstream.
+      const quoteRes = await rt.api["upstream.quote"].get();
+      expect(quoteRes.error).toBeNull();
+      expect(quoteRes.data).toEqual({ quote: "ok", source: "controlled-upstream" });
+
+      const relayRes = await rt.api["upstream.relay"].get({
+        query: { target: `http://127.0.0.1:${upstream.port}/io?ms=5` },
+      });
+      expect(relayRes.error).toBeNull();
+      expect(relayRes.data?.status).toBe("ok");
+
+      const fanoutRes = await rt.api["upstream.fanout"].get({
+        query: { count: 2, target: `http://127.0.0.1:${upstream.port}/io?ms=5` },
+      });
+      expect(fanoutRes.error).toBeNull();
+      expect(fanoutRes.data).toEqual({ count: 2, okCount: 2 });
+
+      // Upstream 500 error maps to declared 502 gateway error
+      const badRelay = await rt.api["upstream.relay"].get({
+        query: { target: `http://127.0.0.1:${upstream.port}/error` },
+      });
+      expect(badRelay.data).toBeNull();
+      expect(badRelay.error?.status).toBe(502);
     } finally {
+      upstream.stop(true);
       await rt.close();
     }
   });

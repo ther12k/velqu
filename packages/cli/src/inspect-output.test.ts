@@ -17,9 +17,9 @@ describe("Inspect output fidelity (M4A-006-D)", () => {
   it("reports actual strategy distribution rather than route-count placeholders", async () => {
     const result = await $`bun packages/cli/src/index.ts inspect fallbacks --project examples/proof --json`.text();
     const output = JSON.parse(result);
-    expect(output.routeCount).toBe(16);
-    expect(output.strategyDistribution.nativeValidationRoutes + output.strategyDistribution.jsValidationRoutes).toBe(16);
-    expect(output.strategyDistribution.nativeResponseRoutes + output.strategyDistribution.jsResponseRoutes).toBe(16);
+    expect(output.routeCount).toBe(19);
+    expect(output.strategyDistribution.nativeValidationRoutes + output.strategyDistribution.jsValidationRoutes).toBe(19);
+    expect(output.strategyDistribution.nativeResponseRoutes + output.strategyDistribution.jsResponseRoutes).toBe(19);
     expect(output.activeFallbacksCount).toBe(output.fallbacks.length);
   });
 
