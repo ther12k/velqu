@@ -623,29 +623,41 @@ globalThis.fetch = function(input, init) {
         reject(req.signal.reason);
       }, { once: true });
     }
-    // Host-bound native fetch bridge
-    if (typeof globalThis.__velquFetchBridge === "function") {
-      var headerObj = {};
-      req.headers.forEach(function(v, k) { headerObj[k] = v; });
-      var bodyStr = null;
-      if (typeof req.body === "string") bodyStr = req.body;
-      else if (req.body) bodyStr = JSON.stringify(req.body);
-      globalThis.__velquFetchBridge(req.method, req.url, JSON.stringify(headerObj), bodyStr)
-        .then(function(resJson) {
+    // M4A-009-C: host-bound native fetch bridge. Fail closed when the
+    // runtime wired no dialer — there is NO mock fallback: a silent empty
+    // 200 would be indistinguishable from a real upstream response.
+    if (typeof globalThis.__velquFetchStart !== "function") {
+      reject(new TypeError("outbound fetch is not available in this runtime (no fetch bridge wired)"));
+      return;
+    }
+    var headerObj = {};
+    req.headers.forEach(function(v, k) { headerObj[k] = v; });
+    var bodyStr = null;
+    if (typeof req.body === "string") bodyStr = req.body;
+    else if (req.body) bodyStr = JSON.stringify(req.body);
+    var opId;
+    try {
+      opId = globalThis.__velquFetchStart(req.method, req.url, JSON.stringify(headerObj), bodyStr);
+    } catch (e) {
+      reject(e);
+      return;
+    }
+    globalThis.__velquOps[opId] = {
+      resolve: function(resJson) {
+        try {
           var parsed = JSON.parse(resJson);
-          var resp = new Response(parsed.body, {
+          resolve(new Response(parsed.body, {
             status: parsed.status,
             statusText: parsed.statusText,
             headers: parsed.headers,
             url: parsed.url || req.url
-          });
-          resolve(resp);
-        })
-        .catch(reject);
-    } else {
-      // Default fallback mock response when bridge is not yet active
-      resolve(new Response("", { status: 200, statusText: "OK", url: req.url }));
-    }
+          }));
+        } catch (e) {
+          reject(e);
+        }
+      },
+      reject: reject
+    };
   });
 };
 

@@ -1,7 +1,7 @@
 {
   "format": "velqu-benchmark-manifest-v2",
-  "generatedAt": "2026-09-02T14:53:03.206094Z",
-  "commit": "b3254b92d18ccaa0cceb8ac58d62d14184947e89",
+  "generatedAt": "2026-09-02T15:59:32.471816Z",
+  "commit": "efb28e2bf1c42cb6f43c3bf02d01509c6c95b92c",
   "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "environment": {
     "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.39",
@@ -19,11 +19,11 @@
   "artifacts": {
     "qRuntimeRelease": {
       "path": "target/release/velqu-runtime",
-      "sha256": "24b5271896677da92b40b991238959b86224b662a6b0a7652599d24fb4f11647"
+      "sha256": "7c4252c8ab4dd3ad8af062d971ec4a9c6950bbce5551dc973cec4b45856eec33"
     },
     "proofPack": {
       "path": "examples/proof/dist/app.qpack",
-      "sha256": "2d70560fc298e6bdb4abbbfe35417e671f2128b92788a85fba737392f8b50f13"
+      "sha256": "44aa62157acd51b3c8cde4db97c39f48ec2fbb3e79ca488f74245d5e470d5613"
     },
     "routeCountPack25": {
       "path": "benchmarks/raw/packs/app-25.qpack",

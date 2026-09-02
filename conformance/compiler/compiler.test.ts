@@ -114,15 +114,15 @@ describe("pack contents (COMP-001/005)", () => {
     rmSync(out, { recursive: true, force: true });
     await build({ project: "examples/proof/src/app.ts", outDir: out });
     const pack = JSON.parse(readFileSync(`${out}/app.qpack`, "utf8"));
-    // one dense, deduplicated table across all proof routes; items.list is
-    // discovered before async routes, so its names occupy the first slots
-    expect(pack.queryNameTable).toEqual(["cursor", "limit", "ms"]);
+    // canonical (sorted, deduped) table across all proof routes
+    expect(pack.queryNameTable).toEqual(["count", "cursor", "limit", "ms", "target"]);
     const timer = pack.routes.find((r: { id: string }) => r.id === "async.timer");
     expect(timer.plan.queryNameIds).toEqual([pack.queryNameTable.indexOf("ms")]);
     const itemsList = pack.routes.find((r: { id: string }) => r.id === "items.list");
-    // the table assigns dense IDs in schema-declaration order (cursor was
-    // authored first in items.list); both routes resolve through the table
-    expect(itemsList.plan.queryNameIds).toEqual([0, 1]);
+    expect(itemsList.plan.queryNameIds).toEqual([
+      pack.queryNameTable.indexOf("cursor"),
+      pack.queryNameTable.indexOf("limit"),
+    ]);
     // every route referencing query names resolves through the dense table
     for (const r of pack.routes as Array<{ id: string; plan: { queryNameIds: number[] } }>) {
       for (const id of r.plan.queryNameIds) {

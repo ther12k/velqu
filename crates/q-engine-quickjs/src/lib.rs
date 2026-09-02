@@ -107,6 +107,40 @@ impl ContextProfile {
     }
 }
 
+/// M4A-009-C: host-provided outbound HTTP dialer. The engine itself links no
+/// HTTP client — the runtime injects a pool-backed, policy-gated
+/// implementation. The bridge native (`__velquFetchStart`) is installed ONLY
+/// when a dialer is present; without one, handler `fetch()` rejects and
+/// there is no mock fallback (fail closed).
+pub trait FetchDialer: Send + Sync {
+    /// Dial one HTTP request. Returns the wire JSON object
+    /// `{"status":u16,"statusText":String,"headers":{String:String},"body":String,"url":String}`
+    /// (body is text: the reference bridge surfaces textual payloads) or an
+    /// `Err(message)` for policy, DNS, connect, timeout, or cap failures.
+    fn dial(
+        &self,
+        method: String,
+        url: String,
+        headers_json: String,
+        body_json: Option<String>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>;
+}
+
+/// Debug/Clone-able wrapper so `QuickJsConfig` keeps its derives.
+pub struct FetchDialerHandle(pub Arc<dyn FetchDialer>);
+
+impl std::fmt::Debug for FetchDialerHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("FetchDialer(...)")
+    }
+}
+
+impl Clone for FetchDialerHandle {
+    fn clone(&self) -> Self {
+        FetchDialerHandle(Arc::clone(&self.0))
+    }
+}
+
 /// Engine configuration (limits are robustness controls, not a sandbox).
 #[derive(Debug, Clone)]
 pub struct QuickJsConfig {
@@ -135,6 +169,9 @@ pub struct QuickJsConfig {
     pub defer_queue_capacity: usize,
     /// M4A-007-A: deadline for one deferred callback during shutdown/drain.
     pub defer_deadline_ms: u64,
+    /// M4A-009-C: outbound fetch dialer; `None` leaves `fetch()` unwired
+    /// (rejects — never a mock).
+    pub fetch_dialer: Option<FetchDialerHandle>,
 }
 
 impl Default for QuickJsConfig {
@@ -150,6 +187,7 @@ impl Default for QuickJsConfig {
             profile: ContextProfile::Full,
             defer_queue_capacity: 64,
             defer_deadline_ms: 100,
+            fetch_dialer: None,
         }
     }
 }
