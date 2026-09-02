@@ -104,6 +104,16 @@ describe("Starter API Scaffolding (M4A-003-A)", () => {
     expect(existsSync(join(target, "package.json"))).toBeTrue();
   });
 
+  it("--with-fetch adds the upstream route, test, and capability metadata", () => {
+    const files = generateStarterProject({ name: "fetch-service", withFetch: true });
+    const pkg = JSON.parse(files["package.json"]);
+    expect(pkg.velqu.capabilities).toEqual(["fetch"]);
+    expect(files["src/modules/upstream/routes.ts"]).toContain('id: "upstream.quote"');
+    expect(files["src/modules/upstream/routes.test.ts"]).toContain("upstream module");
+    expect(files["README.md"]).toContain("Outbound Fetch Capability");
+    expect(files["README.md"]).toContain("enabled");
+  });
+
   it("CLI init --json outputs machine-readable project scaffolding receipt", async () => {
     const target = join(tempDir, "json-app");
 
