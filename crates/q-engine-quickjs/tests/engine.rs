@@ -198,6 +198,12 @@ function defer_spin(ctx) {
   globalThis.__velquDefer(() => { while (true) {} });
   return { ok: true };
 }
+function defer_fail_spin(ctx) {
+  // V regression: a failed response must be handed off before the
+  // best-effort drain spends its deadline interrupting this callback.
+  globalThis.__velquDefer(() => { while (true) {} });
+  throw new Error("defer failure after admission");
+}
 var __deferSpied = "";
 function defer_reenqueue_in_drain(ctx) {
   // M4A-007-B: a deferred callback runs OUTSIDE the invocation owner —
@@ -483,6 +489,7 @@ __velquRegister("defer.simple", defer_simple);
 __velquRegister("defer.check", defer_check);
 __velquRegister("defer.overload", defer_overload);
 __velquRegister("defer.spin", defer_spin);
+__velquRegister("defer.fail_spin", defer_fail_spin);
 __velquRegister("defer.reenqueue_in_drain", defer_reenqueue_in_drain);
 __velquRegister("defer.nativeop_in_drain", defer_nativeop_in_drain);
 __velquRegister("defer.from_reaction", defer_from_reaction);
@@ -531,6 +538,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "defer.check",
         "defer.overload",
         "defer.spin",
+        "defer.fail_spin",
         "defer.reenqueue_in_drain",
         "defer.nativeop_in_drain",
         "defer.from_reaction",
@@ -583,7 +591,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 68);
+    assert_eq!(stats.handlers_registered, 69);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -4390,5 +4398,39 @@ async fn defer_admission_enforces_configured_capacity() {
     assert_eq!(s.defers_rejected, 6);
     assert_eq!(s.defer_drains, 1);
     assert_eq!(s.defers_drained, 4);
+    eng.shutdown();
+}
+
+/// M4A-007-V: failed responses are handed off before the best-effort drain.
+#[tokio::test]
+async fn failed_response_is_handed_off_before_defer_drain() {
+    let mut eng = QuickJsEngine::spawn(
+        QuickJsConfig {
+            defer_deadline_ms: 100,
+            ..Default::default()
+        },
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    );
+    load_default(&mut eng).unwrap();
+
+    let started = Instant::now();
+    let out = run(&mut eng, spec(940, "defer.fail_spin", &[200], 2000)).await;
+    let elapsed = started.elapsed();
+    assert!(
+        matches!(out, Outcome::EngineFailure { .. }),
+        "expected failed response, got {out:?}"
+    );
+    assert!(
+        elapsed < Duration::from_millis(90),
+        "failed response was delayed by deferred drain: {elapsed:?}"
+    );
+
+    // The worker remains alive after the drain interrupt.
+    let next = run(&mut eng, spec(941, "requestless", &[200], 2000)).await;
+    assert!(matches!(next, Outcome::Response { status: 200, .. }));
+    let stats = eng.stats();
+    assert_eq!(stats.defer_drains, 1);
+    assert_eq!(stats.defer_drains_interrupted, 1);
     eng.shutdown();
 }
