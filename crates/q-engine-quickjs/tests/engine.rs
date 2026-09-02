@@ -244,6 +244,12 @@ function defer_from_reaction(ctx) {
 function defer_check_spied(ctx) {
   return { spied: __deferSpied, ran: __deferRan };
 }
+function defer_pending_watch(ctx) {
+  // M4A-007-C: a watched handler that never settles leaves its queued
+  // callback undrained (no handoff) — observable as dropped-at-shutdown
+  globalThis.__velquDefer(() => { __deferRan += 1; });
+  return new Promise(() => {});
+}
 var __chainCount = 0;
 function chain_forever_catch(ctx) {
   // rejection reaction reschedules itself FOREVER via microtasks during
@@ -443,6 +449,7 @@ __velquRegister("defer.reenqueue_in_drain", defer_reenqueue_in_drain);
 __velquRegister("defer.nativeop_in_drain", defer_nativeop_in_drain);
 __velquRegister("defer.from_reaction", defer_from_reaction);
 __velquRegister("defer.check_spied", defer_check_spied);
+__velquRegister("defer.pending_watch", defer_pending_watch);
 "#;
 
 fn expected_table() -> BTreeMap<String, String> {
@@ -487,6 +494,7 @@ fn expected_table() -> BTreeMap<String, String> {
         "defer.nativeop_in_drain",
         "defer.from_reaction",
         "defer.check_spied",
+        "defer.pending_watch",
         "chain.forever",
         "chain.count",
         "timer.zero",
@@ -531,7 +539,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 64);
+    assert_eq!(stats.handlers_registered, 65);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -4147,4 +4155,86 @@ async fn deferred_drain_is_op_free_and_cannot_reenqueue() {
         o => panic!("expected response, got {o:?}"),
     }
     eng.shutdown();
+}
+
+/// M4A-007-C: bounded-defer lifecycle metrics are exposed via EngineStats.
+///
+/// The drain runs AFTER the response is handed off (guardrail), so a drain's
+/// counters settle only after the worker moves on. Every phase below ends
+/// with a handoff whose own drain finds an empty queue (empty drains change
+/// no counters), making the observations race-free.
+#[tokio::test]
+async fn defer_metrics_expose_lifecycle() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+
+    async fn run_checker(eng: &mut QuickJsEngine, id: u64) {
+        let out = run(eng, spec(id, "requestless", &[200], 2000)).await;
+        assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    }
+
+    // simple: one admission, one drained callback
+    let out = run(&mut eng, spec(911, "defer.simple", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    run_checker(&mut eng, 912).await;
+    run_checker(&mut eng, 913).await;
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 1);
+    assert_eq!(s.defers_rejected, 0);
+    assert_eq!(s.defer_drains, 1, "only the non-empty simple drain counts");
+    assert_eq!(s.defers_drained, 1);
+    assert_eq!(s.defer_drains_interrupted, 0);
+    assert_eq!(s.defers_dropped_at_shutdown, 0);
+
+    // overload: the handler throws at the cap (64 admitted, 1 rejection) and
+    // the Failed handoff still drains the 64 queued callbacks
+    let out = run(&mut eng, spec(914, "defer.overload", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::EngineFailure { .. }));
+    run_checker(&mut eng, 915).await;
+    run_checker(&mut eng, 916).await;
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 65);
+    assert_eq!(s.defers_rejected, 1);
+    assert_eq!(s.defer_drains, 2);
+    assert_eq!(s.defers_drained, 65);
+
+    // spin: drain hits the defer deadline; the spinning callback never counts
+    let out = run(&mut eng, spec(917, "defer.spin", &[200], 2000)).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    run_checker(&mut eng, 918).await;
+    run_checker(&mut eng, 919).await;
+    let s = eng.stats();
+    assert_eq!(s.defer_drains, 3);
+    assert_eq!(s.defer_drains_interrupted, 1);
+    assert_eq!(s.defers_drained, 65, "interrupted callback is not drained");
+
+    // a watched handler that never settles times out with no drain, so its
+    // queued callback is still in the queue: observable because the very next
+    // handoff would drain it (worker-owned queue), and shutdown would drop it
+    let out = run(&mut eng, spec(917, "defer.pending_watch", &[200], 300)).await;
+    assert!(matches!(out, Outcome::Timeout));
+    let s = eng.stats();
+    assert_eq!(s.defers_admitted, 67);
+    assert_eq!(s.defer_drains, 3, "timeout performs no drain");
+    assert_eq!(s.defers_drained, 65);
+
+    // cancel-while-pending: the cancel path performs no drain either
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    eng.invoke(spec(918, "defer.pending_watch", &[200], 60_000), tx);
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let s = eng.stats();
+    assert_eq!(
+        s.defers_admitted, 68,
+        "pending handler admitted its callback"
+    );
+    eng.cancel(918);
+    let _ = tokio::time::timeout(Duration::from_millis(500), rx).await;
+
+    // shutdown discards both never-handed-off callbacks and counts them
+    eng.shutdown();
+    let s = eng.stats();
+    assert_eq!(
+        s.defers_dropped_at_shutdown, 2,
+        "both queued callbacks dropped"
+    );
 }

@@ -241,6 +241,13 @@ pub(crate) struct WorkerShared {
     pub numeric_dispatches: AtomicU64,
     pub legacy_map_dispatches: AtomicU64,
     pub heap_used: AtomicU64,
+    /// M4A-007-C: bounded-defer lifecycle metrics (see EngineStats)
+    pub defers_admitted: AtomicU64,
+    pub defers_rejected: AtomicU64,
+    pub defer_drains: AtomicU64,
+    pub defers_drained: AtomicU64,
+    pub defer_drains_interrupted: AtomicU64,
+    pub defers_dropped_at_shutdown: AtomicU64,
     /// set by the interrupt handler when it actually fired; distinguishes a
     /// deadline kill from a genuine error that merely happened near the deadline
     pub interrupted: AtomicBool,
@@ -275,6 +282,12 @@ impl WorkerShared {
             numeric_dispatches: AtomicU64::new(0),
             legacy_map_dispatches: AtomicU64::new(0),
             heap_used: AtomicU64::new(0),
+            defers_admitted: AtomicU64::new(0),
+            defers_rejected: AtomicU64::new(0),
+            defer_drains: AtomicU64::new(0),
+            defers_drained: AtomicU64::new(0),
+            defer_drains_interrupted: AtomicU64::new(0),
+            defers_dropped_at_shutdown: AtomicU64::new(0),
             interrupted: AtomicBool::new(false),
         }
     }
@@ -307,6 +320,12 @@ impl WorkerShared {
             numeric_dispatches: self.numeric_dispatches.load(Ordering::Relaxed),
             legacy_map_dispatches: self.legacy_map_dispatches.load(Ordering::Relaxed),
             heap_used: self.heap_used.load(Ordering::Relaxed) as usize,
+            defers_admitted: self.defers_admitted.load(Ordering::Relaxed),
+            defers_rejected: self.defers_rejected.load(Ordering::Relaxed),
+            defer_drains: self.defer_drains.load(Ordering::Relaxed),
+            defers_drained: self.defers_drained.load(Ordering::Relaxed),
+            defer_drains_interrupted: self.defer_drains_interrupted.load(Ordering::Relaxed),
+            defers_dropped_at_shutdown: self.defers_dropped_at_shutdown.load(Ordering::Relaxed),
         }
     }
 }
@@ -656,6 +675,16 @@ impl WorkerInner {
         }
         {
             let _phase = PhaseScope::enter(ExecutionPhase::Shutdown);
+            // M4A-007-C: queued-but-undrained best-effort callbacks are
+            // discarded here — count them so shutdown reports the drop.
+            let dropped: usize = self.ctx.with(|ctx| -> usize {
+                let f: Option<rquickjs::Function> = ctx.globals().get("__velquDeferredLen").ok();
+                let Some(f) = f else { return 0 };
+                f.call(()).unwrap_or(0)
+            });
+            self.shared
+                .defers_dropped_at_shutdown
+                .fetch_add(dropped as u64, Ordering::Relaxed);
             // orphaned rejection continuations unwind under the bounded watchdog
             self.drain_jobs_watchdog();
             // M2.2.1-r3: physically abort every remaining native task —
@@ -1315,6 +1344,14 @@ impl WorkerInner {
                 let Ok(drain) = globals.get::<_, Function>("__velquDrainDeferred") else {
                     return Ok(());
                 };
+                // M4A-007-C: the pre-drain queue length is exactly the number
+                // of callbacks this drain will execute — re-enqueueing from
+                // the DeferredDrain phase is rejected, so nothing else can
+                // enter the queue between the read and the swap.
+                let queued: u64 = match globals.get::<_, Function>("__velquDeferredLen") {
+                    Ok(len_fn) => len_fn.call(()).unwrap_or(0),
+                    Err(_) => 0,
+                };
                 // host-side cap: the JS-side check is the first line of
                 // defense; this truncation is the enforced bound for drift.
                 let trim = format!(
@@ -1327,6 +1364,26 @@ impl WorkerInner {
                 *deadline_cell.lock().unwrap() = Some(deadline);
                 let r: rquickjs::Result<()> = drain.call(());
                 *deadline_cell.lock().unwrap() = None;
+                // M4A-007-C: only non-empty drains count as drain events —
+                // every handoff performs a (usually empty) drain attempt, so
+                // counting attempts would make the metric noise.
+                if queued > 0 {
+                    self.shared.defer_drains.fetch_add(1, Ordering::Relaxed);
+                }
+                match r {
+                    Ok(()) => {
+                        self.shared
+                            .defers_drained
+                            .fetch_add(queued, Ordering::Relaxed);
+                    }
+                    Err(_) => {
+                        // __velquDrainDeferred swallows callback errors, so an
+                        // Err here is the deadline interrupt firing
+                        self.shared
+                            .defer_drains_interrupted
+                            .fetch_add(1, Ordering::Relaxed);
+                    }
+                }
                 r
             });
         }
@@ -2333,6 +2390,31 @@ fn install_natives(
             Ok(CURRENT_PHASE.with(|p| p.get()) == ExecutionPhase::Invocation)
         };
         globals.set("__velquCanAdmitDefer", Function::new(ctx.clone(), f)?)?;
+    }
+    // M4A-007-C: bounded-defer metrics — admission outcomes are counted at
+    // the JS boundary, the queue length is observed host-side for drains.
+    {
+        let shared = Arc::clone(&shared);
+        let f = move || -> rquickjs::Result<()> {
+            shared.defers_admitted.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        };
+        globals.set("__velquDeferAdmitted", Function::new(ctx.clone(), f)?)?;
+    }
+    {
+        let shared = Arc::clone(&shared);
+        let f = move || -> rquickjs::Result<()> {
+            shared.defers_rejected.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        };
+        globals.set("__velquDeferRejected", Function::new(ctx.clone(), f)?)?;
+    }
+    {
+        let f = |ctx: rquickjs::Ctx<'_>| -> rquickjs::Result<u64> {
+            let queue: rquickjs::Array = ctx.globals().get("__velquDeferred")?;
+            Ok(queue.len() as u64)
+        };
+        globals.set("__velquDeferredLen", Function::new(ctx.clone(), f)?)?;
     }
 
     // request field access: JSON-encoded object string (engine-side JSON.parse)
