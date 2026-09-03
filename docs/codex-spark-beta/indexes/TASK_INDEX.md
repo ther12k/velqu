@@ -558,7 +558,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-001-D](../tasks/08_public_beta/BETA-001-D-keep-raw-samples.md) | P1 | implement | TODO | BETA-001-C | Keep raw samples |
 | [BETA-001-V](../tasks/08_public_beta/BETA-001-V-verify-make-the-real-world-benchmark-harness-executable.md) | P1 | verify | PASS | BETA-001-A, BETA-001-B, BETA-001-C, BETA-001-D | Verify Make the real-world benchmark harness executable |
 | [BETA-001-Z](../tasks/08_public_beta/BETA-001-Z-package-evidence-for-make-the-real-world-benchmark-harness-executable.md) | P1 | evidence | PASS | BETA-001-V | Package evidence for Make the real-world benchmark harness executable |
-| [BETA-002-A](../tasks/08_public_beta/BETA-002-A-match-sql-pool-jwt-timeouts-logging-responses-compression-and-deployment-limits.md) | P1 | implement | TODO | BETA-001-Z | Match SQL, pool, JWT, timeouts, logging, responses, compression, and deployment limits |
+| [BETA-002-A](../tasks/08_public_beta/BETA-002-A-match-sql-pool-jwt-timeouts-logging-responses-compression-and-deployment-limits.md) | P1 | implement | PASS | BETA-001-Z | Match SQL, pool, JWT, timeouts, logging, responses, compression, and deployment limits |
 | [BETA-002-B](../tasks/08_public_beta/BETA-002-B-pin-versions.md) | P1 | implement | TODO | BETA-002-A | Pin versions |
 | [BETA-002-C](../tasks/08_public_beta/BETA-002-C-add-contract-response-verification.md) | P1 | implement | TODO | BETA-002-B | Add contract-response verification |
 | [BETA-002-D](../tasks/08_public_beta/BETA-002-D-document-unavoidable-differences.md) | P1 | implement | TODO | BETA-002-C | Document unavoidable differences |

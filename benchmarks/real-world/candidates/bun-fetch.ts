@@ -1,11 +1,12 @@
-/** W4/Fanout candidate: Bun runtime + Bun-native fetch (no framework). */
+/**
+ * Candidate: Bun runtime + Bun-native fetch (no framework).
+ * Implements W1..W4 matched contract (BETA-002-A).
+ */
 import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+import { DeterministicStore, verifyAuthHeader, type OrderItemInput } from "./matched";
 
+const store = new DeterministicStore();
 
-// M28-011-C mixed-outcome route (added to the Bun-based candidates):
-//   success   -> relay upstream 200
-//   timeout   -> upstream 500ms vs a 100ms client deadline -> typed 504
-//   malformed -> upstream /bad (200 + garbage) -> parse failure -> typed 502
 function mixedHandler() {
   return async (mode: string) => {
     if (mode === "timeout") {
@@ -14,7 +15,6 @@ function mixedHandler() {
           signal: AbortSignal.timeout(100),
         });
       } catch {
-        // deadline abort: the typed 504 is the contract
         return Response.json({ mode, handled: "timeout" }, { status: 504 });
       }
       return Response.json({ mode, handled: "timeout-unexpected" }, { status: 500 });
@@ -24,7 +24,6 @@ function mixedHandler() {
       const text = await res.text();
       try {
         JSON.parse(text);
-        // The fixture is deterministic garbage; reaching here is a failure.
         return Response.json({ mode, handled: "malformed-unexpected" }, { status: 500 });
       } catch {
         return Response.json(
@@ -52,6 +51,54 @@ const server = Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
+
+    // W1: Authenticated Single-Record Lookup
+    if (req.method === "GET" && url.pathname.startsWith("/api/users/")) {
+      const auth = verifyAuthHeader(req.headers.get("authorization"));
+      if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 });
+
+      const id = url.pathname.slice("/api/users/".length);
+      const user = store.getUser(id);
+      if (!user) return Response.json({ error: "not found" }, { status: 404 });
+
+      return Response.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.created_at,
+      });
+    }
+
+    // W2: Authenticated Write Transaction
+    if (req.method === "POST" && url.pathname === "/api/orders") {
+      const auth = verifyAuthHeader(req.headers.get("authorization"));
+      if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 });
+
+      let body: { items?: OrderItemInput[] };
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: "malformed JSON body" }, { status: 400 });
+      }
+
+      const res = store.createOrder(auth.user.id, body.items ?? []);
+      if (!res.ok) return Response.json({ error: res.error }, { status: res.status });
+
+      return Response.json(res.order, { status: 201 });
+    }
+
+    // W3: Paginated List with Aggregation
+    if (req.method === "GET" && url.pathname === "/api/products") {
+      const category = url.searchParams.get("category") ?? "electronics";
+      const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") ?? 20)));
+
+      const res = store.getProducts(category, page, limit);
+      return Response.json(res);
+    }
+
+    // W4: Controlled I/O & Fan-out
     if (url.pathname === "/api/bench/io") {
       const ms = validateMs(url.searchParams.get("ms"));
       if (ms === null) return Response.json({ error: "invalid ms" }, { status: 400 });
@@ -81,6 +128,7 @@ const server = Bun.serve({
         ok: results.every((r) => r.status === 200),
       });
     }
+
     return Response.json({ error: "not found", path: url.pathname }, { status: 404 });
   },
 });
