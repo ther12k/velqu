@@ -258,6 +258,7 @@ pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
     let eng = state.engine.lock().expect("engine mutex");
     let stats = eng.stats();
     let health = eng.health();
+    let bridge = eng.bridge_snapshot();
     drop(eng);
     // BETA-006-C: fetch + db pool observability (bounded snapshots only)
     let fetch = crate::fetch_stack::shared_pool().stats();
@@ -282,6 +283,20 @@ pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
             "quarantined": health.is_quarantined(),
             "queuePoisoned": stats.queue_poisoned,
             "poisonEvents": stats.poison_events,
+        },
+        // BETA-006-D: memory / tasks / slots gauges
+        "memory": {
+            "heapUsedBytes": stats.heap_used,
+        },
+        "tasks": {
+            "nativeStarted": stats.native_tasks_started,
+            "nativeAlive": stats.native_tasks_alive,
+            "nativeCompleted": stats.native_tasks_completed,
+            "nativeAborted": stats.native_tasks_aborted,
+        },
+        "slots": {
+            "live": bridge.live_slots,
+            "capacity": state.request_slot_capacity,
         },
         "drain": {
             "draining": state.drain_gate.is_draining(),
@@ -330,6 +345,8 @@ pub struct ServeState {
     /// `runtime:postgres` and the runtime configured it. Absent -> the
     /// pools snapshot reports unlinked (zero-cost posture).
     pub postgres_dialer: Option<q_capability_postgres::PostgresQueryHandle>,
+    /// BETA-006-D: slot capacity gauge ceiling (from admission limits).
+    pub request_slot_capacity: u64,
     pub invocation_clock: AtomicU64,
     /// M3-007-A: invocation-to-worker ownership. Admission binds each
     /// invocation to its owning worker exactly once; the terminal

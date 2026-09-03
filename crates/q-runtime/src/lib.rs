@@ -453,6 +453,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
             route_metrics: serve::RouteStatusMetrics::from_route_ids(route_metric_ids),
             postgres_dialer: postgres_handle,
+            request_slot_capacity: limits.max_queue.max(1) as u64,
         });
         let handler = serve::make_handler(Arc::clone(&state));
         // M3-007-B: the drain gate flips the INSTANT the shutdown signal
