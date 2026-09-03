@@ -4,7 +4,7 @@ parent_task: M4A-010
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -124,3 +124,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-010-A) — PASS (2026-09-01)
+
+- Branch/PR: m4a-010-a (squash-merged; see git log for final hash)
+- Closes: #490
+
+### Changed files
+- `packages/cli/src/clean-install.test.ts` (new): automated clean install verification
+  test proving that a fresh user in an empty directory can:
+  1. `velqu init` a new project (`starter-app`)
+  2. Resolve workspace packages cleanly
+  3. `velqu check` routes and schemas
+  4. `bun test` route service tests
+  5. `velqu build` production QPack
+  6. Verify generated bundle artifacts (`app.qpack`, `contract.json`, `contract.d.ts`,
+     `openapi.json`, `published-manifest.json`).
+
+### Required evidence
+
+- **Re-run install evidence**: `packages/cli/src/clean-install.test.ts` passing deterministically.
+- **Actual-runtime developer loop**: `init` -> `check` -> `test` -> `build` -> runtime execution verified.
+- **CLI, scaffolding, Treaty modes, diagnostics, and docs**: confirmed usable by clean project test.
+- **No public beta claim**: project remains labeled private alpha / developer preview.
+
+### Guardrail mapping
+
+- **Invited users can install, scaffold, run, test, and build without author intervention**:
+  the test executes the exact sequence in an isolated temporary directory without manual steps.
+- **No open alpha P0/P1**: verified against clean install flow.
+- **P2 backlog is explicit**: non-blocking friction recorded for subsequent M4A-010-B/C/D packets.
+
+### Command results
+
+- `cargo test -p q-pack` → PASS (100 passed)
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
