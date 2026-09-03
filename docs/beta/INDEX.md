@@ -20,6 +20,7 @@ tags:
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
 - [Treaty client](TREATY.md)
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
+- [Postgres capability](POSTGRES-CAPABILITY.md)
 - [Runtime profiles](RUNTIME-PROFILES.md)
 - [Deployment behind a reverse proxy](DEPLOYMENT-REVERSE-PROXY.md)
 - [Limits and non-goals](LIMITS-AND-NON-GOALS.md)
