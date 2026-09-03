@@ -1,49 +1,47 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-08-31T00:00:00Z",
+  "generatedAt": "2026-09-01T00:00:00Z",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M3-MULTI-WORKER-SERVICE-RUNTIME",
+  "milestone": "M4A-DEVELOPER-PREVIEW",
   "status": "PASS",
-  "reviewedImplementationCommit": "8b36acc",
-  "evidenceCheckpoint": "8b36acc",
+  "reviewedImplementationCommit": "936e1f0",
+  "evidenceCheckpoint": "936e1f0",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "M3 package dependency closure",
+      "gate": "M4A package dependency closure",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/06_m3_multi_worker/*-Z-*.md"
+        "docs/codex-spark-beta/tasks/07_m4a_developer_preview/*-Z-*.md"
       ],
       "tests": [
         "scripts/spark-queue"
       ],
-      "evidence": "M3-001-Z through M3-010-Z all status PASS (PRs #977, #983, #989, #995, #1001, #1011, #1017, #1023, #1029, #1035)"
+      "evidence": "M4A-001-Z through M4A-010-Z all status PASS (PRs #1041, #1047, #1053, #1059, #1065, #1072, #1078, #1087, #1094, #1100)"
     },
     {
-      "gate": "Multi-Worker state ownership, bounded dispatch, profiles, quarantine/replacement, adaptive scaling, shutdown, fairness/overload, scaling evidence, soak and recovery",
+      "gate": "Actual-runtime dev loop, CLI, scaffolding, Treaty modes, published contract artifacts, diagnostics, bounded defer, documentation, realistic proof service, and invited alpha feedback closure",
       "status": "PASS",
       "source": [
-        "crates/q-capabilities/src/dispatch.rs",
-        "crates/q-capabilities/src/invocation.rs",
-        "crates/q-capabilities/src/drain.rs",
-        "crates/q-capabilities/src/fairness.rs",
-        "crates/q-capabilities/src/long_running.rs",
-        "crates/q-capabilities/src/load_shed.rs",
-        "crates/q-runtime/src/service_profile.rs",
-        "crates/q-runtime/src/serve.rs",
-        "crates/q-runtime/src/lib.rs",
-        "crates/q-engine-quickjs/src/lib.rs",
+        "packages/cli/src/index.ts",
+        "packages/compiler/src/index.ts",
+        "packages/treaty/src/index.ts",
+        "packages/testing/src/index.ts",
+        "examples/proof/src/app.ts",
         "crates/q-engine-quickjs/src/worker.rs",
-        "crates/q-pack/src/lib.rs"
+        "crates/q-runtime/src/lib.rs",
+        "crates/q-runtime/src/fetch_bridge.rs"
       ],
       "tests": [
-        "crates/q-capabilities/tests/fairness_workloads.rs",
-        "crates/q-capabilities/tests/recovery.rs",
+        "packages/cli/src/clean-install.test.ts",
+        "conformance/treaty/treaty.conformance.test.ts",
+        "examples/proof/src/tests/metrics-readiness-shutdown.scenario.test.ts",
+        "examples/proof/src/tests/treaty-client.scenario.test.ts",
         "crates/q-engine-quickjs/tests/engine.rs",
         "crates/q-runtime/tests/runtime_conformance.rs"
       ],
-      "evidence": "M3-001..M3-010 V+Z packets; ADR-0036 accepted; scaling evidence C1/C2/C3; soak 4.41M reqs 0 errors; docs/reports/m3-gate-review.md"
+      "evidence": "M4A-001..M4A-010 V+Z packets; 24-route proof service; clean install verification; docs/reports/m4a-gate-review.md"
     }
   ],
   "openItems": [
@@ -52,7 +50,7 @@
   ],
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS — exit 0 at candidate commit 8b36acc",
-    "typescriptTests": 219
+    "result": "PASS \u2014 exit 0 at candidate commit 936e1f0",
+    "typescriptTests": 327
   }
 }
