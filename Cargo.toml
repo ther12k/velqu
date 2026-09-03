@@ -11,6 +11,7 @@ members = [
     "crates/q-pack",
     "crates/q-schema-runtime",
     "crates/q-capabilities",
+    "crates/q-capability-postgres",
     "crates/q-bench-support",
 ]
 
@@ -30,6 +31,7 @@ q-bridge = { path = "crates/q-bridge" }
 q-pack = { path = "crates/q-pack" }
 q-schema-runtime = { path = "crates/q-schema-runtime" }
 q-capabilities = { path = "crates/q-capabilities" }
+q-capability-postgres = { path = "crates/q-capability-postgres" }
 q-bench-support = { path = "crates/q-bench-support" }
 
 rquickjs = { version = "=0.12.2", features = ["full-async"] }
@@ -39,6 +41,7 @@ hyper-util = { version = "0.1", features = ["tokio", "server", "server-graceful"
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "webpki-tokio", "tls12"] }
 http-body-util = "0.1"
 bytes = "1"
+tokio-postgres = { version = "0.7", features = ["runtime"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
