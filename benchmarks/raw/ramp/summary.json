@@ -1,0 +1,236 @@
+{
+  "format": "velqu-ramp-v1",
+  "runId": "ramp-1788448064944",
+  "window": 25,
+  "ratio": 1.25,
+  "floor": 0.8,
+  "minSteadyRequests": 50,
+  "maxRequests": 400,
+  "reps": 3,
+  "generatedAt": "2026-09-03T15:07:46.152Z",
+  "environment": {
+    "bun": "1.4.0",
+    "node": "v22.23.2",
+    "kernel": "Linux version 7.0.0-30-generic (buildd@lcy02-amd64-067) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #30~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug  7 13:27:52 UTC 2",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "commit": "dcf42646831894231afc43f997076e89656597a6"
+  },
+  "results": [
+    {
+      "candidate": "velqu",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        150,
+        125,
+        150
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 100,
+      "firstRequest": {
+        "n": 3,
+        "p50": 268,
+        "p95": 415,
+        "p99": 415
+      },
+      "steady": {
+        "n": 150,
+        "p50": 34,
+        "p95": 48,
+        "p99": 57
+      },
+      "rssKbAfter": 9768,
+      "exitOk": true
+    },
+    {
+      "candidate": "velqu",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        125,
+        100
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 50,
+      "firstRequest": {
+        "n": 3,
+        "p50": 270,
+        "p95": 355,
+        "p99": 355
+      },
+      "steady": {
+        "n": 150,
+        "p50": 59,
+        "p95": 73,
+        "p99": 107
+      },
+      "rssKbAfter": 9792,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-rust",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        375,
+        200
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 150,
+      "firstRequest": {
+        "n": 3,
+        "p50": 248,
+        "p95": 279,
+        "p99": 279
+      },
+      "steady": {
+        "n": 150,
+        "p50": 61,
+        "p95": 95,
+        "p99": 130
+      },
+      "rssKbAfter": 3456,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-rust",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        200,
+        100,
+        275
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 150,
+      "firstRequest": {
+        "n": 3,
+        "p50": 238,
+        "p95": 599,
+        "p99": 599
+      },
+      "steady": {
+        "n": 150,
+        "p50": 45,
+        "p95": 130,
+        "p99": 154
+      },
+      "rssKbAfter": 3404,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-bun",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        225,
+        225,
+        225
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 175,
+      "firstRequest": {
+        "n": 3,
+        "p50": 3258,
+        "p95": 3749,
+        "p99": 3749
+      },
+      "steady": {
+        "n": 150,
+        "p50": 48,
+        "p95": 148,
+        "p99": 193
+      },
+      "rssKbAfter": 26516,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-bun",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        200,
+        225,
+        150
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 150,
+      "firstRequest": {
+        "n": 3,
+        "p50": 3902,
+        "p95": 4123,
+        "p99": 4123
+      },
+      "steady": {
+        "n": 150,
+        "p50": 41,
+        "p95": 69,
+        "p99": 85
+      },
+      "rssKbAfter": 26280,
+      "exitOk": true
+    },
+    {
+      "candidate": "elysia2",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        125,
+        100,
+        125
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 75,
+      "firstRequest": {
+        "n": 3,
+        "p50": 10060,
+        "p95": 13915,
+        "p99": 13915
+      },
+      "steady": {
+        "n": 150,
+        "p50": 35,
+        "p95": 93,
+        "p99": 154
+      },
+      "rssKbAfter": 46296,
+      "exitOk": true
+    },
+    {
+      "candidate": "elysia2",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        400,
+        100,
+        250
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 200,
+      "firstRequest": {
+        "n": 3,
+        "p50": 14811,
+        "p95": 16099,
+        "p99": 16099
+      },
+      "steady": {
+        "n": 150,
+        "p50": 37,
+        "p95": 84,
+        "p99": 243
+      },
+      "rssKbAfter": 46544,
+      "exitOk": true
+    }
+  ]
+}
