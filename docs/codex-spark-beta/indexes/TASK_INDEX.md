@@ -562,7 +562,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-002-B](../tasks/08_public_beta/BETA-002-B-pin-versions.md) | P1 | implement | PASS | BETA-002-A | Pin versions |
 | [BETA-002-C](../tasks/08_public_beta/BETA-002-C-add-contract-response-verification.md) | P1 | implement | PASS | BETA-002-B | Add contract-response verification |
 | [BETA-002-D](../tasks/08_public_beta/BETA-002-D-document-unavoidable-differences.md) | P1 | implement | PASS | BETA-002-C | Document unavoidable differences |
-| [BETA-002-V](../tasks/08_public_beta/BETA-002-V-verify-implement-matched-competitor-candidates.md) | P1 | verify | TODO | BETA-002-A, BETA-002-B, BETA-002-C, BETA-002-D | Verify Implement matched competitor candidates |
+| [BETA-002-V](../tasks/08_public_beta/BETA-002-V-verify-implement-matched-competitor-candidates.md) | P1 | verify | PASS | BETA-002-A, BETA-002-B, BETA-002-C, BETA-002-D | Verify Implement matched competitor candidates |
 | [BETA-002-Z](../tasks/08_public_beta/BETA-002-Z-package-evidence-for-implement-matched-competitor-candidates.md) | P1 | evidence | TODO | BETA-002-V | Package evidence for Implement matched competitor candidates |
 | [BETA-003-A](../tasks/08_public_beta/BETA-003-A-run-0-1-5-10-25ms-i-o-payload-matrices-and-cpu-operation-levels.md) | P1 | implement | TODO | BETA-001-Z, M28-GATE, M3-GATE | Run 0/1/5/10/25ms I/O, payload matrices, and CPU operation levels |
 | [BETA-003-B](../tasks/08_public_beta/BETA-003-B-measure-first-request-through-steady-state.md) | P1 | implement | TODO | BETA-003-A | Measure first request through steady state |
