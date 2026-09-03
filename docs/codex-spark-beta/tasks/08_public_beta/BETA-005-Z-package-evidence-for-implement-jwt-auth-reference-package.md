@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,71 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-z (squash-merged; see git log for final hash)
+- Closes: #530
+- Parent verification: BETA-005-V PASS (PR #1129); this packet packages
+  the source-backed evidence across all child packets (A through E + V)
+  and flips parent task BETA-005 to PASS in
+  `docs/beta/04_TASK_LEDGER.md`.
+
+### Evidence package
+
+- **Implementation packets (squash-merged):**
+  - BETA-005-A (PR #1124): one approved algorithm profile — HS256-only
+    five-gate fail-closed verification (`@velqu/capability-auth-jwt`),
+    algorithm-confusion structurally impossible; RFC 4231 vector pinned.
+  - BETA-005-B (PR #1125): key loading/rotation hooks — `JwtKeyring`
+    with validated loading, overlap rotation, atomic refresh, ids-only
+    snapshots.
+  - BETA-005-C (PR #1126): expiry/audience/issuer checks — required
+    numeric exp, bounded skew, configured-expectation enforcement, 401
+    injectable clock.
+  - BETA-005-D (PR #1127): typed 401/403 RFC 9457 problems — total
+    mapping, WWW-Authenticate headers, 403-vs-401 distinction.
+  - BETA-005-E (PR #1128): no-secret-logging — enforcement sweep +
+    redaction/fingerprint affordances.
+  - BETA-005-V (PR #1129): verification closure; fresh full-gate run
+    reproduces.
+
+### Required evidence
+
+- **Security tests**: package total 50 pass across 5 files (profile
+  gates, keyring rotation, claims validation, problem mapping, no-
+  secret sweep) — re-run fresh on this branch.
+- **Reference docs**: package README (profile/rotation/claims/problems/
+  redaction sections) + `docs/reports/beta-005-*.md` per packet.
+- **W1/W2/W3 integration**: W1's JWT policy consumer uses the same
+  pinned HMAC primitives; policy `declares` 401 is the
+  contract-visible surface; full load runs are BETA-013/014 scope —
+  stated without overclaim.
+
+### Parent guardrail proofs
+
+1. **Invalid tokens fail closed** — every gate typed; no best-effort
+   decode; configured expectations cannot be bypassed by omission.
+2. **Algorithm confusion impossible** — single approved algorithm,
+   pre-signature gate, no key-type dispatch (tested across none/
+   variants/asymmetric/missing).
+3. **Auth policy error appears in Treaty contract** — declared 401 via
+   policy `declares`; RFC 9457 typed problem URIs documented.
+4. **Performance/caching documented** — O(token length) verification;
+   no implicit cache; bounded typed configuration everywhere.
+
+### Gate results (fresh on this branch)
+
+- `bun test packages/capability-auth-jwt` -> 50 pass / 0 fail
+- `cargo test -p velqu-runtime` -> 8 suites ok
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: BETA-005 flipped TODO -> **PASS**.
+- STATUS.md and TASK_INDEX.md updated to PASS (BETA-005-Z row).
