@@ -580,7 +580,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-004-Z](../tasks/08_public_beta/BETA-004-Z-package-evidence-for-implement-optional-first-party-postgres-capability.md) | P0 | evidence | PASS | BETA-004-V | Package evidence for Implement optional first-party Postgres capability |
 | [BETA-005-A](../tasks/08_public_beta/BETA-005-A-support-one-approved-jwt-algorithm-profile.md) | P0 | implement | PASS | M27-GATE, M25-GATE | Support one approved JWT algorithm/profile |
 | [BETA-005-B](../tasks/08_public_beta/BETA-005-B-key-loading-rotation-hooks.md) | P0 | implement | PASS | BETA-005-A | Key loading/rotation hooks |
-| [BETA-005-C](../tasks/08_public_beta/BETA-005-C-expiry-audience-issuer-checks.md) | P0 | implement | TODO | BETA-005-B | Expiry/audience/issuer checks |
+| [BETA-005-C](../tasks/08_public_beta/BETA-005-C-expiry-audience-issuer-checks.md) | P0 | implement | PASS | BETA-005-B | Expiry/audience/issuer checks |
 | [BETA-005-D](../tasks/08_public_beta/BETA-005-D-typed-401-403-problems.md) | P0 | implement | TODO | BETA-005-C | Typed 401/403 problems |
 | [BETA-005-E](../tasks/08_public_beta/BETA-005-E-no-secret-logging.md) | P0 | implement | TODO | BETA-005-D | No secret logging |
 | [BETA-005-V](../tasks/08_public_beta/BETA-005-V-verify-implement-jwt-auth-reference-package.md) | P0 | verify | TODO | BETA-005-A, BETA-005-B, BETA-005-C, BETA-005-D, BETA-005-E | Verify Implement JWT/auth reference package |
