@@ -1,7 +1,7 @@
 {
   "format": "velqu-benchmark-manifest-v2",
-  "generatedAt": "2026-09-03T17:57:49.967420Z",
-  "commit": "34c2ee91b340b54d8b0cc7176af2eb95902002c2",
+  "generatedAt": "2026-09-03T18:58:39.779168Z",
+  "commit": "a1fe908e0c49e8415f4ff042e4cd4794c0123af7",
   "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "environment": {
     "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.39",
@@ -19,7 +19,7 @@
   "artifacts": {
     "qRuntimeRelease": {
       "path": "target/release/velqu-runtime",
-      "sha256": "de762b6728ac8b7afc95384301b40ce5f3a3e9094e2dba9d003cf98facbb01e8"
+      "sha256": "55ff987f7eaf32e82a5b79615b410b224775b68a22410e26f1f6606b4ffee5e8"
     },
     "proofPack": {
       "path": "examples/proof/dist/app.qpack",

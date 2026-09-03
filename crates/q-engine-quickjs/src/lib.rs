@@ -172,6 +172,10 @@ pub struct QuickJsConfig {
     /// M4A-009-C: outbound fetch dialer; `None` leaves `fetch()` unwired
     /// (rejects — never a mock).
     pub fetch_dialer: Option<FetchDialerHandle>,
+    /// BETA-004-D: `runtime:postgres` query dialer; `None` leaves
+    /// `native.postgres.sql` unwired (rejects — never a mock, never a
+    /// silent JS reimplementation).
+    pub postgres_handle: Option<q_capability_postgres::PostgresQueryHandle>,
 }
 
 impl Default for QuickJsConfig {
@@ -188,6 +192,7 @@ impl Default for QuickJsConfig {
             defer_queue_capacity: 64,
             defer_deadline_ms: 100,
             fetch_dialer: None,
+            postgres_handle: None,
         }
     }
 }

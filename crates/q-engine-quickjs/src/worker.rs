@@ -59,6 +59,10 @@ pub(crate) enum WorkerMsg {
         op_id: u64,
         result: Result<String, String>,
     },
+    PostgresComplete {
+        op_id: u64,
+        result: Result<String, String>,
+    },
     QuerySettlementTableSize {
         reply: std::sync::mpsc::Sender<usize>,
     },
@@ -93,6 +97,7 @@ pub(crate) struct PendingOp {
 pub(crate) enum OpKind {
     Timer,
     Fetch,
+    Postgres,
 }
 
 /// M4A-009-C: JS-side resolve payload for a completed op.
@@ -107,6 +112,8 @@ pub(crate) enum OpCompletion {
     Timer(Result<u64, String>),
     /// fetch resolved with the wire JSON string
     Fetch(Result<String, String>),
+    /// postgres resolved with the rows JSON string (BETA-004-D)
+    Postgres(Result<String, String>),
     /// settlement/cancel path: reject with the canned aborted reason
     Aborted,
 }
@@ -274,6 +281,8 @@ pub(crate) struct WorkerShared {
     /// M4A-009-C: outbound fetch op accounting (see EngineStats)
     pub fetch_ops_started: AtomicU64,
     pub fetch_ops_completed: AtomicU64,
+    pub postgres_ops_started: AtomicU64,
+    pub postgres_ops_completed: AtomicU64,
     /// M4A-007-C: bounded-defer lifecycle metrics (see EngineStats)
     pub defers_admitted: AtomicU64,
     pub defers_rejected: AtomicU64,
@@ -317,6 +326,8 @@ impl WorkerShared {
             heap_used: AtomicU64::new(0),
             fetch_ops_started: AtomicU64::new(0),
             fetch_ops_completed: AtomicU64::new(0),
+            postgres_ops_started: AtomicU64::new(0),
+            postgres_ops_completed: AtomicU64::new(0),
             defers_admitted: AtomicU64::new(0),
             defers_rejected: AtomicU64::new(0),
             defer_drains: AtomicU64::new(0),
@@ -549,6 +560,7 @@ impl WorkerInner {
                 tokio_handle,
                 config.defer_queue_capacity,
                 config.fetch_dialer.clone(),
+                config.postgres_handle.clone(),
             )
             .map_err(|e| format!("natives failed: {e:?}"))?;
             // M26-004-D: embedded-prelude packs carry the prelude inside the
@@ -674,6 +686,31 @@ impl WorkerInner {
                     // cleanup (M2.2.1 terminal path).
                     if let Some((budget, phase)) =
                         self.complete_op(op_id, OpCompletion::Fetch(result))
+                    {
+                        let drain_res = self.drain_jobs_for(budget, phase);
+                        if matches!(drain_res.outcome, DrainOutcome::RuntimeQuarantined) {
+                            // quarantine already failed and settled the owner
+                        } else if drain_res.interrupted {
+                            if let Some(p) = self.pending.remove(&budget.invocation_id) {
+                                self.finish_timeout(budget.invocation_id, p);
+                            }
+                        }
+                    }
+                    if !self.pending.is_empty() {
+                        self.finish_resolved();
+                    }
+                    // chained continuations queued by settlements unwind scoped
+                    if self.rt.is_job_pending() && !self.pending.is_empty() {
+                        self.settle_background();
+                    }
+                }
+                WorkerMsg::PostgresComplete { op_id, result } => {
+                    // Mirror the FetchComplete continuation contract (BETA-004-D):
+                    // completion under the owning invocation; deadline/cancel
+                    // failures reject and the lease was already discarded by the
+                    // dialer (safe release = close).
+                    if let Some((budget, phase)) =
+                        self.complete_op(op_id, OpCompletion::Postgres(result))
                     {
                         let drain_res = self.drain_jobs_for(budget, phase);
                         if matches!(drain_res.outcome, DrainOutcome::RuntimeQuarantined) {
@@ -1332,10 +1369,13 @@ impl WorkerInner {
             generation: op.invocation_id,
         };
         let ok = match &completion {
-            OpCompletion::Timer(Ok(_)) | OpCompletion::Fetch(Ok(_)) => true,
-            OpCompletion::Timer(Err(_)) | OpCompletion::Fetch(Err(_)) | OpCompletion::Aborted => {
-                false
-            }
+            OpCompletion::Timer(Ok(_))
+            | OpCompletion::Fetch(Ok(_))
+            | OpCompletion::Postgres(Ok(_)) => true,
+            OpCompletion::Timer(Err(_))
+            | OpCompletion::Fetch(Err(_))
+            | OpCompletion::Postgres(Err(_))
+            | OpCompletion::Aborted => false,
         };
         if ok {
             let _ = op.op.settle(owner);
@@ -1354,6 +1394,11 @@ impl WorkerInner {
                     .fetch_ops_completed
                     .fetch_add(1, Ordering::Relaxed);
             }
+            OpKind::Postgres => {
+                self.shared
+                    .postgres_ops_completed
+                    .fetch_add(1, Ordering::Relaxed);
+            }
         }
         // Normalize the completion into (resolve value | reject reason).
         let outcome: Result<OpValue, String> = match completion {
@@ -1361,6 +1406,8 @@ impl WorkerInner {
             OpCompletion::Timer(Err(reason)) => Err(reason),
             OpCompletion::Fetch(Ok(json)) => Ok(OpValue::Str(json)),
             OpCompletion::Fetch(Err(reason)) => Err(reason),
+            OpCompletion::Postgres(Ok(json)) => Ok(OpValue::Str(json)),
+            OpCompletion::Postgres(Err(reason)) => Err(reason),
             OpCompletion::Aborted => Err("aborted: invocation settled".into()),
         };
         if outcome.is_err() {
@@ -2470,6 +2517,7 @@ fn meta_path_slice<'a>(m: &'a q_engine::RequestMeta, spec: &q_engine::ParamSpec)
         .unwrap_or_default()
 }
 
+#[allow(clippy::too_many_arguments)] // native-registration plumbing; mirrors the fetch bridge shape
 fn install_natives(
     ctx: &rquickjs::Ctx<'_>,
     store: Rc<RequestStore>,
@@ -2478,6 +2526,7 @@ fn install_natives(
     tokio_handle: tokio::runtime::Handle,
     defer_queue_capacity: usize,
     fetch_dialer: Option<crate::FetchDialerHandle>,
+    postgres_handle: Option<q_capability_postgres::PostgresQueryHandle>,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
 
@@ -3041,6 +3090,135 @@ fn install_natives(
         globals.set("__velquFetchStart", Function::new(ctx.clone(), f)?)?;
     }
 
+    // BETA-004-D: `runtime:postgres` query bridge. Installed ONLY when the
+    // host wired a pool — without one, `native.postgres.sql` rejects
+    // (fail closed, no mock). Same op registry / phase guards / owner
+    // cancellation as timer+fetch; deadline bounds acquire AND execution;
+    // the dialer discards (closes) a lease on any failure so a
+    // mid-flight connection is never reused.
+    if let Some(pg_handle) = postgres_handle {
+        let shared_pg = Arc::clone(&shared);
+        let ops2 = Arc::clone(&ops);
+        let tokio = tokio_handle.clone();
+        let f = move |ctx: rquickjs::Ctx,
+                      text: String,
+                      params_json: String,
+                      deadline_ms: f64|
+              -> rquickjs::Result<f64> {
+            match CURRENT_PHASE.with(|p| p.get()) {
+                ExecutionPhase::Invocation => {}
+                ExecutionPhase::Cleanup => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable during invocation cleanup",
+                    ));
+                }
+                ExecutionPhase::DeferredDrain => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable while deferred work drains",
+                    ));
+                }
+                ExecutionPhase::Shutdown => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operations are unavailable during shutdown",
+                    ));
+                }
+                ExecutionPhase::Idle => {
+                    return Err(rquickjs::Exception::throw_message(
+                        &ctx,
+                        "native operation started outside an invocation",
+                    ));
+                }
+            }
+            if !(deadline_ms.is_finite() && deadline_ms > 0.0 && deadline_ms <= 30_000.0) {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "postgres deadline must be within 1..=30000ms",
+                ));
+            }
+            let invocation_id = CURRENT_INVOCATION.with(|c| c.get());
+            let deadline = CURRENT_DEADLINE
+                .with(|c| c.get())
+                .unwrap_or_else(|| Instant::now() + ops2.job_watchdog);
+
+            let lifecycle = ops2.timer_lifecycle.lock().unwrap();
+            let native_op = match q_capabilities::NativeOp::start(
+                &lifecycle,
+                q_capabilities::OpOwner {
+                    slot: 0,
+                    generation: invocation_id,
+                },
+                q_capabilities::CancellationClass::Cancellable,
+                q_capabilities::MAX_OP_DEADLINE_MS,
+            ) {
+                Ok(op) => op,
+                Err(e) => {
+                    return Err(rquickjs::Exception::throw_message(&ctx, &e.to_string()));
+                }
+            };
+            drop(lifecycle);
+
+            let op_id = ops2.op_clock.fetch_add(1, Ordering::SeqCst);
+            if ops2.ops.lock().unwrap().len() >= ops2.op_cap {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "pending operation limit reached",
+                ));
+            }
+            let tx = WORKER_TX.with(|c| c.borrow().clone());
+            let Some(tx) = tx else {
+                return Err(rquickjs::Exception::throw_message(
+                    &ctx,
+                    "worker channel unavailable",
+                ));
+            };
+            shared_pg
+                .postgres_ops_started
+                .fetch_add(1, Ordering::Relaxed);
+            shared_pg.pending_ops.fetch_add(1, Ordering::Relaxed);
+
+            let state = Arc::new(AtomicU8::new(NativeTaskState::Running as u8));
+            let guard = TaskLivenessGuard {
+                shared: Arc::clone(&shared_pg),
+                state: Arc::clone(&state),
+            };
+            let task_state = Arc::clone(&state);
+            let dialer = Arc::clone(&pg_handle.0);
+            let task = tokio.spawn(async move {
+                let _guard = guard;
+                let result = dialer
+                    .query_json(text, params_json, deadline_ms as u64)
+                    .await;
+                if task_state
+                    .compare_exchange(
+                        NativeTaskState::Running as u8,
+                        NativeTaskState::Completed as u8,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
+                    let _ = tx.send(WorkerMsg::PostgresComplete { op_id, result });
+                }
+            });
+            ops2.ops.lock().unwrap().insert(
+                op_id,
+                PendingOp {
+                    invocation_id,
+                    deadline,
+                    abort_handle: task.abort_handle(),
+                    state,
+                    op: native_op,
+                    kind: OpKind::Postgres,
+                },
+            );
+            Ok(op_id as f64)
+        };
+        globals.set("__velquPostgresQuery", Function::new(ctx.clone(), f)?)?;
+    }
+
     // M27-004-B/C: structured console logging with redaction, bounds, and bounded async sink
     {
         let log_sink = Arc::clone(&ops.log_sink);
@@ -3577,7 +3755,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test URL constructor and properties
@@ -3617,7 +3795,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test TextEncoder encode
@@ -3699,7 +3877,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test AbortController basic abort & signal state
@@ -3755,7 +3933,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. ctx.signal is accessible and of type AbortSignal
@@ -3798,7 +3976,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Test crypto.getRandomValues fills array
@@ -3850,7 +4028,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Web Crypto SubtleCrypto is NOT implemented in M28; must be undefined (never a mock/stub)
@@ -3901,7 +4079,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. Headers case-insensitivity and mutation
@@ -4028,7 +4206,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // Verify constructor functions are present on globalThis without instantiating any objects
@@ -4079,7 +4257,7 @@ mod tests {
             ));
             let shared = Arc::new(WorkerShared::new());
             let handle = tokio_rt.handle().clone();
-            install_natives(&ctx, store, shared, ops, handle, 64, None).unwrap();
+            install_natives(&ctx, store, shared, ops, handle, 64, None, None).unwrap();
             ctx.eval::<(), _>(crate::prelude::PRELUDE).unwrap();
 
             // 1. The limit binding exposes the pinned policy constant.

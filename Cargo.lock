@@ -1283,6 +1283,7 @@ name = "q-capability-postgres"
 version = "0.1.0"
 dependencies = [
  "q-capabilities",
+ "serde_json",
  "tokio",
  "tokio-postgres",
 ]
@@ -1304,6 +1305,7 @@ dependencies = [
  "bytes",
  "q-bridge",
  "q-capabilities",
+ "q-capability-postgres",
  "q-engine",
  "rquickjs",
  "serde_json",
@@ -2085,6 +2087,7 @@ dependencies = [
  "libc",
  "q-bridge",
  "q-capabilities",
+ "q-capability-postgres",
  "q-engine",
  "q-engine-quickjs",
  "q-http",

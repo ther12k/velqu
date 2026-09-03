@@ -244,6 +244,34 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 q_capabilities::FetchPolicy::trusted_loopback_explicit(),
             ),
         )));
+        // BETA-004-D: link runtime:postgres only when the pack requires it.
+        // A required-but-unconfigured capability fails closed at startup
+        // (typed readiness error); a pack without the requirement never
+        // constructs a pool — zero dependency/init cost (BETA-004-A).
+        let postgres_required = pack
+            .capability_inventory
+            .as_ref()
+            .map(|inv| inv.iter().any(|e| e.id == "runtime:postgres"))
+            .unwrap_or(false);
+        let postgres_handle =
+            match (postgres_required, std::env::var("VELQU_DATABASE_URL")) {
+                (false, _) => None,
+                (true, Err(_)) => {
+                    let ready = serde_json::json!({
+                        "event": "ready",
+                        "ok": false,
+                        "error": "pack requires runtime:postgres but VELQU_DATABASE_URL is not configured",
+                    });
+                    eprintln!("{ready}");
+                    return 2;
+                }
+                (true, Ok(url)) => {
+                    Some(q_capability_postgres::pool_from_url(
+                        url,
+                        q_capability_postgres::PoolConfig::default_config(),
+                    ))
+                }
+            };
         let config = QuickJsConfig {
             request_slot_capacity: limits.max_queue.max(1),
             // M26-004-D: embedded-prelude bytecode skips host prelude eval;
@@ -252,6 +280,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 && !cfg.no_bytecode,
             profile,
             fetch_dialer,
+            postgres_handle,
             ..Default::default()
         };
         let mut engine =

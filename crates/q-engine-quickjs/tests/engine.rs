@@ -4434,3 +4434,176 @@ async fn failed_response_is_handed_off_before_defer_drain() {
     assert_eq!(stats.defer_drains_interrupted, 1);
     eng.shutdown();
 }
+
+// ---------------------------------------------------------------- BETA-004-D: runtime:postgres
+
+/// Mock dialer: parses the params JSON the JS side sent and echoes the
+/// first bound parameter back as a row — proves the wire path end to end
+/// without a database.
+#[derive(Clone)]
+struct EchoDialer;
+
+impl q_capability_postgres::PostgresQueryDialer for EchoDialer {
+    fn query_json(
+        &self,
+        text: String,
+        params_json: String,
+        deadline_ms: u64,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>> {
+        Box::pin(async move {
+            let params: Vec<serde_json::Value> =
+                serde_json::from_str(&params_json).map_err(|e| format!("bad params json: {e}"))?;
+            if text.is_empty() {
+                return Err("empty statement".into());
+            }
+            Ok(format!(
+                "[{{\"bound\": {}, \"text_len\": {}, \"deadline\": {}}}]",
+                params.first().cloned().unwrap_or(serde_json::Value::Null),
+                text.len(),
+                deadline_ms
+            ))
+        })
+    }
+}
+
+fn pg_engine(handle: Option<q_capability_postgres::PostgresQueryHandle>) -> QuickJsEngine {
+    QuickJsEngine::spawn(
+        QuickJsConfig {
+            postgres_handle: handle,
+            ..Default::default()
+        },
+        tokio::runtime::Handle::current(),
+        Arc::new(IdentityMapper),
+    )
+}
+
+const PG_BUNDLE: &str = r#"
+function pg_query(ctx) {
+  return ctx.native.postgres
+    .sql("SELECT id, qty FROM t WHERE id = $1", [ctx.query.id], 2000)
+    .then(function (rows) { return { first: rows[0] || null }; });
+}
+function pg_nocall(ctx) {
+  // never touches the dialer: deadline validation happens at the native
+  // boundary, before any I/O
+  return ctx.native.postgres.sql("SELECT 1", [], 0).then(function () {
+    return { unreachable: true };
+  });
+}
+function pg_plain(ctx) { return "plain"; }
+function pg_debug(ctx) {
+  return { t: typeof globalThis.__velquPostgresQuery, cap: typeof ctx.native.postgres };
+}
+__velquRegister("pg.query", pg_query);
+__velquRegister("pg.nocall", pg_nocall);
+__velquRegister("pg.plain", pg_plain);
+__velquRegister("pg.debug", pg_debug);
+"#;
+
+fn load_pg(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> {
+    let mut table = std::collections::BTreeMap::new();
+    table.insert("pg.debug".to_string(), String::new());
+    table.insert("pg.query".to_string(), String::new());
+    table.insert("pg.nocall".to_string(), String::new());
+    table.insert("pg.plain".to_string(), String::new());
+    eng.load(
+        PG_BUNDLE,
+        None,
+        EngineLoadPlan::Legacy {
+            expected_handlers: table,
+        },
+    )
+}
+
+#[tokio::test]
+async fn postgres_sql_resolves_rows_through_the_dialer() {
+    let mut eng = pg_engine(Some(q_capability_postgres::PostgresQueryHandle(
+        std::sync::Arc::new(EchoDialer),
+    )));
+    load_pg(&mut eng).unwrap();
+
+    let dbg = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta::default()),
+        ..spec(799, "pg.debug", &[200], 5000)
+    };
+    let dbg_out = run(&mut eng, dbg).await;
+    println!("DEBUG pg.debug -> {dbg_out:?}");
+
+    let s = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta {
+            query: vec![("id".into(), "usr_1".into())],
+            ..Default::default()
+        }),
+        ..spec(800, "pg.query", &[200], 5000)
+    };
+    let out = run(&mut eng, s).await;
+    assert!(
+        matches!(out, Outcome::Response { status: 200, .. }),
+        "parameterized sql must resolve, got {out:?}"
+    );
+    if let Outcome::Response { body, .. } = out {
+        let body = format!("{body:?}");
+        assert!(
+            body.contains("usr_1"),
+            "bound param echoed into row: {body}"
+        );
+        assert!(
+            body.contains("2000"),
+            "deadline carried to the dialer: {body}"
+        );
+    }
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn postgres_sql_fails_closed_without_a_linked_pool() {
+    // no handle wired: the prelude sql must throw the typed unavailability
+    // error — never a mock 200, never a silent fallback
+    let mut eng = pg_engine(None);
+    load_pg(&mut eng).unwrap();
+    let s = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta::default()),
+        ..spec(801, "pg.query", &[200], 5000)
+    };
+    let out = run(&mut eng, s).await;
+    assert!(
+        matches!(out, Outcome::EngineFailure { .. }),
+        "unlinked postgres must fail the invocation, got {out:?}"
+    );
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn postgres_deadline_out_of_bounds_rejected_at_the_native_boundary() {
+    let mut eng = pg_engine(Some(q_capability_postgres::PostgresQueryHandle(
+        std::sync::Arc::new(EchoDialer),
+    )));
+    load_pg(&mut eng).unwrap();
+    let s = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta::default()),
+        ..spec(802, "pg.nocall", &[200], 5000)
+    };
+    let out = run(&mut eng, s).await;
+    assert!(
+        matches!(out, Outcome::EngineFailure { .. }),
+        "deadline 0 must be a typed native rejection before any I/O, got {out:?}"
+    );
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn postgres_native_ops_start_only_inside_invocations() {
+    // handler runs during Cleanup (deferred reaction): starting a postgres
+    // op there must be refused — second-generation ops are ownerless
+    let mut eng = pg_engine(Some(q_capability_postgres::PostgresQueryHandle(
+        std::sync::Arc::new(EchoDialer),
+    )));
+    load_pg(&mut eng).unwrap();
+    let s = q_engine::InvocationSpec {
+        request: Some(q_bridge::RequestMeta::default()),
+        ..spec(803, "pg.plain", &[200], 5000)
+    };
+    let out = run(&mut eng, s).await;
+    assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    eng.shutdown();
+}
