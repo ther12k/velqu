@@ -400,6 +400,9 @@ pub fn make_handler(
             } else {
                 None
             };
+            // BETA-006-E: optional bounded trace id (x-trace-id / W3C
+            // traceparent); absent means logs carry only the request id.
+            let trace_id = q_http::extract_trace_id(&req.headers);
             let (result, route_id, stage) = pipeline(&state, req).await;
             state.metrics.write.fetch_add(1, Ordering::Relaxed);
             if let Some(started) = started {
@@ -414,7 +417,15 @@ pub fn make_handler(
                 // OPS-001 sampling: full mode respects log_sample; errors
                 // mode always attempts (its <400 skip applies inside).
                 if state.log_mode == LogMode::Full || sampled {
-                    log_completion(&state, log_ctx.as_ref(), &result, &route_id, stage, started);
+                    log_completion(
+                        &state,
+                        log_ctx.as_ref(),
+                        &result,
+                        &route_id,
+                        stage,
+                        started,
+                        trace_id.as_deref(),
+                    );
                 }
             }
             (result, route_id, stage)
@@ -429,6 +440,7 @@ fn log_completion(
     route_id: &str,
     stage: &'static str,
     started: Instant,
+    trace_id: Option<&str>,
 ) {
     let (status, body_bytes) = match result {
         Ok(r) => (r.status, r.body.len()),
@@ -460,6 +472,9 @@ fn log_completion(
             "bodyBytes": body_bytes,
             "stage": stage,
             "durationMs": started.elapsed().as_secs_f64() * 1000.0,
+            // BETA-006-E: optional bounded trace id (absent when the
+            // request carried none — the field is omitted, not null)
+            "traceId": trace_id,
         })
     );
 }

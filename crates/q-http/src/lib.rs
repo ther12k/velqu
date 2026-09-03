@@ -75,6 +75,41 @@ impl std::fmt::Debug for NativeRequest {
     }
 }
 
+/// BETA-006-E: bounded trace-id extraction. Accepts `x-trace-id` or a
+/// W3C `traceparent` header; validates shape (printable ASCII, no
+/// whitespace/controls, <=128 chars) and returns a bounded id for the
+/// structured completion log — or None when absent/invalid. Trace ids
+/// are optional by design: absent means the log carries only the
+/// request id.
+pub const TRACE_ID_LIMIT: usize = 128;
+
+pub fn extract_trace_id(headers: &hyper::HeaderMap) -> Option<String> {
+    let raw = headers
+        .get("x-trace-id")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .or_else(|| {
+            headers
+                .get("traceparent")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|tp| {
+                    // W3C traceparent: version-traceid-spanid-flags
+                    tp.split('-').nth(1).map(|s| s.to_string())
+                })
+        })?;
+    let id = raw.trim();
+    if id.is_empty() || id.len() > TRACE_ID_LIMIT {
+        return None;
+    }
+    if !id
+        .bytes()
+        .all(|b| b.is_ascii_graphic() && b != b'{' && b != b'}')
+    {
+        return None;
+    }
+    Some(id.to_string())
+}
+
 /// Materialize header pairs (lowercased keys) for the bridge's lazy JS
 /// surface. Bounded by the admission header limits already enforced.
 pub fn materialize_headers(map: &hyper::HeaderMap) -> Vec<(String, String)> {
@@ -616,5 +651,56 @@ mod tests {
         let pairs = materialize_headers(&map);
         assert!(pairs.contains(&("content-type".to_string(), "application/json".to_string())));
         assert!(pairs.contains(&("x-custom".to_string(), "v".to_string())));
+    }
+}
+
+#[cfg(test)]
+mod trace_id_tests {
+    use super::*;
+
+    fn headers(list: &[(&str, &str)]) -> hyper::HeaderMap {
+        let mut map = hyper::HeaderMap::new();
+        for (k, v) in list {
+            map.insert(
+                hyper::header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
+                hyper::header::HeaderValue::from_str(v).unwrap(),
+            );
+        }
+        map
+    }
+
+    #[test]
+    fn extracts_x_trace_id_and_w3c_traceparent_id() {
+        let h = headers(&[("x-trace-id", "abc-123")]);
+        assert_eq!(extract_trace_id(&h).as_deref(), Some("abc-123"));
+
+        let h = headers(&[(
+            "traceparent",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        )]);
+        assert_eq!(
+            extract_trace_id(&h).as_deref(),
+            Some("4bf92f3577b34da6a3ce929d0e0e4736")
+        );
+    }
+
+    #[test]
+    fn absent_headers_return_none() {
+        let h = headers(&[]);
+        assert_eq!(extract_trace_id(&h), None);
+    }
+
+    #[test]
+    fn rejects_control_chars_oversized_and_empty_ids() {
+        let h = headers(&[("x-trace-id", "bad id")]); // space: non-graphic
+        assert_eq!(extract_trace_id(&h), None);
+        let h = headers(&[("x-trace-id", "")]);
+        assert_eq!(extract_trace_id(&h), None);
+        let oversized = "a".repeat(129);
+        let h = headers(&[("x-trace-id", oversized.as_str())]);
+        assert_eq!(extract_trace_id(&h), None);
+        let max_ok = "a".repeat(128);
+        let h = headers(&[("x-trace-id", max_ok.as_str())]);
+        assert_eq!(extract_trace_id(&h).as_deref(), Some(max_ok.as_str()));
     }
 }
