@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -124,3 +124,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-V) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-v (squash-merged; see git log for final hash)
+- Closes: #488
+
+### Acceptance-criterion mapping
+
+1. **Runs entirely on actual runtime** — all proof routes, feature modules
+   (items, auth, upstream, ops), and policy checks run on `velqu-runtime`
+   (Rust + QuickJS) via `runtimeTreaty` over real HTTP.
+2. **No hidden Bun production path** — production artifacts are compiled
+   `app.qpack` loaded by the Rust host; Bun is only used for dev tooling
+   and test orchestration.
+3. **All error/status contracts declared** — every route declares exact status
+   and problem schemas (e.g. 200/201/401/404/502); undeclared statuses fail closed.
+4. **Load and failure scenarios pass** — validated across pagination, tampered/expired
+   tokens, upstream gateway errors (502), body validation errors (422), and
+   clean graceful SIGTERM shutdown with zero leaks.
+
+### Evidence
+
+- `cargo test -p q-engine-quickjs` → PASS (113 passed)
+- `cargo test -p q-schema-runtime` → PASS (58 passed)
+- `bun test` → **326 pass / 0 fail (54 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check`, workspace clippy `-D warnings` → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Changed files
+
+- `docs/codex-spark-beta/tasks/07_m4a_developer_preview/M4A-009-V-verify-build-realistic-private-alpha-proof-service.md`
+
+### Disclosures
+
+- Verification-only packet; no production runtime behavior changes.
+- Standing: CI `verify` workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR.

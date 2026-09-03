@@ -538,7 +538,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-009-C](../tasks/07_m4a_developer_preview/M4A-009-C-controlled-upstream.md) | P0 | implement | PASS | M4A-009-B | Controlled upstream |
 | [M4A-009-D](../tasks/07_m4a_developer_preview/M4A-009-D-metrics-readiness-shutdown.md) | P0 | implement | PASS | M4A-009-C | Metrics/readiness/shutdown |
 | [M4A-009-E](../tasks/07_m4a_developer_preview/M4A-009-E-treaty-client.md) | P0 | implement | PASS | M4A-009-D | Treaty client |
-| [M4A-009-V](../tasks/07_m4a_developer_preview/M4A-009-V-verify-build-realistic-private-alpha-proof-service.md) | P0 | verify | TODO | M4A-009-A, M4A-009-B, M4A-009-C, M4A-009-D, M4A-009-E | Verify Build realistic private-alpha proof service |
+| [M4A-009-V](../tasks/07_m4a_developer_preview/M4A-009-V-verify-build-realistic-private-alpha-proof-service.md) | P0 | verify | PASS | M4A-009-A, M4A-009-B, M4A-009-C, M4A-009-D, M4A-009-E | Verify Build realistic private-alpha proof service |
 | [M4A-009-Z](../tasks/07_m4a_developer_preview/M4A-009-Z-package-evidence-for-build-realistic-private-alpha-proof-service.md) | P0 | evidence | TODO | M4A-009-V | Package evidence for Build realistic private-alpha proof service |
 | [M4A-010-A](../tasks/07_m4a_developer_preview/M4A-010-A-provide-clean-install-packet.md) | P1 | implement | TODO | M4A-003-Z, M4A-008-Z, M4A-009-Z | Provide clean install packet |
 | [M4A-010-B](../tasks/07_m4a_developer_preview/M4A-010-B-collect-task-based-feedback.md) | P1 | implement | TODO | M4A-010-A | Collect task-based feedback |
