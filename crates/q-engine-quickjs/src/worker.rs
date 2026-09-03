@@ -350,6 +350,8 @@ impl WorkerShared {
             settlement_scans: self.settlement_scans.load(Ordering::Relaxed),
             timer_ops_started: self.timer_ops_started.load(Ordering::Relaxed),
             timer_ops_completed: self.timer_ops_completed.load(Ordering::Relaxed),
+            postgres_ops_started: self.postgres_ops_started.load(Ordering::Relaxed),
+            postgres_ops_completed: self.postgres_ops_completed.load(Ordering::Relaxed),
             pending_ops: self.pending_ops.load(Ordering::Relaxed),
             native_tasks_started: self.native_tasks_started.load(Ordering::Relaxed),
             native_tasks_alive: self.native_tasks_alive.load(Ordering::Relaxed),

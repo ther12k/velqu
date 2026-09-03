@@ -31,7 +31,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-pub use dialer::{parse_params_json, pool_from_url, PostgresQueryDialer, PostgresQueryHandle};
+pub use dialer::{
+    parse_params_json, pool_config_from_lookup, pool_from_url, pool_from_url_and_env,
+    PostgresQueryDialer, PostgresQueryHandle, ENV_POOL_CONNECT_TIMEOUT_MS,
+    ENV_POOL_IDLE_TIMEOUT_MS, ENV_POOL_MAX,
+};
 pub use executor::ClientExecutor;
 pub use query::{
     validate_deadline, validate_query, QueryError, QueryExecutor, SqlParam, SqlRow, SqlValue,
@@ -229,12 +233,44 @@ struct PoolState<C> {
     shutting_down: bool,
 }
 
+/// Observability counters (BETA-004-E). Monotonic; snapshot via
+/// [`LazyPool::counters`].
+#[derive(Debug, Default)]
+pub struct PoolCounters {
+    pub acquires_ok: AtomicU64,
+    pub reused: AtomicU64,
+    pub created: AtomicU64,
+    pub discarded_stale: AtomicU64,
+    pub discarded_dead: AtomicU64,
+    pub discarded_error: AtomicU64,
+    pub at_capacity: AtomicU64,
+    pub connect_timeouts: AtomicU64,
+    pub connect_rejected: AtomicU64,
+    pub shutdown_refusals: AtomicU64,
+}
+
+/// Copyable snapshot of [`PoolCounters`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PoolCountersSnapshot {
+    pub acquires_ok: u64,
+    pub reused: u64,
+    pub created: u64,
+    pub discarded_stale: u64,
+    pub discarded_dead: u64,
+    pub discarded_error: u64,
+    pub at_capacity: u64,
+    pub connect_timeouts: u64,
+    pub connect_rejected: u64,
+    pub shutdown_refusals: u64,
+}
+
 struct PoolInner<F: Connector> {
     connector: Arc<F>,
     config: PoolConfig,
     permits: Arc<Semaphore>,
     state: Mutex<PoolState<F::Conn>>,
     connects: AtomicU64,
+    counters: PoolCounters,
 }
 
 /// Lazy, bounded pool. Cheap to clone; construction performs no I/O.
@@ -274,6 +310,7 @@ impl<F: Connector> LazyPool<F> {
                     shutting_down: false,
                 }),
                 connects: AtomicU64::new(0),
+                counters: PoolCounters::default(),
             }),
         }
     }
@@ -297,6 +334,23 @@ impl<F: Connector> LazyPool<F> {
         st.shutting_down = true;
     }
 
+    /// Observability counters snapshot (BETA-004-E). Never blocks.
+    pub fn counters(&self) -> PoolCountersSnapshot {
+        let c = &self.inner.counters;
+        PoolCountersSnapshot {
+            acquires_ok: c.acquires_ok.load(Ordering::Relaxed),
+            reused: c.reused.load(Ordering::Relaxed),
+            created: c.created.load(Ordering::Relaxed),
+            discarded_stale: c.discarded_stale.load(Ordering::Relaxed),
+            discarded_dead: c.discarded_dead.load(Ordering::Relaxed),
+            discarded_error: c.discarded_error.load(Ordering::Relaxed),
+            at_capacity: c.at_capacity.load(Ordering::Relaxed),
+            connect_timeouts: c.connect_timeouts.load(Ordering::Relaxed),
+            connect_rejected: c.connect_rejected.load(Ordering::Relaxed),
+            shutdown_refusals: c.shutdown_refusals.load(Ordering::Relaxed),
+        }
+    }
+
     /// Acquire a connection, lazily creating one within the pool
     /// ceiling. `wait_ms` bounds both the capacity wait and the
     /// connect itself; 0 is rejected up front (fail closed, not
@@ -310,6 +364,10 @@ impl<F: Connector> LazyPool<F> {
         {
             let st = self.inner.state.lock().expect("pool state mutex");
             if st.shutting_down {
+                self.inner
+                    .counters
+                    .shutdown_refusals
+                    .fetch_add(1, Ordering::Relaxed);
                 return Err(PoolError::ShuttingDown);
             }
         }
@@ -323,10 +381,14 @@ impl<F: Connector> LazyPool<F> {
             Ok(Ok(permit)) => permit,
             Ok(Err(_)) => return Err(PoolError::ShuttingDown),
             Err(_) => {
+                self.inner
+                    .counters
+                    .at_capacity
+                    .fetch_add(1, Ordering::Relaxed);
                 return Err(PoolError::AtCapacity {
                     max: self.inner.config.max_connections,
                     waited_ms: waited.elapsed().as_millis() as u64,
-                })
+                });
             }
         };
 
@@ -355,15 +417,31 @@ impl<F: Connector> LazyPool<F> {
                             && !idle.conn.is_closed()
                         {
                             st.in_use += 1;
+                            self.inner.counters.reused.fetch_add(1, Ordering::Relaxed);
                             break Some(idle.conn);
                         }
                         // stale or dead: drop it and keep scanning
+                        if idle.conn.is_closed() {
+                            self.inner
+                                .counters
+                                .discarded_dead
+                                .fetch_add(1, Ordering::Relaxed);
+                        } else {
+                            self.inner
+                                .counters
+                                .discarded_stale
+                                .fetch_add(1, Ordering::Relaxed);
+                        }
                     }
                     None => break None,
                 }
             }
         };
         if let Some(conn) = live_idle {
+            self.inner
+                .counters
+                .acquires_ok
+                .fetch_add(1, Ordering::Relaxed);
             return Ok(LeasedConn {
                 conn: Some(conn),
                 _permit: permit,
@@ -373,12 +451,27 @@ impl<F: Connector> LazyPool<F> {
         let connect = self.inner.connector.connect();
         let conn = match tokio::time::timeout(Duration::from_millis(wait_ms), connect).await {
             Ok(Ok(conn)) => conn,
-            Ok(Err(e)) => return Err(e),
+            Ok(Err(e)) => {
+                self.inner
+                    .counters
+                    .connect_rejected
+                    .fetch_add(1, Ordering::Relaxed);
+                return Err(e);
+            }
             Err(_) => {
+                self.inner
+                    .counters
+                    .connect_timeouts
+                    .fetch_add(1, Ordering::Relaxed);
                 return Err(PoolError::ConnectTimeout { ms: wait_ms });
             }
         };
         self.inner.connects.fetch_add(1, Ordering::Relaxed);
+        self.inner.counters.created.fetch_add(1, Ordering::Relaxed);
+        self.inner
+            .counters
+            .acquires_ok
+            .fetch_add(1, Ordering::Relaxed);
         let mut st = self.inner.state.lock().expect("pool state mutex");
         st.created_total += 1;
         st.in_use += 1;
@@ -444,6 +537,11 @@ impl<F: Connector> Drop for PooledConnection<F> {
                         idle_since: Instant::now(),
                     });
                 }
+            } else if self.poisoned {
+                self.pool
+                    .counters
+                    .discarded_error
+                    .fetch_add(1, Ordering::Relaxed);
             }
             // dropping `leased` releases the permit; under shutdown the
             // connection itself is dropped (closed)
@@ -756,5 +854,55 @@ mod tests {
     fn missing_url_is_typed() {
         let err = PoolError::MissingDatabaseUrl;
         assert!(err.to_string().contains("URL is required"));
+    }
+
+    #[tokio::test]
+    async fn counters_track_reuse_created_and_capacity_rejects() {
+        let connector = MockConnector::new();
+        let pool = LazyPool::with_connector(connector, PoolConfig::new(2, 5_000, 30_000).unwrap());
+        {
+            let _c = pool.acquire(1_000).await.unwrap();
+        }
+        {
+            let _c = pool.acquire(1_000).await.unwrap();
+        }
+        // hold both slots; the third acquire must fail typed at capacity
+        let held1 = pool.acquire(1_000).await.unwrap();
+        let held2 = pool.acquire(1_000).await.unwrap();
+        let err = pool.acquire(50).await.unwrap_err();
+        assert!(matches!(err, PoolError::AtCapacity { max: 2, .. }));
+        let c = pool.counters();
+        assert_eq!((c.created, c.reused), (2, 2));
+        assert_eq!(c.acquires_ok, 4);
+        assert_eq!(c.at_capacity, 1);
+        drop(held1);
+        drop(held2);
+        pool.begin_shutdown();
+        let err = pool.acquire(100).await.unwrap_err();
+        assert!(matches!(err, PoolError::ShuttingDown));
+        assert_eq!(pool.counters().shutdown_refusals, 1);
+    }
+
+    #[tokio::test]
+    async fn counters_track_timeout_and_rejection() {
+        let pool =
+            LazyPool::with_connector(MockConnector::with_delay(500), PoolConfig::default_config());
+        assert!(pool.acquire(30).await.is_err());
+        assert_eq!(pool.counters().connect_timeouts, 1);
+
+        let pool = LazyPool::with_connector(MockConnector::failing(), PoolConfig::default_config());
+        assert!(pool.acquire(1_000).await.is_err());
+        assert_eq!(pool.counters().connect_rejected, 1);
+    }
+
+    #[tokio::test]
+    async fn counters_track_discarded_error_leases() {
+        let connector = MockConnector::new();
+        let pool = LazyPool::with_connector(connector, PoolConfig::default_config());
+        let mut conn = pool.acquire(1_000).await.unwrap();
+        conn.discard();
+        drop(conn);
+        assert_eq!(pool.counters().discarded_error, 1);
+        assert_eq!(pool.stats().idle, 0);
     }
 }

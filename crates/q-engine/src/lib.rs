@@ -278,6 +278,9 @@ pub struct EngineStats {
     pub settlement_scans: u64,
     pub timer_ops_started: u64,
     pub timer_ops_completed: u64,
+    /// BETA-004-E: runtime:postgres op accounting
+    pub postgres_ops_started: u64,
+    pub postgres_ops_completed: u64,
     /// Native async operations alive right now (started, not yet completed)
     pub pending_ops: u64,
     /// M2.2.1-r3/r4: physical Tokio task accounting (separate from logical ops —
