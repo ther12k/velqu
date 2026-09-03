@@ -107,7 +107,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | BETA-001 | P1 | PASS | G0-GATE | BETA | Make the real-world benchmark harness executable |
 | BETA-002 | P1 | PASS | BETA-001 | BETA | Implement matched competitor candidates |
 | BETA-003 | P1 | PASS | BETA-001, M28-GATE, M3-GATE | BETA | Run controlled I/O and CPU/JIT crossover suites |
-| BETA-004 | P0 | TODO | M27-GATE, BETA-001 | BETA | Implement optional first-party Postgres capability |
+| BETA-004 | P0 | PASS | M27-GATE, BETA-001 | BETA | Implement optional first-party Postgres capability |
 | BETA-005 | P0 | TODO | M27-GATE, M25-GATE | BETA | Implement JWT/auth reference package |
 | BETA-006 | P0 | TODO | M3-GATE, M28-GATE | BETA | Implement beta observability baseline |
 | BETA-007 | P0 | TODO | M27-GATE | BETA | Implement configuration and secret handling |
