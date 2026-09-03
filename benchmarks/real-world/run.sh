@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Real-world benchmark one-command harness (BETA-001-A).
 #
-#   ./run.sh            prepare -> smoke -> report
+#   ./run.sh            prepare -> smoke -> contracts
 #   ./run.sh prepare    compose up + deterministic dataset reset
 #   ./run.sh smoke      2s load-gen smoke against the controlled upstream,
 #                       result-schema validation, report generation
+#   ./run.sh contracts  boot every candidate and verify its HTTP responses
+#                       against the matched contract fixtures (BETA-002-C)
 #
-# Requires docker with the compose plugin. Fails fast and honestly when
-# prerequisites are missing; no hidden fallbacks.
+# Requires docker with the compose plugin (prepare) and node on PATH
+# (contracts/fastify). Fails fast and honestly when prerequisites are
+# missing; no hidden fallbacks.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -76,6 +79,37 @@ cmd_smoke() {
   trap - EXIT
 }
 
+cmd_contracts() {
+  local out_dir="../raw/real-world/contracts"
+  rm -rf "$out_dir"
+  mkdir -p "$out_dir"
+
+  echo "== real-world: starting controlled upstream on :$UPSTREAM_PORT =="
+  PORT="$UPSTREAM_PORT" bun upstream.ts >"$out_dir/upstream.log" 2>&1 &
+  UPSTREAM_PID=$!
+  trap 'if [ -n "${UPSTREAM_PID:-}" ]; then kill "$UPSTREAM_PID" 2>/dev/null || true; fi' EXIT
+
+  local ready=0
+  for _ in $(seq 1 100); do
+    if curl -fsS "http://127.0.0.1:$UPSTREAM_PORT/health" >/dev/null 2>&1; then ready=1; break; fi
+    sleep 0.1
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "run.sh: controlled upstream failed to become ready" >&2
+    cat "$out_dir/upstream.log" >&2 || true
+    exit 1
+  fi
+
+  echo "== real-world: candidate contract-response verification (BETA-002-C) =="
+  bun verify-contract.ts \
+    --upstream-url "http://127.0.0.1:$UPSTREAM_PORT" \
+    --out "$out_dir/contract-verification.md"
+
+  kill "$UPSTREAM_PID" 2>/dev/null || true
+  UPSTREAM_PID=""
+  trap - EXIT
+}
+
 cmd_audit() {
   local runs="${RUNS:?RUNS=dirA,dirB,... is required (one summary.json per candidate)}"
   echo "== real-world: fairness audit =="
@@ -85,7 +119,8 @@ cmd_audit() {
 case "${1:-all}" in
   prepare) cmd_prepare ;;
   smoke) cmd_smoke ;;
+  contracts) cmd_contracts ;;
   audit) cmd_audit ;;
-  all) cmd_prepare; cmd_smoke ;;
-  *) echo "usage: ./run.sh [prepare|smoke|audit|all]; audit needs RUNS=dirA,dirB,..." >&2; exit 2 ;;
+  all) cmd_prepare; cmd_smoke; cmd_contracts ;;
+  *) echo "usage: ./run.sh [prepare|smoke|contracts|audit|all]; audit needs RUNS=dirA,dirB,..." >&2; exit 2 ;;
 esac

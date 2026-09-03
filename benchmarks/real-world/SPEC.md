@@ -33,6 +33,17 @@ This suite measures real-world backend API performance across frameworks under r
 3. **Hono (Bun)**: Hono on Bun runtime with native fetch / connection pooling
 4. **Fastify (Node.js)**: Fastify on Node.js 22 LTS with pg connection pool
 
+## Contract-Response Verification (gate before timing)
+
+Before any load run, every candidate must pass `verify-contract.ts`
+(`./run.sh contracts`): the verifier boots each candidate against the
+controlled upstream and checks an 18-fixture matrix (W1 lookup + 404/401s,
+W2 order + 400/409/401s, W3 exact paginated body, W4 io/mixed/fanout +
+400/504/502, unknown-route 404) against expected responses computed from the
+shared matched contract. Only candidates that answer every fixture with the
+same status and byte-equivalent JSON are semantically equivalent and may be
+compared.
+
 ## Metrics Tracked
 
 - **Throughput**: Requests per second (RPS) at concurrency 1, 10, 50, 200

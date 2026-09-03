@@ -129,7 +129,7 @@ const server = Bun.serve({
       });
     }
 
-    return Response.json({ error: "not found", path: url.pathname }, { status: 404 });
+    return Response.json({ error: "not found" }, { status: 404 });
   },
 });
 console.log(JSON.stringify({ event: "candidate.ready", candidate: "bun-fetch", port: server.port }));
