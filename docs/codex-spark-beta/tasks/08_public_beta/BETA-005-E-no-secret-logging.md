@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -113,3 +113,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-E) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-e (squash-merged; see git log for final hash)
+- Closes: #528
+
+### Changed files
+- `packages/capability-auth-jwt/src/redaction.ts` (new): logging
+  affordances — `redactToken` / `redactAuthorizationHeader`
+  (constant-shape markers: segment counts and byte lengths only, no
+  prefixes/suffixes/partial material), `scrub(text, secrets)`
+  (defense-in-depth scrubbing), `secretFingerprint` (keyed, stable,
+  non-reversible 12-hex id).
+- `packages/capability-auth-jwt/src/redaction.test.ts` (new): the
+  enforcement sweep — every typed failure (profile gates, problems,
+  keyring rejections/snapshots) constructed with a distinctive secret
+  and asserted free of secret/token material; marker shapes; scrub
+  completeness; fingerprint properties. 6 tests.
+- `packages/capability-auth-jwt/README.md`: no-secret-logging section.
+- `docs/reports/beta-005-e-no-secret-logging.md` (new).
+
+### Required evidence
+
+- **Security tests**: enforcement sweep + helper tests; package total
+  50 pass.
+- **Reference docs**: README section + report.
+- **W1/W2/W3 integration**: logging affordances are consumer-facing;
+  no load-run claims.
+
+### Commands
+
+- `bun test packages/capability-auth-jwt` -> 50 pass / 0 fail
+- `bun test` -> 434 pass / 0 fail (67 files)
+- typecheck / fmt / clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Invalid tokens fail closed**: unchanged; sweep proves failures
+  carry no material.
+- **Algorithm confusion impossible**: unchanged gates.
+- **Auth policy error appears in Treaty contract**: problem documents
+  remain the contract-visible surface, now swept for material.
+- **Performance/caching documented**: redaction helpers are linear
+  over the line; no cache.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
