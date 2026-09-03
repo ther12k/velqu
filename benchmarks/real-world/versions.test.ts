@@ -51,4 +51,18 @@ describe("real-world version pins", () => {
     const baseline = JSON.parse(readFileSync(import.meta.dir + "/../../baselines/elysia2/package.json", "utf8"));
     expect(versions.candidates.elysia).toBe(baseline.dependencies.elysia);
   });
+
+  test("BETA-002-B: registry pins match candidates/package.json exactly", () => {
+    const pkg = JSON.parse(readFileSync(import.meta.dir + "/candidates/package.json", "utf8"));
+    for (const name of ["elysia", "hono", "fastify"] as const) {
+      expect(versions.candidates[name]).toBe(pkg.dependencies[name]);
+    }
+  });
+
+  test("BETA-002-B: registry pins match the frozen bun.lock exactly", () => {
+    const lock = readFileSync(import.meta.dir + "/candidates/bun.lock", "utf8");
+    for (const name of ["elysia", "hono", "fastify"] as const) {
+      expect(lock).toContain(`"${name}@${versions.candidates[name]}"`);
+    }
+  });
 });
