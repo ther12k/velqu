@@ -18,6 +18,10 @@
 //! semantics at the engine boundary (D), and pool-limit policy and
 //! observability (E).
 
+pub mod executor;
+pub mod query;
+pub mod transaction;
+
 use std::collections::VecDeque;
 use std::fmt;
 use std::future::Future;
@@ -25,6 +29,13 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+pub use executor::ClientExecutor;
+pub use query::{
+    validate_deadline, validate_query, QueryError, QueryExecutor, SqlParam, SqlRow, SqlValue,
+    DEFAULT_QUERY_DEADLINE_MS, MAX_PARAM_COUNT, MAX_QUERY_DEADLINE_MS, MAX_QUERY_TEXT_LEN,
+};
+pub use transaction::{run_transaction, Outcome};
 
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_postgres::Client;
