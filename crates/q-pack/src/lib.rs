@@ -4991,7 +4991,12 @@ impl QPack {
             }
         }
         for cap in &self.capabilities {
-            if !["timer", "raw-response", "full-request"].contains(&cap.as_str()) {
+            // BETA-004-D: postgres joins the known route grants — the pack
+            // carries the exact `runtime:postgres` v1 requirement in its
+            // inventory, and a runtime without a configured pool rejects
+            // at startup (fail closed) rather than serving a route whose
+            // queries cannot run.
+            if !["timer", "postgres", "raw-response", "full-request"].contains(&cap.as_str()) {
                 return reject(format!("unknown capability {} declared", cap));
             }
         }

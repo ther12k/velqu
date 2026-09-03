@@ -28,6 +28,7 @@ q-pack = { workspace = true }
 q-router = { workspace = true }
 q-bridge = { workspace = true }
 q-capabilities = { workspace = true }
+q-capability-postgres = { workspace = true }
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
 q-http = { workspace = true }

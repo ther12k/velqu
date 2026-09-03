@@ -18,6 +18,7 @@
 //! semantics at the engine boundary (D), and pool-limit policy and
 //! observability (E).
 
+pub mod dialer;
 pub mod executor;
 pub mod query;
 pub mod transaction;
@@ -30,6 +31,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+pub use dialer::{parse_params_json, pool_from_url, PostgresQueryDialer, PostgresQueryHandle};
 pub use executor::ClientExecutor;
 pub use query::{
     validate_deadline, validate_query, QueryError, QueryExecutor, SqlParam, SqlRow, SqlValue,
@@ -332,6 +334,7 @@ impl<F: Connector> LazyPool<F> {
         Ok(PooledConnection {
             inner: Some(conn),
             pool: self.inner.clone(),
+            poisoned: false,
         })
     }
 
@@ -392,6 +395,10 @@ impl<F: Connector> LazyPool<F> {
 pub struct PooledConnection<F: Connector> {
     inner: Option<LeasedConn<F::Conn>>,
     pool: Arc<PoolInner<F>>,
+    /// set by `discard()`: a connection that failed or timed out
+    /// mid-operation may hold backend state — closing is the only safe
+    /// release (BETA-004-D)
+    poisoned: bool,
 }
 
 struct LeasedConn<C> {
@@ -409,6 +416,12 @@ impl<F: Connector> fmt::Debug for PooledConnection<F> {
 }
 
 impl<F: Connector> PooledConnection<F> {
+    /// Mark the lease poisoned: on drop the connection closes instead
+    /// of returning to the idle queue.
+    pub fn discard(&mut self) {
+        self.poisoned = true;
+    }
+
     pub fn get(&self) -> &F::Conn {
         self.inner
             .as_ref()
@@ -424,7 +437,7 @@ impl<F: Connector> Drop for PooledConnection<F> {
         if let Some(leased) = self.inner.take() {
             let mut st = self.pool.state.lock().expect("pool state mutex");
             st.in_use = st.in_use.saturating_sub(1);
-            if !st.shutting_down {
+            if !st.shutting_down && !self.poisoned {
                 if let Some(conn) = leased.conn {
                     st.idle.push_back(Idle {
                         conn,

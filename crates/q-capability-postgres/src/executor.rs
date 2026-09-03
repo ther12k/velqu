@@ -34,6 +34,10 @@ impl ToSql for SqlParam {
                 Type::INT4 => (*i as i32).to_sql(ty, out),
                 _ => i.to_sql(ty, out),
             },
+            SqlParam::Float(f) => match *ty {
+                Type::FLOAT4 => (*f as f32).to_sql(ty, out),
+                _ => f.to_sql(ty, out),
+            },
             SqlParam::Text(s) => s.to_sql(ty, out),
         }
     }

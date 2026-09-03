@@ -674,6 +674,27 @@ const __velquNativeCapabilities = Object.freeze({
     Headers: globalThis.Headers,
     Request: globalThis.Request,
     Response: globalThis.Response,
+  }),
+  // BETA-004-D: fail closed when the host did not link runtime:postgres —
+  // a typed rejection, never a mock, never a JS reimplementation.
+  postgres: Object.freeze({
+    sql: function (text, params, deadlineMs) {
+      if (typeof globalThis.__velquPostgresQuery !== "function") {
+        throw new TypeError(
+          "postgres capability unavailable: pack does not grant postgres or the runtime does not provide runtime:postgres"
+        );
+      }
+      // op-table pattern (identical to __velquTimerP): the native returns
+      // an op id; the host settles through __velquOpResolve/OpReject
+      return new Promise(function (resolve, reject) {
+        const opId = globalThis.__velquPostgresQuery(
+          text,
+          JSON.stringify(params === undefined ? [] : params),
+          deadlineMs === undefined ? 5000 : deadlineMs
+        );
+        globalThis.__velquOps[opId] = { resolve: resolve, reject: reject };
+      }).then(function (rowsJson) { return JSON.parse(rowsJson); });
+    },
   })
 });
 globalThis.__velquNativeCapabilities = __velquNativeCapabilities;

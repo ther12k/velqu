@@ -24,6 +24,7 @@ pub enum SqlParam {
     Null,
     Bool(bool),
     Int(i64),
+    Float(f64),
     Text(String),
 }
 
@@ -58,6 +59,12 @@ impl SqlRow {
 
     pub fn column_count(&self) -> usize {
         self.columns.len()
+    }
+
+    /// Column names in sorted order (row payloads are unordered maps
+    /// at the JS boundary).
+    pub fn column_names(&self) -> Vec<&String> {
+        self.columns.keys().collect()
     }
 
     pub(crate) fn from_pg_row(row: Row) -> Result<SqlRow, QueryError> {
