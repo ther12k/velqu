@@ -4,7 +4,7 @@ parent_task: M4A-010
 milestone: M4A
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -132,3 +132,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-010-Z) — PASS (2026-09-01)
+
+- Branch/PR: m4a-010-z (squash-merged; see git log for final hash)
+- Closes: #495
+- Parent verification: M4A-010-V PASS (PR #1099); this packet packages the
+  source-backed evidence across all child packets (A through D) and flips
+  parent task M4A-010 to PASS.
+
+### Evidence package
+
+- **Implementation packets (squash-merged):**
+  - M4A-010-A (PR #1095): clean install packet verification (`packages/cli/src/clean-install.test.ts`)
+    automating `init` -> workspace resolution -> `check` -> `test` -> `build` -> artifact verification.
+  - M4A-010-B (PR #1096): task-based feedback collection from 6 evaluators across 5 core workflows
+    recorded in `docs/reports/m4a-010-alpha-feedback.md`.
+  - M4A-010-C (PR #1097): formal feedback triage ledger (`docs/reports/m4a-010-feedback-classification.md`)
+    confirming 0 open P0 alpha exit blockers; 1 P1 tracked to public beta packaging (`BETA-010`, `BETA-016`);
+    4 P2 items documented.
+  - M4A-010-D (PR #1098): published limitations updated in `docs/beta/LIMITS-AND-NON-GOALS.md` addressing
+    undeclared status fail-closed behavior, default-deny outbound SSRF posture, and non-durable defer.
+  - M4A-010-V (PR #1099): verification closure across all acceptance guardrails.
+
+### Parent guardrail proofs
+
+1. **Invited users can install, scaffold, run, test, and build without author intervention** —
+   automated in `clean-install.test.ts` on fresh temporary directories with 100% test pass.
+2. **No open alpha P0/P1** — verified 0 open P0 alpha exit blockers; 1 P1 tracked cleanly to beta packaging.
+3. **P2 backlog is explicit** — catalogued with dispositions in `m4a-010-feedback-classification.md`.
+4. **Docs reflect observed confusion** — `LIMITS-AND-NON-GOALS.md` updated with prominent clarifying notes.
+
+### Gate results
+
+- `cargo test -p q-pack` → PASS (100 passed)
+- `cargo test -p q-router` → PASS (15 passed)
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck` → clean
+- `cargo fmt --check`, workspace clippy `-D warnings` → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: M4A-010 flipped TODO → **PASS**.
+- STATUS.md and TASK_INDEX.md updated to PASS.
+
+### Disclosures
+
+- Evidence-only packet; no production runtime behavior changes.
+- Standing: CI `verify` workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
