@@ -36,6 +36,12 @@ pub trait PostgresQueryDialer: Send + Sync {
         params_json: String,
         deadline_ms: u64,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
+
+    /// BETA-006-C: bounded pool observability (stats + counters) as JSON,
+    /// `None` when the implementation exposes no pool (e.g. test dials).
+    fn pool_stats_json(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Parse the JSON parameter array into the closed `SqlParam` set.
@@ -105,6 +111,30 @@ fn rows_to_json(rows: Vec<crate::query::SqlRow>) -> String {
 }
 
 impl PostgresQueryDialer for LazyPool<TokioConnector> {
+    fn pool_stats_json(&self) -> Option<String> {
+        let stats = self.stats();
+        let counters = self.counters();
+        Some(
+            serde_json::json!({
+                "idle": stats.idle,
+                "inUse": stats.in_use,
+                "createdTotal": stats.created_total,
+                "maxConnections": stats.max_connections,
+                "acquiresOk": counters.acquires_ok,
+                "reused": counters.reused,
+                "created": counters.created,
+                "discardedStale": counters.discarded_stale,
+                "discardedDead": counters.discarded_dead,
+                "discardedError": counters.discarded_error,
+                "atCapacity": counters.at_capacity,
+                "connectTimeouts": counters.connect_timeouts,
+                "connectRejected": counters.connect_rejected,
+                "shutdownRefusals": counters.shutdown_refusals,
+            })
+            .to_string(),
+        )
+    }
+
     fn query_json(
         &self,
         text: String,

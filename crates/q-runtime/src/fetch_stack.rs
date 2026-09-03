@@ -134,6 +134,16 @@ static SHARED_POOL: OnceLock<FetchPool> = OnceLock::new();
 
 /// Access the process-global shared pool (created on first call, dormant
 /// until a fetch initializes it).
+/// BETA-006-C: bounded fetch-pool observability snapshot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct FetchPoolStats {
+    pub initialized: bool,
+    pub shutdown: bool,
+    pub active: u64,
+    pub max_active: u64,
+    pub rejections: u32,
+}
+
 pub fn shared_pool() -> &'static FetchPool {
     SHARED_POOL.get_or_init(FetchPool::new)
 }
@@ -200,6 +210,19 @@ impl FetchPool {
 
     /// Try to acquire an active connection permit for outbound request backpressure.
     ///
+    /// BETA-006-C: bounded pool observability snapshot. Never blocks.
+    pub fn stats(&self) -> FetchPoolStats {
+        let max = self.bounds.max_active_connections as u64;
+        let available = self.semaphore.available_permits() as u64;
+        FetchPoolStats {
+            initialized: self.is_initialized(),
+            shutdown: self.is_shutdown(),
+            active: max.saturating_sub(available),
+            max_active: max,
+            rejections: self.rejections(),
+        }
+    }
+
     /// If all permits are currently in use, returns `Err(PoolError::PoolExhausted)`.
     pub fn try_acquire_permit(&self) -> Result<OwnedSemaphorePermit, PoolError> {
         if self.is_shutdown() {
@@ -429,5 +452,37 @@ mod tests {
     fn tls_connector_uses_mandatory_webpki_roots_without_bypass() {
         let connector = build_connector();
         let _ = connector;
+    }
+}
+
+#[cfg(test)]
+mod pool_stats_tests {
+    use super::*;
+
+    #[test]
+    fn fetch_pool_stats_track_lazy_active_and_rejections() {
+        let pool = FetchPool::new();
+        let stats = pool.stats();
+        // lazy: no client, no activity before first use
+        assert!(!stats.initialized);
+        assert_eq!(stats.active, 0);
+        assert_eq!(stats.rejections, 0);
+
+        // acquiring a permit registers as an active connection slot
+        let permit = pool.try_acquire_permit().expect("permit");
+        let stats = pool.stats();
+        assert_eq!(stats.active, 1);
+        assert!(stats.max_active >= 1);
+        drop(permit);
+        assert_eq!(pool.stats().active, 0);
+    }
+
+    #[test]
+    fn fetch_pool_stats_reflect_shutdown() {
+        let pool = FetchPool::new();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(pool.drain_shutdown(Duration::from_millis(100)))
+            .unwrap();
+        assert!(pool.stats().shutdown);
     }
 }

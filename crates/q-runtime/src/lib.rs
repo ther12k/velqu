@@ -293,7 +293,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 && !cfg.no_bytecode,
             profile,
             fetch_dialer,
-            postgres_handle,
+            postgres_handle: postgres_handle.clone(),
             ..Default::default()
         };
         let mut engine =
@@ -452,6 +452,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             log_sequence: std::sync::atomic::AtomicU64::new(0),
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
             route_metrics: serve::RouteStatusMetrics::from_route_ids(route_metric_ids),
+            postgres_dialer: postgres_handle,
         });
         let handler = serve::make_handler(Arc::clone(&state));
         // M3-007-B: the drain gate flips the INSTANT the shutdown signal
