@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -112,3 +112,66 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-a (squash-merged; see git log for final hash)
+- Closes: #524
+
+### Changed files
+- `packages/capability-auth-jwt/` (new, `@velqu/capability-auth-jwt`):
+  - `src/index.ts`: the one approved JWT profile — HS256 only. Five
+    fail-closed gates (structure, algorithm pre-signature, header
+    fields, timing-safe signature, claims shape); typed closed-set
+    reasons; RFC 2104 HMAC-SHA-256 + base64url primitives; `signJwt`
+    reference issuance.
+  - `src/index.test.ts`: 14 deterministic tests — RFC 4231 TC2 vector,
+    profile round-trip, algorithm-confusion gates (none/lowercase/
+    case-variant/RS256/ES256/PS256/missing/non-string), key-injection
+    header rejection (jku/jwk/x5u/kid), typ gate, tampered
+    payload/secret, malformed structures, non-object claims,
+    base64url round-trip.
+  - `README.md`: profile, gates, performance/caching posture.
+- `bun.lock`: new workspace member entry.
+- `docs/reports/beta-005-a-jwt-algorithm-profile.md` (new).
+
+### Required evidence
+
+- **Security tests**: 14/14 (algorithm-confusion structurally
+  impossible — no key-type dispatch, single verification path; every
+  gate typed fail-closed).
+- **Reference docs**: package README + report (performance/caching
+  posture: O(token length) HMAC, no implicit cache; cache would be a
+  documented C decision).
+- **W1/W2/W3 integration**: W1's policy consumer (proof users.get)
+  uses the same HMAC primitives pinned by the RFC 4231 vectors; full
+  load runs are BETA-013/014 scope — stated without overclaim.
+- **Treaty contract**: policy failures are declared (`declares: {401:
+  "unauthorized"}`) — the mechanism the treaty conformance suite
+  renders into contracts.
+
+### Commands
+
+- `bun test packages/capability-auth-jwt` -> 14 pass / 0 fail
+- `bun test` -> 398 pass / 0 fail (63 files)
+- `cargo test -p velqu-runtime` -> 8 suites ok
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Invalid tokens fail closed**: every gate returns typed rejections;
+  no best-effort decode path exists.
+- **Algorithm confusion is impossible**: single approved algorithm,
+  checked pre-signature; no dispatch on key type.
+- **Auth policy error appears in Treaty contract**: declared 401 via
+  policy `declares` (rendering proven by treaty conformance suite).
+- **Performance/caching is documented**: README + report; no implicit
+  cache.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
