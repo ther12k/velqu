@@ -84,6 +84,21 @@ export interface TimerCapability {
   delay(ms: number): Promise<number>;
 }
 
+/**
+ * BETA-004-A: the `runtime:postgres` grant. Parameterized by
+ * construction — statements bind positional params; there is no
+ * string-concatenation API. Present in the type only; the native
+ * binding exists solely when the pack grants postgres and the runtime
+ * provides the capability (fail closed otherwise).
+ */
+export interface PostgresCapability {
+  sql(
+    text: string,
+    params?: readonly (string | number | boolean | null)[],
+    deadlineMs?: number,
+  ): { rows: Array<Record<string, string | number | boolean | null>>; affectedRows: number };
+}
+
 export interface HandlerCtx<P, Q, B, Sess> {
   params: P;
   query: Q;
@@ -96,7 +111,7 @@ export interface HandlerCtx<P, Q, B, Sess> {
   json(): unknown;
   text(): string;
   bytes(): Uint8Array;
-  native: { timer: TimerCapability };
+  native: { timer: TimerCapability; postgres: PostgresCapability };
 }
 
 /** Policy check sees the lazy request (header access before validation). */

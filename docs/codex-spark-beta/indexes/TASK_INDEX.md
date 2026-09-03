@@ -570,7 +570,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-003-D](../tasks/08_public_beta/BETA-003-D-report-losses-honestly.md) | P1 | implement | PASS | BETA-003-C | Report losses honestly |
 | [BETA-003-V](../tasks/08_public_beta/BETA-003-V-verify-run-controlled-i-o-and-cpu-jit-crossover-suites.md) | P1 | verify | PASS | BETA-003-A, BETA-003-B, BETA-003-C, BETA-003-D | Verify Run controlled I/O and CPU/JIT crossover suites |
 | [BETA-003-Z](../tasks/08_public_beta/BETA-003-Z-package-evidence-for-run-controlled-i-o-and-cpu-jit-crossover-suites.md) | P1 | evidence | PASS | BETA-003-V | Package evidence for Run controlled I/O and CPU/JIT crossover suites |
-| [BETA-004-A](../tasks/08_public_beta/BETA-004-A-use-capability-abi.md) | P0 | implement | TODO | M27-GATE, BETA-001-Z | Use capability ABI |
+| [BETA-004-A](../tasks/08_public_beta/BETA-004-A-use-capability-abi.md) | P0 | implement | PASS | M27-GATE, BETA-001-Z | Use capability ABI |
 | [BETA-004-B](../tasks/08_public_beta/BETA-004-B-lazy-pool.md) | P0 | implement | TODO | BETA-004-A | Lazy pool |
 | [BETA-004-C](../tasks/08_public_beta/BETA-004-C-parameterized-queries-transactions.md) | P0 | implement | TODO | BETA-004-B | Parameterized queries/transactions |
 | [BETA-004-D](../tasks/08_public_beta/BETA-004-D-deadline-cancellation-shutdown.md) | P0 | implement | TODO | BETA-004-C | Deadline/cancellation/shutdown |

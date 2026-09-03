@@ -34,6 +34,7 @@ pub mod invocation;
 pub mod load_shed;
 pub mod long_running;
 pub mod operations;
+pub mod postgres;
 pub mod resolver;
 pub mod sdk;
 pub mod shared_handles;
@@ -94,6 +95,10 @@ pub use long_running::{
     LongSlotsExhausted, DEFAULT_LONG_RUNNING_THRESHOLD_MS, MAX_LONG_RUNNING_THRESHOLD_MS,
 };
 pub use operations::{CancellationClass, NativeOp, OpError, OpOwner, OpState, MAX_OP_DEADLINE_MS};
+pub use postgres::{
+    postgres_capability_id, postgres_requirement, PostgresCapability, PostgresCapabilityError,
+    MAX_POSTGRES_OP_DEADLINE_MS, POSTGRES_CAPABILITY_ID, POSTGRES_CAPABILITY_VERSION,
+};
 pub use resolver::{resolve_closure, DependencyDag};
 pub use shared_handles::SharedAcrossWorkers;
 pub use shutdown::{

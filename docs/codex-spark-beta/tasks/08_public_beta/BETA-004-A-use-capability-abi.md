@@ -4,7 +4,7 @@ parent_task: BETA-004
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -119,3 +119,88 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-004-A) — PASS (2026-09-03)
+
+- Branch/PR: beta-004-a (squash-merged; see git log for final hash)
+- Closes: #516
+
+### Changed files
+- `crates/q-capabilities/src/postgres.rs` (new): the `runtime:postgres` v1
+  ABI model — identity (`postgres_capability_id`/`postgres_requirement`),
+  lazy lifecycle via `CapabilityLifecycle` (ops only in `Ready`; terminal
+  phases terminal), and the bounded query-op surface
+  (`PostgresCapability::start_query`: owner-tagged, cancellable-only,
+  deadline ceiling `MAX_POSTGRES_OP_DEADLINE_MS` = 120s, stricter than the
+  ABI-wide 300s). No wire protocol, no pool, no I/O — ABI contract only.
+- `crates/q-capabilities/src/lib.rs`: module export.
+- `packages/capability-postgres/` (new, `@velqu/capability-postgres`):
+  `src/index.ts` — identity constants mirroring the Rust model,
+  parameterized-only `sql(text, params, deadlineMs)` (RangeError above the
+  ceiling before any native call), typed `PostgresCapabilityUnavailable`
+  fail-closed error when the host binding is absent; importing constructs
+  nothing.
+- `packages/capability-postgres/src/index.test.ts` (new): 5 tests —
+  identity pinning, zero-construction posture, fail-closed (incl.
+  non-function binding), parameterized-only shape, binding-pass-through.
+- `packages/capability-postgres/src/pack-wiring.test.ts` (new): 2
+  end-to-end CLI-build tests — a `native.postgres` route declares the
+  grant in `capability-manifest.json`; a plain route declares nothing
+  (zero-cost default).
+- `packages/compiler/src/emit.ts`: `postgres` in `KNOWN_GRANTS` +
+  `GRANT_MODULES` -> exact `runtime:postgres` v1 requirement in the pack.
+- `packages/core/src/index.ts`: type-only `PostgresCapability` on the
+  handler `native` context (erased at emit — zero pack bytes).
+- `packages/cli/src/capability-inventory.test.ts`: grant universe pinned to
+  `["timer", "postgres"]` + postgres requirement-mapping tests (2 new).
+- `bun.lock`: new workspace member entry.
+- `benchmarks/raw/cold-start/beta004a-velqu.jsonl`: fresh cold/RSS evidence.
+- `docs/reports/beta-004-a-capability-abi-costs.md` (new): cold/RSS cost
+  report.
+
+### Required evidence
+
+- **Capability tests**: 7 Rust ABI tests (lazy-until-Ready, ops-outside-
+  Ready, deadline bounds incl. const-ceiling check, cancellable-only query
+  ops through the closed op states, drain/quiesce/terminal); 7 TS tests
+  (identity pinning, zero-construction, fail-closed, parameterized-only);
+  2 CLI end-to-end wiring tests; 2 grant-mapping tests.
+- **Real-world results**: W1/W2/W3 are the parent exit criteria
+  (BETA-004-B..E with the live pool); this packet adds no benchmark
+  claims — stated in the report.
+- **Cold/RSS cost report**:
+  `docs/reports/beta-004-a-capability-abi-costs.md` — proof app (no
+  postgres grant) cold start p50 11.697ms (ready 11.338ms + first
+  response 0.358ms), RSS after ready p50 9,676 kB, 0 failures; pack
+  capability inventory unchanged (timer only). Zero dependency/init/RSS
+  cost for Postgres-free apps.
+
+### Commands
+
+- `cargo test -p q-capabilities` -> 284 pass / 0 failed (incl. 7 new)
+- `cargo test -p q-pack` -> all suites ok
+- `cargo test -p q-engine-quickjs` -> all suites ok
+- `bun test packages/capability-postgres packages/cli/src/capability-inventory.test.ts` -> 18 pass / 0 fail
+- `bun test` -> 383 pass / 0 fail (62 files)
+- `bun run typecheck` -> clean; `cargo fmt --all --check` -> clean;
+  clippy `-D warnings` -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **App without Postgres pays zero dependency/init cost**: grant absent ->
+  no requirement, no module link, no RSS/init (measured + tested).
+- **Queries are parameterized**: SDK surface is parameterized-only
+  (positional params; no concatenation API); wire behavior pinned in C.
+- **Timeout cancels/releases safely**: every query op is cancellable with
+  a bounded deadline (ABI-tested); release semantics land with the pool (D).
+- **Pool exhaustion is bounded**: pool is B/E; the ABI op model carries
+  owner/deadline state they will reuse.
+- **W1/W2/W3 workloads pass**: parent exit; not claimed here.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
