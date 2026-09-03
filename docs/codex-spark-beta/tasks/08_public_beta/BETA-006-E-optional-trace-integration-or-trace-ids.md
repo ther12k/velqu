@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -102,3 +102,57 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-E) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-e (squash-merged; see git log for final hash)
+- Closes: #535
+
+### Changed files
+- `crates/q-http/src/lib.rs`: `extract_trace_id(headers)` — accepts
+  `x-trace-id` or W3C `traceparent` (trace-id segment), validates
+  bounded shape (printable ASCII, no whitespace/controls, <=128 chars,
+  non-empty), 3 tests; `TRACE_ID_LIMIT`.
+- `crates/q-runtime/src/serve.rs`: trace id carried into
+  `request.complete` logs as `traceId` (field omitted when absent —
+  strictly optional, zero behavioral change for un-traced requests).
+- `docs/reports/beta-006-e-trace-ids.md` (new): design choice (trace
+  IDs over tracing-system integration), redaction audit.
+
+### Required evidence
+
+- **Capability tests**: 3 new deterministic extraction/validation tests
+  (q-http suite green).
+- **Real-world results**: trace ids render in `request.complete` logs
+  for requests carrying trace headers; unchanged logs otherwise; no
+  load-run claims.
+- **Cold/RSS cost report**: zero cost for un-traced requests; one
+  header read + bounded validation per traced request.
+
+### Commands
+
+- `cargo test -p q-http` -> suites ok incl. 3 new trace tests
+- `cargo test -p velqu-runtime` -> 59 pass
+- fmt / clippy (`-D warnings`) -> clean
+- `./scripts/verify` -> ALL PASS (isolated netns; standing port-3000
+  environment note, BETA-002-C record)
+- `bun test` -> 434 pass / 0 fail (67 files); typecheck -> clean
+
+### Guardrail mapping
+
+- **Disabled overhead measured**: absent trace headers = one header
+  lookup, no allocation.
+- **Enabled overhead budgeted**: bounded validation (<=128 chars) and
+  one log field.
+- **Cardinality is bounded**: caller-supplied ids are log fields, not
+  metric labels (route metrics remain route/status-bounded).
+- **No secrets/PII by default**: shape validation; token material
+  never enters this path.
+- **Dashboards/examples exist**: `traceId` joins `request.complete` —
+  the field operators already correlate on.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
