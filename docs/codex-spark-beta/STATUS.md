@@ -566,7 +566,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-005-B — Key loading/rotation hooks](tasks/08_public_beta/BETA-005-B-key-loading-rotation-hooks.md)
 - [x] [BETA-005-C — Expiry/audience/issuer checks](tasks/08_public_beta/BETA-005-C-expiry-audience-issuer-checks.md)
 - [x] [BETA-005-D — Typed 401/403 problems](tasks/08_public_beta/BETA-005-D-typed-401-403-problems.md)
-- [ ] [BETA-005-E — No secret logging](tasks/08_public_beta/BETA-005-E-no-secret-logging.md)
+- [x] [BETA-005-E — No secret logging](tasks/08_public_beta/BETA-005-E-no-secret-logging.md)
 - [ ] [BETA-005-V — Verify Implement JWT/auth reference package](tasks/08_public_beta/BETA-005-V-verify-implement-jwt-auth-reference-package.md)
 - [ ] [BETA-005-Z — Package evidence for Implement JWT/auth reference package](tasks/08_public_beta/BETA-005-Z-package-evidence-for-implement-jwt-auth-reference-package.md)
 - [ ] [BETA-006-A — Request/route/status/duration](tasks/08_public_beta/BETA-006-A-request-route-status-duration.md)

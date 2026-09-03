@@ -45,6 +45,16 @@ const res = verifyJwtWithClaims(token, secret, {
   `audience-mismatch`, ...); the clock is injectable for deterministic
   tests.
 
+## No secret logging (BETA-005-E)
+
+The capability never logs tokens or secrets, and every typed
+error/problem/snapshot is verified by test to be free of key material.
+For caller logging, `src/redaction.ts` provides safe affordances:
+`redactAuthorizationHeader` / `redactToken` (shape-and-size markers —
+no prefixes or partial material), `scrub(text, secrets)` (defense in
+depth), and `secretFingerprint(secret)` (stable 12-hex id for
+correlation; keyed, non-reversible).
+
 ## Typed 401/403 problems (BETA-005-D)
 
 Every auth failure maps to an RFC 9457 problem document with a
