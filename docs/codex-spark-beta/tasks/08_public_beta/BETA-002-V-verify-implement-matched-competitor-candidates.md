@@ -4,7 +4,7 @@ parent_task: BETA-002
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -119,3 +119,70 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-002-V) — PASS (2026-09-03)
+
+- Branch/PR: beta-002-v (squash-merged; see git log for final hash)
+- Closes: #508
+
+### Acceptance-criterion mapping (parent BETA-002)
+
+1. **Candidates are semantically equivalent**
+   - Source: `benchmarks/real-world/candidates/matched.ts` + `matched.cjs`
+     (single shared contract: SQL, pool, auth, timeouts, response shapes).
+   - Positive tests: `candidates/parity.test.ts` (7 tests pinning SQL text,
+     pool bounds, JWT rejection matrix, limits, W1/W2/W3 store contracts);
+     `contract-fixtures.ts` matrix (18 fixtures) driven live against every
+     candidate by `verify-contract.ts` — PASS 4/4 candidates x 18/18
+     fixtures on this branch (retained at
+     `/tmp/beta-002-v-contract-verification.md` during the run).
+   - Negative tests: `verify-contract.test.ts` (matrix coverage + comparison
+     semantics); BETA-002-C's first live run demonstrated the failure mode
+     (2 drifts caught, then fixed in candidate source).
+2. **No framework receives hidden advantages**
+   - Source: `MATCHED_CONFIG` pins logging off, compression off, keep-alive
+     on, single worker, identical timeouts; all candidates import it.
+   - Positive tests: `parity.test.ts` "enforces identical timeouts, logging,
+     compression, and deployment limits"; `versions.test.ts` (9 tests) pins
+     registry = package.json = frozen bun.lock, so no candidate can resolve
+     a different framework version.
+   - Documentation: `DIFFERENCES.md` declares the uncompensated differences
+     and is sha256-pinned per run (`configHashes.differences`) and compared
+     by `fairness.ts` — drift fails the audit (fairness.test.ts +2).
+3. **All outputs pass contract fixtures**
+   - Live evidence: `bun verify-contract.ts` PASS in this worktree
+     (hono/elysia/bun-fetch on Bun, fastify on Node; controlled upstream).
+   - Deterministic tests: `verify-contract.test.ts` 8/8.
+4. **Version/hash metadata is captured**
+   - Source: `versions.json`, `candidates/package.json` + `bun.lock`,
+     summary `configHashes` (spec/workloads/schema/seed/versions/
+     differences), `result-schema.ts` required-hex64 validation,
+     `fairness.ts` cross-candidate hash comparison.
+
+### Commands
+
+- `bun test benchmarks/real-world benchmarks/real-world/candidates` -> 55 pass / 0 fail (8 files)
+- `bun verify-contract.ts` -> PASS (4 candidates x 18 fixtures)
+- `cargo test -p q-pack` -> 102 passed / 0 failed (3 suites)
+- `cargo fmt --all --check` -> clean
+- `cargo clippy --workspace --all-targets -- -D warnings` -> clean
+- `bun test` -> 346 pass / 0 fail (57 files)
+- `bun run typecheck` -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing environment note: unrelated user process on
+  127.0.0.1:3000 trips the M4A-010-A scaffold live-Treaty skip predicate on
+  the shared host. No test weakened.)
+
+### Changed files
+
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-002-V-verify-implement-matched-competitor-candidates.md`
+  (verification closure only; no production or harness changes).
+
+### Disclosures
+
+- Verification-only packet; no runtime behavior changes.
+- Environment note as above (host port-3000 collision documented in
+  BETA-002-C record).
+- Standing: CI `verify` workflows stall/fail with zero executed steps on PR
+  creation across all branches (infrastructure-side, tracked since ~#714);
+  local `./scripts/verify` is the real gate evidence.
