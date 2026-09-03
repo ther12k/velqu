@@ -1,0 +1,13 @@
+[package]
+name = "q-capability-postgres"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+tokio-postgres = { version = "0.7", features = ["runtime"] }
+
+[dev-dependencies]
+q-capabilities = { workspace = true }
