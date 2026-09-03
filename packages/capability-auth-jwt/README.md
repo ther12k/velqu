@@ -21,6 +21,30 @@ layered on top (BETA-005-B/C). The declared policy failure (401
 `unauthorized`) appears in the Treaty contract via the policy's
 `declares` field.
 
+## Claims validation: expiry / audience / issuer (BETA-005-C)
+
+```ts
+import { verifyJwtWithClaims } from "./src/claims";
+
+const res = verifyJwtWithClaims(token, secret, {
+  expectedIssuer: "https://issuer.example",
+  expectedAudience: "api://demo",
+  clockSkewMs: 5_000,       // default 5s, ceiling 60s
+  now: Date.now(),          // injectable clock (deterministic tests)
+});
+```
+
+- `exp` is **required** (RFC 7519 NumericDate, seconds) — eternal
+  tokens do not pass; expiry is skew-tolerant (default 5s).
+- `nbf`, when present, is enforced with the same skew.
+- `iss`/`aud` are enforced only when the caller configures expected
+  values — and a token that *omits* the claim then fails typed
+  (`missing-iss` / `missing-aud`); configured expectations cannot be
+  skipped by claim omission.
+- All failures are typed (`token-expired`, `issuer-mismatch`,
+  `audience-mismatch`, ...); the clock is injectable for deterministic
+  tests.
+
 ## Key loading and rotation (BETA-005-B)
 
 `JwtKeyring` manages HS256 secrets with caller-driven hooks — the

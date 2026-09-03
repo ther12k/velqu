@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -113,3 +113,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-C) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-c (squash-merged; see git log for final hash)
+- Closes: #526
+
+### Changed files
+- `packages/capability-auth-jwt/src/claims.ts` (new):
+  `validateClaims` (exp required numeric seconds, skew-tolerant expiry,
+  optional nbf, iss/aud enforced only when expected — and claim
+  omission then fails typed), `verifyJwtWithClaims` composition,
+  injectable clock, bounded skew (default 5s / ceiling 60s).
+- `packages/capability-auth-jwt/src/claims.test.ts` (new): 8
+  deterministic tests (expired/missing/non-numeric exp, skew tolerance
+  + ceiling, nbf future/malformed, iss/aud match/mismatch/missing/
+  unconfigured, composition with profile gates, forged-signature
+  precedence).
+- `packages/capability-auth-jwt/README.md`: claims-validation section.
+- `docs/reports/beta-005-c-expiry-audience-issuer-checks.md` (new).
+
+### Required evidence
+
+- **Security tests**: 8 new deterministic tests; package total 35 pass.
+- **Reference docs**: README claims section + report.
+- **W1/W2/W3 integration**: the policy pattern (proof users.get, W1)
+  layers these checks via options; no load-run claims.
+
+### Commands
+
+- `bun test packages/capability-auth-jwt` -> 35 pass / 0 fail
+- `bun test` -> 419 pass / 0 fail (65 files)
+- typecheck / fmt / clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Invalid tokens fail closed**: missing/invalid exp, future nbf,
+  issuer/audience mismatches all typed rejections; configured
+  expectations cannot be bypassed by omission.
+- **Algorithm confusion impossible**: unchanged profile gates run
+  before claims validation.
+- **Auth policy error appears in Treaty contract**: typed reasons map
+  to the declared 401 (unchanged mechanism).
+- **Performance/caching documented**: claims validation is linear over
+  a bounded claim set; no cache.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
