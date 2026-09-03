@@ -556,7 +556,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-003-Z — Package evidence for Run controlled I/O and CPU/JIT crossover suites](tasks/08_public_beta/BETA-003-Z-package-evidence-for-run-controlled-i-o-and-cpu-jit-crossover-suites.md)
 - [x] [BETA-004-A — Use capability ABI](tasks/08_public_beta/BETA-004-A-use-capability-abi.md)
 - [x] [BETA-004-B — Lazy pool](tasks/08_public_beta/BETA-004-B-lazy-pool.md)
-- [ ] [BETA-004-C — Parameterized queries/transactions](tasks/08_public_beta/BETA-004-C-parameterized-queries-transactions.md)
+- [x] [BETA-004-C — Parameterized queries/transactions](tasks/08_public_beta/BETA-004-C-parameterized-queries-transactions.md)
 - [ ] [BETA-004-D — Deadline/cancellation/shutdown](tasks/08_public_beta/BETA-004-D-deadline-cancellation-shutdown.md)
 - [ ] [BETA-004-E — Pool limits and observability](tasks/08_public_beta/BETA-004-E-pool-limits-and-observability.md)
 - [ ] [BETA-004-F — No ORM](tasks/08_public_beta/BETA-004-F-no-orm.md)

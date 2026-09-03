@@ -4,7 +4,7 @@ parent_task: BETA-004
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -118,3 +118,71 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-004-C) — PASS (2026-09-04)
+
+- Branch/PR: beta-004-c (squash-merged; see git log for final hash)
+- Closes: #518
+
+### Changed files
+- `crates/q-capability-postgres/src/query.rs` (new): bounded query
+  contract — closed scalar `SqlParam`/`SqlValue` sets, fail-closed
+  text/param/deadline ceilings, deterministic `$N` placeholder scan
+  (rejects unbound placeholders pre-wire), typed row conversion with
+  exact NULL-vs-conversion semantics (width-matched INT2/4/8,
+  FLOAT4/8 reads), `validate_query`/`validate_deadline`.
+- `crates/q-capability-postgres/src/executor.rs` (new): production
+  `ClientExecutor` implementing `QueryExecutor` over a pooled
+  tokio-postgres client — extended-protocol bound parameters only (no
+  interpolation path), SQLSTATE-carrying backend errors with URL
+  redaction, per-call deadline, owned-future design (no borrowed
+  locals across await).
+- `crates/q-capability-postgres/src/transaction.rs` (new):
+  `run_transaction` — BEGIN -> work -> COMMIT/ROLLBACK, with rollback
+  on any error including early `?` return (an open transaction is
+  never leaked). 6 deterministic flow tests over a recording executor.
+- `crates/q-capability-postgres/tests/live.rs`: extended with the live
+  parameterized/transaction verification.
+- `docs/reports/beta-004-c-parameterized-queries-transactions.md`
+  (new): evidence report.
+
+### Required evidence
+
+- **Capability tests**: 21 unit tests in-crate (12 pool + 3 query
+  validation + 6 transaction flow), all deterministic (recording
+  executor; zero network).
+- **Real-world results**: live run against the benchmark stack —
+  width-matched parameterized insert/select returned typed values
+  exactly (`item_1` / 7); unbound placeholder failed typed
+  `ParamCountMismatch { placeholders: 2, bound: 1 }` pre-wire; COMMIT
+  path persisted, ROLLBACK path did not (ordered id assertion). Stack
+  torn down after the run.
+- **Cold/RSS cost report**: no cost for apps without the capability
+  (same crate behind the same grant); per-query cost is the
+  extended-protocol round trip plus one allocation per bound param.
+
+### Commands
+
+- `cargo test -p q-capability-postgres` -> 21 unit pass / 0 failed; live 2 pass (env-gated)
+- `cargo clippy -p q-capability-postgres --all-targets -- -D warnings` -> clean
+- `bun test` -> 383 pass / 0 fail (62 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **App without Postgres pays zero dependency/init cost**: unchanged
+  from A/B; this layer lives behind the same grant.
+- **Queries are parameterized**: extended-protocol binding only; the
+  closed scalar set and placeholder validation make interpolation
+  unreachable; live typed round-trip proof.
+- **Timeout cancels/releases safely**: per-call deadline enforced at
+  the executor; engine-level cancel lands with D.
+- **Pool exhaustion is bounded**: unchanged (B).
+- **W1/W2/W3 workloads pass**: parent exit; not claimed here.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
