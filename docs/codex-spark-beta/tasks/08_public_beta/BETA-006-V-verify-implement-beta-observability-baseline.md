@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -122,3 +122,55 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-v (squash-merged; see git log for final hash)
+- Closes: #537
+
+### Acceptance-criterion mapping (parent BETA-006)
+
+1. **Disabled overhead measured**
+   - LogMode gating (Off/Errors/Full + sampling) preserved through the
+     A-packet refactor; duration capture is a single Instant copy;
+     metrics snapshots read on demand (B/E) — zero hot-path cost for
+     disabled logging (A report + `record_overhead_is_budgeted` test).
+2. **Enabled overhead budgeted**
+   - Per request: O(1) atomic increments (route/status/duration
+     aggregation, A) + one structured-log build when enabled; pool and
+     worker snapshots only at bounded transitions (B/C/E).
+3. **Cardinality is bounded**
+   - Route metrics: one entry per static pack route + `<unknown>`
+     fallback (A, tested); status classes, not codes; pool counters are
+     fixed field sets (C); load-shed reasons are a closed vocabulary.
+4. **No secrets/PII by default**
+   - Log allowlist as code (F, 4 tests incl. query-strip defense);
+     metrics schema audit (A); no-secret sweep on the auth capability
+     (BETA-005-E); pools snapshots carry counts/gauges/bounds only (C).
+5. **Dashboards/examples exist**
+   - Documented JSON shapes: `request.complete` field list (F report),
+     `ops.worker.status` + pools (B/C reports), route-metrics schema
+     (A report) — all serde-serializable structs in the runtime, the
+     substrate dashboards render.
+
+### Commands (fresh on this branch)
+
+- `cargo test -p q-http` (4 suites incl. 3 trace tests), `-p
+  q-bridge` (2), `-p velqu-runtime` (63 pass incl. metric + redaction
+  tests) -> all ok
+- `bun test` -> 434 pass / 0 fail (67 files)
+- typecheck / fmt / clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Changed files
+
+- Task record + manifest refresh commit only (verification-only
+  packet).
+
+### Disclosures
+
+- Verification-only packet; no runtime behavior changes.
+- Standing: CI `verify` workflows stall/fail with zero executed steps
+  on PR creation across all branches (infrastructure-side, tracked
+  since ~#714); local `./scripts/verify` is the real gate evidence.

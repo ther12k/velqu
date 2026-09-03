@@ -591,7 +591,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-006-D](../tasks/08_public_beta/BETA-006-D-memory-tasks-slots.md) | P0 | implement | PASS | BETA-006-C | Memory/tasks/slots |
 | [BETA-006-E](../tasks/08_public_beta/BETA-006-E-optional-trace-integration-or-trace-ids.md) | P0 | implement | PASS | BETA-006-D | Optional trace integration or trace IDs |
 | [BETA-006-F](../tasks/08_public_beta/BETA-006-F-redaction.md) | P0 | implement | PASS | BETA-006-E | Redaction |
-| [BETA-006-V](../tasks/08_public_beta/BETA-006-V-verify-implement-beta-observability-baseline.md) | P0 | verify | TODO | BETA-006-A, BETA-006-B, BETA-006-C, BETA-006-D, BETA-006-E, BETA-006-F | Verify Implement beta observability baseline |
+| [BETA-006-V](../tasks/08_public_beta/BETA-006-V-verify-implement-beta-observability-baseline.md) | P0 | verify | PASS | BETA-006-A, BETA-006-B, BETA-006-C, BETA-006-D, BETA-006-E, BETA-006-F | Verify Implement beta observability baseline |
 | [BETA-006-Z](../tasks/08_public_beta/BETA-006-Z-package-evidence-for-implement-beta-observability-baseline.md) | P0 | evidence | TODO | BETA-006-V | Package evidence for Implement beta observability baseline |
 | [BETA-007-A](../tasks/08_public_beta/BETA-007-A-environment-file-configuration.md) | P0 | implement | TODO | M27-GATE | Environment/file configuration |
 | [BETA-007-B](../tasks/08_public_beta/BETA-007-B-validation-at-startup.md) | P0 | implement | TODO | BETA-007-A | Validation at startup |
