@@ -157,6 +157,55 @@ pub fn pool_from_url(url: impl Into<String>, config: PoolConfig) -> PostgresQuer
     PostgresQueryHandle::from(LazyPool::<TokioConnector>::postgres(url, config))
 }
 
+/// Environment variable names for pool limits (BETA-004-E). All optional;
+/// absent values fall back to `PoolConfig::default_config()`. Present but
+/// invalid values are **startup rejections, never clamps**.
+pub const ENV_POOL_MAX: &str = "VELQU_PG_POOL_MAX";
+pub const ENV_POOL_CONNECT_TIMEOUT_MS: &str = "VELQU_PG_POOL_CONNECT_TIMEOUT_MS";
+pub const ENV_POOL_IDLE_TIMEOUT_MS: &str = "VELQU_PG_POOL_IDLE_TIMEOUT_MS";
+
+/// Resolve pool config from an env-style lookup (injectable for tests).
+pub fn pool_config_from_lookup(
+    get: impl Fn(&str) -> Option<String>,
+) -> Result<PoolConfig, PoolError> {
+    let mut config = PoolConfig::default_config();
+    if let Some(raw) = get(ENV_POOL_MAX) {
+        let n: usize = raw.trim().parse().map_err(|_| PoolError::InvalidConfig {
+            detail: "VELQU_PG_POOL_MAX must be an integer",
+        })?;
+        config.max_connections = n;
+    }
+    if let Some(raw) = get(ENV_POOL_CONNECT_TIMEOUT_MS) {
+        let n: u64 = raw.trim().parse().map_err(|_| PoolError::InvalidConfig {
+            detail: "VELQU_PG_POOL_CONNECT_TIMEOUT_MS must be an integer",
+        })?;
+        config.connect_timeout_ms = n;
+    }
+    if let Some(raw) = get(ENV_POOL_IDLE_TIMEOUT_MS) {
+        let n: u64 = raw.trim().parse().map_err(|_| PoolError::InvalidConfig {
+            detail: "VELQU_PG_POOL_IDLE_TIMEOUT_MS must be an integer",
+        })?;
+        config.idle_timeout_ms = n;
+    }
+    // bounds are enforced by PoolConfig::new — invalid combos reject
+    PoolConfig::new(
+        config.max_connections,
+        config.connect_timeout_ms,
+        config.idle_timeout_ms,
+    )
+}
+
+/// Build the handle from a database URL plus env-configured limits.
+/// Fail closed on invalid limits: the caller turns the error into a
+/// startup rejection.
+pub fn pool_from_url_and_env(
+    url: impl Into<String>,
+    get: impl Fn(&str) -> Option<String>,
+) -> Result<PostgresQueryHandle, PoolError> {
+    let config = pool_config_from_lookup(get)?;
+    Ok(pool_from_url(url, config))
+}
+
 // silence unused-import lint for PooledConnection in non-test builds
 #[cfg(test)]
 mod tests {
@@ -167,5 +216,51 @@ mod tests {
         assert!(parse_params_json("[{\"nested\": 1}]").is_err());
         assert!(parse_params_json("{\"not\": \"array\"}").is_err());
         assert!(parse_params_json("not json").is_err());
+    }
+}
+
+#[cfg(test)]
+mod env_config_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn lookup(map: &HashMap<String, String>) -> impl Fn(&str) -> Option<String> + '_ {
+        move |k: &str| map.get(k).cloned()
+    }
+
+    #[test]
+    fn defaults_when_env_absent() {
+        let cfg = pool_config_from_lookup(|_| None).unwrap();
+        assert_eq!(cfg, PoolConfig::default_config());
+    }
+
+    #[test]
+    fn valid_env_values_override_defaults() {
+        let mut env = HashMap::new();
+        env.insert(ENV_POOL_MAX.to_string(), "4".to_string());
+        env.insert(ENV_POOL_CONNECT_TIMEOUT_MS.to_string(), "2500".to_string());
+        env.insert(ENV_POOL_IDLE_TIMEOUT_MS.to_string(), "10000".to_string());
+        let cfg = pool_config_from_lookup(lookup(&env)).unwrap();
+        assert_eq!(
+            cfg,
+            PoolConfig {
+                max_connections: 4,
+                connect_timeout_ms: 2500,
+                idle_timeout_ms: 10000
+            }
+        );
+    }
+
+    #[test]
+    fn out_of_bounds_values_reject_startup_never_clamp() {
+        let mut env = HashMap::new();
+        env.insert(ENV_POOL_MAX.to_string(), "1000".to_string());
+        assert!(pool_config_from_lookup(lookup(&env)).is_err());
+        let mut env = HashMap::new();
+        env.insert(ENV_POOL_CONNECT_TIMEOUT_MS.to_string(), "0".to_string());
+        assert!(pool_config_from_lookup(lookup(&env)).is_err());
+        let mut env = HashMap::new();
+        env.insert(ENV_POOL_MAX.to_string(), "ten".to_string());
+        assert!(pool_config_from_lookup(lookup(&env)).is_err());
     }
 }

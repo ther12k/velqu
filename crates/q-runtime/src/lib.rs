@@ -266,10 +266,23 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     return 2;
                 }
                 (true, Ok(url)) => {
-                    Some(q_capability_postgres::pool_from_url(
-                        url,
-                        q_capability_postgres::PoolConfig::default_config(),
-                    ))
+                    // BETA-004-E: pool limits configurable via
+                    // VELQU_PG_POOL_MAX / _CONNECT_TIMEOUT_MS / _IDLE_TIMEOUT_MS;
+                    // invalid values reject startup (fail closed, never clamped).
+                    match q_capability_postgres::pool_from_url_and_env(url, |k| {
+                        std::env::var(k).ok()
+                    }) {
+                        Ok(handle) => Some(handle),
+                        Err(e) => {
+                            let ready = serde_json::json!({
+                                "event": "ready",
+                                "ok": false,
+                                "error": format!("pack requires runtime:postgres but pool limits are invalid: {e}"),
+                            });
+                            eprintln!("{ready}");
+                            return 2;
+                        }
+                    }
                 }
             };
         let config = QuickJsConfig {

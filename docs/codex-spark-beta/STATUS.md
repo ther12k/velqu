@@ -558,7 +558,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-004-B — Lazy pool](tasks/08_public_beta/BETA-004-B-lazy-pool.md)
 - [x] [BETA-004-C — Parameterized queries/transactions](tasks/08_public_beta/BETA-004-C-parameterized-queries-transactions.md)
 - [x] [BETA-004-D — Deadline/cancellation/shutdown](tasks/08_public_beta/BETA-004-D-deadline-cancellation-shutdown.md)
-- [ ] [BETA-004-E — Pool limits and observability](tasks/08_public_beta/BETA-004-E-pool-limits-and-observability.md)
+- [x] [BETA-004-E — Pool limits and observability](tasks/08_public_beta/BETA-004-E-pool-limits-and-observability.md)
 - [ ] [BETA-004-F — No ORM](tasks/08_public_beta/BETA-004-F-no-orm.md)
 - [ ] [BETA-004-V — Verify Implement optional first-party Postgres capability](tasks/08_public_beta/BETA-004-V-verify-implement-optional-first-party-postgres-capability.md)
 - [ ] [BETA-004-Z — Package evidence for Implement optional first-party Postgres capability](tasks/08_public_beta/BETA-004-Z-package-evidence-for-implement-optional-first-party-postgres-capability.md)
