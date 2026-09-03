@@ -307,11 +307,15 @@ export function capabilityInventoryHash(entries: ReadonlyArray<{ id: string; ver
  * anything else is a build error (fail closed — an unknown authority
  * request must never be silently dropped).
  */
-export const KNOWN_GRANTS = ["timer"] as const;
+export const KNOWN_GRANTS = ["timer", "postgres"] as const;
 
 /** Grant -> linked-module requirement. Mirrors the builtin universe. */
 const GRANT_MODULES: Record<string, { id: string; version: number }> = {
   timer: { id: "runtime:timers", version: 1 },
+  // BETA-004-A: the first-party database capability. Declaring the grant
+  // puts an exact `runtime:postgres` v1 requirement into the pack
+  // manifest; runtimes that do not provide it fail closed before serving.
+  postgres: { id: "runtime:postgres", version: 1 },
 };
 
 /**

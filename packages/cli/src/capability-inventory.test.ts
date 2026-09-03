@@ -42,7 +42,23 @@ describe("capability pruning (M27-002-D)", () => {
     expect(resolveLinkedModules(["timer", "timer"])).toEqual([
       { id: "runtime:timers", version: 1 },
     ]);
-    expect(KNOWN_GRANTS).toEqual(["timer"]);
+    expect(KNOWN_GRANTS).toEqual(["timer", "postgres"]);
+  });
+
+  test("BETA-004-A: postgres grant requires runtime:postgres v1 exactly", () => {
+    expect(resolveLinkedModules(["postgres"])).toEqual([
+      { id: "runtime:postgres", version: 1 },
+    ]);
+    // mixing grants dedupes to the exact requirement set
+    // output is id-sorted (canonical inventory order), deduped
+    expect(resolveLinkedModules(["timer", "postgres", "timer"])).toEqual([
+      { id: "runtime:postgres", version: 1 },
+      { id: "runtime:timers", version: 1 },
+    ]);
+    expect(resolveLinkedModules(["postgres", "timer"])).toEqual([
+      { id: "runtime:postgres", version: 1 },
+      { id: "runtime:timers", version: 1 },
+    ]);
   });
 });
 
