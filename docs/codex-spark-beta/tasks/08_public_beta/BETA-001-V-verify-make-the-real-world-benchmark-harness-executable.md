@@ -4,7 +4,7 @@ parent_task: BETA-001
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (BETA-001-V) — PASS (2026-09-01)
+
+- Branch/PR: beta-001-v (squash-merged; see git log for final hash)
+- Closes: #500
+
+### Acceptance-criterion mapping
+
+1. **One command prepares/runs/reports** — `benchmarks/real-world/run.sh`
+   implements the unified execution script (`prepare` -> `smoke` -> `audit` -> `retain`)
+   orchestrating compose health, database reset/seed, load generation, result validation,
+   and report output.
+2. **Dataset resets deterministically** — `benchmarks/real-world/postgres/reset.sql`
+   and `seed.sql` generate predictable fixture rows (1,000 users, 500 products, 10,000 reviews)
+   using pure modular arithmetic and `generate_series` with zero non-deterministic random calls.
+3. **Candidate failure is retained** — `load.ts`, `result-schema.ts`, and `report.ts`
+   record and preserve raw failure rows and errors; tested by `fairness.test.ts`
+   ("retained failures fail the audit and name the candidate and cell") and `report.test.ts`
+   ("failures are retained in a dedicated section, not dropped").
+4. **Protocol records environment and hashes** — `load.ts` and `result-schema.ts`
+   mandate runtime environment (bun, node, OS, arch, commit) and SHA-256 config hashes
+   (`spec`, `workloads`, `schema`, `seed`, `versions`).
+
+### Evidence
+
+- `bun test benchmarks/real-world` → **36 pass / 0 fail (6 files)**
+- `cargo test -p q-pack` → PASS (100 passed)
+- `cargo test -p q-engine-quickjs` → PASS (113 passed)
+- `cargo test -p q-schema-runtime` → PASS (58 passed)
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Changed files
+
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-001-V-verify-make-the-real-world-benchmark-harness-executable.md`
+
+### Disclosures
+
+- Verification-only packet; no production runtime behavior changes.
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
