@@ -6,7 +6,7 @@
   "candidates": {
     "velqu": "workspace:0.1.0",
     "elysia": "2.0.0-beta.4",
-    "hono": "4.13.4",
+    "hono": "4.13.5",
     "fastify": "5.12.1"
   },
   "drivers": {
@@ -16,6 +16,6 @@
   "notes": [
     "Velqu is pinned by source commit (summary.environment.commit), not a registry version.",
     "nodeLtsMajor pins the Node LTS line the Fastify candidate must run on (SPEC.md); the exact patch is recorded per run, not claimed here.",
-    "Exact package versions resolved from the npm registry on 2026-08-25; candidates themselves are implemented in BETA-002."
+    "Exact package versions resolved from the npm registry on 2026-08-25; W4 candidates implemented in M28-011, full W1..W4 matched contracts landed in BETA-002-A. The hono pin (4.13.5) matches candidates/package.json and bun.lock exactly (fixed from 4.13.4 in BETA-002-B)."
   ]
 }

@@ -4,7 +4,7 @@ parent_task: BETA-002
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -106,3 +106,56 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-002-B) — PASS (2026-09-03)
+
+- Branch/PR: beta-002-b (squash-merged; see git log for final hash)
+- Closes: #505
+
+### Changed files
+- `benchmarks/real-world/versions.json`: candidate registry `hono` pin aligned
+  4.13.4 -> 4.13.5 to match `candidates/package.json` and the frozen
+  `candidates/bun.lock` (the only drift found); `notes` refreshed to record that
+  the BETA-002-B cross-check tests now hold the registry, package manifest, and
+  lockfile in lockstep. `velqu`, `elysia`, `fastify` pins verified already exact.
+- `benchmarks/real-world/versions.test.ts`: added two regression tests —
+  `BETA-002-B: registry pins match candidates/package.json exactly` (compares
+  `versions.candidates[name]` against `pkg.dependencies[name]` for elysia/hono/
+  fastify) and `BETA-002-B: registry pins match the frozen bun.lock exactly`
+  (asserts each `"name@version"` resolved entry is present in the frozen lock).
+  9/9 versions tests pass.
+
+### Required evidence
+
+- **Candidate source**: unchanged in this packet; BETA-002-A candidates remain
+  pinned via `candidates/package.json` + frozen `candidates/bun.lock`.
+- **Parity tests**: `versions.test.ts` now 9/9 pass, including the two new
+  cross-check tests that fail on any future registry/manifest/lock drift.
+- **Fairness report**: `versions.json` is the hash-fed fairness input; pins are
+  now provably identical across registry, package manifest, and lockfile, so the
+  version metadata channel cannot silently diverge.
+
+### Commands
+
+- `bun test benchmarks/real-world/versions.test.ts` -> 9 pass / 0 fail
+- `bun test` -> 336 pass / 0 fail (56 files)
+- `bun run typecheck` -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Guardrail mapping
+
+- **Candidates are semantically equivalent**: all candidates resolve to the same
+  pinned versions enforced against package.json and bun.lock by the new tests.
+- **No framework receives hidden advantages**: exact-pin equality means no
+  candidate can pick up a different (e.g. newer) framework version at install.
+- **All outputs pass contract fixtures**: unchanged contract tests still pass
+  (336/0).
+- **Version/hash metadata is captured**: `versions.json` is the registry consumed
+  by the fairness pipeline; drift it describes is now impossible without a test
+  failure.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation across
+all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
