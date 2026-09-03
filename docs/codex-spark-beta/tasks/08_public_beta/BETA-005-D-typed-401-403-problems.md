@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -111,3 +111,58 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-D) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-d (squash-merged; see git log for final hash)
+- Closes: #527
+
+### Changed files
+- `packages/capability-auth-jwt/src/problems.ts` (new): total failure
+  mapping to RFC 9457 problems — 401 for authentication failures with
+  `WWW-Authenticate: Bearer error="invalid_token"`, 403
+  `insufficient-scope` for authorization failures with
+  `error="insufficient_scope"`; closed-set reasons (unknown collapses
+  to generic invalid-token 401); `authenticateBearer` whole-flow
+  helper; `requireScope` explicit authorization step (403 vs 401
+  distinction).
+- `packages/capability-auth-jwt/src/problems.test.ts` (new): 9
+  deterministic tests.
+- `packages/capability-auth-jwt/README.md`: typed-problems section.
+- `docs/reports/beta-005-d-typed-401-403-problems.md` (new).
+
+### Required evidence
+
+- **Security tests**: 9 new tests; package total 44 pass (mapping
+  totality, WWW-Authenticate headers, 403-vs-401 distinction,
+  closed-set collapse, algorithm-confused token -> typed 401).
+- **Reference docs**: README section + report.
+- **W1/W2/W3 integration**: the declared-401 policy pattern is the
+  W1 consumer surface; typed problems layer onto it without changing
+  routes; no load-run claims.
+
+### Commands
+
+- `bun test packages/capability-auth-jwt` -> 44 pass / 0 fail
+- `bun test` -> 428 pass / 0 fail (66 files)
+- typecheck / fmt / clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Invalid tokens fail closed**: every failure is a typed problem;
+  unknown reasons collapse to generic invalid-token 401, never a pass.
+- **Algorithm confusion impossible**: unchanged profile gates surface
+  as typed 401s.
+- **Auth policy error appears in Treaty contract**: problem `type`
+  URIs are closed-set and documented; declared statuses (401/403) are
+  the contract-visible surface.
+- **Performance/caching documented**: mapping is a constant-time table
+  lookup; no cache.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
