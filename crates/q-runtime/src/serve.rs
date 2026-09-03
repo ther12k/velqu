@@ -85,6 +85,168 @@ impl StageMetrics {
     }
 }
 
+/// BETA-006-A: per-route request/status/duration aggregation. Cardinality
+/// is bounded by construction: one entry per pack route (a static table)
+/// plus a single fallback bucket — never per-path, per-status-code, or
+/// per-label. Durations are µs totals + max (no histograms, no allocation).
+#[derive(Debug, Default)]
+pub struct RouteStatusCounters {
+    pub total: AtomicU64,
+    pub ok_2xx: AtomicU64,
+    pub redirect_3xx: AtomicU64,
+    pub client_error_4xx: AtomicU64,
+    pub server_error_5xx: AtomicU64,
+    pub duration_us_total: AtomicU64,
+    pub duration_us_max: AtomicU64,
+}
+
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct RouteStatusCountersSnapshot {
+    pub total: u64,
+    pub ok_2xx: u64,
+    pub redirect_3xx: u64,
+    pub client_error_4xx: u64,
+    pub server_error_5xx: u64,
+    pub duration_us_total: u64,
+    pub duration_us_max: u64,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct RouteStatusEntrySnapshot {
+    pub route_id: String,
+    #[serde(flatten)]
+    pub counters: RouteStatusCountersSnapshot,
+}
+
+#[derive(Debug, Default)]
+pub struct RouteStatusMetrics {
+    route_ids: Vec<String>,
+    entries: Vec<RouteStatusCounters>,
+    by_id: std::collections::HashMap<Box<str>, usize>,
+    unknown: RouteStatusCounters,
+}
+
+impl RouteStatusMetrics {
+    /// Built once at startup from the pack's static route table.
+    pub fn from_route_ids<I: IntoIterator<Item = String>>(route_ids: I) -> Self {
+        let route_ids: Vec<String> = route_ids.into_iter().collect();
+        let by_id = route_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (Box::from(id.as_str()), i))
+            .collect();
+        let entries = route_ids
+            .iter()
+            .map(|_| RouteStatusCounters::default())
+            .collect();
+        RouteStatusMetrics {
+            route_ids,
+            entries,
+            by_id,
+            unknown: RouteStatusCounters::default(),
+        }
+    }
+
+    /// O(1) atomic increments on the request path; unknown route ids fall
+    /// into the single fallback bucket (bounded cardinality).
+    pub fn record(&self, route_id: &str, status: u16, duration_us: u64) {
+        let entry = match self.by_id.get(route_id) {
+            Some(&i) => &self.entries[i],
+            None => &self.unknown,
+        };
+        entry.total.fetch_add(1, Ordering::Relaxed);
+        match status {
+            200..=299 => entry.ok_2xx.fetch_add(1, Ordering::Relaxed),
+            300..=399 => entry.redirect_3xx.fetch_add(1, Ordering::Relaxed),
+            400..=499 => entry.client_error_4xx.fetch_add(1, Ordering::Relaxed),
+            500..=599 => entry.server_error_5xx.fetch_add(1, Ordering::Relaxed),
+            _ => 0,
+        };
+        entry
+            .duration_us_total
+            .fetch_add(duration_us, Ordering::Relaxed);
+        entry
+            .duration_us_max
+            .fetch_max(duration_us, Ordering::Relaxed);
+    }
+
+    pub fn snapshot(&self) -> Vec<RouteStatusEntrySnapshot> {
+        let snap = |c: &RouteStatusCounters| RouteStatusCountersSnapshot {
+            total: c.total.load(Ordering::Relaxed),
+            ok_2xx: c.ok_2xx.load(Ordering::Relaxed),
+            redirect_3xx: c.redirect_3xx.load(Ordering::Relaxed),
+            client_error_4xx: c.client_error_4xx.load(Ordering::Relaxed),
+            server_error_5xx: c.server_error_5xx.load(Ordering::Relaxed),
+            duration_us_total: c.duration_us_total.load(Ordering::Relaxed),
+            duration_us_max: c.duration_us_max.load(Ordering::Relaxed),
+        };
+        let mut out = Vec::with_capacity(self.entries.len() + 1);
+        for (i, id) in self.route_ids.iter().enumerate() {
+            out.push(RouteStatusEntrySnapshot {
+                route_id: id.clone(),
+                counters: snap(&self.entries[i]),
+            });
+        }
+        out.push(RouteStatusEntrySnapshot {
+            route_id: "<unknown>".into(),
+            counters: snap(&self.unknown),
+        });
+        out
+    }
+
+    pub fn route_entry_count(&self) -> usize {
+        self.entries.len() + 1
+    }
+}
+
+#[cfg(test)]
+mod route_metrics_tests {
+    use super::*;
+
+    #[test]
+    fn statuses_bucket_and_durations_aggregate() {
+        let m = RouteStatusMetrics::from_route_ids(["a".to_string(), "b".to_string()]);
+        m.record("a", 200, 100);
+        m.record("a", 200, 300);
+        m.record("a", 404, 50);
+        m.record("b", 500, 1_000_000);
+        m.record("never-seen", 200, 7);
+        let snap = m.snapshot();
+        assert_eq!(snap.len(), 3); // 2 routes + fallback bucket
+        let a = &snap[0].counters;
+        assert_eq!((a.total, a.ok_2xx, a.client_error_4xx), (3, 2, 1));
+        assert_eq!(a.duration_us_total, 450); // 100 + 300 + 50 (all outcomes)
+        assert_eq!(a.duration_us_max, 300);
+        let b = &snap[1].counters;
+        assert_eq!((b.total, b.server_error_5xx), (1, 1));
+        assert_eq!(b.duration_us_max, 1_000_000);
+        let unknown = &snap[2];
+        assert_eq!(unknown.route_id, "<unknown>");
+        assert_eq!(
+            (unknown.counters.total, unknown.counters.duration_us_total),
+            (1, 7)
+        );
+        // cardinality bound: entries stay fixed no matter how many ids appear
+        assert_eq!(m.route_entry_count(), 3);
+        m.record("another-unknown", 200, 1);
+        assert_eq!(m.route_entry_count(), 3);
+    }
+
+    #[test]
+    fn record_overhead_is_budgeted() {
+        // budget: a single record() must stay far below one request's
+        // total cost; a generous per-call bound guards against accidental
+        // allocation/lock regressions on the hot path.
+        let m = RouteStatusMetrics::from_route_ids(["a".to_string()]);
+        let started = Instant::now();
+        for i in 0..10_000u64 {
+            m.record("a", 200, i % 1_000);
+        }
+        let per_call_us = started.elapsed().as_micros() as f64 / 10_000.0;
+        assert!(per_call_us < 50.0, "record() averaged {per_call_us}µs/call");
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, serde::Serialize)]
 pub struct StageMetricsSnapshot {
     pub route: u64,
@@ -133,6 +295,9 @@ pub struct ServeState {
     pub log_sample: u64,
     pub log_sequence: AtomicU64,
     pub metrics: Arc<StageMetrics>,
+    /// BETA-006-A: bounded per-route request/status/duration aggregation
+    /// (always on; O(1) atomic increments; cardinality fixed at startup).
+    pub route_metrics: RouteStatusMetrics,
 }
 
 #[allow(clippy::type_complexity)]
@@ -151,13 +316,10 @@ pub fn make_handler(
         Box::pin(async move {
             let sequence = state.log_sequence.fetch_add(1, Ordering::Relaxed) + 1;
             let sampled = state.log_sample == 0 || sequence.is_multiple_of(state.log_sample);
-            let started = if state.log_mode != LogMode::Off
-                && (state.log_mode == LogMode::Errors || sampled)
-            {
-                Some(req.started)
-            } else {
-                None
-            };
+            // BETA-006-A: duration capture is ALWAYS on (a single Instant
+            // copy); only log serialization is mode-gated. Metrics remain
+            // meaningful even when logging is off.
+            let started = Some(req.started);
             // M24-002-B: routing runs on the native head before any field is
             // materialized; log fields are only built when logging is on.
             let log_ctx = if state.log_mode != LogMode::Off {
@@ -172,7 +334,19 @@ pub fn make_handler(
             let (result, route_id, stage) = pipeline(&state, req).await;
             state.metrics.write.fetch_add(1, Ordering::Relaxed);
             if let Some(started) = started {
-                log_completion(&state, log_ctx.as_ref(), &result, &route_id, stage, started);
+                let duration_us = started.elapsed().as_micros() as u64;
+                let status = match &result {
+                    Ok(r) => r.status,
+                    Err(HttpError::Limited { status, .. }) => *status,
+                    Err(HttpError::QueueFull) => 503,
+                    Err(_) => 400,
+                };
+                state.route_metrics.record(&route_id, status, duration_us);
+                // OPS-001 sampling: full mode respects log_sample; errors
+                // mode always attempts (its <400 skip applies inside).
+                if state.log_mode == LogMode::Full || sampled {
+                    log_completion(&state, log_ctx.as_ref(), &result, &route_id, stage, started);
+                }
             }
             (result, route_id, stage)
         })

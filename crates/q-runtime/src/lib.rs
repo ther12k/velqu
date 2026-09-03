@@ -425,6 +425,10 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     .collect()
             })
             .collect();
+        // BETA-006-A: fixed-size per-route metric table from the static
+        // pack route list (cardinality bounded at startup).
+        let route_metric_ids: Vec<String> =
+            pack.routes.iter().map(|r| r.id.clone()).collect();
         let state = Arc::new(serve::ServeState {
             pack: Arc::new(pack),
             router,
@@ -447,6 +451,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             log_sample: cfg.log_sample,
             log_sequence: std::sync::atomic::AtomicU64::new(0),
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
+            route_metrics: serve::RouteStatusMetrics::from_route_ids(route_metric_ids),
         });
         let handler = serve::make_handler(Arc::clone(&state));
         // M3-007-B: the drain gate flips the INSTANT the shutdown signal
