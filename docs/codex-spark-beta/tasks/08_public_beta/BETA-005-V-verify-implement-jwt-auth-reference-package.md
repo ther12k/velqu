@@ -4,7 +4,7 @@ parent_task: BETA-005
 milestone: BETA
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,54 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-005-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-005-v (squash-merged; see git log for final hash)
+- Closes: #529
+
+### Acceptance-criterion mapping (parent BETA-005)
+
+1. **Invalid tokens fail closed**
+   - A: five-gate profile pipeline (structure -> algorithm -> header
+     fields -> timing-safe signature -> claims shape) — every gate a
+     typed rejection; no best-effort decode path. 14 profile tests.
+   - C: `exp` required; missing/malformed claims fail typed; configured
+     iss/aud expectations cannot be bypassed by omission. 8 tests.
+2. **Algorithm confusion is impossible**
+   - A: `alg` must equal `"HS256"` exactly, checked pre-signature; no
+     key-type dispatch; single verification path. Tested against
+     none/lowercase/case-variant/RS256/ES256/PS256/missing/non-string.
+   - B: rotation does not widen the surface — tokens carry no `kid`;
+     verification tries bounded active keys; unknown keys are plain
+     signature-mismatch (no oracle). 13 keyring tests.
+3. **Auth policy error appears in Treaty contract**
+   - D: total mapping to RFC 9457 problems with closed-set `type` URIs
+     and declared statuses (401 with WWW-Authenticate, 403
+     insufficient-scope) — the contract-visible surface; 9 tests.
+   - E: sweep test proves no failure string carries token/secret
+     material; redaction affordances for caller logging. 6 tests.
+4. **Performance/caching is documented**
+   - README sections (profile costs, rotation, claims, problems,
+     redaction) + per-packet reports; no implicit cache; bounded, typed
+     configuration everywhere.
+
+### Commands (fresh on this branch)
+
+- `bun test packages/capability-auth-jwt` -> 50 pass / 0 fail (5 files)
+- `cargo test -p velqu-runtime` -> 8 suites ok
+- `bun test` -> 434 pass / 0 fail (67 files)
+- typecheck / fmt / clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Changed files
+
+- Task record only (verification-only packet).
+
+### Disclosures
+
+- Verification-only packet; no runtime behavior changes.
+- Standing: CI `verify` workflows stall/fail with zero executed steps
+  on PR creation across all branches (infrastructure-side, tracked
+  since ~#714); local `./scripts/verify` is the real gate evidence.
