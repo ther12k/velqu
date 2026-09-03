@@ -58,6 +58,16 @@ RUNS=../raw/real-world/velqu,../raw/real-world/elysia ./run.sh audit
 Writes `fairness.md` with the verdict. This is the audit BETA-001 requires
 before any cross-candidate comparison may be claimed.
 
+## Unavoidable differences
+
+[`DIFFERENCES.md`](DIFFERENCES.md) declares what still differs between
+candidates after contract matching and response verification (runtime
+process model, serializers, fetch clients, routers) and what sits outside
+the measured surface. Its sha256 is recorded in every summary
+(`configHashes.differences`) and compared by the fairness audit — a run set
+is only comparable when every candidate ran under the same declared
+differences (BETA-002-D).
+
 ## Determinism
 
 - The dataset is a pure function of `schema.sql` + `seed.sql` (generate_series
@@ -67,7 +77,7 @@ before any cross-candidate comparison may be claimed.
 - The controlled upstream (`upstream.ts`) delays by an explicit `ms` query
   parameter (0–1000, validated) — no jitter, no randomness.
 - Every summary records the environment (Bun/OS/arch/commit) and sha256 hashes
-  of `SPEC.md`, `workloads.json`, `schema.sql`, and `seed.sql`
+  of `SPEC.md`, `workloads.json`, `schema.sql`, `seed.sql`, and `DIFFERENCES.md`
   (`result-schema.ts` enforces their presence).
 
 ## Candidate failure is retained

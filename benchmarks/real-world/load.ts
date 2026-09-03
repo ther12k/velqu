@@ -207,6 +207,7 @@ async function main() {
       schema: sha256File(`${DIR}/postgres/schema.sql`),
       seed: sha256File(`${DIR}/postgres/seed.sql`),
       versions: sha256File(`${DIR}/versions.json`),
+      differences: sha256File(`${DIR}/DIFFERENCES.md`),
     },
     cells,
     raw: rawPath,

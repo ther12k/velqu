@@ -23,7 +23,7 @@ export interface FairnessFinding {
   detail: string;
 }
 
-const COMPARED_HASHES = ["spec", "workloads", "schema", "seed", "versions"] as const;
+const COMPARED_HASHES = ["spec", "workloads", "schema", "seed", "versions", "differences"] as const;
 
 export function auditFairness(summaries: RealWorldSummary[]): FairnessFinding[] {
   const findings: FairnessFinding[] = [];

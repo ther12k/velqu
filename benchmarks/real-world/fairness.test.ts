@@ -17,7 +17,7 @@ function summary(baseUrl: string, overrides: Partial<RealWorldSummary> = {}): Re
     durationSec: 10,
     concurrencyLevels: [1, 10],
     environment: { bunVersion: "1.4.0", os: "linux", arch: "x64", commit: "abc123" },
-    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH, versions: HASH },
+    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH, versions: HASH, differences: HASH },
     cells: [
       { workload: "W1", concurrency: 1, totalRequests: 100, errors: 0, statusMismatches: 0, rps: 100, p50Us: 1, p95Us: 2, p99Us: 3, maxUs: 4 },
       { workload: "W1", concurrency: 10, totalRequests: 200, errors: 0, statusMismatches: 0, rps: 200, p50Us: 1, p95Us: 2, p99Us: 3, maxUs: 4 },
@@ -54,6 +54,20 @@ describe("real-world fairness audit", () => {
     const b = summary("http://b");
     b.configHashes.versions = "e".repeat(64);
     expect(failed(auditFairness([summary("http://a"), b]), "hash.versions")).toBeTruthy();
+  });
+
+  test("differences-document drift fails the audit", () => {
+    const b = summary("http://b");
+    b.configHashes.differences = "f".repeat(64);
+    const findings = auditFairness([summary("http://a"), b]);
+    expect(failed(findings, "hash.differences")).toBeTruthy();
+  });
+
+  test("missing differences hash fails the audit", () => {
+    const b = summary("http://b");
+    delete (b.configHashes as Record<string, string>).differences;
+    const findings = auditFairness([summary("http://a"), b]);
+    expect(failed(findings, "hash.differences")).toBeTruthy();
   });
 
   test("protocol drift (duration, concurrency) fails the audit", () => {

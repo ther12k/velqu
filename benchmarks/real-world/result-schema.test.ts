@@ -20,7 +20,7 @@ function validSummary(): RealWorldSummary {
     durationSec: 10,
     concurrencyLevels: [1, 10],
     environment: { bunVersion: "1.4.0", os: "linux", arch: "x64", commit: "0123456789abcdef" },
-    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH, versions: HASH },
+    configHashes: { spec: HASH, workloads: HASH, schema: HASH, seed: HASH, versions: HASH, differences: HASH },
     cells: [
       {
         workload: "W1",
@@ -87,6 +87,9 @@ describe("real-world result schema", () => {
     delete (s.configHashes as Record<string, string>).spec;
     const errs2 = validateRealWorldSummary(s, ["W1"], [1, 10]);
     expect(errs2).toContain("configHashes.spec must be a sha256 hex digest");
+    delete (s.configHashes as Record<string, string>).differences;
+    const errs3 = validateRealWorldSummary(s, ["W1"], [1, 10]);
+    expect(errs3).toContain("configHashes.differences must be a sha256 hex digest");
   });
 
   test("wrong format string and missing environment fields are reported", () => {
