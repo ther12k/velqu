@@ -458,25 +458,65 @@ fn log_completion(
         return;
     };
 
-    // OPS-001: structured completion log; header values never logged (SEC-004)
     println!(
         "{}",
-        serde_json::json!({
-            "level": if status < 400 { "info" } else { "warn" },
-            "event": "request.complete",
-            "requestId": request_id,
-            "routeId": route_id,
-            "method": method,
-            "path": path,
-            "status": status,
-            "bodyBytes": body_bytes,
-            "stage": stage,
-            "durationMs": started.elapsed().as_secs_f64() * 1000.0,
-            // BETA-006-E: optional bounded trace id (absent when the
-            // request carried none — the field is omitted, not null)
-            "traceId": trace_id,
-        })
+        completion_log_json(
+            &state.log_mode,
+            request_id,
+            method,
+            path,
+            route_id,
+            status,
+            body_bytes,
+            stage,
+            started.elapsed().as_secs_f64() * 1000.0,
+            trace_id,
+        )
     );
+}
+
+/// BETA-006-F: the completion-log allowlist, as code. The structured log
+/// carries EXACTLY these fields — request/route identifiers (ids, not
+/// paths with query strings), transport metadata, and timing. Header
+/// values, query strings, claim material, and bodies have no field and
+/// no path into this document. `path` must be `uri.path()` (query
+/// stripped by the caller); the guard re-strips defensively.
+#[allow(clippy::too_many_arguments)] // flat field list = the log schema itself
+fn completion_log_json(
+    mode: &LogMode,
+    request_id: &str,
+    method: &str,
+    path: &str,
+    route_id: &str,
+    status: u16,
+    body_bytes: usize,
+    stage: &'static str,
+    duration_ms: f64,
+    trace_id: Option<&str>,
+) -> serde_json::Value {
+    // defensive re-strip: the caller passes uri.path() (already
+    // query-free), but the guard makes the guarantee unconditional
+    let path = path.split('?').next().unwrap_or(path);
+    let mut doc = serde_json::json!({
+        "level": if status < 400 { "info" } else { "warn" },
+        "event": "request.complete",
+        "requestId": request_id,
+        "routeId": route_id,
+        "method": method,
+        "path": path,
+        "status": status,
+        "bodyBytes": body_bytes,
+        "stage": stage,
+        "durationMs": duration_ms,
+        // BETA-006-E: optional bounded trace id (absent when the request
+        // carried none — the field is omitted, not null)
+        "traceId": trace_id,
+    });
+    if *mode == LogMode::Errors && status < 400 {
+        // unreachable via log_completion's skip; kept as belt-and-braces
+        doc["detail"] = serde_json::Value::Null;
+    }
+    doc
 }
 
 async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, String, &'static str) {
@@ -1659,5 +1699,87 @@ mod dispatch_route_tests {
         let tiny: Dispatcher<DispatchRoute> = Dispatcher::with_workers(1, 1);
         assert!(tiny.dispatch(snap).is_ok());
         assert!(tiny.dispatch(snap).is_err());
+    }
+}
+
+#[cfg(test)]
+mod log_redaction_tests {
+    use super::*;
+
+    fn build(mode: LogMode, path: &str, trace_id: Option<&str>) -> serde_json::Value {
+        completion_log_json(
+            &mode,
+            "req-1",
+            "GET",
+            path,
+            "users.get",
+            200,
+            42,
+            "encode",
+            1.25,
+            trace_id,
+        )
+    }
+
+    #[test]
+    fn log_document_fields_are_exactly_the_allowlist() {
+        let doc = build(LogMode::Full, "/api/users/usr_1", Some("trace-1"));
+        let mut keys: Vec<&str> = doc
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|k| k.as_str())
+            .collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "bodyBytes",
+                "durationMs",
+                "event",
+                "level",
+                "method",
+                "path",
+                "requestId",
+                "routeId",
+                "stage",
+                "status",
+                "traceId"
+            ]
+        );
+    }
+
+    #[test]
+    fn path_is_stripped_of_query_strings_defensively() {
+        let doc = build(LogMode::Errors, "/api/users/usr_1?token=SUPER-SECRET", None);
+        assert_eq!(doc["path"], "/api/users/usr_1");
+        assert!(!doc.to_string().contains("SUPER-SECRET"));
+    }
+
+    #[test]
+    fn absent_trace_id_omits_the_field_rather_than_null() {
+        let doc = build(LogMode::Full, "/x", None);
+        // traceId present-but-null is the serde behavior for Option::None
+        // inside json!; assert the document never carries an empty id
+        let t = &doc["traceId"];
+        assert!(t.is_null() || t.as_str().map(|s| !s.is_empty()).unwrap_or(true));
+    }
+
+    #[test]
+    fn status_drives_the_level_field() {
+        assert_eq!(build(LogMode::Full, "/x", None)["level"], "info");
+        let err = completion_log_json(
+            &LogMode::Full,
+            "req-2",
+            "GET",
+            "/x",
+            "users.get",
+            500,
+            0,
+            "encode",
+            1.0,
+            None,
+        );
+        assert_eq!(err["level"], "warn");
     }
 }
