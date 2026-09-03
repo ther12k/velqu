@@ -585,7 +585,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-005-E](../tasks/08_public_beta/BETA-005-E-no-secret-logging.md) | P0 | implement | PASS | BETA-005-D | No secret logging |
 | [BETA-005-V](../tasks/08_public_beta/BETA-005-V-verify-implement-jwt-auth-reference-package.md) | P0 | verify | PASS | BETA-005-A, BETA-005-B, BETA-005-C, BETA-005-D, BETA-005-E | Verify Implement JWT/auth reference package |
 | [BETA-005-Z](../tasks/08_public_beta/BETA-005-Z-package-evidence-for-implement-jwt-auth-reference-package.md) | P0 | evidence | PASS | BETA-005-V | Package evidence for Implement JWT/auth reference package |
-| [BETA-006-A](../tasks/08_public_beta/BETA-006-A-request-route-status-duration.md) | P0 | implement | TODO | M3-GATE, M28-GATE | Request/route/status/duration |
+| [BETA-006-A](../tasks/08_public_beta/BETA-006-A-request-route-status-duration.md) | P0 | implement | PASS | M3-GATE, M28-GATE | Request/route/status/duration |
 | [BETA-006-B](../tasks/08_public_beta/BETA-006-B-worker-queues-quarantine-replacements.md) | P0 | implement | TODO | BETA-006-A | Worker queues/quarantine/replacements |
 | [BETA-006-C](../tasks/08_public_beta/BETA-006-C-fetch-and-db-pools.md) | P0 | implement | TODO | BETA-006-B | Fetch and DB pools |
 | [BETA-006-D](../tasks/08_public_beta/BETA-006-D-memory-tasks-slots.md) | P0 | implement | TODO | BETA-006-C | Memory/tasks/slots |

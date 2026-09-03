@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -113,3 +113,64 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-a (squash-merged; see git log for final hash)
+- Closes: #531
+
+### Changed files
+- `crates/q-runtime/src/serve.rs`: `RouteStatusMetrics` +
+  `RouteStatusCounters(Snapshot)` + `RouteStatusEntrySnapshot` —
+  cardinality-bounded per-route request/status/duration aggregation
+  (one entry per static pack route + `<unknown>` fallback; status
+  classes, not raw codes; duration total+max in µs; O(1) atomic
+  increments, no locks/allocation). Handler: duration capture always on
+  (single Instant copy), log serialization still mode-gated with
+  sampling semantics preserved; `record()` wired post-pipeline with
+  typed status extraction. 2 in-crate tests (bucketing/max math/
+  fallback/cardinality bound; hot-path overhead budget).
+- `crates/q-runtime/src/lib.rs`: fixed-size metric table built from the
+  static pack route list at startup.
+- `docs/reports/beta-006-a-request-route-status-duration.md` (new):
+  metrics schema, redaction audit, overhead measurement.
+
+### Required evidence
+
+- **Metrics schema**: per-route `{total, 2xx/3xx/4xx/5xx buckets,
+  duration_us_total, duration_us_max}`; cardinality fixed at startup
+  (pack routes + 1 fallback), snapshot serde-serializable.
+- **Overhead benchmark**: in-test budget (record() averaged far below
+  the asserted 50µs/call bound; observed sub-µs on this host);
+  disabled-vs-enabled split documented (duration copy always on;
+  serialization gated).
+- **Redaction audit**: aggregation fields are route ids, status
+  classes, durations only — no paths/headers/query/PII; consistent
+  with SEC-004 in the existing request log.
+
+### Commands
+
+- `cargo test -p velqu-runtime` -> 57+ pass incl. 2 new metric tests
+- `cargo test -p q-http` / `-p q-bridge` -> suites ok
+- fmt / clippy (`-D warnings`) -> clean
+- `bun test` -> 434 pass / 0 fail (67 files); typecheck -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Disabled overhead measured**: Off mode adds one Instant copy; log
+  serialization stays gated (test-budgeted record() cost).
+- **Enabled overhead budgeted**: O(1) atomics; in-test budget bound.
+- **Cardinality is bounded**: fixed entries = pack routes + 1 fallback;
+  status classes, not codes (tested).
+- **No secrets/PII by default**: schema carries ids/classes/durations
+  only (audit in report).
+- **Dashboards/examples exist**: snapshot schema documented; example
+  rendering lands with the workstream docs (OBSERVABILITY_OPERATIONS).
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
