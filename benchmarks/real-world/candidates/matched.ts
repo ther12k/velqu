@@ -231,6 +231,29 @@ export class DeterministicStore {
 }
 
 /**
+ * CPU operation levels (BETA-003-A): deterministic in-handler loop with no
+ * I/O. This exact function must be shared by every candidate so the only
+ * variable across candidates is the execution engine itself.
+ * Bounded: ops <= 100000 (validated by validateOps).
+ */
+export function cpuWork(ops: number): number {
+  let acc = 0;
+  for (let i = 0; i < ops; i++) {
+    acc = (acc + i * 31) % 1000003;
+  }
+  return acc;
+}
+
+export const MAX_CPU_OPS = 100000;
+
+export function validateOps(raw: string | null): number | null {
+  if (raw === null || !/^(0|[1-9]\d{0,5})$/.test(raw)) return null;
+  const ops = Number(raw);
+  if (ops > MAX_CPU_OPS) return null;
+  return ops;
+}
+
+/**
  * Universal matched authentication checker for real-world candidates.
  */
 export function verifyAuthHeader(header: string | null | undefined): { ok: true; user: { id: string; role: string } } | { ok: false; status: 401; error: string } {

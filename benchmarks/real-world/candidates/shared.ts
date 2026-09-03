@@ -39,3 +39,5 @@ export function validateMode(mode: string | null): (typeof MIX_MODES)[number] | 
     ? (mode as (typeof MIX_MODES)[number])
     : null;
 }
+
+export { cpuWork, validateOps, MAX_CPU_OPS } from "./matched";

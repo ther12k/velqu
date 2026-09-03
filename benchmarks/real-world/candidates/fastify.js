@@ -3,7 +3,7 @@
  * Implements W1..W4 matched contract (BETA-002-A).
  */
 const fastify = require("fastify")({ logger: false });
-const { PORT, UPSTREAM, validateMs, validateFanout } = require("./shared.cjs");
+const { PORT, UPSTREAM, validateMs, validateFanout, validateOps, cpuWork } = require("./shared.cjs");
 const { DeterministicStore, verifyAuthHeader } = require("./matched.cjs");
 
 const store = new DeterministicStore();
@@ -100,6 +100,13 @@ fastify.get("/api/bench/fanout", async (request, reply) => {
   if (n === null || ms === null) return reply.code(400).send({ error: "invalid n or ms" });
   const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
   return { n, ms, ok: results.every(Boolean) };
+});
+
+// CPU operation levels (BETA-003-A): deterministic in-handler work, no I/O
+fastify.get("/api/bench/cpu", async (request, reply) => {
+  const ops = validateOps(request.query.ops ?? null);
+  if (ops === null) return reply.code(400).send({ error: "invalid ops" });
+  return { ops, checksum: cpuWork(ops) };
 });
 
 fastify.setNotFoundHandler((request, reply) => {

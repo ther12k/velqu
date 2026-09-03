@@ -41,6 +41,21 @@ interface Args {
   concurrency: number[];
   upstreamUrl: string | null;
   workloads: string[] | null;
+  serverPid: number | null;
+}
+
+/**
+ * Reads the current VmRSS of a process from /proc (Linux). Returns null for
+ * any failure — RSS is supplementary evidence, never fabricated.
+ */
+export function readVmRssKb(pid: number, procRoot = "/proc"): number | null {
+  try {
+    const status = readFileSync(`${procRoot}/${pid}/status`, "utf8");
+    const m = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseArgs(argv: string[]): Args {
@@ -65,6 +80,7 @@ function parseArgs(argv: string[]): Args {
     workloads: workloadsRaw
       ? workloadsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
       : null,
+    serverPid: Number(get("server-pid")) > 0 ? Number(get("server-pid")) : null,
   };
 }
 
@@ -212,6 +228,12 @@ async function main() {
     cells,
     raw: rawPath,
   };
+
+  if (args.serverPid !== null) {
+    const rssKb = readVmRssKb(args.serverPid);
+    if (rssKb !== null) summary.serverRssKb = rssKb;
+    else console.warn(`load.ts: could not read VmRSS for pid ${args.serverPid} (process exited?)`);
+  }
 
   // Validation covers exactly the selected cells: a --workloads filter is a
   // legitimate run shape, not a partial-failure state.

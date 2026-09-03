@@ -2,7 +2,7 @@
  * Candidate: Bun runtime + Bun-native fetch (no framework).
  * Implements W1..W4 matched contract (BETA-002-A).
  */
-import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+import { PORT, UPSTREAM, validateMs, validateFanout, validateOps, cpuWork } from "./shared";
 import { DeterministicStore, verifyAuthHeader, type OrderItemInput } from "./matched";
 
 const store = new DeterministicStore();
@@ -127,6 +127,13 @@ const server = Bun.serve({
         ms,
         ok: results.every((r) => r.status === 200),
       });
+    }
+
+    // CPU operation levels (BETA-003-A): deterministic in-handler work, no I/O
+    if (url.pathname === "/api/bench/cpu") {
+      const ops = validateOps(url.searchParams.get("ops"));
+      if (ops === null) return Response.json({ error: "invalid ops" }, { status: 400 });
+      return Response.json({ ops, checksum: cpuWork(ops) });
     }
 
     return Response.json({ error: "not found" }, { status: 404 });

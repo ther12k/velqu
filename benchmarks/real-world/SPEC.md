@@ -37,10 +37,10 @@ This suite measures real-world backend API performance across frameworks under r
 
 Before any load run, every candidate must pass `verify-contract.ts`
 (`./run.sh contracts`): the verifier boots each candidate against the
-controlled upstream and checks an 18-fixture matrix (W1 lookup + 404/401s,
+controlled upstream and checks the full fixture matrix (W1 lookup + 404/401s,
 W2 order + 400/409/401s, W3 exact paginated body, W4 io/mixed/fanout +
-400/504/502, unknown-route 404) against expected responses computed from the
-shared matched contract. Only candidates that answer every fixture with the
+400/504/502, CPU checksum levels, unknown-route 404) against expected
+responses computed from the shared matched contract. Only candidates that answer every fixture with the
 same status and byte-equivalent JSON are semantically equivalent and may be
 compared.
 

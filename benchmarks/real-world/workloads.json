@@ -44,6 +44,46 @@
       "description": "20-row query with join, COUNT/AVG aggregation, and 16KB JSON serialization"
     },
     {
+      "id": "PAYLOAD_1",
+      "name": "Payload matrix: 1-row aggregated list",
+      "path": "/api/products?category=electronics&page=1&limit=1",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "W3 route at limit=1: response-size scaling without I/O"
+    },
+    {
+      "id": "PAYLOAD_10",
+      "name": "Payload matrix: 10-row aggregated list",
+      "path": "/api/products?category=electronics&page=1&limit=10",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "W3 route at limit=10: response-size scaling without I/O"
+    },
+    {
+      "id": "PAYLOAD_20",
+      "name": "Payload matrix: 20-row aggregated list",
+      "path": "/api/products?category=electronics&page=1&limit=20",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "W3 route at limit=20: response-size scaling without I/O"
+    },
+    {
+      "id": "PAYLOAD_50",
+      "name": "Payload matrix: 50-row aggregated list",
+      "path": "/api/products?category=electronics&page=1&limit=50",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "W3 route at limit=50: response-size scaling without I/O"
+    },
+    {
+      "id": "W4_0ms",
+      "name": "Controlled 0ms I/O",
+      "path": "/api/bench/io?ms=0",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Upstream responds immediately: isolates proxy/serialization overhead from simulated latency"
+    },
+    {
       "id": "W4_1ms",
       "name": "Controlled 1ms I/O",
       "path": "/api/bench/io?ms=1",
@@ -122,6 +162,38 @@
       "method": "GET",
       "expectedStatus": 502,
       "description": "Upstream 200 + garbage body: typed 502"
+    },
+    {
+      "id": "CPU_0",
+      "name": "CPU operation level: 0 iterations",
+      "path": "/api/bench/cpu?ops=0",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Deterministic in-handler JS loop (no I/O): exposes execution-engine cost scaling"
+    },
+    {
+      "id": "CPU_100",
+      "name": "CPU operation level: 100 iterations",
+      "path": "/api/bench/cpu?ops=100",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Deterministic in-handler JS loop (no I/O): exposes execution-engine cost scaling"
+    },
+    {
+      "id": "CPU_1000",
+      "name": "CPU operation level: 1000 iterations",
+      "path": "/api/bench/cpu?ops=1000",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Deterministic in-handler JS loop (no I/O): exposes execution-engine cost scaling"
+    },
+    {
+      "id": "CPU_10000",
+      "name": "CPU operation level: 10000 iterations",
+      "path": "/api/bench/cpu?ops=10000",
+      "method": "GET",
+      "expectedStatus": 200,
+      "description": "Deterministic in-handler JS loop (no I/O): exposes execution-engine cost scaling"
     }
   ],
   "concurrencyLevels": [

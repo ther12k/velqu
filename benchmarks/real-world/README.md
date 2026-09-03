@@ -58,6 +58,20 @@ RUNS=../raw/real-world/velqu,../raw/real-world/elysia ./run.sh audit
 Writes `fairness.md` with the verdict. This is the audit BETA-001 requires
 before any cross-candidate comparison may be claimed.
 
+## Crossover matrices (BETA-003-A)
+
+`./run-crossover.sh [durationSec] [concurrencyCsv]` runs the controlled
+crossover cells for every candidate: the 0/1/5/10/25ms I/O latency matrix
+(`W4_0ms`..`W4_25ms`), the response payload matrix (`PAYLOAD_1/10/20/50` on
+the W3 route), and CPU operation levels (`CPU_0/100/1000/10000` — the
+identical bounded `cpuWork` loop shared by all candidates via the matched
+contract module, so only the execution engine varies). Candidate RSS is
+sampled via `load.ts --server-pid`. Evidence lands in
+`benchmarks/raw/real-world/crossover/` (summaries + retained `raw.jsonl.gz`
++ generated comparison reports); cold/warm/CPU/I/O cells are never mixed
+within a cell, and every candidate must pass `verify-contract.ts` first.
+The generated analysis lives in `docs/reports/beta-003-a-crossover-matrices.md`.
+
 ## Unavoidable differences
 
 [`DIFFERENCES.md`](DIFFERENCES.md) declares what still differs between

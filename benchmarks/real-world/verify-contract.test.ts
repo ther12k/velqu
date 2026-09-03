@@ -29,7 +29,7 @@ describe("Contract fixture matrix (BETA-002-C)", () => {
       expect(["GET", "POST"]).toContain(f.method);
       expect(f.path.startsWith("/")).toBe(true);
     }
-    for (const prefix of ["w1.", "w2.", "w3.", "w4.", "route."]) {
+    for (const prefix of ["w1.", "w2.", "w3.", "w4.", "cpu.", "route."]) {
       expect(names.some((n) => n.startsWith(prefix))).toBe(true);
     }
     // Rejection statuses required by the matched contract
