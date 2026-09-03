@@ -252,9 +252,26 @@ mod route_metrics_tests {
 /// position. Rendered at drain/shutdown and available on demand; there is
 /// deliberately no high-frequency emitter (bounded emissions only).
 pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
+    use q_engine::Engine;
     let stage = state.metrics.snapshot();
     let ownership = state.ownership.stats();
-    let health = state.engine.lock().expect("engine mutex").health();
+    let eng = state.engine.lock().expect("engine mutex");
+    let stats = eng.stats();
+    let health = eng.health();
+    drop(eng);
+    // BETA-006-C: fetch + db pool observability (bounded snapshots only)
+    let fetch = crate::fetch_stack::shared_pool().stats();
+    let postgres = match state.postgres_dialer.as_ref() {
+        Some(handle) => match handle.0.pool_stats_json() {
+            Some(json) => {
+                let pool: serde_json::Value =
+                    serde_json::from_str(&json).unwrap_or(serde_json::Value::Null);
+                serde_json::json!({ "linked": true, "pool": pool })
+            }
+            None => serde_json::json!({ "linked": true }),
+        },
+        None => serde_json::json!({ "linked": false }),
+    };
     serde_json::json!({
         "queue": {
             "pending": stage.queue_pending,
@@ -263,12 +280,18 @@ pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
         },
         "worker": {
             "quarantined": health.is_quarantined(),
+            "queuePoisoned": stats.queue_poisoned,
+            "poisonEvents": stats.poison_events,
         },
         "drain": {
             "draining": state.drain_gate.is_draining(),
             "refused": state.drain_gate.refused(),
         },
         "loadShed": state.load_shed.snapshot(),
+        "pools": {
+            "fetch": fetch,
+            "postgres": postgres,
+        },
     })
 }
 
@@ -303,6 +326,10 @@ pub struct ServeState {
     pub response_schema_ids: Vec<std::collections::BTreeMap<u16, u32>>,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
+    /// BETA-006-C: linked Postgres pool dialer, if the pack requires
+    /// `runtime:postgres` and the runtime configured it. Absent -> the
+    /// pools snapshot reports unlinked (zero-cost posture).
+    pub postgres_dialer: Option<q_capability_postgres::PostgresQueryHandle>,
     pub invocation_clock: AtomicU64,
     /// M3-007-A: invocation-to-worker ownership. Admission binds each
     /// invocation to its owning worker exactly once; the terminal
