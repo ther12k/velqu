@@ -4,7 +4,7 @@ parent_task: BETA-003
 milestone: BETA
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -114,3 +114,72 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-003-Z) — PASS (2026-09-03)
+
+- Branch/PR: beta-003-z (squash-merged; see git log for final hash)
+- Closes: #515
+- Parent verification: BETA-003-V PASS (PR #1114); this packet packages the
+  source-backed evidence across all child packets (A through D + V) and
+  flips parent task BETA-003 to PASS in `docs/beta/04_TASK_LEDGER.md`.
+
+### Evidence package
+
+- **Implementation packets (squash-merged):**
+  - BETA-003-A (PR #1110): controlled crossover cells — 0/1/5/10/25ms I/O,
+    payload matrix (PAYLOAD_1/10/20/50), CPU operation levels (CPU_0/100/
+    1000/10000 with the shared bounded `cpuWork`), RSS sampling
+    (`load.ts --server-pid`), `run-crossover.sh` one-command runner,
+    generalized comparison reports; caught its own bun-fetch insertion bug
+    via the contract gate before any timing.
+  - BETA-003-B (PR #1111): `ramp.ts` — first request through steady state
+    with a deterministic flatness-window onset criterion (never
+    extrapolated); 25 deterministic unit tests across the three harnesses.
+  - BETA-003-C (PR #1112): `crossover.ts` — cumulative crossover request
+    counts with honest `never` results; self-amortization points.
+  - BETA-003-D (PR #1113): `losses.ts` — mechanical honest-loss ledger
+    (18 rows, including Velqu's 1.59x C2 steady-floor loss).
+  - BETA-003-V (PR #1114): verification closure; fresh re-runs reproduce;
+    run-to-run spread recorded.
+
+### Required evidence (regenerated fresh on this branch, self-consistent)
+
+- `benchmarks/raw/ramp/`: `ramp-*.jsonl` (phase-tagged per-request rows),
+  `summary.json` (`velqu-ramp-v1`), generated `ramp-report.md`,
+  `crossover-counts.{json,md}`, `losses.{json,md}` — all from one fresh
+  run (8/8 cells 0 errors, onset in all).
+- `benchmarks/raw/real-world/crossover/`: per-candidate summaries + RSS,
+  retained `raw.jsonl.gz` + RETENTION manifests, three generated comparison
+  reports — 78 cells, 0 errors / 0 mismatches (`./run-crossover.sh 2 1,10`).
+- Reports: `docs/reports/beta-003-{a,b,c,d}-*.md` with DRAFT public wording
+  (explicitly not approved; loss-ledger framing).
+
+### Parent guardrail proofs
+
+1. **Crossover method is reproducible** — one command per suite, fixed
+   rules, hash-pinned inputs, committed raw rows; fresh re-runs on this
+   branch reproduce.
+2. **Cold, warm, CPU, and I/O are not conflated** — phase-tagged ramp
+   rows; distinct cell kinds; startup excluded from crossover counts and
+   labeled.
+3. **p50/p95/p99, CPU, RSS, errors are included** — in summaries,
+   comparison reports, and the loss ledger.
+4. **Positioning follows evidence** — losses mechanically extracted; gaps
+   declared; all public wording DRAFT and unpublished.
+
+### Gate results (fresh on this branch)
+
+- `bun ramp.ts` + `bun crossover.ts` + `bun losses.ts` -> regenerated, PASS
+- `./run-crossover.sh 2 1,10` -> PASS (78 cells, 0 errors/0 mismatches)
+- `cargo test -p q-engine-quickjs` -> 113 pass; `cargo test -p velqu-runtime` -> all suites ok
+- `cargo fmt --all --check` -> clean; clippy `-D warnings` -> clean
+- `bun test` -> 373 pass / 0 fail (60 files); `bun run typecheck` -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: BETA-003 flipped TODO -> **PASS**.
+- STATUS.md and TASK_INDEX.md updated to PASS (BETA-003-Z row).

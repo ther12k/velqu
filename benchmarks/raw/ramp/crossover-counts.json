@@ -1,7 +1,7 @@
 {
   "format": "velqu-crossover-counts-v1",
-  "runId": "1788448064944",
-  "generatedAt": "2026-09-03T15:22:47.380Z",
+  "runId": "1788451334621",
+  "generatedAt": "2026-09-03T16:02:15.441Z",
   "amortizationRatio": 1.25,
   "startupExcluded": "process spawn->ready->first response is a cold-start-harness quantity; these counts cover serving only",
   "classes": {
@@ -28,8 +28,8 @@
           "horizon": 100
         },
         "raw-bun vs velqu": {
-          "crossoverRequest": null,
-          "horizon": 125
+          "crossoverRequest": 57,
+          "horizon": 100
         },
         "raw-rust vs elysia2": {
           "crossoverRequest": 1,
@@ -49,29 +49,29 @@
         },
         "velqu vs raw-bun": {
           "crossoverRequest": 1,
-          "horizon": 125
+          "horizon": 100
         },
         "velqu vs raw-rust": {
-          "crossoverRequest": 76,
+          "crossoverRequest": null,
           "horizon": 100
         }
       },
       "selfAmortization": {
         "elysia2": {
-          "steadyMedianUs": 38,
+          "steadyMedianUs": 26,
           "selfAmortizationRequest": null
         },
         "raw-bun": {
-          "steadyMedianUs": 49,
+          "steadyMedianUs": 27,
           "selfAmortizationRequest": null
         },
         "raw-rust": {
-          "steadyMedianUs": 60,
-          "selfAmortizationRequest": 17
+          "steadyMedianUs": 23,
+          "selfAmortizationRequest": 57
         },
         "velqu": {
-          "steadyMedianUs": 36,
-          "selfAmortizationRequest": 270
+          "steadyMedianUs": 52,
+          "selfAmortizationRequest": null
         }
       }
     },
@@ -122,26 +122,26 @@
           "horizon": 100
         },
         "velqu vs raw-rust": {
-          "crossoverRequest": 3,
+          "crossoverRequest": null,
           "horizon": 100
         }
       },
       "selfAmortization": {
         "elysia2": {
-          "steadyMedianUs": 36.5,
+          "steadyMedianUs": 27,
           "selfAmortizationRequest": null
         },
         "raw-bun": {
-          "steadyMedianUs": 43,
+          "steadyMedianUs": 27,
           "selfAmortizationRequest": null
         },
         "raw-rust": {
-          "steadyMedianUs": 44,
-          "selfAmortizationRequest": null
+          "steadyMedianUs": 28,
+          "selfAmortizationRequest": 46
         },
         "velqu": {
-          "steadyMedianUs": 60,
-          "selfAmortizationRequest": 26
+          "steadyMedianUs": 27,
+          "selfAmortizationRequest": null
         }
       }
     }

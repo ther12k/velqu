@@ -1,7 +1,7 @@
 # Raw-sample retention
 
 - Policy: raw per-request rows are retained as deterministic raw.jsonl.gz beside summary.json; uncompressed rows and logs stay local-only
-- Rows: 1262402
-- raw.jsonl: 145184142 bytes, sha256 898df6e408b1beadabfa84ff48fab4d6acfd7f2275536e0f4f2c0216313f721b
-- raw.jsonl.gz: 6072488 bytes, sha256 87b79a037e189d0d779be144d371a44b30bd8ccad8512bb3030d2dba5c43e563
+- Rows: 796198
+- raw.jsonl: 91599746 bytes, sha256 037f5bc2a608ad688507cccab7c78541094a11d51f8b816f429a1766fda3c237
+- raw.jsonl.gz: 3907901 bytes, sha256 b084bc39fd4646b204fef3ea5dc4a579070ed37ec8ad0610822ec59d58f0644d
 - Verify: `gunzip -c raw.jsonl.gz | sha256sum` must equal the raw.jsonl sha256 above.

@@ -1,19 +1,19 @@
 {
   "format": "velqu-ramp-v1",
-  "runId": "ramp-1788448064944",
+  "runId": "ramp-1788451334621",
   "window": 25,
   "ratio": 1.25,
   "floor": 0.8,
   "minSteadyRequests": 50,
   "maxRequests": 400,
   "reps": 3,
-  "generatedAt": "2026-09-03T15:07:46.152Z",
+  "generatedAt": "2026-09-03T16:02:15.416Z",
   "environment": {
     "bun": "1.4.0",
     "node": "v22.23.2",
     "kernel": "Linux version 7.0.0-30-generic (buildd@lcy02-amd64-067) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #30~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug  7 13:27:52 UTC 2",
     "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
-    "commit": "dcf42646831894231afc43f997076e89656597a6"
+    "commit": "b496ffd83fea432d48d801211a2c4144e793adea"
   },
   "results": [
     {
@@ -22,166 +22,31 @@
       "routeId": "health.live",
       "reps": 3,
       "requestsPerRep": [
-        150,
         125,
+        150,
         150
       ],
       "errors": 0,
       "steadyOnsetRequest": 100,
       "firstRequest": {
         "n": 3,
-        "p50": 268,
-        "p95": 415,
-        "p99": 415
+        "p50": 373,
+        "p95": 709,
+        "p99": 709
       },
       "steady": {
         "n": 150,
-        "p50": 34,
-        "p95": 48,
-        "p99": 57
+        "p50": 55,
+        "p95": 120,
+        "p99": 159
       },
-      "rssKbAfter": 9768,
+      "rssKbAfter": 9628,
       "exitOk": true
     },
     {
       "candidate": "velqu",
       "class": "C2",
       "routeId": "js.json",
-      "reps": 3,
-      "requestsPerRep": [
-        100,
-        125,
-        100
-      ],
-      "errors": 0,
-      "steadyOnsetRequest": 50,
-      "firstRequest": {
-        "n": 3,
-        "p50": 270,
-        "p95": 355,
-        "p99": 355
-      },
-      "steady": {
-        "n": 150,
-        "p50": 59,
-        "p95": 73,
-        "p99": 107
-      },
-      "rssKbAfter": 9792,
-      "exitOk": true
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C0",
-      "routeId": "health.live",
-      "reps": 3,
-      "requestsPerRep": [
-        100,
-        375,
-        200
-      ],
-      "errors": 0,
-      "steadyOnsetRequest": 150,
-      "firstRequest": {
-        "n": 3,
-        "p50": 248,
-        "p95": 279,
-        "p99": 279
-      },
-      "steady": {
-        "n": 150,
-        "p50": 61,
-        "p95": 95,
-        "p99": 130
-      },
-      "rssKbAfter": 3456,
-      "exitOk": true
-    },
-    {
-      "candidate": "raw-rust",
-      "class": "C2",
-      "routeId": "js.json",
-      "reps": 3,
-      "requestsPerRep": [
-        200,
-        100,
-        275
-      ],
-      "errors": 0,
-      "steadyOnsetRequest": 150,
-      "firstRequest": {
-        "n": 3,
-        "p50": 238,
-        "p95": 599,
-        "p99": 599
-      },
-      "steady": {
-        "n": 150,
-        "p50": 45,
-        "p95": 130,
-        "p99": 154
-      },
-      "rssKbAfter": 3404,
-      "exitOk": true
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C0",
-      "routeId": "health.live",
-      "reps": 3,
-      "requestsPerRep": [
-        225,
-        225,
-        225
-      ],
-      "errors": 0,
-      "steadyOnsetRequest": 175,
-      "firstRequest": {
-        "n": 3,
-        "p50": 3258,
-        "p95": 3749,
-        "p99": 3749
-      },
-      "steady": {
-        "n": 150,
-        "p50": 48,
-        "p95": 148,
-        "p99": 193
-      },
-      "rssKbAfter": 26516,
-      "exitOk": true
-    },
-    {
-      "candidate": "raw-bun",
-      "class": "C2",
-      "routeId": "js.json",
-      "reps": 3,
-      "requestsPerRep": [
-        200,
-        225,
-        150
-      ],
-      "errors": 0,
-      "steadyOnsetRequest": 150,
-      "firstRequest": {
-        "n": 3,
-        "p50": 3902,
-        "p95": 4123,
-        "p99": 4123
-      },
-      "steady": {
-        "n": 150,
-        "p50": 41,
-        "p95": 69,
-        "p99": 85
-      },
-      "rssKbAfter": 26280,
-      "exitOk": true
-    },
-    {
-      "candidate": "elysia2",
-      "class": "C0",
-      "routeId": "health.live",
       "reps": 3,
       "requestsPerRep": [
         125,
@@ -192,17 +57,152 @@
       "steadyOnsetRequest": 75,
       "firstRequest": {
         "n": 3,
-        "p50": 10060,
-        "p95": 13915,
-        "p99": 13915
+        "p50": 232,
+        "p95": 323,
+        "p99": 323
       },
       "steady": {
         "n": 150,
-        "p50": 35,
-        "p95": 93,
-        "p99": 154
+        "p50": 26,
+        "p95": 79,
+        "p99": 159
       },
-      "rssKbAfter": 46296,
+      "rssKbAfter": 9672,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-rust",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        150,
+        150
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 100,
+      "firstRequest": {
+        "n": 3,
+        "p50": 261,
+        "p95": 314,
+        "p99": 314
+      },
+      "steady": {
+        "n": 150,
+        "p50": 24,
+        "p95": 36,
+        "p99": 41
+      },
+      "rssKbAfter": 3412,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-rust",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        150,
+        150
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 100,
+      "firstRequest": {
+        "n": 3,
+        "p50": 169,
+        "p95": 192,
+        "p99": 192
+      },
+      "steady": {
+        "n": 150,
+        "p50": 29,
+        "p95": 54,
+        "p99": 76
+      },
+      "rssKbAfter": 3424,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-bun",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        100,
+        100
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 50,
+      "firstRequest": {
+        "n": 3,
+        "p50": 1979,
+        "p95": 2416,
+        "p99": 2416
+      },
+      "steady": {
+        "n": 150,
+        "p50": 27,
+        "p95": 33,
+        "p99": 41
+      },
+      "rssKbAfter": 25800,
+      "exitOk": true
+    },
+    {
+      "candidate": "raw-bun",
+      "class": "C2",
+      "routeId": "js.json",
+      "reps": 3,
+      "requestsPerRep": [
+        125,
+        175,
+        100
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 75,
+      "firstRequest": {
+        "n": 3,
+        "p50": 1832,
+        "p95": 2692,
+        "p99": 2692
+      },
+      "steady": {
+        "n": 150,
+        "p50": 30,
+        "p95": 90,
+        "p99": 111
+      },
+      "rssKbAfter": 25780,
+      "exitOk": true
+    },
+    {
+      "candidate": "elysia2",
+      "class": "C0",
+      "routeId": "health.live",
+      "reps": 3,
+      "requestsPerRep": [
+        100,
+        100,
+        100
+      ],
+      "errors": 0,
+      "steadyOnsetRequest": 50,
+      "firstRequest": {
+        "n": 3,
+        "p50": 8615,
+        "p95": 9830,
+        "p99": 9830
+      },
+      "steady": {
+        "n": 150,
+        "p50": 26,
+        "p95": 33,
+        "p99": 46
+      },
+      "rssKbAfter": 49420,
       "exitOk": true
     },
     {
@@ -211,25 +211,25 @@
       "routeId": "js.json",
       "reps": 3,
       "requestsPerRep": [
-        400,
         100,
-        250
+        100,
+        100
       ],
       "errors": 0,
-      "steadyOnsetRequest": 200,
+      "steadyOnsetRequest": 50,
       "firstRequest": {
         "n": 3,
-        "p50": 14811,
-        "p95": 16099,
-        "p99": 16099
+        "p50": 8862,
+        "p95": 9085,
+        "p99": 9085
       },
       "steady": {
         "n": 150,
-        "p50": 37,
-        "p95": 84,
-        "p99": 243
+        "p50": 26,
+        "p95": 32,
+        "p99": 48
       },
-      "rssKbAfter": 46544,
+      "rssKbAfter": 50032,
       "exitOk": true
     }
   ]
