@@ -111,6 +111,12 @@ const app = new Elysia({ aot: true })
     const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
     return { n, ms, ok: results.every(Boolean) };
   })
+  // Unknown routes must answer the shared contract shape, not Elysia's
+  // default RFC-9457 body (BETA-002-C contract verification).
+  .all("/*", ({ set }) => {
+    set.status = 404;
+    return { error: "not found" };
+  })
   .listen(PORT);
 
 console.log(

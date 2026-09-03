@@ -11,7 +11,7 @@ Workloads and scope are defined in [`SPEC.md`](SPEC.md) and
 ./run.sh
 ```
 
-Runs three phases:
+Runs four phases:
 
 1. **prepare** — starts the pinned Postgres (`compose.yaml`,
    `postgres:17.5-alpine3.22`, tmpfs data) and applies the deterministic
@@ -20,12 +20,21 @@ Runs three phases:
 2. **smoke** — starts the controlled upstream (`upstream.ts`), runs a 2-second
    load-generation smoke against it (`load.ts`), validates the result schema,
    and generates the report (`report.ts`).
-3. **report** — folded into smoke; `benchmarks/raw/real-world/smoke/` retains
+3. **contracts** — boots every candidate server and drives the full fixture
+   matrix from `contract-fixtures.ts` against it (`verify-contract.ts`): each
+   candidate must return the expected status and an exactly equal JSON body
+   for every fixture (success and 401/404/400/409/504/502 paths). Any mismatch
+   is written to `contract-verification.md` and fails the phase — candidates
+   that are not semantically equivalent may not be timed together. Requires
+   candidate deps (`cd candidates && bun install --frozen-lockfile`) and
+   `node` on PATH for the Fastify candidate.
+4. **report** — folded into smoke; `benchmarks/raw/real-world/smoke/` retains
    `summary.json` and `report.md` as evidence (the bulky per-request
    `raw.jsonl` and upstream log stay local; BETA-001-D owns the full
    raw-sample retention policy).
 
-Phases can be run individually: `./run.sh prepare`, `./run.sh smoke`.
+Phases can be run individually: `./run.sh prepare`, `./run.sh smoke`,
+`./run.sh contracts`.
 
 ## Raw-sample retention
 
