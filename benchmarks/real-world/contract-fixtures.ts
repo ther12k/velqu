@@ -16,6 +16,7 @@
  */
 
 import { DeterministicStore, MATCHED_CONFIG } from "./candidates/matched";
+import { cpuWork } from "./candidates/matched";
 
 export interface TypeSentinel {
   __typeof__: "string" | "number" | "boolean";
@@ -211,6 +212,23 @@ export function buildContractFixtures(): ContractFixture[] {
       path: "/api/bench/fanout?n=3&ms=1",
       expectStatus: 400,
       expectJson: { error: "invalid n or ms" },
+    },
+
+    // CPU operation levels (BETA-003-A): checksum oracle is the same shared
+    // function every candidate runs
+    {
+      name: "cpu.200.ops-1000",
+      method: "GET",
+      path: "/api/bench/cpu?ops=1000",
+      expectStatus: 200,
+      expectJson: { ops: 1000, checksum: cpuWork(1000) },
+    },
+    {
+      name: "cpu.400.invalid-ops",
+      method: "GET",
+      path: "/api/bench/cpu?ops=abc",
+      expectStatus: 400,
+      expectJson: { error: "invalid ops" },
     },
 
     // Unknown routes share one contract shape across candidates

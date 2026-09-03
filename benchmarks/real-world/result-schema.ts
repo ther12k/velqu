@@ -61,6 +61,7 @@ export interface RealWorldSummary {
   configHashes: RealWorldConfigHashes;
   cells: RealWorldCell[];
   raw: string;
+  serverRssKb?: number;
 }
 
 export interface RealWorldRawRow {
@@ -124,5 +125,8 @@ export function validateRealWorldSummary(
   }
 
   if (!summary.raw) err("raw JSONL path is required");
+  if (summary.serverRssKb !== undefined && (!Number.isInteger(summary.serverRssKb) || summary.serverRssKb <= 0)) {
+    err("configHashes: serverRssKb must be a positive integer when present");
+  }
   return errors;
 }

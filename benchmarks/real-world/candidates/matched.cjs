@@ -156,6 +156,23 @@ class DeterministicStore {
   }
 }
 
+function cpuWork(ops) {
+  let acc = 0;
+  for (let i = 0; i < ops; i++) {
+    acc = (acc + i * 31) % 1000003;
+  }
+  return acc;
+}
+
+const MAX_CPU_OPS = 100000;
+
+function validateOps(raw) {
+  if (raw === null || !/^(0|[1-9]\d{0,5})$/.test(raw)) return null;
+  const ops = Number(raw);
+  if (ops > MAX_CPU_OPS) return null;
+  return ops;
+}
+
 function verifyAuthHeader(header) {
   if (!header) {
     return { ok: false, status: 401, error: "unauthorized" };
@@ -178,4 +195,7 @@ module.exports = {
   MATCHED_CONFIG,
   DeterministicStore,
   verifyAuthHeader,
+  cpuWork,
+  validateOps,
+  MAX_CPU_OPS,
 };

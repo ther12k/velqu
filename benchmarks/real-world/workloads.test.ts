@@ -16,7 +16,7 @@ interface WorkloadsFile {
 const config: WorkloadsFile = JSON.parse(
   readFileSync(import.meta.dir + "/workloads.json", "utf8"),
 );
-const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/, /^\/api\/bench\/fanout\?n=[124]&ms=\d+$/, /^\/api\/bench\/mixed\?mode=(success|timeout|malformed)$/];
+const PATHS = [/^\/api\/users\/[\w-]+$/, /^\/api\/orders$/, /^\/api\/products/, /^\/api\/bench\/io\?ms=\d+$/, /^\/api\/bench\/fanout\?n=[124]&ms=\d+$/, /^\/api\/bench\/mixed\?mode=(success|timeout|malformed)$/, /^\/api\/bench\/cpu\?ops=\d+$/];
 
 describe("real-world workload config", () => {
   test("every workload declares id, method, path, and expectedStatus", () => {
@@ -48,13 +48,36 @@ describe("real-world workload config", () => {
       .filter((id) => id.startsWith("W4_"))
       .map((id) => Number(id.replace("W4_", "").replace("ms", "")))
       .sort((a, b) => a - b);
-    expect(w4ms).toEqual([1, 5, 10, 25]);
+    expect(w4ms).toEqual([0, 1, 5, 10, 25]);
+  });
+
+  test("BETA-003-A: payload matrix scales the W3 route across bounded limits", () => {
+    const payload = config.workloads.filter((w) => w.id.startsWith("PAYLOAD_"));
+    expect(payload.map((w) => w.id)).toEqual(["PAYLOAD_1", "PAYLOAD_10", "PAYLOAD_20", "PAYLOAD_50"]);
+    for (const w of payload) {
+      expect(w.method).toBe("GET");
+      expect(w.path.startsWith("/api/products?category=electronics&page=1&limit=")).toBe(true);
+      const limit = Number(new URL(`http://x${w.path}`).searchParams.get("limit"));
+      expect(limit).toBe(Number(w.id.replace("PAYLOAD_", "")));
+      expect(limit).toBeLessThanOrEqual(50); // candidates clamp at 50
+    }
+  });
+
+  test("BETA-003-A: CPU operation levels are deterministic and bounded", () => {
+    const cpu = config.workloads.filter((w) => w.id.startsWith("CPU_"));
+    expect(cpu.map((w) => w.id)).toEqual(["CPU_0", "CPU_100", "CPU_1000", "CPU_10000"]);
+    for (const w of cpu) {
+      expect(w.path.startsWith("/api/bench/cpu?ops=")).toBe(true);
+      const ops = Number(new URL(`http://x${w.path}`).searchParams.get("ops"));
+      expect(ops).toBe(Number(w.id.replace("CPU_", "")));
+      expect(ops).toBeLessThanOrEqual(100000);
+    }
   });
 
   test("W4 latency values match the SPEC matrix and stay bounded", () => {
     for (const w of config.workloads.filter((w) => w.id.startsWith("W4_"))) {
       const ms = Number(new URL(`http://x${w.path}`).searchParams.get("ms"));
-      expect(ms).toBeGreaterThan(0);
+      expect(ms).toBeGreaterThanOrEqual(0); // BETA-003-A adds the 0ms cell
       expect(ms).toBeLessThanOrEqual(1000);
       const idMs = Number(w.id.replace("W4_", "").replace("ms", ""));
       expect(ms).toBe(idMs);

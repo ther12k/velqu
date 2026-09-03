@@ -3,7 +3,7 @@
  * Implements W1..W4 matched contract (BETA-002-A).
  */
 import { Hono } from "hono";
-import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+import { PORT, UPSTREAM, validateMs, validateFanout, validateOps, cpuWork } from "./shared";
 import { DeterministicStore, verifyAuthHeader, type OrderItemInput } from "./matched";
 
 const app = new Hono();
@@ -104,6 +104,13 @@ app.get("/api/bench/fanout", async (c) => {
   if (n === null || ms === null) return c.json({ error: "invalid n or ms" }, 400);
   const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
   return c.json({ n, ms, ok: results.every(Boolean) });
+});
+
+// CPU operation levels (BETA-003-A): deterministic in-handler work, no I/O
+app.get("/api/bench/cpu", (c) => {
+  const ops = validateOps(c.req.query("ops"));
+  if (ops === null) return c.json({ error: "invalid ops" }, 400);
+  return c.json({ ops, checksum: cpuWork(ops) });
 });
 
 app.all("*", (c) => c.json({ error: "not found" }, 404));

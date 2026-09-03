@@ -3,7 +3,7 @@
  * Implements W1..W4 matched contract (BETA-002-A).
  */
 import { Elysia } from "elysia";
-import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+import { PORT, UPSTREAM, validateMs, validateFanout, validateOps, cpuWork } from "./shared";
 import { DeterministicStore, verifyAuthHeader, type OrderItemInput } from "./matched";
 
 const store = new DeterministicStore();
@@ -110,6 +110,15 @@ const app = new Elysia({ aot: true })
     }
     const results = await Promise.all(Array.from({ length: n }, () => proxyIo(ms)));
     return { n, ms, ok: results.every(Boolean) };
+  })
+  // CPU operation levels (BETA-003-A): deterministic in-handler work, no I/O
+  .get("/api/bench/cpu", ({ query, set }) => {
+    const ops = validateOps(query.ops ?? null);
+    if (ops === null) {
+      set.status = 400;
+      return { error: "invalid ops" };
+    }
+    return { ops, checksum: cpuWork(ops) };
   })
   // Unknown routes must answer the shared contract shape, not Elysia's
   // default RFC-9457 body (BETA-002-C contract verification).

@@ -32,6 +32,11 @@ history/
 # full raw-sample retention policy)
 benchmarks/raw/real-world/smoke/raw.jsonl
 benchmarks/raw/real-world/smoke/upstream.log
+# BETA-003-A crossover matrices: same policy — uncompressed rows and logs are
+# local-only; the retained .gz archives and summaries ARE tracked
+benchmarks/raw/real-world/crossover/*/raw.jsonl
+benchmarks/raw/real-world/crossover/*/candidate.log
+benchmarks/raw/real-world/crossover/upstream.log
 benchmarks/real-world/raw/
 # BETA-001-D: retained raw-sample archives (.gz) ARE tracked; uncompressed
 # rows and logs stay local

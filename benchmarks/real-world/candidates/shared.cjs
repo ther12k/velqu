@@ -27,3 +27,8 @@ function validateMode(mode) {
   return MIX_MODES.includes(mode) ? mode : null;
 }
 module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs, validateFanout, validateMode };
+
+// CPU operation levels (BETA-003-A) live in the matched contract module;
+// re-exported here so candidates keep a single require site.
+const { cpuWork, validateOps, MAX_CPU_OPS } = require("./matched.cjs");
+module.exports = { UPSTREAM, PORT: Number(process.env.PORT ?? 0), validateMs, validateFanout, validateMode, cpuWork, validateOps, MAX_CPU_OPS };
