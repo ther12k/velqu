@@ -36,6 +36,27 @@ describe("zero-cost posture", () => {
       "sql",
     ]);
   });
+
+  test("BETA-004-F: no-ORM surface freeze — the entire API is one parameterized method", () => {
+    // The capability exposes exactly one operation: sql(text, params).
+    // No query builder, no model/repository/migration DSL, no chaining —
+    // a builder method added later would break this freeze.
+    const methodNames = Object.getOwnPropertyNames(postgres).filter(
+      (k) => typeof (postgres as Record<string, unknown>)[k] === "function",
+    );
+    expect(methodNames).toEqual(["sql"]);
+    const banned = [
+      "select", "insert", "update", "delete", "where", "from", "table",
+      "join", "model", "define", "entity", "repository", "migrate",
+      "migration", "schema", "relations", "createQueryBuilder", "builder",
+    ];
+    for (const name of banned) {
+      expect((postgres as Record<string, unknown>)[name]).toBeUndefined();
+    }
+    // sql() is positional-parameters-only: no overload that takes a
+    // template/config object (those are builder shapes)
+    expect(postgres.sql.length).toBeLessThanOrEqual(3);
+  });
 });
 
 describe("fail-closed without the native binding", () => {

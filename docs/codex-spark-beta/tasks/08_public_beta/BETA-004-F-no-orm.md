@@ -4,7 +4,7 @@ parent_task: BETA-004
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -118,3 +118,53 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-004-F) — PASS (2026-09-04)
+
+- Branch/PR: beta-004-f (squash-merged; see git log for final hash)
+- Closes: #521
+
+### Changed files
+- `packages/capability-postgres/src/index.test.ts`: **surface-freeze
+  test** — the exported function surface must be exactly `["sql"]`; a
+  19-name builder/model/migration vocabulary must stay absent;
+  `sql` stays positional-parameters-only. A builder added later fails
+  the suite.
+- `packages/capability-postgres/README.md` (new): the frozen surface +
+  no-ORM statement + identity/linking/limits summary.
+- `docs/beta/POSTGRES-CAPABILITY.md` (new, indexed in
+  `docs/beta/INDEX.md`): normative capability guide — identity, fail-
+  closed linking, lifecycle/safety, no-ORM posture.
+- `docs/reports/beta-004-f-no-orm.md` (new): evidence report.
+
+### Required evidence
+
+- **Capability tests**: surface-freeze + parameterized-only tests 9/9
+  (`bun test packages/capability-postgres`).
+- **Real-world results**: no runtime changes; posture unchanged from
+  BETA-004-A..E (live evidence there).
+- **Cold/RSS cost report**: this packet adds no runtime code — only
+  tests and documentation; costs unchanged.
+
+### Commands
+
+- `bun test packages/capability-postgres` -> 9 pass / 0 fail
+- `bun test` -> 384 pass / 0 fail (62 files)
+- `bun run typecheck` -> clean; fmt/clippy -> clean
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+  (isolated netns; standing port-3000 environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **App without Postgres pays zero dependency/init cost**: unchanged.
+- **Queries are parameterized**: the only API is positional-params-only
+  sql(); interpolation has no convenience path (freeze-tested).
+- **Timeout cancels/releases safely**: unchanged from D.
+- **Pool exhaustion is bounded**: unchanged from B/E.
+- **W1/W2/W3 workloads pass**: parent exit; not claimed here.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
