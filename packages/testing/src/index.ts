@@ -260,6 +260,7 @@ export interface RuntimeReadyInfo {
 
 export interface RuntimeTreatyHandle<Api extends Record<string, AnyRouteContract>> {
   api: TreatyClient<Api>;
+  port: number;
   ready: RuntimeReadyInfo | null;
   close: () => Promise<number>;
   __mode: "runtime-local";
@@ -338,6 +339,7 @@ export async function runtimeTreaty<Api extends Record<string, AnyRouteContract>
   return {
     __mode: "runtime-local",
     api: client,
+    port,
     get ready() { return ready; },
     close: async () => {
       proc.kill("SIGTERM");

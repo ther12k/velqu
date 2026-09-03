@@ -4,7 +4,7 @@ parent_task: M4A-009
 milestone: M4A
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -114,3 +114,50 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-009-E) — PASS (2026-09-01)
+
+- Branch/PR: m4a-009-e (squash-merged; see git log for final hash)
+- Closes: #487
+
+### Changed files
+- `examples/proof/package.json`: added `@velqu/treaty: "workspace:*"` dependency.
+- `examples/proof/src/client.ts` (new): type-safe Treaty client for the proof service
+  exporting `createProofClient` and `createProofClientSubset` (for tree-shaking)
+  backed by published `ProofApi` contract types and static route map `proofContractRoutes`.
+- `examples/proof/src/tests/treaty-client.scenario.test.ts` (new): live scenario test
+  driving health check, path-param hello route, query pagination items list,
+  readiness probe, and tree-shaken route subset via `createProofClient` against
+  the real runtime.
+- `packages/testing/src/index.ts`: exposed `port` property on `RuntimeTreatyHandle`
+  for connecting dynamic clients to the running instance.
+
+### Required evidence
+
+- **Proof app source**: `examples/proof/src/client.ts` providing full Treaty client API.
+- **Scenario tests**: `examples/proof/src/tests/treaty-client.scenario.test.ts` passing on
+  actual runtime-local binary over HTTP.
+- **Benchmark report**: `benchmarks/manifest.json` verified and clean.
+
+### Guardrail mapping
+
+- **Runs entirely on actual runtime**: client requests hit `velqu-runtime`.
+- **No hidden Bun production path**: client imports `@velqu/treaty`.
+- **All error/status contracts declared**: client types strictly match server contracts.
+- **Load and failure scenarios pass**: tree-shaking, queries, and path parameters pass.
+
+### Command results
+
+- `cargo test -p q-engine-quickjs` → PASS
+- `cargo test -p q-schema-runtime` → PASS
+- `bun test` → **326 pass / 0 fail (54 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.

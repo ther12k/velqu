@@ -19,6 +19,7 @@
       "dependencies": {
         "@velqu/core": "workspace:*",
         "@velqu/schema": "workspace:*",
+        "@velqu/treaty": "workspace:*",
       },
     },
     "packages/cli": {

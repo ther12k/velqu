@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "dependencies": {
     "@velqu/core": "workspace:*",
-    "@velqu/schema": "workspace:*"
+    "@velqu/schema": "workspace:*",
+    "@velqu/treaty": "workspace:*"
   }
 }
