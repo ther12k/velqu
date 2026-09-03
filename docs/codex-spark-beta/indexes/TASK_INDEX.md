@@ -588,7 +588,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-006-A](../tasks/08_public_beta/BETA-006-A-request-route-status-duration.md) | P0 | implement | PASS | M3-GATE, M28-GATE | Request/route/status/duration |
 | [BETA-006-B](../tasks/08_public_beta/BETA-006-B-worker-queues-quarantine-replacements.md) | P0 | implement | PASS | BETA-006-A | Worker queues/quarantine/replacements |
 | [BETA-006-C](../tasks/08_public_beta/BETA-006-C-fetch-and-db-pools.md) | P0 | implement | PASS | BETA-006-B | Fetch and DB pools |
-| [BETA-006-D](../tasks/08_public_beta/BETA-006-D-memory-tasks-slots.md) | P0 | implement | TODO | BETA-006-C | Memory/tasks/slots |
+| [BETA-006-D](../tasks/08_public_beta/BETA-006-D-memory-tasks-slots.md) | P0 | implement | PASS | BETA-006-C | Memory/tasks/slots |
 | [BETA-006-E](../tasks/08_public_beta/BETA-006-E-optional-trace-integration-or-trace-ids.md) | P0 | implement | TODO | BETA-006-D | Optional trace integration or trace IDs |
 | [BETA-006-F](../tasks/08_public_beta/BETA-006-F-redaction.md) | P0 | implement | TODO | BETA-006-E | Redaction |
 | [BETA-006-V](../tasks/08_public_beta/BETA-006-V-verify-implement-beta-observability-baseline.md) | P0 | verify | TODO | BETA-006-A, BETA-006-B, BETA-006-C, BETA-006-D, BETA-006-E, BETA-006-F | Verify Implement beta observability baseline |

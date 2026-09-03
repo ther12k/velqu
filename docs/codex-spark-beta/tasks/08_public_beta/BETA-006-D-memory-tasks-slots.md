@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -112,3 +112,48 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-D) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-d (squash-merged; see git log for final hash)
+- Closes: #534
+
+### Changed files
+- `crates/q-runtime/src/serve.rs`: `worker_ops_status` gains
+  `memory.heapUsedBytes`, `tasks.{nativeStarted,nativeAlive,
+  nativeCompleted,nativeAborted}`, and `slots.{live,capacity}` gauges;
+  `ServeState.request_slot_capacity` records the admission bound.
+- `crates/q-runtime/src/lib.rs`: capacity wired from runtime limits.
+- `docs/reports/beta-006-d-memory-tasks-slots.md` (new).
+
+### Required evidence
+
+- **Capability tests**: targeted suites green (velqu-runtime 57+;
+  fmt/clippy clean) — gauges re-expose existing tested counters.
+- **Real-world results**: gauges render in `ops.worker.status` at
+  drain/shutdown and on-demand reads; no load-run claims.
+- **Cold/RSS cost report**: no hot-path cost (bounded emissions; the
+  gauges are reads of existing atomics).
+
+### Commands
+
+- `cargo test -p velqu-runtime` -> 57+ pass
+- fmt / clippy (`-D warnings`) -> clean
+- `./scripts/verify` -> ALL PASS (isolated netns; standing port-3000
+  environment note, BETA-002-C record)
+
+### Guardrail mapping
+
+- **Disabled overhead measured**: zero hot-path cost (reads at bounded
+  transitions only).
+- **Enabled overhead budgeted**: one engine lock + atomic reads per
+  emission.
+- **Cardinality is bounded**: fixed gauge set.
+- **No secrets/PII by default**: numeric gauges only.
+- **Dashboards/examples exist**: documented JSON shape in the report.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.
