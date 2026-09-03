@@ -103,7 +103,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M4A-008 | P1 | PASS | M4A-002, M4A-004, M4A-006 | M4A | Build documentation and examples |
 | M4A-009 | P0 | PASS | M4A-004, M4A-007, M28-GATE | M4A | Build realistic private-alpha proof service |
 | M4A-010 | P1 | PASS | M4A-003, M4A-008, M4A-009 | M4A | Run invited developer alpha and close P0/P1 feedback |
-| M4A-GATE | P0 | TODO | M4A-001, M4A-002, M4A-003, M4A-004, M4A-005, M4A-006, M4A-007, M4A-008, M4A-009, M4A-010 | M4A | M4A — Developer Preview and Private Alpha exit gate |
+| M4A-GATE | P0 | PASS | M4A-001, M4A-002, M4A-003, M4A-004, M4A-005, M4A-006, M4A-007, M4A-008, M4A-009, M4A-010 | M4A | M4A — Developer Preview and Private Alpha exit gate |
 | BETA-001 | P1 | TODO | G0-GATE | BETA | Make the real-world benchmark harness executable |
 | BETA-002 | P1 | TODO | BETA-001 | BETA | Implement matched competitor candidates |
 | BETA-003 | P1 | TODO | BETA-001, M28-GATE, M3-GATE | BETA | Run controlled I/O and CPU/JIT crossover suites |

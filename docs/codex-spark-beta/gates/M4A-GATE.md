@@ -4,7 +4,7 @@ parent_task: M4A-GATE
 milestone: M4A
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -116,3 +116,26 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-GATE) — PASS
+
+- Date: 2026-09-01
+- Branch/PR: m4a-gate (squash-merged; see git log for final hash)
+- Candidate commit: 936e1f0 (clean tree at gate time)
+
+### Gate decision: PASS
+- All 10 parents (M4A-001..M4A-010) have V+Z packets PASS; ledger row updated.
+- Full verification from the clean candidate commit: ./scripts/verify exit 0
+  (Rust: q-capabilities 261+6+7+1+3+4+9, q-engine-quickjs 20+113, velqu-runtime 55+6+5+2+35,
+  q-http 4+6+1, q-bridge 11, q-pack 100+2, q-router 15, q-schema-runtime 58;
+  TypeScript 327 across 55 files; fmt/clippy -D warnings clean; benchmark evidence current;
+  release binary matches manifest).
+- Review packet: docs/reports/m4a-gate-review.md; indexes EVIDENCE_INDEX.json / REVIEW_INDEX.json
+  updated to the M4A checkpoint (commit rewritten by scripts/release-packet at release time).
+- Milestone report, source archive, Git bundle, and SHA-256 manifest produced via
+  scripts/release-packet (release/ artifacts are untracked by design).
+- No unresolved P0/P1 findings hidden or waived: zero open alpha P0s; 1 P1 tracked cleanly
+  to Public Beta packaging milestones (BETA-010 and BETA-016); carried owner decisions remain
+  tracked in REVIEW_INDEX openItems.
