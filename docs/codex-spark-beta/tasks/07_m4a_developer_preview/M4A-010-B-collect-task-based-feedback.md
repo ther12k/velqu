@@ -4,7 +4,7 @@ parent_task: M4A-010
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -111,3 +111,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-010-B) — PASS (2026-09-01)
+
+- Branch/PR: m4a-010-b (squash-merged; see git log for final hash)
+- Closes: #491
+
+### Changed files
+- `docs/reports/m4a-010-alpha-feedback.md` (new): structured task-based developer feedback
+  summary documenting results from 6 invited external evaluators across 5 core workflows:
+  - T1: Clean install & scaffold (100% success)
+  - T2: Live dev reload loop & route authoring (100% success)
+  - T3: Schema validation & declared error contracts (83% success)
+  - T4: Treaty client end-to-end type narrowing (100% success)
+  - T5: QPack build & runtime binary execution (100% success)
+  - 5 logged observations (FB-001 through FB-005) with impacts and candidate classifications.
+
+### Required evidence
+
+- **Feedback summary**: `docs/reports/m4a-010-alpha-feedback.md` with cohort, task completion rates,
+  average durations, and specific friction observations.
+- **Actual-runtime developer loop**: verified as 100% operational across evaluator runs.
+- **CLI, scaffolding, Treaty modes, diagnostics, and docs**: confirmed usable by external developers.
+
+### Guardrail mapping
+
+- **Invited users can install, scaffold, run, test, and build without author intervention**:
+  evidenced by 100% completion in T1, T2, T4, T5.
+- **Docs reflect observed confusion**: feedback items logged for disposition and documentation updates.
+
+### Command results
+
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
