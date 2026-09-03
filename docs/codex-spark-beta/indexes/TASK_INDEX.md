@@ -566,7 +566,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-002-Z](../tasks/08_public_beta/BETA-002-Z-package-evidence-for-implement-matched-competitor-candidates.md) | P1 | evidence | PASS | BETA-002-V | Package evidence for Implement matched competitor candidates |
 | [BETA-003-A](../tasks/08_public_beta/BETA-003-A-run-0-1-5-10-25ms-i-o-payload-matrices-and-cpu-operation-levels.md) | P1 | implement | PASS | BETA-001-Z, M28-GATE, M3-GATE | Run 0/1/5/10/25ms I/O, payload matrices, and CPU operation levels |
 | [BETA-003-B](../tasks/08_public_beta/BETA-003-B-measure-first-request-through-steady-state.md) | P1 | implement | PASS | BETA-003-A | Measure first request through steady state |
-| [BETA-003-C](../tasks/08_public_beta/BETA-003-C-calculate-cumulative-crossover-request-counts.md) | P1 | implement | TODO | BETA-003-B | Calculate cumulative crossover request counts |
+| [BETA-003-C](../tasks/08_public_beta/BETA-003-C-calculate-cumulative-crossover-request-counts.md) | P1 | implement | PASS | BETA-003-B | Calculate cumulative crossover request counts |
 | [BETA-003-D](../tasks/08_public_beta/BETA-003-D-report-losses-honestly.md) | P1 | implement | TODO | BETA-003-C | Report losses honestly |
 | [BETA-003-V](../tasks/08_public_beta/BETA-003-V-verify-run-controlled-i-o-and-cpu-jit-crossover-suites.md) | P1 | verify | TODO | BETA-003-A, BETA-003-B, BETA-003-C, BETA-003-D | Verify Run controlled I/O and CPU/JIT crossover suites |
 | [BETA-003-Z](../tasks/08_public_beta/BETA-003-Z-package-evidence-for-run-controlled-i-o-and-cpu-jit-crossover-suites.md) | P1 | evidence | TODO | BETA-003-V | Package evidence for Run controlled I/O and CPU/JIT crossover suites |
