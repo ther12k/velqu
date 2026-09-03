@@ -5,27 +5,26 @@ Every loss or non-win substantiated by the committed measured evidence
 rules run over whatever the evidence contains; nothing is omitted or
 hand-selected.
 
-Source run: 1788448064944 (generated 2026-09-03T15:36:11.725Z)
+Source run: 1788451334621 (generated 2026-09-03T16:02:15.458Z)
 
 | kind | candidate | class | value | detail |
 |---|---|---|---|---|
-| steady-floor | raw-rust | C0 | 61µs vs best 34µs (1.79x) | steady p50 is 1.79x the class best |
-| steady-floor | raw-bun | C0 | 48µs vs best 34µs (1.41x) | steady p50 is 1.41x the class best |
-| steady-floor | elysia2 | C0 | 35µs vs best 34µs (1.03x) | steady p50 is 1.03x the class best |
-| steady-floor | velqu | C2 | 59µs vs best 37µs (1.59x) | steady p50 is 1.59x the class best |
-| steady-floor | raw-rust | C2 | 45µs vs best 37µs (1.22x) | steady p50 is 1.22x the class best |
-| steady-floor | raw-bun | C2 | 41µs vs best 37µs (1.11x) | steady p50 is 1.11x the class best |
+| steady-floor | velqu | C0 | 55µs vs best 24µs (2.29x) | steady p50 is 2.29x the class best |
+| steady-floor | raw-bun | C0 | 27µs vs best 24µs (1.13x) | steady p50 is 1.13x the class best |
+| steady-floor | elysia2 | C0 | 26µs vs best 24µs (1.08x) | steady p50 is 1.08x the class best |
+| steady-floor | raw-rust | C2 | 29µs vs best 26µs (1.12x) | steady p50 is 1.12x the class best |
+| steady-floor | raw-bun | C2 | 30µs vs best 26µs (1.15x) | steady p50 is 1.15x the class best |
 | crossover-never | elysia2 | C0 | never (100 requests) | never overtook raw-bun within the 100-request horizon |
 | crossover-never | elysia2 | C0 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
 | crossover-never | elysia2 | C0 | never (100 requests) | never overtook velqu within the 100-request horizon |
 | crossover-never | raw-bun | C0 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
-| crossover-never | raw-bun | C0 | never (125 requests) | never overtook velqu within the 125-request horizon |
-| crossover-lag | velqu | C0 | lag 75 requests | behind raw-rust for the first 75 requests |
+| crossover-lag | raw-bun | C0 | lag 56 requests | behind velqu for the first 56 requests |
+| crossover-never | velqu | C0 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
 | crossover-never | elysia2 | C2 | never (100 requests) | never overtook raw-bun within the 100-request horizon |
 | crossover-never | elysia2 | C2 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
 | crossover-never | elysia2 | C2 | never (100 requests) | never overtook velqu within the 100-request horizon |
 | crossover-never | raw-bun | C2 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
 | crossover-never | raw-bun | C2 | never (100 requests) | never overtook velqu within the 100-request horizon |
-| crossover-lag | velqu | C2 | lag 2 requests | behind raw-rust for the first 2 requests |
+| crossover-never | velqu | C2 | never (100 requests) | never overtook raw-rust within the 100-request horizon |
 
-18 substantiated loss row(s).
+17 substantiated loss row(s).
