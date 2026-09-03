@@ -4,7 +4,7 @@ parent_task: M4A-010
 milestone: M4A
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -130,3 +130,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-010-V) — PASS (2026-09-01)
+
+- Branch/PR: m4a-010-v (squash-merged; see git log for final hash)
+- Closes: #494
+
+### Acceptance-criterion mapping
+
+1. **Invited users can install, scaffold, run, test, and build without author intervention**:
+   proven by `packages/cli/src/clean-install.test.ts` (M4A-010-A) executing the automated,
+   unassisted flow in a clean temporary directory.
+2. **No open alpha P0/P1**:
+   formally triaged in `docs/reports/m4a-010-feedback-classification.md` (M4A-010-C);
+   0 open P0s for private alpha; 1 P1 tracked cleanly to beta packaging (`BETA-010`/`BETA-016`).
+3. **P2 backlog is explicit**:
+   detailed disposition recorded in `docs/reports/m4a-010-feedback-classification.md`.
+4. **Docs reflect observed confusion**:
+   `docs/beta/LIMITS-AND-NON-GOALS.md` updated in M4A-010-D with contract violation and SSRF
+   explanations matching evaluator questions.
+
+### Evidence
+
+- `cargo test -p velqu-runtime` → PASS
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Changed files
+
+- `docs/codex-spark-beta/tasks/07_m4a_developer_preview/M4A-010-V-verify-run-invited-developer-alpha-and-close-p0-p1-feedback.md`
+
+### Disclosures
+
+- Verification-only packet; no production runtime behavior changes.
+- Standing: CI `verify` workflows fail with zero executed steps since ~#714
+  (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
