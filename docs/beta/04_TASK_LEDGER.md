@@ -105,7 +105,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | M4A-010 | P1 | PASS | M4A-003, M4A-008, M4A-009 | M4A | Run invited developer alpha and close P0/P1 feedback |
 | M4A-GATE | P0 | PASS | M4A-001, M4A-002, M4A-003, M4A-004, M4A-005, M4A-006, M4A-007, M4A-008, M4A-009, M4A-010 | M4A | M4A — Developer Preview and Private Alpha exit gate |
 | BETA-001 | P1 | PASS | G0-GATE | BETA | Make the real-world benchmark harness executable |
-| BETA-002 | P1 | TODO | BETA-001 | BETA | Implement matched competitor candidates |
+| BETA-002 | P1 | PASS | BETA-001 | BETA | Implement matched competitor candidates |
 | BETA-003 | P1 | TODO | BETA-001, M28-GATE, M3-GATE | BETA | Run controlled I/O and CPU/JIT crossover suites |
 | BETA-004 | P0 | TODO | M27-GATE, BETA-001 | BETA | Implement optional first-party Postgres capability |
 | BETA-005 | P0 | TODO | M27-GATE, M25-GATE | BETA | Implement JWT/auth reference package |
