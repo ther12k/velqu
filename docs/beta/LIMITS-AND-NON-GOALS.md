@@ -41,13 +41,18 @@ for the canonical included/deferred lists.
 - A single schema contract drives types, runtime validation, Treaty, OpenAPI,
   and the lock; hand-written duplicate route contracts are not a supported
   escape hatch.
+- Handlers returning undeclared HTTP statuses trigger a contract violation
+  and are converted by the runtime to 500 internal errors to protect client
+  type guarantees; all expected responses (including 400, 401, 404, etc.)
+  must be explicitly declared in the route contract.
 - Undeclared statuses, malformed service profiles, incompatible packs, and
   unsupported capabilities fail clearly rather than silently falling back.
 - `defer` is bounded in-memory best-effort work, never a durable job system;
   use an external durable system for work that must survive process exit.
 - Fetch is an explicit capability subject to runtime/deployment egress policy.
   The generated upstream route is an educational fixture, not an availability
-  or SSRF-safety guarantee for arbitrary destinations.
+  or SSRF-safety guarantee for arbitrary destinations. By default, private and
+  loopback IP ranges are denied to prevent SSRF vulnerabilities.
 - In-memory services in the proof app are learning fixtures, not durable
   persistence.
 

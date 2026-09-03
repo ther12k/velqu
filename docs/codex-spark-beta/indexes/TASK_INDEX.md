@@ -543,7 +543,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [M4A-010-A](../tasks/07_m4a_developer_preview/M4A-010-A-provide-clean-install-packet.md) | P1 | implement | PASS | M4A-003-Z, M4A-008-Z, M4A-009-Z | Provide clean install packet |
 | [M4A-010-B](../tasks/07_m4a_developer_preview/M4A-010-B-collect-task-based-feedback.md) | P1 | implement | PASS | M4A-010-A | Collect task-based feedback |
 | [M4A-010-C](../tasks/07_m4a_developer_preview/M4A-010-C-classify-p0-p1-p2.md) | P1 | implement | PASS | M4A-010-B | Classify P0/P1/P2 |
-| [M4A-010-D](../tasks/07_m4a_developer_preview/M4A-010-D-fix-beta-blocking-findings-and-publish-limitations.md) | P1 | implement | TODO | M4A-010-C | Fix beta-blocking findings and publish limitations |
+| [M4A-010-D](../tasks/07_m4a_developer_preview/M4A-010-D-fix-beta-blocking-findings-and-publish-limitations.md) | P1 | implement | PASS | M4A-010-C | Fix beta-blocking findings and publish limitations |
 | [M4A-010-V](../tasks/07_m4a_developer_preview/M4A-010-V-verify-run-invited-developer-alpha-and-close-p0-p1-feedback.md) | P1 | verify | TODO | M4A-010-A, M4A-010-B, M4A-010-C, M4A-010-D | Verify Run invited developer alpha and close P0/P1 feedback |
 | [M4A-010-Z](../tasks/07_m4a_developer_preview/M4A-010-Z-package-evidence-for-run-invited-developer-alpha-and-close-p0-p1-feedback.md) | P1 | evidence | TODO | M4A-010-V | Package evidence for Run invited developer alpha and close P0/P1 feedback |
 | [M4A-GATE](../gates/M4A-GATE.md) | P0 | gate | TODO | M4A-001-Z, M4A-002-Z, M4A-003-Z, M4A-004-Z, M4A-005-Z, M4A-006-Z, M4A-007-Z, M4A-008-Z, M4A-009-Z, M4A-010-Z | M4A — Developer Preview and Private Alpha exit gate |

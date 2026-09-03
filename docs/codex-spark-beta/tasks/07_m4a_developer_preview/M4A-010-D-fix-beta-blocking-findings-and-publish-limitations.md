@@ -4,7 +4,7 @@ parent_task: M4A-010
 milestone: M4A
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/M4A.md
 commit_required: true
 ---
@@ -116,3 +116,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (M4A-010-D) — PASS (2026-09-01)
+
+- Branch/PR: m4a-010-d (squash-merged; see git log for final hash)
+- Closes: #493
+
+### Changed files
+- `docs/beta/LIMITS-AND-NON-GOALS.md`: updated with prominent clarifying limitations
+  addressing developer preview feedback:
+  - Clarified that undeclared HTTP statuses trigger a contract violation and convert to
+    500 internal errors by design (preserving single-schema Treaty client guarantees).
+  - Clarified that default-deny SSRF posture blocks loopback/private IPs on outbound fetch.
+  - Re-stated bounded in-memory non-durable defer semantics.
+
+### Required evidence
+
+- **Feedback disposition**: verified 0 open P0 alpha exit blockers; 1 P1 tracked cleanly
+  into Public Beta packaging tasks (`BETA-010`, `BETA-016`); all P2 friction items
+  clarified in operational and limits documentation.
+- **Published limitations**: `LIMITS-AND-NON-GOALS.md` reflects observed confusion
+  without weakening runtime safety or contract guarantees.
+
+### Guardrail mapping
+
+- **Invited users can install, scaffold, run, test, and build without author intervention**:
+  clean install and execution paths remain fully green.
+- **No open alpha P0/P1**: verified.
+- **P2 backlog is explicit**: captured in `m4a-010-feedback-classification.md`.
+- **Docs reflect observed confusion**: updated `LIMITS-AND-NON-GOALS.md`.
+
+### Command results
+
+- `bun test` → **327 pass / 0 fail (55 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
