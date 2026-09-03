@@ -1,0 +1,149 @@
+{
+  "format": "velqu-crossover-counts-v1",
+  "runId": "1788448064944",
+  "generatedAt": "2026-09-03T15:22:47.380Z",
+  "amortizationRatio": 1.25,
+  "startupExcluded": "process spawn->ready->first response is a cold-start-harness quantity; these counts cover serving only",
+  "classes": {
+    "C0": {
+      "pairs": {
+        "elysia2 vs raw-bun": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "elysia2 vs raw-rust": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "elysia2 vs velqu": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "raw-bun vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-bun vs raw-rust": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "raw-bun vs velqu": {
+          "crossoverRequest": null,
+          "horizon": 125
+        },
+        "raw-rust vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-rust vs raw-bun": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-rust vs velqu": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "velqu vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "velqu vs raw-bun": {
+          "crossoverRequest": 1,
+          "horizon": 125
+        },
+        "velqu vs raw-rust": {
+          "crossoverRequest": 76,
+          "horizon": 100
+        }
+      },
+      "selfAmortization": {
+        "elysia2": {
+          "steadyMedianUs": 38,
+          "selfAmortizationRequest": null
+        },
+        "raw-bun": {
+          "steadyMedianUs": 49,
+          "selfAmortizationRequest": null
+        },
+        "raw-rust": {
+          "steadyMedianUs": 60,
+          "selfAmortizationRequest": 17
+        },
+        "velqu": {
+          "steadyMedianUs": 36,
+          "selfAmortizationRequest": 270
+        }
+      }
+    },
+    "C2": {
+      "pairs": {
+        "elysia2 vs raw-bun": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "elysia2 vs raw-rust": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "elysia2 vs velqu": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "raw-bun vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-bun vs raw-rust": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "raw-bun vs velqu": {
+          "crossoverRequest": null,
+          "horizon": 100
+        },
+        "raw-rust vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-rust vs raw-bun": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "raw-rust vs velqu": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "velqu vs elysia2": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "velqu vs raw-bun": {
+          "crossoverRequest": 1,
+          "horizon": 100
+        },
+        "velqu vs raw-rust": {
+          "crossoverRequest": 3,
+          "horizon": 100
+        }
+      },
+      "selfAmortization": {
+        "elysia2": {
+          "steadyMedianUs": 36.5,
+          "selfAmortizationRequest": null
+        },
+        "raw-bun": {
+          "steadyMedianUs": 43,
+          "selfAmortizationRequest": null
+        },
+        "raw-rust": {
+          "steadyMedianUs": 44,
+          "selfAmortizationRequest": null
+        },
+        "velqu": {
+          "steadyMedianUs": 60,
+          "selfAmortizationRequest": 26
+        }
+      }
+    }
+  }
+}
