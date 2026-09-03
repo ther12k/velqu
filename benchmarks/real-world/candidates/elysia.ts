@@ -1,6 +1,12 @@
-/** W4/Fanout candidate: Elysia 2 (AOT) on Bun + native fetch (pinned elysia@2.0.0-beta.4). */
+/**
+ * Candidate: Elysia 2 (AOT) on Bun + native fetch (pinned elysia@2.0.0-beta.4).
+ * Implements W1..W4 matched contract (BETA-002-A).
+ */
 import { Elysia } from "elysia";
 import { PORT, UPSTREAM, validateMs, validateFanout } from "./shared";
+import { DeterministicStore, verifyAuthHeader, type OrderItemInput } from "./matched";
+
+const store = new DeterministicStore();
 
 async function proxyIo(ms: number): Promise<boolean> {
   const upstream = await fetch(`${UPSTREAM}/io?ms=${ms}`);
@@ -8,6 +14,50 @@ async function proxyIo(ms: number): Promise<boolean> {
 }
 
 const app = new Elysia({ aot: true })
+  // W1: Authenticated Single-Record Lookup
+  .get("/api/users/:id", ({ params, headers, set }) => {
+    const auth = verifyAuthHeader(headers.authorization);
+    if (!auth.ok) {
+      set.status = 401;
+      return { error: auth.error };
+    }
+    const user = store.getUser(params.id);
+    if (!user) {
+      set.status = 404;
+      return { error: "not found" };
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.created_at,
+    };
+  })
+  // W2: Authenticated Write Transaction
+  .post("/api/orders", ({ body, headers, set }) => {
+    const auth = verifyAuthHeader(headers.authorization);
+    if (!auth.ok) {
+      set.status = 401;
+      return { error: auth.error };
+    }
+    const orderBody = body as { items?: OrderItemInput[] };
+    const res = store.createOrder(auth.user.id, orderBody?.items ?? []);
+    if (!res.ok) {
+      set.status = res.status;
+      return { error: res.error };
+    }
+    set.status = 201;
+    return res.order;
+  })
+  // W3: Paginated List with Aggregation
+  .get("/api/products", ({ query }) => {
+    const category = query.category ?? "electronics";
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(50, Math.max(1, Number(query.limit ?? 20)));
+    return store.getProducts(category, page, limit);
+  })
+  // W4: Controlled I/O & Fan-out
   .get("/api/bench/io", async ({ query, set }) => {
     const ms = validateMs(query.ms ?? null);
     if (ms === null) {

@@ -4,7 +4,7 @@ parent_task: BETA-002
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -114,3 +114,70 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+---
+
+## Result (BETA-002-A) — PASS (2026-09-01)
+
+- Branch/PR: beta-002-a (squash-merged; see git log for final hash)
+- Closes: #504
+
+### Changed files
+- `benchmarks/real-world/candidates/matched.ts` (new): canonical matched contract
+  (`MATCHED_CONFIG`) and `DeterministicStore` reference implementation used by all
+  TypeScript candidates — identical SQL statements (W1 lookup, W2 stock check / order
+  insert / order-item insert / stock decrement, W3 paginated join+aggregation), pool
+  bounds (20 conns, 5s connect, 30s idle), JWT HS256 + benchmark token and typed 401
+  rejection, 5s request / 100ms upstream timeouts, `off` logging, compression disabled,
+  loopback HTTP/1.1 keep-alive single-worker deployment.
+- `benchmarks/real-world/candidates/matched.cjs` (new): CJS twin of `matched.ts` for the
+  Fastify/Node candidate — same constants, same store logic, same auth rules.
+- `benchmarks/real-world/candidates/bun-fetch.ts`: extended from W4-only to full W1..W4
+  contract (W1 authenticated user lookup, W2 transactional order with stock check +
+  decrement, W3 paginated aggregation) using the shared `matched.ts` store.
+- `benchmarks/real-world/candidates/hono.ts`: extended to W1..W4 on Hono routes with the
+  same auth gate, same store, same response shapes.
+- `benchmarks/real-world/candidates/elysia.ts`: extended to W1..W4 with Elysia `set.status`
+  semantics and the same shared contract.
+- `benchmarks/real-world/candidates/fastify.js`: extended to W1..W4 with Fastify reply
+  codes and the same shared `matched.cjs` contract.
+- `benchmarks/real-world/candidates/parity.test.ts` (new): 7 parity tests pinning
+  identical SQL text, pool bounds, JWT rejection matrix (missing/malformed/valid),
+  timeout/logging/compression/deployment limits, and W1/W2/W3 deterministic-store
+  response contracts shared by every candidate.
+
+### Required evidence
+
+- **Candidate source**: all four Bun/Node candidates (`bun-fetch.ts`, `hono.ts`,
+  `elysia.ts`, `fastify.js`) implement identical W1..W4 routes on the shared
+  `matched.ts`/`matched.cjs` contract; `baselines/raw-rust` remains the transport
+  lower bound per `baselines/README.md` fairness notes.
+- **Parity tests**: `benchmarks/real-world/candidates/parity.test.ts` — 7/7 pass.
+- **Fairness report wiring**: contract hashes (spec/workloads/schema/seed/versions)
+  flow through `load.ts` into `fairness.ts` unchanged; candidates now emit identical
+  response shapes so the 0%-mismatch requirement is reachable.
+
+### Guardrail mapping
+
+- **Candidates are semantically equivalent**: single shared contract module enforces
+  one SQL set, one auth rule, one pool shape, one timeout set across all candidates.
+- **No framework receives hidden advantages**: identical compression-off, logging-off,
+  keep-alive-on, single-worker posture pinned in `MATCHED_CONFIG` and asserted by test.
+- **All outputs pass contract fixtures**: W1/W2/W3 store responses (including 401/404/
+  400/409 error paths) asserted by `parity.test.ts`.
+- **Version/hash metadata is captured**: existing `versions.json` + `load.ts` hash
+  pipeline unchanged and still enforced by `result-schema.ts`.
+
+### Command results
+
+- `cargo test -p q-http` → PASS
+- `cargo test -p q-capabilities` → PASS (261+6+7+1+3+4+9)
+- `bun test` → **334 pass / 0 fail (56 files)**
+- `bun run typecheck`, fmt check, workspace clippy → clean
+- `./scripts/verify` → **ALL PASS**
+
+### Disclosures
+
+- Standing: CI `verify` workflows fail with zero executed steps on every PR
+  since ~#714 (infrastructure-side); disclosed per PR. Local
+  `./scripts/verify` is the gate evidence.
