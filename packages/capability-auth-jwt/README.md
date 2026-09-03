@@ -45,6 +45,23 @@ const res = verifyJwtWithClaims(token, secret, {
   `audience-mismatch`, ...); the clock is injectable for deterministic
   tests.
 
+## Typed 401/403 problems (BETA-005-D)
+
+Every auth failure maps to an RFC 9457 problem document with a
+closed-set `type` URI and the right status class:
+
+- **401** — authentication failures (missing/malformed token, unapproved
+  algorithm, signature mismatch, expired, wrong issuer/audience), each
+  with `WWW-Authenticate: Bearer error="invalid_token"` (RFC 6750).
+- **403** — authorization failure (`requireScope`): a valid token
+  without the needed scope, with
+  `WWW-Authenticate: Bearer error="insufficient_scope"`.
+
+`authenticateBearer(header, secret, claimsOptions)` composes the whole
+flow; unknown reasons collapse into the generic invalid-token 401
+(closed set — no invented types). Token material never appears in a
+problem document.
+
 ## Key loading and rotation (BETA-005-B)
 
 `JwtKeyring` manages HS256 secrets with caller-driven hooks — the
