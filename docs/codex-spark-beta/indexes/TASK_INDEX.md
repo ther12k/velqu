@@ -576,7 +576,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-004-D](../tasks/08_public_beta/BETA-004-D-deadline-cancellation-shutdown.md) | P0 | implement | PASS | BETA-004-C | Deadline/cancellation/shutdown |
 | [BETA-004-E](../tasks/08_public_beta/BETA-004-E-pool-limits-and-observability.md) | P0 | implement | PASS | BETA-004-D | Pool limits and observability |
 | [BETA-004-F](../tasks/08_public_beta/BETA-004-F-no-orm.md) | P0 | implement | PASS | BETA-004-E | No ORM |
-| [BETA-004-V](../tasks/08_public_beta/BETA-004-V-verify-implement-optional-first-party-postgres-capability.md) | P0 | verify | TODO | BETA-004-A, BETA-004-B, BETA-004-C, BETA-004-D, BETA-004-E, BETA-004-F | Verify Implement optional first-party Postgres capability |
+| [BETA-004-V](../tasks/08_public_beta/BETA-004-V-verify-implement-optional-first-party-postgres-capability.md) | P0 | verify | PASS | BETA-004-A, BETA-004-B, BETA-004-C, BETA-004-D, BETA-004-E, BETA-004-F | Verify Implement optional first-party Postgres capability |
 | [BETA-004-Z](../tasks/08_public_beta/BETA-004-Z-package-evidence-for-implement-optional-first-party-postgres-capability.md) | P0 | evidence | TODO | BETA-004-V | Package evidence for Implement optional first-party Postgres capability |
 | [BETA-005-A](../tasks/08_public_beta/BETA-005-A-support-one-approved-jwt-algorithm-profile.md) | P0 | implement | TODO | M27-GATE, M25-GATE | Support one approved JWT algorithm/profile |
 | [BETA-005-B](../tasks/08_public_beta/BETA-005-B-key-loading-rotation-hooks.md) | P0 | implement | TODO | BETA-005-A | Key loading/rotation hooks |
