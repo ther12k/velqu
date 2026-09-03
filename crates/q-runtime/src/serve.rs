@@ -247,6 +247,31 @@ mod route_metrics_tests {
     }
 }
 
+/// BETA-006-B: worker operations status — one bounded structured snapshot
+/// aggregating queue gauges, quarantine state, and replacement policy
+/// position. Rendered at drain/shutdown and available on demand; there is
+/// deliberately no high-frequency emitter (bounded emissions only).
+pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
+    let stage = state.metrics.snapshot();
+    let ownership = state.ownership.stats();
+    let health = state.engine.lock().expect("engine mutex").health();
+    serde_json::json!({
+        "queue": {
+            "pending": stage.queue_pending,
+            "slabLive": stage.slab_live,
+            "invocationsPending": ownership.pending,
+        },
+        "worker": {
+            "quarantined": health.is_quarantined(),
+        },
+        "drain": {
+            "draining": state.drain_gate.is_draining(),
+            "refused": state.drain_gate.refused(),
+        },
+        "loadShed": state.load_shed.snapshot(),
+    })
+}
+
 #[derive(Debug, Clone, Copy, Default, serde::Serialize)]
 pub struct StageMetricsSnapshot {
     pub route: u64,

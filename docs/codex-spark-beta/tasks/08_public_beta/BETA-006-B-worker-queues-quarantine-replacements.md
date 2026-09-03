@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -109,3 +109,51 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-B) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-b (squash-merged; see git log for final hash)
+- Closes: #532
+
+### Changed files
+- `crates/q-runtime/src/serve.rs`: `worker_ops_status(state)` — bounded
+  structured snapshot aggregating queue gauges (slab live, queue
+  pending, pending invocations), quarantine state (quarantined flag,
+  queue-poisoned, poison events from engine stats), drain gate
+  (draining/refused), and full load-shed counter snapshot.
+- `crates/q-runtime/src/lib.rs`: `ops.worker.status` emitted at the
+  drain transition (bounded-emissions policy; the shutdown report
+  already carries full engine stats + stage metrics + ownership
+  invariants).
+- `docs/reports/beta-006-b-worker-ops-status.md` (new): snapshot
+  schema, emissions policy, replacements posture.
+
+### Required evidence
+
+- **Capability tests**: targeted suites green (velqu-runtime 57+,
+  q-http, q-bridge); snapshot composes existing tested primitives.
+- **Real-world results**: status renders at drain transitions and
+  shutdown (visible in the runtime's structured logs); no load-run
+  claims.
+- **Cold/RSS cost report**: no hot-path cost — the snapshot is read on
+  demand / at bounded transitions; no new allocation on the request
+  path.
+
+### Guardrail mapping
+
+- **Disabled overhead measured**: zero hot-path cost; emissions bounded
+  by policy.
+- **Enabled overhead budgeted**: one lock + counter reads per emission,
+  at bounded transitions only.
+- **Cardinality is bounded**: fixed field set; load-shed reasons are a
+  closed vocabulary.
+- **No secrets/PII by default**: gauges and counters only.
+- **Dashboards/examples exist**: the JSON shape is documented in the
+  report; emissions land in the same structured stream operators
+  already tail.
+
+### Standing CI disclosure
+
+CI `verify` workflows stall/fail with zero executed steps on PR creation
+across all branches (infrastructure-side, tracked since ~#714); the local
+`./scripts/verify` run above is the real gate evidence for this packet.

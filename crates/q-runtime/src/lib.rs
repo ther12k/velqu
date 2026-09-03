@@ -472,6 +472,15 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                         "pending": ownership.pending,
                     })
                 );
+                // BETA-006-B: bounded worker operations status at drain
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "level": "info",
+                        "event": "ops.worker.status",
+                        "status": serve::worker_ops_status(&drain_state),
+                    })
+                );
             }
         });
         // M3-007-C: in-flight connections are ALLOWED to complete — the
