@@ -1,0 +1,141 @@
+{
+  "format": "velqu-losses-v1",
+  "source": {
+    "runId": "1788448064944",
+    "generatedAt": "2026-09-03T15:36:11.725Z"
+  },
+  "rules": [
+    "steady-floor: steady p50 exceeds the class best",
+    "crossover-never: A never overtook B within the recorded horizon",
+    "crossover-lag: A overtook B only after N-1 requests",
+    "no-onset: ramp cell never reached steady state"
+  ],
+  "rows": [
+    {
+      "kind": "steady-floor",
+      "candidate": "raw-rust",
+      "class": "C0",
+      "value": "61µs vs best 34µs (1.79x)",
+      "detail": "steady p50 is 1.79x the class best"
+    },
+    {
+      "kind": "steady-floor",
+      "candidate": "raw-bun",
+      "class": "C0",
+      "value": "48µs vs best 34µs (1.41x)",
+      "detail": "steady p50 is 1.41x the class best"
+    },
+    {
+      "kind": "steady-floor",
+      "candidate": "elysia2",
+      "class": "C0",
+      "value": "35µs vs best 34µs (1.03x)",
+      "detail": "steady p50 is 1.03x the class best"
+    },
+    {
+      "kind": "steady-floor",
+      "candidate": "velqu",
+      "class": "C2",
+      "value": "59µs vs best 37µs (1.59x)",
+      "detail": "steady p50 is 1.59x the class best"
+    },
+    {
+      "kind": "steady-floor",
+      "candidate": "raw-rust",
+      "class": "C2",
+      "value": "45µs vs best 37µs (1.22x)",
+      "detail": "steady p50 is 1.22x the class best"
+    },
+    {
+      "kind": "steady-floor",
+      "candidate": "raw-bun",
+      "class": "C2",
+      "value": "41µs vs best 37µs (1.11x)",
+      "detail": "steady p50 is 1.11x the class best"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C0",
+      "detail": "never overtook raw-bun within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C0",
+      "detail": "never overtook raw-rust within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C0",
+      "detail": "never overtook velqu within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "raw-bun",
+      "class": "C0",
+      "detail": "never overtook raw-rust within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "raw-bun",
+      "class": "C0",
+      "detail": "never overtook velqu within the 125-request horizon",
+      "value": "never (125 requests)"
+    },
+    {
+      "kind": "crossover-lag",
+      "candidate": "velqu",
+      "class": "C0",
+      "detail": "behind raw-rust for the first 75 requests",
+      "value": "lag 75 requests"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C2",
+      "detail": "never overtook raw-bun within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C2",
+      "detail": "never overtook raw-rust within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "elysia2",
+      "class": "C2",
+      "detail": "never overtook velqu within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "raw-bun",
+      "class": "C2",
+      "detail": "never overtook raw-rust within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-never",
+      "candidate": "raw-bun",
+      "class": "C2",
+      "detail": "never overtook velqu within the 100-request horizon",
+      "value": "never (100 requests)"
+    },
+    {
+      "kind": "crossover-lag",
+      "candidate": "velqu",
+      "class": "C2",
+      "detail": "behind raw-rust for the first 2 requests",
+      "value": "lag 2 requests"
+    }
+  ]
+}
