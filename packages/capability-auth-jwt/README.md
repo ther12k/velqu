@@ -21,6 +21,26 @@ layered on top (BETA-005-B/C). The declared policy failure (401
 `unauthorized`) appears in the Treaty contract via the policy's
 `declares` field.
 
+## Key loading and rotation (BETA-005-B)
+
+`JwtKeyring` manages HS256 secrets with caller-driven hooks — the
+capability never fetches secrets itself and never logs them:
+
+```ts
+const ring = await JwtKeyring.load(loadKeysFromSecretStore); // loading hook
+ring.rotate({ id: "key-2026-02", secret: "..." }); // admit new signing key
+// old keys keep verifying during the overlap window (no kid in tokens —
+// verification tries each active key, bounded by MAX_KEYRING_KEYS = 8)
+ring.retire("key-2026-01");                       // stop verifying an old key
+await ring.refresh(loadKeysFromSecretStore);      // atomic full reload
+```
+
+Loading and refresh are validated fail-closed (empty sets, duplicate
+ids, oversize rings, malformed shapes are typed rejections); a failed
+refresh leaves the previous ring untouched. Signing always uses the
+current key; snapshots expose **ids only** — secrets never appear in
+errors, snapshots, or logs.
+
 ## Performance posture
 
 Verification is a single HMAC over the token — O(token length), no
