@@ -4,7 +4,7 @@ parent_task: BETA-007
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -105,3 +105,69 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-007-E) — PASS (2026-09-04)
+
+- Branch/PR: beta-007-e (squash-merged; see git log for final hash)
+- Closes: #543
+
+### Behavior implemented
+
+Every production runtime context enforces no dynamic code execution
+before any application code runs: the `eval` global (direct AND
+indirect forms resolve it — pinned by tests), the `Function` global,
+and the function/async/generator prototype constructor routes are
+replaced with a typed `TypeError` ("velqu: dynamic code execution is
+disabled (...)"). Lockdown installs host-side in `create_context`
+(single hook, every profile, both deployment modes) and fails closed:
+a lock failure rejects startup. Static definitions (classes, closures,
+generators) and instance constructor identity are unaffected
+(test-pinned). The `Eval` intrinsic itself cannot be excluded (it
+gates the host's own script evaluation; exclusion attempted and
+reverted) — the global-binding replacement covers the runtime routes.
+
+### Changed files
+
+- `crates/q-engine-quickjs/src/prelude.rs`
+  (`NO_DYNAMIC_CODE_LOCKDOWN` script)
+- `crates/q-engine-quickjs/src/worker.rs` (lockdown in
+  `create_context`; 4 new tests + probe helper)
+- `docs/beta/LIMITS-AND-NON-GOALS.md` ("No dynamic code execution"
+  bullet)
+- `docs/reports/beta-007-e-no-dynamic-code-execution.md` (new)
+
+### Required evidence
+
+- **Config tests** (hardening tests; 4 new, 24 engine lib total):
+  `dynamic_code_routes_fail_typed_in_every_profile` (7 routes × 3
+  profiles with the typed message),
+  `lockdown_is_tamper_resistant_by_construction`,
+  `static_code_still_runs_after_lockdown`,
+  `lockdown_marker_present_and_instances_keep_identity`.
+- **Redaction tests**: unaffected suites still green (typed denial
+  carries no secrets by construction).
+- **Examples**: LIMITS-AND-NON-GOALS.md bullet documents the
+  guarantee, covered routes, and typed error text.
+
+### Guardrail proofs
+
+1. **Invalid config fails before ready** — lockdown failure is a
+   context-creation error; runtime never serves with a dynamic route
+   live.
+2. **Secrets never appear in inspect/log/error** — denial messages are
+   static strings; unrelated suites still green.
+3. **Defaults are safe** — lockdown is unconditional; no opt-out.
+4. **Configuration is documented/versioned** — not a config surface;
+   documented as a runtime limit in LIMITS-AND-NON-GOALS.md.
+
+### Gate results (fresh on this branch)
+
+- `cargo test -p q-engine-quickjs` 24 lib + 117 worker + 1 ->
+  0 failures; `-p velqu-runtime` 96 lib + 35 conformance + 16;
+  `-p q-http` 14; `-p q-bridge` 11
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)
