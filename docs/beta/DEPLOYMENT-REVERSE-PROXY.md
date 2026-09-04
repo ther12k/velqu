@@ -104,9 +104,15 @@ A safe rollout sequence is:
 
 1. Start the new runtime on a private port and wait for `/health/ready`.
 2. Add it to the proxy upstream and verify a real typed route.
-3. Stop admitting traffic to the old runtime.
-4. Send SIGTERM and wait for its bounded shutdown report.
-5. Remove the old process only after the drain completes or the deployment
+3. Stop admitting traffic to the old runtime; readiness is withdrawn before
+   the shutdown signal reaches the process.
+4. Send SIGTERM and wait for its bounded shutdown report. The runtime flips
+   its lock-free drain gate immediately, refuses new dynamic admissions with
+   503 + `Retry-After: 1`, and lets in-flight work finish.
+5. If the 5-second drain budget expires, in-flight stragglers are force-aborted
+   through ownership and reported as `aborted`; the runtime still exits
+   deterministically with no pending invocation.
+6. Remove the old process only after the drain completes or the deployment
    timeout expires.
 
 ## Boundaries and limitations
