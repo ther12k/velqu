@@ -1,16 +1,16 @@
 {
   "format": "velqu-evidence-index-v1",
-  "generatedAt": "2026-09-01T00:00:00Z",
+  "generatedAt": "BOUND_BY_RELEASE_PACKET_AFTER_HEAD_IS_FIXED",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "status": "PASS",
-  "milestone": "M4A-DEVELOPER-PREVIEW",
-  "reviewedImplementationCommit": "936e1f0",
+  "milestone": "BETA-PUBLIC-BETA-RELEASE",
+  "reviewedImplementationCommit": "template",
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS \u2014 exit 0 at candidate commit 936e1f0; artifact hashes, raw-to-report parity, Rust, TypeScript, and OKF checks pass",
-    "rustTests": "workspace tests PASS (q-capabilities 261+6+7+1+3+4+9, q-engine-quickjs 20+113, velqu-runtime 55+6+5+2+35, q-http 4+6+1, q-bridge 11, q-pack 100+2, q-router 15, q-schema-runtime 58)",
-    "typescriptTests": 327,
+    "result": "PASS — exit 0; M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified locally (CI stalled; standing disclosure)",
+    "rustTests": "workspace tests PASS (q-capabilities, q-engine-quickjs, velqu-runtime, q-http, q-bridge, q-pack, q-router, q-schema-runtime, q-capability-postgres)",
+    "typescriptTests": 434,
     "benchmarkReportCheck": "benchmark reports current; validate-benchmark-evidence PASS; release binary matches manifest"
   },
   "benchmarks": {
@@ -25,36 +25,49 @@
     "realWorldConcurrency": "benchmarks/raw/real-world/concurrency/comparison.md",
     "workerScaling": "benchmarks/raw/worker-scaling/worker-scaling-summary.json",
     "soakSummary": "benchmarks/raw/worker-scaling/soak-summary.json",
-    "hostTopology": "benchmarks/raw/worker-scaling/host-topology.json"
+    "hostTopology": "benchmarks/raw/worker-scaling/host-topology.json",
+    "rampCrossover": "benchmarks/raw/ramp/summary.json",
+    "rampLosses": "benchmarks/raw/ramp/losses.json"
   },
   "reports": [
-    "docs/reports/m4a-gate-review.md",
-    "docs/reports/m4a-010-feedback-classification.md",
-    "docs/reports/m4a-010-alpha-feedback.md",
-    "docs/reports/m3-gate-review.md",
-    "docs/reports/m3-009-a-worker-scaling.md",
-    "docs/reports/m3-009-b-multiworker-metrics.md",
-    "docs/reports/m3-009-c-controlled-workloads.md",
-    "docs/reports/m3-009-d-host-topology.md",
+    "docs/reports/beta-013-a-soak-qualification.md",
+    "docs/reports/beta-013-b-soak-coverage.md",
+    "docs/reports/beta-013-c-resource-tracking.md",
+    "docs/reports/beta-013-d-retained-growth-analysis.md",
+    "docs/reports/beta-014-a-canonical-benchmark-report.md",
+    "docs/reports/beta-014-b-pin-candidates-artifacts.md",
+    "docs/reports/beta-014-c-retain-raw-data.md",
+    "docs/reports/beta-014-d-wording-review.md",
+    "docs/reports/beta-015-a-source-zip.md",
+    "docs/reports/beta-015-b-git-bundle.md",
+    "docs/reports/beta-015-c-linux-binaries.md",
+    "docs/reports/beta-015-d-npm-package-tarballs.md",
+    "docs/reports/beta-015-e-qpack-tools.md",
+    "docs/reports/beta-015-f-sbom.md",
+    "docs/reports/beta-015-g-checksums.md",
     "docs/reports/m3-010-a-soak.md",
     "docs/reports/m3-010-b-chaos.md",
     "docs/reports/m3-010-c-retained-memory-and-slots.md",
-    "docs/reports/m3-010-d-recovery.md",
-    "docs/reports/m28-gate-review.md"
+    "docs/reports/m3-010-d-recovery.md"
   ],
   "taskLedger": {
     "file": "docs/beta/04_TASK_LEDGER.md",
-    "result": "PASS \u2014 all M4A-001 through M4A-010 parent rows and M4A-GATE marked PASS"
+    "result": "BETA-001 through BETA-014 parent rows PASS; BETA-015 in progress at index update time (this packet closes its index deliverable); BETA-017 owner decisions PASS"
   },
   "release": {
     "script": "scripts/release-packet",
     "binding": "release packet binds clean candidate HEAD",
-    "checksums": "sha256sum -c release/SHA256SUMS.txt"
+    "checksums": "sha256sum -c release/SHA256SUMS.txt (single top-level manifest covers binaries, SBOM, npm tarballs)",
+    "sbom": "scripts/sbom.sh → release/sbom.cdx.json (CycloneDX 1.5, commit-bound)",
+    "npmTarballs": "scripts/npm-package-tarballs.sh → release/npm-tarballs/ (9 @velqu/* packages)"
   },
   "openItems": [
-    "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path (producer emit + runtime default load through the native reader) is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. Requires an owner-authorized follow-up packet.",
-    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports)."
+    "Carried-forward (owner-visible): PACK_FORMAT_CURRENT is pinned to v1; the v2 binary production load path is not flipped, so the M25-escalated route-count cold-start limitation remains in the default path. Requires an owner-authorized follow-up packet.",
+    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports).",
+    "npm publication Owner-gated: all @velqu/* packages remain private; beta/next dist-tag policy rehearsed (BETA-011-B) but not executed.",
+    "License selection Owner-gated: workspace crates UNLICENSED-BEFORE-OWNER-DECISION; SBOM records posture honestly.",
+    "Standing CI disclosure: verify workflows stall with zero executed steps at PR creation since ~#714; local gates are acceptance basis."
   ],
   "gates": [],
-  "evidenceCheckpoint": "936e1f0"
+  "evidenceCheckpoint": "template"
 }
