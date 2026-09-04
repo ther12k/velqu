@@ -541,6 +541,50 @@ fn parse_log(v: &str, source: &str) -> Result<&'static str, ConfigError> {
         })
 }
 
+/// BETA-007-C: typed wrapper for secret configuration values —
+/// capability credentials such as the database URL. `Debug` and
+/// `Display` always render `[redacted]`, so an accidental log, error,
+/// or inspect of a holder can never disclose the value. The only read
+/// path is the explicit, grep-auditable [`SecretString::expose`].
+///
+/// Memory zeroization on drop is deliberately NOT claimed: the
+/// guarantee here is redaction across all formatting and serialization
+/// paths, not memory hygiene. No `Clone`, no `PartialEq`: secret
+/// material is neither duplicated nor compared.
+pub struct SecretString {
+    inner: String,
+}
+
+impl SecretString {
+    pub fn new(value: String) -> Self {
+        SecretString { inner: value }
+    }
+
+    /// The only read path — named for audit greppability.
+    pub fn expose(&self) -> &str {
+        &self.inner
+    }
+
+    /// Read an environment variable into a wrapped secret through an
+    /// injected lookup (testable without touching the process
+    /// environment). The raw value never exists outside the wrapper.
+    pub fn from_env(var: &str, lookup: &dyn Fn(&str) -> Option<String>) -> Option<SecretString> {
+        lookup(var).map(SecretString::new)
+    }
+}
+
+impl std::fmt::Debug for SecretString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[redacted]")
+    }
+}
+
+impl std::fmt::Display for SecretString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[redacted]")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -982,5 +1026,38 @@ mod tests {
         // Default provenance is visible, and no secret-shaped field exists.
         assert_eq!(obj["portSource"], "default");
         assert_eq!(obj["log"], "errors");
+    }
+
+    #[test]
+    fn secret_debug_and_display_render_redacted() {
+        let s = SecretString::new("postgres://bench:s3cret-pw@127.0.0.1:5433/db".to_string());
+        assert_eq!(format!("{}", &s), "[redacted]");
+        assert_eq!(format!("{:?}", &s), "[redacted]");
+        // Holders that Debug-print their contents cannot disclose it.
+        let holder = vec![&s];
+        let rendered = format!("{:?}", holder);
+        assert!(!rendered.contains("s3cret-pw"), "{rendered}");
+        assert!(rendered.contains("[redacted]"), "{rendered}");
+    }
+
+    #[test]
+    fn secret_expose_is_the_only_read_path() {
+        let s = SecretString::new("hunter2".to_string());
+        assert_eq!(s.expose(), "hunter2");
+    }
+
+    #[test]
+    fn secret_from_env_wraps_without_disclosure() {
+        let lookup = |k: &str| {
+            if k == "VELQU_DATABASE_URL" {
+                Some("postgres://u:pw@h/db".to_string())
+            } else {
+                None
+            }
+        };
+        let s = SecretString::from_env("VELQU_DATABASE_URL", &lookup).expect("present");
+        assert_eq!(s.expose(), "postgres://u:pw@h/db");
+        assert!(!format!("{:?}", s).contains("pw"));
+        assert!(SecretString::from_env("VELQU_MISSING", &lookup).is_none());
     }
 }

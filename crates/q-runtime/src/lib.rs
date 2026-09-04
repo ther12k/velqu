@@ -268,10 +268,18 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             .as_ref()
             .map(|inv| inv.iter().any(|e| e.id == "runtime:postgres"))
             .unwrap_or(false);
+        // BETA-007-C: the database URL is a secret. It is wrapped at the
+        // env boundary (Debug/Display render "[redacted]") and only
+        // exposed to the pool constructor — no log, error, or inspect
+        // path ever sees it unwrapped.
+        let postgres_url = config::SecretString::from_env(
+            "VELQU_DATABASE_URL",
+            &|k| std::env::var(k).ok(),
+        );
         let postgres_handle =
-            match (postgres_required, std::env::var("VELQU_DATABASE_URL")) {
+            match (postgres_required, postgres_url) {
                 (false, _) => None,
-                (true, Err(_)) => {
+                (true, None) => {
                     let ready = serde_json::json!({
                         "event": "ready",
                         "ok": false,
@@ -280,11 +288,11 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     eprintln!("{ready}");
                     return 2;
                 }
-                (true, Ok(url)) => {
+                (true, Some(url)) => {
                     // BETA-004-E: pool limits configurable via
                     // VELQU_PG_POOL_MAX / _CONNECT_TIMEOUT_MS / _IDLE_TIMEOUT_MS;
                     // invalid values reject startup (fail closed, never clamped).
-                    match q_capability_postgres::pool_from_url_and_env(url, |k| {
+                    match q_capability_postgres::pool_from_url_and_env(url.expose(), |k| {
                         std::env::var(k).ok()
                     }) {
                         Ok(handle) => Some(handle),

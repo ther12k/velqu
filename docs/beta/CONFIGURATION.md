@@ -110,13 +110,30 @@ visible at startup:
 The block's keys are a fixed allowlist (test-enforced); it never
 contains credentials or file contents.
 
+## Secret value wrapper (BETA-007-C)
+
+Capability secrets (the database URL) are wrapped in a typed
+`SecretString` the moment they are read from the environment:
+
+- `Debug` and `Display` always render `[redacted]` — any accidental
+  log, error, or inspect of a holder cannot disclose the value.
+- The only read path is the explicit `expose()` (grep-auditable); the
+  value flows from the wrapper straight into the pool constructor.
+- No `Clone`, no equality: secret material is neither duplicated nor
+  compared.
+- The startup `ready`/`startup.rejected` lines name the variable, not
+  the value; pool-side error rendering additionally redacts URL
+  fragments (BETA-004).
+
+Memory zeroization on drop is deliberately not claimed — the
+guarantee is redaction across formatting and serialization paths.
+
 ## What is NOT configurable here
 
 - **Secrets.** Capability credentials such as `VELQU_DATABASE_URL`
   stay environment-only; they are never read by the configuration
   layer, never written to a config file, and never echoed in
-  configuration errors (redaction-tested). Secret *value* handling has
-  its own packet (BETA-007-C).
+  configuration errors (redaction-tested).
 - **Behavioral profiles.** `--service-profile` and
   `--context-profile` remain explicit CLI-only decisions; there is no
   profile file (BETA-007-D covers profile-specific settings).
