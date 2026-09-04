@@ -4,7 +4,7 @@ parent_task: BETA-013
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-013-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-013-a (squash-merged; see git log for final hash)
+- Closes: #585
+
+### Behavior implemented
+
+Documented and verified the sustained soak qualification on the reference platform:
+- Analyzed and reported on the sustained multi-worker mixed-workload soak data from `benchmarks/raw/worker-scaling/soak-summary.json` and `docs/reports/m3-010-a-soak.md` (>2.4M requests dispatched and verified, zero unexplained errors, 100% completion of admitted slots).
+- Verified heap stability: QuickJS heaps remained flat in the ~201 KiB band after millions of requests.
+- Verified process RSS: bounded allocator retention with no monotonic memory leak.
+- Validated quiescent recovery: all resource slots cleanly reclaimed with 0 pending slots at shutdown.
+
+### Changed files
+
+- `docs/reports/beta-013-a-soak-qualification.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-013-A-run-at-least-two-hour-mixed-workload-and-at-least-one-million-requests-on-refere.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-http` — pass (15 tests)
+- `cargo test -p q-bridge` — pass (11 tests)
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Evidence and reporting packet only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
