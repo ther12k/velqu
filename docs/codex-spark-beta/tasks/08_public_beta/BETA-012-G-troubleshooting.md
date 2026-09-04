@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -106,3 +106,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-G) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-g (squash-merged; see git log for final hash)
+- Closes: #580
+
+### Behavior implemented
+
+Added `docs/beta/TROUBLESHOOTING.md` (indexed in docs/beta/INDEX.md) — every failure message and exit code reproduced against a real build before documenting:
+- Startup rejections (all exit 2, actual messages captured): missing pack (pack.load), config without configVersion, unknown VELQU_* env var, public bind in default reverse-proxy mode, tampered pack (fail-closed verification).
+- Success contrast: ready line + `/health/live` = `{"status":"ok"}`.
+- Build/toolchain: pinned-toolchain mismatch guard + workspace-link guidance for scaffolds (reproduced during BETA-012-B).
+- Runtime behavior: engine quarantined 503, drain Retry-After, typed problems with redaction, intentional dynamic-code-execution TypeError.
+- Link check OK (CONFIGURATION/DEPLOYMENT/INSTALL/LIMITS all exist; closed-namespace message itself references docs/beta/CONFIGURATION.md per config.rs:327).
+
+### Changed files
+
+- `docs/beta/TROUBLESHOOTING.md` (new)
+- `docs/beta/INDEX.md` (index entry)
+- `docs/reports/beta-012-g-troubleshooting.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-G-troubleshooting.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation change only; no runtime behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
