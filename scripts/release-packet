@@ -22,6 +22,16 @@ if [[ -f docs/beta/CHANGELOG.md ]]; then
   cp docs/beta/CHANGELOG.md "$OUT/CHANGELOG.md"
 fi
 
+# BETA-015-C: the packet ships the Linux x86_64 release binary. It must be
+# built from this exact tree (cargo build --release -p velqu-runtime with the
+# reproducibility path remap); a missing or stale binary fails closed.
+RUNTIME_BIN=target/release/velqu-runtime
+[[ -x "$RUNTIME_BIN" ]] || {
+  echo "release packet requires ${RUNTIME_BIN} (build it from this tree first)" >&2
+  exit 1
+}
+cp "$RUNTIME_BIN" "$OUT/velqu-runtime"
+
 # Indexes are generated after HEAD is fixed; never copy a possibly stale
 # working-tree index into the release packet.
 python3 - "$COMMIT" "$OUT" <<'PY'
@@ -52,7 +62,7 @@ done
 (
   cd "$OUT"
   : > SHA256SUMS.txt
-  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
+  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" velqu-runtime BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
   if [[ -f CHANGELOG.md ]]; then
     FILES+=(CHANGELOG.md)
   fi

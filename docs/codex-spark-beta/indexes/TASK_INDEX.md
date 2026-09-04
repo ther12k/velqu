@@ -653,7 +653,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-014-Z](../tasks/08_public_beta/BETA-014-Z-package-evidence-for-publish-canonical-beta-benchmark-report.md) | P1 | evidence | PASS | BETA-014-V | Package evidence for Publish canonical beta benchmark report |
 | [BETA-015-A](../tasks/08_public_beta/BETA-015-A-source-zip.md) | P0 | implement | PASS | BETA-009-Z, BETA-010-Z, BETA-011-Z, BETA-013-Z, BETA-014-Z | Source ZIP |
 | [BETA-015-B](../tasks/08_public_beta/BETA-015-B-git-bundle.md) | P0 | implement | PASS | BETA-015-A | Git bundle |
-| [BETA-015-C](../tasks/08_public_beta/BETA-015-C-linux-binaries.md) | P0 | implement | TODO | BETA-015-B | Linux binaries |
+| [BETA-015-C](../tasks/08_public_beta/BETA-015-C-linux-binaries.md) | P0 | implement | PASS | BETA-015-B | Linux binaries |
 | [BETA-015-D](../tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md) | P0 | implement | TODO | BETA-015-C | npm package tarballs |
 | [BETA-015-E](../tasks/08_public_beta/BETA-015-E-qpack-tools.md) | P0 | implement | TODO | BETA-015-D | QPack tools |
 | [BETA-015-F](../tasks/08_public_beta/BETA-015-F-sbom.md) | P0 | implement | TODO | BETA-015-E | SBOM |
