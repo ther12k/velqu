@@ -4,7 +4,7 @@ parent_task: BETA-014
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -111,3 +111,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-014-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-014-a (squash-merged; see git log for final hash)
+- Closes: #591
+
+### Behavior implemented
+
+Produced canonical benchmark comparison report in `docs/reports/beta-014-a-canonical-benchmark-report.md`:
+- Cold start categories (C0–C5) with p50/p95/p99 values linked directly to `benchmarks/raw/cold-start/g0-cold-1787214119.jsonl`.
+- Warm microbenchmarks (C0–C4) linked to `benchmarks/raw/warm/g0-warm-1787214167.jsonl`.
+- Real-world I/O, Postgres DB, and JWT auth operations backed by `benchmarks/raw/worker-scaling/soak-summary.json`.
+- CPU/JIT crossover analysis and crossover threshold ($N^*$) definition.
+- Explicit documentation of Velqu losses (C2 steady-state floor is 1.59× slower than Elysia 2; behind raw Rust from request 1; heavy CPU scaling gap).
+- Cost-normalized metrics: memory footprint (5.6 MiB idle / 6.4 MiB loaded vs 48 MiB+ for JIT competitors).
+- Enforced all parent guardrails: no cloud cold-start extrapolations from local data, fixture-specific claims, non-SLA beta framing.
+
+### Changed files
+
+- `docs/reports/beta-014-a-canonical-benchmark-report.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-014-A-include-cold-start-categories-warm-microbenchmarks-real-db-auth-i-o-cpu-jit-cros.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Benchmark reporting only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
