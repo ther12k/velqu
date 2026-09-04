@@ -1201,6 +1201,46 @@ fn write_pack(dir: &std::path::Path) -> PathBuf {
 }
 
 #[test]
+fn forwarded_headers_are_ordinary_data_and_never_identity() {
+    let dir = temp_dir("forwarded-policy");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // The fixture's auth route consumes only its declared Authorization
+    // header. Forwarded claims cannot turn an unauthenticated request into
+    // an authenticated one; the runtime never maps them to peer identity.
+    let r = http(
+        port,
+        "GET /users/usr_1 HTTP/1.1
+host: attacker.invalid
+x-forwarded-for: 203.0.113.10
+x-forwarded-proto: https
+",
+        None,
+    );
+    assert_eq!(r.status, 401, "forwarded metadata must not authenticate");
+
+    // A valid application-layer credential works regardless of forged
+    // forwarded metadata, proving those headers are not consulted as auth.
+    let r = http(
+        port,
+        "GET /users/usr_1 HTTP/1.1
+host: attacker.invalid
+x-forwarded-for: 203.0.113.10
+x-forwarded-proto: http
+authorization: Bearer q-demo-token
+",
+        None,
+    );
+    assert_eq!(
+        r.status, 200,
+        "declared Authorization remains ordinary app data"
+    );
+    server.stop();
+}
+
+#[test]
 fn fingerprint_flag_reports_exact_tuple_and_verifies_without_serving() {
     // M26-009-C: --fingerprint prints the runtime's enforced tuple and,
     // with --pack, runs FULL verification without ever binding a port.

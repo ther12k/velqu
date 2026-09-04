@@ -548,8 +548,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         headers,
         body,
         started: _,
+        peer_addr: _,
     } = req;
     let method_str = method.as_str();
+    // BETA-008-B: forwarded headers remain ordinary route-declared data;
+    // this pipeline never derives identity, scheme, or routing from them.
     let path = uri.path();
     state.metrics.route.fetch_add(1, Ordering::Relaxed);
     let is_get_or_head = method_str == "GET" || method_str == "HEAD";
