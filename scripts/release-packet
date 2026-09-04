@@ -32,6 +32,15 @@ RUNTIME_BIN=target/release/velqu-runtime
 }
 cp "$RUNTIME_BIN" "$OUT/velqu-runtime"
 
+# BETA-015-E: the packet also ships the QPack tooling binary (q-bytecode-tool)
+# so bytecode embedding/migration ships with the runtime it must match.
+BYTECODE_BIN=target/release/velqu-bytecode
+[[ -x "$BYTECODE_BIN" ]] || {
+  echo "release packet requires ${BYTECODE_BIN} (cargo build --release -p q-bytecode-tool)" >&2
+  exit 1
+}
+cp "$BYTECODE_BIN" "$OUT/velqu-bytecode"
+
 # Indexes are generated after HEAD is fixed; never copy a possibly stale
 # working-tree index into the release packet.
 python3 - "$COMMIT" "$OUT" <<'PY'
@@ -62,7 +71,7 @@ done
 (
   cd "$OUT"
   : > SHA256SUMS.txt
-  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" velqu-runtime BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
+  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" velqu-runtime velqu-bytecode BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
   if [[ -f CHANGELOG.md ]]; then
     FILES+=(CHANGELOG.md)
   fi
