@@ -17,6 +17,17 @@ release scope.
 - Runtime queues, request bodies, jobs, heap, stack, deadlines, fetch work,
   and deferred callbacks are bounded. A limit rejection is a designed
   fail-closed result, not an invitation to retry without a policy.
+- **No dynamic code execution** (BETA-007-E): every production runtime
+  context replaces the `eval` global (direct and indirect forms both
+  resolve it) and the dynamic `Function`-construction routes (the
+  `Function` global plus the function/async/generator prototype
+  constructor routes) with a typed `TypeError`
+  (`velqu: dynamic code execution is disabled (...)`) before any
+  application code runs. Static definitions — classes, closures,
+  generators — are unaffected; the compiler emits statically compiled
+  bundles, so legitimate applications have no need for dynamic
+  evaluation. This is hardening for trusted application code, not a
+  sandbox boundary.
 
 ## Explicit non-goals
 

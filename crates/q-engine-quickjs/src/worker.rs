@@ -3455,11 +3455,24 @@ pub(crate) fn create_context(
         rquickjs::context::intrinsic::Promise,
         rquickjs::context::intrinsic::TypedArrays,
     );
-    match profile {
+    let ctx = match profile {
         crate::ContextProfile::Full => Context::full(rt),
         crate::ContextProfile::Web => Context::custom::<WebIntrinsics>(rt),
         crate::ContextProfile::Minimal => Context::custom::<MinimalIntrinsics>(rt),
-    }
+    }?;
+    // BETA-007-E: no dynamic code execution. The `Eval` intrinsic must
+    // stay installed (quickjs-ng gates ALL script evaluation, including
+    // the host's own ctx.eval used for the prelude and the source-bundle
+    // recovery path, behind it) — but every runtime route to dynamic
+    // code resolves through the global binding and is therefore
+    // replaced with a typed failure before ANY application code runs:
+    // the `eval` global (direct and indirect forms both resolve it),
+    // the `Function` global, and the function/async/generator prototype
+    // constructor routes. The guarantee is hardening for trusted
+    // application code, not a hostile-code sandbox (AGENTS.md
+    // constraint 14).
+    ctx.with(|ctx| ctx.eval::<(), _>(crate::prelude::NO_DYNAMIC_CODE_LOCKDOWN))?;
+    Ok(ctx)
 }
 
 #[cfg(test)]
@@ -3476,6 +3489,118 @@ mod tests {
             let v: rquickjs::Value<'_> = ctx.eval(expr).map_err(|e| e.to_string())?;
             Ok(v.type_name().to_string())
         })
+    }
+
+    /// BETA-007-E helper: create a real production context and evaluate
+    /// `expr`, returning Ok(type) or the error text.
+    fn lock_probe(profile: ContextProfile, expr: &str) -> Result<String, String> {
+        let rt = rquickjs::Runtime::new().map_err(|e| e.to_string())?;
+        let ctx = create_context(&rt, profile).map_err(|e| e.to_string())?;
+        ctx.with(|ctx| {
+            match ctx.eval::<rquickjs::Value, _>(expr) {
+                Ok(v) => Ok(v.type_name().to_string()),
+                Err(_) => {
+                    // Surface the caught JS exception's own message so
+                    // typed rejections can be asserted.
+                    let ex = ctx.catch();
+                    let msg = ex
+                        .as_object()
+                        .and_then(|o| o.get::<_, String>("message").ok());
+                    Err(msg.unwrap_or_else(|| "no exception message".into()))
+                }
+            }
+        })
+    }
+
+    fn all_profiles() -> [ContextProfile; 3] {
+        [
+            ContextProfile::Full,
+            ContextProfile::Web,
+            ContextProfile::Minimal,
+        ]
+    }
+
+    #[test]
+    fn dynamic_code_routes_fail_typed_in_every_profile() {
+        for profile in all_profiles() {
+            for expr in [
+                // direct AND indirect forms both resolve the replaced
+                // global binding (pinned by the tests, not assumed)
+                "eval('1 + 1')",
+                "(0, eval)('1 + 1')",
+                "eval.call(null, '1 + 1')",
+                // dynamic Function construction, direct and via prototypes
+                "new Function('return 1')()",
+                "Function('return 1')",
+                "(function () {}).constructor('return 1')",
+                "(async function () {}).constructor('return 1')",
+                "(function* () {}).constructor('return 1')",
+            ] {
+                let err = lock_probe(profile, expr)
+                    .err()
+                    .unwrap_or_else(|| panic!("'{expr}' must be disabled"));
+                assert!(
+                    err.contains("dynamic code execution is disabled"),
+                    "{expr}: {err}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn lockdown_is_tamper_resistant_by_construction() {
+        // Non-writable, non-configurable: a later redefine must fail
+        // instead of restoring a live route.
+        for profile in all_profiles() {
+            let err = lock_probe(
+                profile,
+                "Object.defineProperty(globalThis, 'Function', { value: function () { return 1; } })",
+            );
+            assert!(
+                err.is_err(),
+                "redefining the locked Function global must fail"
+            );
+        }
+    }
+
+    #[test]
+    fn static_code_still_runs_after_lockdown() {
+        for profile in all_profiles() {
+            assert_eq!(
+                lock_probe(profile, "(function add(a, b) { return a + b; })(2, 3)"),
+                Ok("int".into())
+            );
+            assert_eq!(
+                lock_probe(
+                    profile,
+                    "(() => { class P { constructor() { this.v = 7; } } return new P().v; })()"
+                ),
+                Ok("int".into())
+            );
+            assert_eq!(
+                lock_probe(
+                    profile,
+                    "(() => { const g = function* () { yield 1; }; return [...g()].length; })()"
+                ),
+                Ok("int".into())
+            );
+        }
+    }
+
+    #[test]
+    fn lockdown_marker_present_and_instances_keep_identity() {
+        for profile in all_profiles() {
+            assert_eq!(
+                lock_probe(profile, "globalThis.__velquNoDynamicCode === true"),
+                Ok("bool".into())
+            );
+            // Object instances keep their constructor identity; only
+            // FUNCTION objects route to the deny constructor.
+            assert_eq!(
+                lock_probe(profile, "({}).constructor === Object"),
+                Ok("bool".into())
+            );
+        }
     }
 
     #[test]

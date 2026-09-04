@@ -883,3 +883,48 @@ globalThis.__velquWatch = function (p, id) {
   return p;
 };
 "#;
+
+/// BETA-007-E: no dynamic code execution. Installed host-side in
+/// `create_context` before ANY application code runs, for every
+/// context profile. Replaces `eval`, the `Function` global, and the
+/// function/async/generator prototype constructor routes with typed
+/// failures; static definitions (classes, closures, generators) are
+/// unaffected. Host-side bytecode loading never uses the JS `eval`
+/// global, so the bundle pipeline is unaffected. This is runtime
+/// hardening for trusted application code — not a hostile-code
+/// sandbox (AGENTS.md constraint 14).
+pub const NO_DYNAMIC_CODE_LOCKDOWN: &str = r#"
+(function () {
+  if (globalThis.__velquNoDynamicCode) return;
+  // Capture prototype-constructor routes BEFORE any patching: for a
+  // function instance, Object.getPrototypeOf(fn) is the intrinsic
+  // %XxxFunction%.prototype whose .constructor is the intrinsic
+  // constructor object (reachable as `(async function(){}).constructor`).
+  var protoRefs = [];
+  try {
+    var af = Object.getPrototypeOf(async function () {});
+    if (af && typeof af.constructor === "function") protoRefs.push([af, "new AsyncFunction"]);
+  } catch (e) {}
+  try {
+    var gf = Object.getPrototypeOf(function* () {});
+    if (gf && typeof gf.constructor === "function") protoRefs.push([gf, "new GeneratorFunction"]);
+  } catch (e) {}
+  var F = globalThis.Function;
+  function deny(what) {
+    return function () {
+      throw new TypeError("velqu: dynamic code execution is disabled (" + what + ")");
+    };
+  }
+  Object.defineProperty(globalThis, "eval", { value: deny("eval"), writable: false, configurable: false });
+  Object.defineProperty(globalThis, "Function", { value: deny("new Function"), writable: false, configurable: false });
+  if (F && F.prototype) {
+    Object.defineProperty(F.prototype, "constructor", { value: deny("new Function"), writable: false, configurable: false });
+  }
+  for (var i = 0; i < protoRefs.length; i++) {
+    try {
+      Object.defineProperty(protoRefs[i][0], "constructor", { value: deny(protoRefs[i][1]), writable: false, configurable: false });
+    } catch (e) {}
+  }
+  globalThis.__velquNoDynamicCode = true;
+})();
+"#;
