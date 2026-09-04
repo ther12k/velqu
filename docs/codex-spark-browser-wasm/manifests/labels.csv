@@ -1,0 +1,21 @@
+action,name,color,description
+create,milestone:browser-wasm,5319E7,Velqu Browser-WASM runtime program
+create,area:wasm,6F42C1,Rust/WebAssembly portability and browser kernel
+create,area:browser-runtime,1D76DB,"Browser execution runtime, workers, and Fetch dispatch"
+create,area:compiler,0E8A16,"Compiler targets, artifacts, and diagnostics"
+create,area:capabilities,BFD4F2,Velqu capability contracts and adapters
+create,area:security,B60205,"Security boundaries, isolation, and threat model"
+create,area:quality,D4C5F9,"Conformance, CI, performance, and release evidence"
+create,area:devex,FBCA04,"CLI, documentation, examples, and developer experience"
+reuse,mode:implement,,
+reuse,mode:verify,,
+reuse,mode:verify_or_fix,,
+reuse,mode:evidence,,
+reuse,mode:gate,,
+reuse,mode:gate_review,,
+reuse,p0,,
+reuse,p1,,
+reuse,spark-task,,
+reuse,spark-gate,,
+reuse,enhancement,,
+reuse,documentation,,

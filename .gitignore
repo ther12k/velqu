@@ -44,3 +44,5 @@ benchmarks/real-world/fairness.md
 # BETA-002-C: contract-verification.md is tracked evidence; the upstream log
 # is bulky local output (same policy as the smoke phase)
 benchmarks/raw/real-world/contracts/upstream.log
+__pycache__/
+*.pyc

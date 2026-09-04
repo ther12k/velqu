@@ -1,0 +1,35 @@
+{
+  "repository": "ther12k/velqu",
+  "results": [
+    {
+      "id": "BWASM-EPIC",
+      "action": "created",
+      "title": "[BWASM-EPIC] BWASM-EPIC \u2014 Velqu Browser-WASM runtime program",
+      "url": "https://github.com/ther12k/velqu/issues/1179"
+    },
+    {
+      "id": "BWASM-D-001",
+      "action": "created",
+      "title": "[BWASM-D-001] BWASM-D-001 \u2014 Freeze the Browser-WASM product and runtime contract",
+      "url": "https://github.com/ther12k/velqu/issues/1180"
+    },
+    {
+      "id": "BWASM-D-002",
+      "action": "created",
+      "title": "[BWASM-D-002] BWASM-D-002 \u2014 Produce the wasm32 portability baseline and dependency split map",
+      "url": "https://github.com/ther12k/velqu/issues/1181"
+    },
+    {
+      "id": "BWASM-D-003",
+      "action": "created",
+      "title": "[BWASM-D-003] BWASM-D-003 \u2014 Define the browser execution threat model and isolation contract",
+      "url": "https://github.com/ther12k/velqu/issues/1182"
+    },
+    {
+      "id": "BWASM-D-004",
+      "action": "created",
+      "title": "[BWASM-D-004] BWASM-D-004 \u2014 Ratify support matrix, compatibility claims, and release budgets",
+      "url": "https://github.com/ther12k/velqu/issues/1183"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+Atomic Browser-WASM packet: `docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-004-add-browser-wasm-observability-and-developer-diagnostics.md`  
+Program: `BWASM`  
+Phase: `06_quality_release` — Conformance, security, DevEx, and release qualification  
+Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.  
+Priority: `P1`  
+Optional: `NO — mandatory for the Browser-WASM MVP.`  
+Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
+Status: `TODO`
+
+---
+
+# BWASM-Q-004 — Add Browser-WASM observability and developer diagnostics
+
+## Atomic goal
+
+Make browser runtime failures understandable without exposing sensitive data or requiring native-runtime debugging tools.
+
+## Parent intent
+
+Prove cross-target semantics, browser support, security, performance, documentation, and clean external usability.
+
+## Architecture invariant
+
+This work targets a **hybrid Browser-WASM runtime**:
+
+- compatibility-critical routing, schema validation, manifest/QPack verification, capability authorization, and problem mapping run through Rust compiled to WebAssembly;
+- generated TypeScript handlers run in an isolated browser Worker for the MVP;
+- the public runtime boundary is `Request -> Promise<Response>`;
+- production deployment remains the native Velqu runtime for native-only capabilities;
+- QuickJS-NG-in-WASM is optional unless a recorded owner decision changes the release contract.
+
+## Dependencies
+
+- `BWASM-R-006` — Verify and package browser-runtime evidence
+- `BWASM-B-005` — Add CLI build, preview, inspect, and export workflows
+
+Do not begin implementation while a mandatory dependency that defines this issue's contract is unresolved.
+
+## Read first
+
+- `scripts/verify`
+- `.github/workflows/verify.yml`
+- `conformance/`
+- `packages/browser-runtime/`
+- `crates/q-browser-kernel/`
+- `docs/`
+
+## Steps
+
+1. Define structured lifecycle events for load, verify, instantiate, route, validate, invoke, capability, persist, cache, update, cancel, and fail.
+2. Add stable diagnostic codes and correlation IDs across loader, kernel, runtime, Worker, Service Worker, Treaty, and CLI.
+3. Provide a bounded developer event stream and optional inspector panel adapter.
+4. Map generated errors back to source locations and route IDs.
+5. Add redaction and production-preview logging defaults.
+
+## Acceptance criteria
+
+- [ ] A developer can distinguish integrity, compatibility, route, schema, capability, handler, timeout, persistence, cache, and deployment-required failures.
+- [ ] Diagnostics correlate one request across Worker and Service Worker boundaries.
+- [ ] Secrets, authorization headers, cookies, SQL values, and arbitrary bodies are not logged by default.
+- [ ] Logs and traces are bounded and can be exported for issue evidence.
+- [ ] Diagnostic codes are documented and snapshot-tested.
+- [ ] Observability can be disabled or reduced for shipped static applications.
+
+## Targeted tests and commands
+
+The assignee must discover the exact repository commands at implementation time and preserve them in evidence. At minimum, run or add coverage equivalent to:
+
+- Diagnostic-code snapshot tests.
+- Redaction corpus.
+- Cross-boundary correlation tests.
+- Log-flood limit tests.
+- Source-map error fixture.
+
+Always run the repository's canonical full verification command before handoff when the change touches executable code or release artifacts.
+
+## Required evidence
+
+- [ ] Diagnostic catalog.
+- [ ] Example exported trace.
+- [ ] Redaction test report.
+- [ ] Inspector screenshots.
+
+Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
+
+## Guardrails
+
+- Preserve native Velqu behavior unless this issue explicitly freezes and tests a migration.
+- Do not replace Rust/WASM compatibility logic with an unverified JavaScript-only implementation.
+- Do not equate “no Velqu application server” with “no static hosting”.
+- Do not expose provider credentials, production secrets, or ambient editor-origin authority to browser handlers.
+- Do not claim hostile-code sandboxing, PostgreSQL parity, or native-runtime performance parity without the separately required evidence.
+- Do not close an evidence or gate issue using self-authored implementation claims alone.
+
+## Out of scope
+
+- A hosted telemetry service.
+- Collecting user application data by default.
+- Using free-form console text as the only diagnostic contract.
+
+## Commit / PR guidance
+
+- Use a focused branch and one logically bounded PR.
+- Suggested commit prefix: `bwasm-q-004:`.
+- Reference this issue ID in commits, PR body, tests, and evidence.
+- Avoid generated queue/index churn until implementation and targeted tests are stable.
+- If scope expands materially, stop and open a new dependency issue rather than hiding extra work here.
+
+## Stop condition
+
+Stop and hand off when **all** acceptance criteria are demonstrated, the required evidence is attached or committed, canonical verification is green, and no unresolved in-scope P0 remains. If a prerequisite, owner decision, browser limitation, or security claim blocks truthful completion, record the exact blocker and leave this issue open.
+
+## Handoff format
+
+```text
+Issue:
+Candidate commit:
+Files changed:
+Commands run:
+Targeted tests:
+Full verification:
+Artifacts and SHA-256:
+Browser/OS/toolchain:
+Acceptance criteria:
+Known limitations:
+Residual risks:
+Follow-up issue links:
+```

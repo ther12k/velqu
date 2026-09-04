@@ -1,0 +1,197 @@
+DRY RUN — no network calls or writes will be performed.
+Repository: ther12k/velqu
+Packet root: /mnt/data/velqu-browser-wasm-github-packet
+
+Labels declared for creation when missing:
+  - milestone:browser-wasm (#5319E7): Velqu Browser-WASM runtime program
+  - area:wasm (#6F42C1): Rust/WebAssembly portability and browser kernel
+  - area:browser-runtime (#1D76DB): Browser execution runtime, workers, and Fetch dispatch
+  - area:compiler (#0E8A16): Compiler targets, artifacts, and diagnostics
+  - area:capabilities (#BFD4F2): Velqu capability contracts and adapters
+  - area:security (#B60205): Security boundaries, isolation, and threat model
+  - area:quality (#D4C5F9): Conformance, CI, performance, and release evidence
+  - area:devex (#FBCA04): CLI, documentation, examples, and developer experience
+
+Issues selected: 36
+
+  BWASM-EPIC
+    title: [BWASM-EPIC] BWASM-EPIC — Velqu Browser-WASM runtime program
+    body: docs/codex-spark-browser-wasm/tasks/00_program/BWASM-EPIC-velqu-browser-wasm-runtime-program.md
+    labels: milestone:browser-wasm, mode:gate, p0, spark-gate, area:wasm, enhancement
+
+  BWASM-D-001
+    title: [BWASM-D-001] BWASM-D-001 — Freeze the Browser-WASM product and runtime contract
+    body: docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-001-freeze-the-browser-wasm-product-and-runtime-contract.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm, enhancement
+
+  BWASM-D-002
+    title: [BWASM-D-002] BWASM-D-002 — Produce the wasm32 portability baseline and dependency split map
+    body: docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-002-produce-the-wasm32-portability-baseline-and-dependency-split-map.md
+    labels: milestone:browser-wasm, mode:verify_or_fix, p0, spark-task, area:wasm
+
+  BWASM-D-003
+    title: [BWASM-D-003] BWASM-D-003 — Define the browser execution threat model and isolation contract
+    body: docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-003-define-the-browser-execution-threat-model-and-isolation-contract.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:security, enhancement
+
+  BWASM-D-004
+    title: [BWASM-D-004] BWASM-D-004 — Ratify support matrix, compatibility claims, and release budgets
+    body: docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-004-ratify-support-matrix-compatibility-claims-and-release-budgets.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:quality
+
+  BWASM-K-001
+    title: [BWASM-K-001] BWASM-K-001 — Extract a portable runtime model crate
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-001-extract-a-portable-runtime-model-crate.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm
+
+  BWASM-K-002
+    title: [BWASM-K-002] BWASM-K-002 — Split byte-based QPack core from native loading and tooling
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-002-split-byte-based-qpack-core-from-native-loading-and-tooling.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm
+
+  BWASM-K-003
+    title: [BWASM-K-003] BWASM-K-003 — Extract a host-independent router core
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-003-extract-a-host-independent-router-core.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm
+
+  BWASM-K-004
+    title: [BWASM-K-004] BWASM-K-004 — Qualify the schema runtime for wasm32 and expose bounded validation
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-004-qualify-the-schema-runtime-for-wasm32-and-expose-bounded-validation.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm
+
+  BWASM-K-005
+    title: [BWASM-K-005] BWASM-K-005 — Implement the Rust Browser Kernel and wasm-bindgen ABI
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-005-implement-the-rust-browser-kernel-and-wasm-bindgen-abi.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:wasm
+
+  BWASM-K-006
+    title: [BWASM-K-006] BWASM-K-006 — Verify and package portable-kernel evidence
+    body: docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-006-verify-and-package-portable-kernel-evidence.md
+    labels: milestone:browser-wasm, mode:evidence, p0, spark-task, area:quality
+
+  BWASM-R-001
+    title: [BWASM-R-001] BWASM-R-001 — Create @velqu/browser-runtime package and public runtime contract
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-001-create-velqu-browser-runtime-package-and-public-runtime-contract.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:browser-runtime
+
+  BWASM-R-002
+    title: [BWASM-R-002] BWASM-R-002 — Implement Fetch-compatible browser dispatcher
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-002-implement-fetch-compatible-browser-dispatcher.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:browser-runtime
+
+  BWASM-R-003
+    title: [BWASM-R-003] BWASM-R-003 — Define and emit the browser handler-bundle contract
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-003-define-and-emit-the-browser-handler-bundle-contract.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:compiler
+
+  BWASM-R-004
+    title: [BWASM-R-004] BWASM-R-004 — Execute handlers in isolated Workers with cancellation and hard recovery
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-004-execute-handlers-in-isolated-workers-with-cancellation-and-hard-recovery.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:security
+
+  BWASM-R-005
+    title: [BWASM-R-005] BWASM-R-005 — Integrate capability registry and Treaty with the browser runtime
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-005-integrate-capability-registry-and-treaty-with-the-browser-runtime.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:browser-runtime
+
+  BWASM-R-006
+    title: [BWASM-R-006] BWASM-R-006 — Verify and package browser-runtime evidence
+    body: docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-006-verify-and-package-browser-runtime-evidence.md
+    labels: milestone:browser-wasm, mode:evidence, p0, spark-task, area:quality
+
+  BWASM-B-001
+    title: [BWASM-B-001] BWASM-B-001 — Add compiler target browser-wasm
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-001-add-compiler-target-browser-wasm.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:compiler
+
+  BWASM-B-002
+    title: [BWASM-B-002] BWASM-B-002 — Define content-addressed browser artifact manifest and loader
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-002-define-content-addressed-browser-artifact-manifest-and-loader.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:compiler
+
+  BWASM-B-003
+    title: [BWASM-B-003] BWASM-B-003 — Enforce browser import policy with source-located diagnostics
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-003-enforce-browser-import-policy-with-source-located-diagnostics.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:compiler
+
+  BWASM-B-004
+    title: [BWASM-B-004] BWASM-B-004 — Add Service Worker adapter and static-host bootstrap
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-004-add-service-worker-adapter-and-static-host-bootstrap.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:devex
+
+  BWASM-B-005
+    title: [BWASM-B-005] BWASM-B-005 — Add CLI build, preview, inspect, and export workflows
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-005-add-cli-build-preview-inspect-and-export-workflows.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:devex
+
+  BWASM-B-006
+    title: [BWASM-B-006] BWASM-B-006 — Verify cache activation, upgrades, rollback, and static deployment
+    body: docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-006-verify-cache-activation-upgrades-rollback-and-static-deployment.md
+    labels: milestone:browser-wasm, mode:verify_or_fix, p0, spark-task, area:quality
+
+  BWASM-C-001
+    title: [BWASM-C-001] BWASM-C-001 — Implement browser-safe timer, crypto, logging, and restricted fetch capabilities
+    body: docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-001-implement-browser-safe-timer-crypto-logging-and-restricted-fetch-capabilities.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:capabilities
+
+  BWASM-C-002
+    title: [BWASM-C-002] BWASM-C-002 — Make the Postgres capability contract asynchronous before browser freeze
+    body: docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-002-make-the-postgres-capability-contract-asynchronous-before-browser-freeze.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:capabilities
+
+  BWASM-C-004
+    title: [BWASM-C-004] BWASM-C-004 — Add namespaced IndexedDB KV persistence capability
+    body: docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-004-add-namespaced-indexeddb-kv-persistence-capability.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:capabilities
+
+  BWASM-C-005
+    title: [BWASM-C-005] BWASM-C-005 — Fail closed for deployment-required and unavailable capabilities
+    body: docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-005-fail-closed-for-deployment-required-and-unavailable-capabilities.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:capabilities
+
+  BWASM-Q-001
+    title: [BWASM-Q-001] BWASM-Q-001 — Build shared native-versus-browser conformance and differential suites
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-001-build-shared-native-versus-browser-conformance-and-differential-suites.md
+    labels: milestone:browser-wasm, mode:verify_or_fix, p0, spark-task, area:quality
+
+  BWASM-Q-002
+    title: [BWASM-Q-002] BWASM-Q-002 — Add real-browser CI lanes and supported-browser evidence
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-002-add-real-browser-ci-lanes-and-supported-browser-evidence.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:quality
+
+  BWASM-Q-003
+    title: [BWASM-Q-003] BWASM-Q-003 — Verify isolated preview-origin and untrusted-code security boundaries
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-003-verify-isolated-preview-origin-and-untrusted-code-security-boundaries.md
+    labels: milestone:browser-wasm, mode:verify_or_fix, p0, spark-task, area:security
+
+  BWASM-Q-004
+    title: [BWASM-Q-004] BWASM-Q-004 — Add Browser-WASM observability and developer diagnostics
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-004-add-browser-wasm-observability-and-developer-diagnostics.md
+    labels: milestone:browser-wasm, mode:implement, p1, spark-task, area:devex
+
+  BWASM-Q-005
+    title: [BWASM-Q-005] BWASM-Q-005 — Set and enforce WASM size, startup, latency, and leak budgets
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-005-set-and-enforce-wasm-size-startup-latency-and-leak-budgets.md
+    labels: milestone:browser-wasm, mode:verify_or_fix, p0, spark-task, area:quality
+
+  BWASM-Q-006
+    title: [BWASM-Q-006] BWASM-Q-006 — Publish Browser-WASM documentation, limitations, and migration guide
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-006-publish-browser-wasm-documentation-limitations-and-migration-guide.md
+    labels: milestone:browser-wasm, mode:implement, p0, spark-task, area:devex, documentation
+
+  BWASM-Q-007
+    title: [BWASM-Q-007] BWASM-Q-007 — Run an external cleanroom static deployment and offline exercise
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-007-run-an-external-cleanroom-static-deployment-and-offline-exercise.md
+    labels: milestone:browser-wasm, mode:evidence, p0, spark-task, area:quality
+
+  BWASM-Q-008
+    title: [BWASM-Q-008] BWASM-Q-008 — Assemble release evidence, SBOM, checksums, provenance, and candidate packet
+    body: docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-008-assemble-release-evidence-sbom-checksums-provenance-and-candidate-packet.md
+    labels: milestone:browser-wasm, mode:evidence, p0, spark-task, area:quality
+
+  BWASM-GATE
+    title: [BWASM-GATE] BWASM-GATE — Browser-WASM beta readiness GO or NO-GO
+    body: docs/codex-spark-browser-wasm/gates/BWASM-GATE-browser-wasm-beta-readiness-go-or-no-go.md
+    labels: milestone:browser-wasm, mode:gate_review, p0, spark-gate, area:quality
+
+Re-run with --apply only after reviewing this plan.
