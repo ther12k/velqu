@@ -612,7 +612,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-009-C](../tasks/08_public_beta/BETA-009-C-threat-model-review.md) | P0 | implement | PASS | BETA-009-B | Threat-model review |
 | [BETA-009-D](../tasks/08_public_beta/BETA-009-D-chaos-tests-for-upstream-db-worker-poison.md) | P0 | implement | PASS | BETA-009-C | Chaos tests for upstream/DB/worker poison |
 | [BETA-009-E](../tasks/08_public_beta/BETA-009-E-no-known-critical-high-exploitable-issue.md) | P0 | implement | PASS | BETA-009-D | No known critical/high exploitable issue |
-| [BETA-009-V](../tasks/08_public_beta/BETA-009-V-verify-run-beta-security-and-reliability-baseline.md) | P0 | verify | TODO | BETA-009-A, BETA-009-B, BETA-009-C, BETA-009-D, BETA-009-E | Verify Run beta security and reliability baseline |
+| [BETA-009-V](../tasks/08_public_beta/BETA-009-V-verify-run-beta-security-and-reliability-baseline.md) | P0 | verify | PASS | BETA-009-A, BETA-009-B, BETA-009-C, BETA-009-D, BETA-009-E | Verify Run beta security and reliability baseline |
 | [BETA-009-Z](../tasks/08_public_beta/BETA-009-Z-package-evidence-for-run-beta-security-and-reliability-baseline.md) | P0 | evidence | TODO | BETA-009-V | Package evidence for Run beta security and reliability baseline |
 | [BETA-010-A](../tasks/08_public_beta/BETA-010-A-linux-x86-64-glibc-mandatory-working-assumption.md) | P1 | implement | TODO | M26-GATE, M4A-002-Z | Linux x86_64 glibc mandatory working assumption |
 | [BETA-010-B](../tasks/08_public_beta/BETA-010-B-linux-arm64-glibc-when-ci-is-available.md) | P1 | implement | TODO | BETA-010-A | Linux ARM64 glibc when CI is available |
