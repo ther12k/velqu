@@ -4,7 +4,7 @@ parent_task: BETA-013
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -114,3 +114,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-013-B) — PASS (2026-09-04)
+
+- Branch/PR: beta-013-b (squash-merged; see git log for final hash)
+- Closes: #586
+
+### Behavior implemented
+
+Verified that the soak, chaos, and reliability qualifications comprehensively cover all key subsystems:
+- Outbound fetch: DNS/TLS timeouts, body caps, and cancellation tested in conformance suites.
+- Database: Postgres capability zero-leak pool, bounded connections, safe error discard, and query timeout cancellation.
+- Authentication: 5 fail-closed JWT verification gates, timing-safe checks, and clock-skew tolerance.
+- Timeouts & cancellation: 100 ms slow work behind 10 ms deadline fires `Outcome::Timeout`; dropped receivers absorb cancellations cleanly without orphaned JS executions.
+- Worker replacement & recovery: 14 poison/replacement cycles during live traffic; engine rebuild in 2.8–11.0 ms with full capacity equalization.
+- Graceful reload/drain: lock-free drain gate flips immediately with 0 pending slots at exit.
+
+### Changed files
+
+- `docs/reports/beta-013-b-soak-coverage.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-013-B-include-fetch-db-auth-timeouts-cancellation-worker-replacement-and-reload.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-engine-quickjs` — pass (24 lib + 117 integration + 1 doc tests)
+- `cargo test -p q-http` — pass (15 tests)
+- `cargo test -p q-capabilities` — pass (268 lib + 37 integration tests)
+- `cargo test -p velqu-runtime` — pass (8 test suites)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Soak and reliability verification only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
