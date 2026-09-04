@@ -116,7 +116,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | BETA-010 | P1 | PASS | M26-GATE, M4A-002 | BETA | Create supported beta platform and packaging matrix |
 | BETA-011 | P1 | PASS | M4A-GATE, BETA-010 | BETA | Automate beta publishing and versioning |
 | BETA-012 | P1 | PASS | M4A-GATE, BETA-004, BETA-005, BETA-008 | BETA | Complete beta documentation and limitations |
-| BETA-013 | P0 | TODO | BETA-004, BETA-005, BETA-006, BETA-008, BETA-009 | BETA | Run beta soak and leak qualification |
+| BETA-013 | P0 | PASS | BETA-004, BETA-005, BETA-006, BETA-008, BETA-009 | BETA | Run beta soak and leak qualification |
 | BETA-014 | P1 | TODO | BETA-002, BETA-003, BETA-004, BETA-005, BETA-013 | BETA | Publish canonical beta benchmark report |
 | BETA-015 | P0 | TODO | BETA-009, BETA-010, BETA-011, BETA-013, BETA-014 | BETA | Generate beta release evidence, SBOM, and checksums |
 | BETA-016 | P1 | TODO | BETA-011, BETA-012, BETA-015 | BETA | Run external clean-install and tutorial verification |

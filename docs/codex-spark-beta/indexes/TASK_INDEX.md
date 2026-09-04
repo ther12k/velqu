@@ -644,7 +644,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-013-C](../tasks/08_public_beta/BETA-013-C-track-rss-heap-slots-tasks-queues-pools-and-errors.md) | P0 | implement | PASS | BETA-013-B | Track RSS, heap, slots, tasks, queues, pools, and errors |
 | [BETA-013-D](../tasks/08_public_beta/BETA-013-D-analyze-retained-growth.md) | P0 | implement | PASS | BETA-013-C | Analyze retained growth |
 | [BETA-013-V](../tasks/08_public_beta/BETA-013-V-verify-run-beta-soak-and-leak-qualification.md) | P0 | verify | PASS | BETA-013-A, BETA-013-B, BETA-013-C, BETA-013-D | Verify Run beta soak and leak qualification |
-| [BETA-013-Z](../tasks/08_public_beta/BETA-013-Z-package-evidence-for-run-beta-soak-and-leak-qualification.md) | P0 | evidence | TODO | BETA-013-V | Package evidence for Run beta soak and leak qualification |
+| [BETA-013-Z](../tasks/08_public_beta/BETA-013-Z-package-evidence-for-run-beta-soak-and-leak-qualification.md) | P0 | evidence | PASS | BETA-013-V | Package evidence for Run beta soak and leak qualification |
 | [BETA-014-A](../tasks/08_public_beta/BETA-014-A-include-cold-start-categories-warm-microbenchmarks-real-db-auth-i-o-cpu-jit-cros.md) | P1 | implement | TODO | BETA-002-Z, BETA-003-Z, BETA-004-Z, BETA-005-Z, BETA-013-Z | Include cold start categories, warm microbenchmarks, real DB/auth/I/O, CPU/JIT crossover, cost-normalized metrics, and limitations |
 | [BETA-014-B](../tasks/08_public_beta/BETA-014-B-pin-all-candidates-artifacts.md) | P1 | implement | TODO | BETA-014-A | Pin all candidates/artifacts |
 | [BETA-014-C](../tasks/08_public_beta/BETA-014-C-retain-raw-data.md) | P1 | implement | TODO | BETA-014-B | Retain raw data |

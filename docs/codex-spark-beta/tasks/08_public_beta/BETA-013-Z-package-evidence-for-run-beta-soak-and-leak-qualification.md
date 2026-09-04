@@ -4,7 +4,7 @@ parent_task: BETA-013
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -103,3 +103,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-013-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-013-z (squash-merged; see git log for final hash)
+- Closes: #590
+
+### Behavior implemented
+
+Evidence packaging and parent task closure for **BETA-013** ("Run beta soak and leak qualification"):
+- Flipped parent row `BETA-013` to **PASS** in `docs/beta/04_TASK_LEDGER.md`.
+- Consolidated evidence inventory across all child tasks (BETA-013-A through BETA-013-D, and verification BETA-013-V) in `docs/reports/beta-013-z-package-evidence.md`.
+- Verified all parent acceptance guardrails: no monotonic unbounded growth; all resource gauges return near baseline after quiescence (0 pending slots/tasks); no boundary violations; bounded allocator retention documented.
+
+### Changed files
+
+- `docs/beta/04_TASK_LEDGER.md`
+- `docs/reports/beta-013-z-package-evidence.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-013-Z-package-evidence-for-run-beta-soak-and-leak-qualification.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `bun run typecheck` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Evidence packaging and status tracking only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
