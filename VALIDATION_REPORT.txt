@@ -1,0 +1,6 @@
+Packet validation PASS
+  root: /mnt/data/velqu-browser-wasm-github-packet
+  issues: 38 (36 mandatory, 2 optional)
+  labels used: 19
+  phases: {'00_program': 1, '01_design': 4, '02_kernel': 6, '03_runtime': 6, '04_build_deploy': 6, '05_capabilities': 5, '06_quality_release': 8, '07_optional_parity': 1, '08_gate': 1}
+  warnings: 0

@@ -1,0 +1,887 @@
+{
+  "schema_version": 1,
+  "program": "BWASM",
+  "repository": "ther12k/velqu",
+  "research_baseline": {
+    "commit": "84740c54242a116ad8424dc4a14cca8d3af2dd93",
+    "date": "2026-09-04",
+    "branch_observed": "master"
+  },
+  "policy": {
+    "default_dry_run": true,
+    "optional_excluded_by_default": true,
+    "mvp_architecture": "Rust/WASM compatibility kernel plus isolated browser Worker handlers",
+    "gate_issue": "BWASM-GATE"
+  },
+  "issues": [
+    {
+      "id": "BWASM-EPIC",
+      "title": "[BWASM-EPIC] BWASM-EPIC \u2014 Velqu Browser-WASM runtime program",
+      "short_title": "Velqu Browser-WASM runtime program",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/00_program/BWASM-EPIC-velqu-browser-wasm-runtime-program.md",
+      "phase": "00_program",
+      "area": "wasm",
+      "mode": "GATE",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:gate",
+        "p0",
+        "spark-gate",
+        "area:wasm",
+        "enhancement"
+      ]
+    },
+    {
+      "id": "BWASM-D-001",
+      "title": "[BWASM-D-001] BWASM-D-001 \u2014 Freeze the Browser-WASM product and runtime contract",
+      "short_title": "Freeze the Browser-WASM product and runtime contract",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-001-freeze-the-browser-wasm-product-and-runtime-contract.md",
+      "phase": "01_design",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm",
+        "enhancement"
+      ]
+    },
+    {
+      "id": "BWASM-D-002",
+      "title": "[BWASM-D-002] BWASM-D-002 \u2014 Produce the wasm32 portability baseline and dependency split map",
+      "short_title": "Produce the wasm32 portability baseline and dependency split map",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-002-produce-the-wasm32-portability-baseline-and-dependency-split-map.md",
+      "phase": "01_design",
+      "area": "wasm",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-D-003",
+      "title": "[BWASM-D-003] BWASM-D-003 \u2014 Define the browser execution threat model and isolation contract",
+      "short_title": "Define the browser execution threat model and isolation contract",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-003-define-the-browser-execution-threat-model-and-isolation-contract.md",
+      "phase": "01_design",
+      "area": "security",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:security",
+        "enhancement"
+      ]
+    },
+    {
+      "id": "BWASM-D-004",
+      "title": "[BWASM-D-004] BWASM-D-004 \u2014 Ratify support matrix, compatibility claims, and release budgets",
+      "short_title": "Ratify support matrix, compatibility claims, and release budgets",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/01_design/BWASM-D-004-ratify-support-matrix-compatibility-claims-and-release-budgets.md",
+      "phase": "01_design",
+      "area": "quality",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-001",
+        "BWASM-D-002",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-K-001",
+      "title": "[BWASM-K-001] BWASM-K-001 \u2014 Extract a portable runtime model crate",
+      "short_title": "Extract a portable runtime model crate",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-001-extract-a-portable-runtime-model-crate.md",
+      "phase": "02_kernel",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-001",
+        "BWASM-D-002"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-K-002",
+      "title": "[BWASM-K-002] BWASM-K-002 \u2014 Split byte-based QPack core from native loading and tooling",
+      "short_title": "Split byte-based QPack core from native loading and tooling",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-002-split-byte-based-qpack-core-from-native-loading-and-tooling.md",
+      "phase": "02_kernel",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-K-003",
+      "title": "[BWASM-K-003] BWASM-K-003 \u2014 Extract a host-independent router core",
+      "short_title": "Extract a host-independent router core",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-003-extract-a-host-independent-router-core.md",
+      "phase": "02_kernel",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-K-004",
+      "title": "[BWASM-K-004] BWASM-K-004 \u2014 Qualify the schema runtime for wasm32 and expose bounded validation",
+      "short_title": "Qualify the schema runtime for wasm32 and expose bounded validation",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-004-qualify-the-schema-runtime-for-wasm32-and-expose-bounded-validation.md",
+      "phase": "02_kernel",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-002"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-K-005",
+      "title": "[BWASM-K-005] BWASM-K-005 \u2014 Implement the Rust Browser Kernel and wasm-bindgen ABI",
+      "short_title": "Implement the Rust Browser Kernel and wasm-bindgen ABI",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-005-implement-the-rust-browser-kernel-and-wasm-bindgen-abi.md",
+      "phase": "02_kernel",
+      "area": "wasm",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-002",
+        "BWASM-K-003",
+        "BWASM-K-004",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-K-006",
+      "title": "[BWASM-K-006] BWASM-K-006 \u2014 Verify and package portable-kernel evidence",
+      "short_title": "Verify and package portable-kernel evidence",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/02_kernel/BWASM-K-006-verify-and-package-portable-kernel-evidence.md",
+      "phase": "02_kernel",
+      "area": "quality",
+      "mode": "EVIDENCE",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-001",
+        "BWASM-K-002",
+        "BWASM-K-003",
+        "BWASM-K-004",
+        "BWASM-K-005",
+        "BWASM-D-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:evidence",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-R-001",
+      "title": "[BWASM-R-001] BWASM-R-001 \u2014 Create @velqu/browser-runtime package and public runtime contract",
+      "short_title": "Create @velqu/browser-runtime package and public runtime contract",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-001-create-velqu-browser-runtime-package-and-public-runtime-contract.md",
+      "phase": "03_runtime",
+      "area": "browser-runtime",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-005",
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:browser-runtime"
+      ]
+    },
+    {
+      "id": "BWASM-R-002",
+      "title": "[BWASM-R-002] BWASM-R-002 \u2014 Implement Fetch-compatible browser dispatcher",
+      "short_title": "Implement Fetch-compatible browser dispatcher",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-002-implement-fetch-compatible-browser-dispatcher.md",
+      "phase": "03_runtime",
+      "area": "browser-runtime",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-001",
+        "BWASM-K-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:browser-runtime"
+      ]
+    },
+    {
+      "id": "BWASM-R-003",
+      "title": "[BWASM-R-003] BWASM-R-003 \u2014 Define and emit the browser handler-bundle contract",
+      "short_title": "Define and emit the browser handler-bundle contract",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-003-define-and-emit-the-browser-handler-bundle-contract.md",
+      "phase": "03_runtime",
+      "area": "compiler",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-001",
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:compiler"
+      ]
+    },
+    {
+      "id": "BWASM-R-004",
+      "title": "[BWASM-R-004] BWASM-R-004 \u2014 Execute handlers in isolated Workers with cancellation and hard recovery",
+      "short_title": "Execute handlers in isolated Workers with cancellation and hard recovery",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-004-execute-handlers-in-isolated-workers-with-cancellation-and-hard-recovery.md",
+      "phase": "03_runtime",
+      "area": "security",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-003",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:security"
+      ]
+    },
+    {
+      "id": "BWASM-R-005",
+      "title": "[BWASM-R-005] BWASM-R-005 \u2014 Integrate capability registry and Treaty with the browser runtime",
+      "short_title": "Integrate capability registry and Treaty with the browser runtime",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-005-integrate-capability-registry-and-treaty-with-the-browser-runtime.md",
+      "phase": "03_runtime",
+      "area": "browser-runtime",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-002",
+        "BWASM-R-004",
+        "BWASM-K-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:browser-runtime"
+      ]
+    },
+    {
+      "id": "BWASM-R-006",
+      "title": "[BWASM-R-006] BWASM-R-006 \u2014 Verify and package browser-runtime evidence",
+      "short_title": "Verify and package browser-runtime evidence",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/03_runtime/BWASM-R-006-verify-and-package-browser-runtime-evidence.md",
+      "phase": "03_runtime",
+      "area": "quality",
+      "mode": "EVIDENCE",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-001",
+        "BWASM-R-002",
+        "BWASM-R-003",
+        "BWASM-R-004",
+        "BWASM-R-005",
+        "BWASM-K-006"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:evidence",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-B-001",
+      "title": "[BWASM-B-001] BWASM-B-001 \u2014 Add compiler target browser-wasm",
+      "short_title": "Add compiler target browser-wasm",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-001-add-compiler-target-browser-wasm.md",
+      "phase": "04_build_deploy",
+      "area": "compiler",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-005",
+        "BWASM-R-003",
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:compiler"
+      ]
+    },
+    {
+      "id": "BWASM-B-002",
+      "title": "[BWASM-B-002] BWASM-B-002 \u2014 Define content-addressed browser artifact manifest and loader",
+      "short_title": "Define content-addressed browser artifact manifest and loader",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-002-define-content-addressed-browser-artifact-manifest-and-loader.md",
+      "phase": "04_build_deploy",
+      "area": "compiler",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-B-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:compiler"
+      ]
+    },
+    {
+      "id": "BWASM-B-003",
+      "title": "[BWASM-B-003] BWASM-B-003 \u2014 Enforce browser import policy with source-located diagnostics",
+      "short_title": "Enforce browser import policy with source-located diagnostics",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-003-enforce-browser-import-policy-with-source-located-diagnostics.md",
+      "phase": "04_build_deploy",
+      "area": "compiler",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-B-001",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:compiler"
+      ]
+    },
+    {
+      "id": "BWASM-B-004",
+      "title": "[BWASM-B-004] BWASM-B-004 \u2014 Add Service Worker adapter and static-host bootstrap",
+      "short_title": "Add Service Worker adapter and static-host bootstrap",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-004-add-service-worker-adapter-and-static-host-bootstrap.md",
+      "phase": "04_build_deploy",
+      "area": "devex",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-002",
+        "BWASM-B-002",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:devex"
+      ]
+    },
+    {
+      "id": "BWASM-B-005",
+      "title": "[BWASM-B-005] BWASM-B-005 \u2014 Add CLI build, preview, inspect, and export workflows",
+      "short_title": "Add CLI build, preview, inspect, and export workflows",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-005-add-cli-build-preview-inspect-and-export-workflows.md",
+      "phase": "04_build_deploy",
+      "area": "devex",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-B-001",
+        "BWASM-B-002",
+        "BWASM-B-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:devex"
+      ]
+    },
+    {
+      "id": "BWASM-B-006",
+      "title": "[BWASM-B-006] BWASM-B-006 \u2014 Verify cache activation, upgrades, rollback, and static deployment",
+      "short_title": "Verify cache activation, upgrades, rollback, and static deployment",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/04_build_deploy/BWASM-B-006-verify-cache-activation-upgrades-rollback-and-static-deployment.md",
+      "phase": "04_build_deploy",
+      "area": "quality",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-B-004",
+        "BWASM-B-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-C-001",
+      "title": "[BWASM-C-001] BWASM-C-001 \u2014 Implement browser-safe timer, crypto, logging, and restricted fetch capabilities",
+      "short_title": "Implement browser-safe timer, crypto, logging, and restricted fetch capabilities",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-001-implement-browser-safe-timer-crypto-logging-and-restricted-fetch-capabilities.md",
+      "phase": "05_capabilities",
+      "area": "capabilities",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-005",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:capabilities"
+      ]
+    },
+    {
+      "id": "BWASM-C-002",
+      "title": "[BWASM-C-002] BWASM-C-002 \u2014 Make the Postgres capability contract asynchronous before browser freeze",
+      "short_title": "Make the Postgres capability contract asynchronous before browser freeze",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-002-make-the-postgres-capability-contract-asynchronous-before-browser-freeze.md",
+      "phase": "05_capabilities",
+      "area": "capabilities",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:capabilities"
+      ]
+    },
+    {
+      "id": "BWASM-C-003",
+      "title": "[BWASM-C-003] BWASM-C-003 \u2014 Add optional PGlite-backed local SQL capability",
+      "short_title": "Add optional PGlite-backed local SQL capability",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-003-add-optional-pglite-backed-local-sql-capability.md",
+      "phase": "05_capabilities",
+      "area": "capabilities",
+      "mode": "IMPLEMENT",
+      "priority": "P1",
+      "optional": true,
+      "dependencies": [
+        "BWASM-C-002",
+        "BWASM-R-005",
+        "BWASM-B-001"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p1",
+        "spark-task",
+        "area:capabilities"
+      ]
+    },
+    {
+      "id": "BWASM-C-004",
+      "title": "[BWASM-C-004] BWASM-C-004 \u2014 Add namespaced IndexedDB KV persistence capability",
+      "short_title": "Add namespaced IndexedDB KV persistence capability",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-004-add-namespaced-indexeddb-kv-persistence-capability.md",
+      "phase": "05_capabilities",
+      "area": "capabilities",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:capabilities"
+      ]
+    },
+    {
+      "id": "BWASM-C-005",
+      "title": "[BWASM-C-005] BWASM-C-005 \u2014 Fail closed for deployment-required and unavailable capabilities",
+      "short_title": "Fail closed for deployment-required and unavailable capabilities",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/05_capabilities/BWASM-C-005-fail-closed-for-deployment-required-and-unavailable-capabilities.md",
+      "phase": "05_capabilities",
+      "area": "capabilities",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-005",
+        "BWASM-B-003",
+        "BWASM-C-001",
+        "BWASM-C-002",
+        "BWASM-C-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:capabilities"
+      ]
+    },
+    {
+      "id": "BWASM-Q-001",
+      "title": "[BWASM-Q-001] BWASM-Q-001 \u2014 Build shared native-versus-browser conformance and differential suites",
+      "short_title": "Build shared native-versus-browser conformance and differential suites",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-001-build-shared-native-versus-browser-conformance-and-differential-suites.md",
+      "phase": "06_quality_release",
+      "area": "quality",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-006",
+        "BWASM-R-006",
+        "BWASM-B-006",
+        "BWASM-C-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-Q-002",
+      "title": "[BWASM-Q-002] BWASM-Q-002 \u2014 Add real-browser CI lanes and supported-browser evidence",
+      "short_title": "Add real-browser CI lanes and supported-browser evidence",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-002-add-real-browser-ci-lanes-and-supported-browser-evidence.md",
+      "phase": "06_quality_release",
+      "area": "quality",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-Q-001",
+        "BWASM-B-006",
+        "BWASM-D-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-Q-003",
+      "title": "[BWASM-Q-003] BWASM-Q-003 \u2014 Verify isolated preview-origin and untrusted-code security boundaries",
+      "short_title": "Verify isolated preview-origin and untrusted-code security boundaries",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-003-verify-isolated-preview-origin-and-untrusted-code-security-boundaries.md",
+      "phase": "06_quality_release",
+      "area": "security",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-004",
+        "BWASM-B-004",
+        "BWASM-C-001",
+        "BWASM-D-003"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p0",
+        "spark-task",
+        "area:security"
+      ]
+    },
+    {
+      "id": "BWASM-Q-004",
+      "title": "[BWASM-Q-004] BWASM-Q-004 \u2014 Add Browser-WASM observability and developer diagnostics",
+      "short_title": "Add Browser-WASM observability and developer diagnostics",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-004-add-browser-wasm-observability-and-developer-diagnostics.md",
+      "phase": "06_quality_release",
+      "area": "devex",
+      "mode": "IMPLEMENT",
+      "priority": "P1",
+      "optional": false,
+      "dependencies": [
+        "BWASM-R-006",
+        "BWASM-B-005"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p1",
+        "spark-task",
+        "area:devex"
+      ]
+    },
+    {
+      "id": "BWASM-Q-005",
+      "title": "[BWASM-Q-005] BWASM-Q-005 \u2014 Set and enforce WASM size, startup, latency, and leak budgets",
+      "short_title": "Set and enforce WASM size, startup, latency, and leak budgets",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-005-set-and-enforce-wasm-size-startup-latency-and-leak-budgets.md",
+      "phase": "06_quality_release",
+      "area": "quality",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-K-006",
+        "BWASM-R-006",
+        "BWASM-B-006",
+        "BWASM-D-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-Q-006",
+      "title": "[BWASM-Q-006] BWASM-Q-006 \u2014 Publish Browser-WASM documentation, limitations, and migration guide",
+      "short_title": "Publish Browser-WASM documentation, limitations, and migration guide",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-006-publish-browser-wasm-documentation-limitations-and-migration-guide.md",
+      "phase": "06_quality_release",
+      "area": "devex",
+      "mode": "IMPLEMENT",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-B-005",
+        "BWASM-C-005",
+        "BWASM-Q-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:implement",
+        "p0",
+        "spark-task",
+        "area:devex",
+        "documentation"
+      ]
+    },
+    {
+      "id": "BWASM-Q-007",
+      "title": "[BWASM-Q-007] BWASM-Q-007 \u2014 Run an external cleanroom static deployment and offline exercise",
+      "short_title": "Run an external cleanroom static deployment and offline exercise",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-007-run-an-external-cleanroom-static-deployment-and-offline-exercise.md",
+      "phase": "06_quality_release",
+      "area": "quality",
+      "mode": "EVIDENCE",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-Q-002",
+        "BWASM-Q-003",
+        "BWASM-Q-005",
+        "BWASM-Q-006"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:evidence",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-Q-008",
+      "title": "[BWASM-Q-008] BWASM-Q-008 \u2014 Assemble release evidence, SBOM, checksums, provenance, and candidate packet",
+      "short_title": "Assemble release evidence, SBOM, checksums, provenance, and candidate packet",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-008-assemble-release-evidence-sbom-checksums-provenance-and-candidate-packet.md",
+      "phase": "06_quality_release",
+      "area": "quality",
+      "mode": "EVIDENCE",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-Q-001",
+        "BWASM-Q-007",
+        "BWASM-K-006",
+        "BWASM-R-006",
+        "BWASM-B-006"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:evidence",
+        "p0",
+        "spark-task",
+        "area:quality"
+      ]
+    },
+    {
+      "id": "BWASM-X-001",
+      "title": "[BWASM-X-001] BWASM-X-001 \u2014 Spike QuickJS-NG-in-WASM engine parity and record GO or NO-GO",
+      "short_title": "Spike QuickJS-NG-in-WASM engine parity and record GO or NO-GO",
+      "body_file": "docs/codex-spark-browser-wasm/tasks/07_optional_parity/BWASM-X-001-spike-quickjs-ng-in-wasm-engine-parity-and-record-go-or-no-go.md",
+      "phase": "07_optional_parity",
+      "area": "wasm",
+      "mode": "VERIFY_OR_FIX",
+      "priority": "P1",
+      "optional": true,
+      "dependencies": [
+        "BWASM-K-005",
+        "BWASM-R-004",
+        "BWASM-D-004"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:verify_or_fix",
+        "p1",
+        "spark-task",
+        "area:wasm"
+      ]
+    },
+    {
+      "id": "BWASM-GATE",
+      "title": "[BWASM-GATE] BWASM-GATE \u2014 Browser-WASM beta readiness GO or NO-GO",
+      "short_title": "Browser-WASM beta readiness GO or NO-GO",
+      "body_file": "docs/codex-spark-browser-wasm/gates/BWASM-GATE-browser-wasm-beta-readiness-go-or-no-go.md",
+      "phase": "08_gate",
+      "area": "quality",
+      "mode": "GATE_REVIEW",
+      "priority": "P0",
+      "optional": false,
+      "dependencies": [
+        "BWASM-D-004",
+        "BWASM-K-006",
+        "BWASM-R-006",
+        "BWASM-B-006",
+        "BWASM-C-005",
+        "BWASM-Q-001",
+        "BWASM-Q-002",
+        "BWASM-Q-003",
+        "BWASM-Q-005",
+        "BWASM-Q-006",
+        "BWASM-Q-007",
+        "BWASM-Q-008"
+      ],
+      "labels": [
+        "milestone:browser-wasm",
+        "mode:gate_review",
+        "p0",
+        "spark-gate",
+        "area:quality"
+      ]
+    }
+  ]
+}

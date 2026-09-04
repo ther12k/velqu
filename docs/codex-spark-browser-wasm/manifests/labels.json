@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "create": [
+    {
+      "name": "milestone:browser-wasm",
+      "color": "5319E7",
+      "description": "Velqu Browser-WASM runtime program"
+    },
+    {
+      "name": "area:wasm",
+      "color": "6F42C1",
+      "description": "Rust/WebAssembly portability and browser kernel"
+    },
+    {
+      "name": "area:browser-runtime",
+      "color": "1D76DB",
+      "description": "Browser execution runtime, workers, and Fetch dispatch"
+    },
+    {
+      "name": "area:compiler",
+      "color": "0E8A16",
+      "description": "Compiler targets, artifacts, and diagnostics"
+    },
+    {
+      "name": "area:capabilities",
+      "color": "BFD4F2",
+      "description": "Velqu capability contracts and adapters"
+    },
+    {
+      "name": "area:security",
+      "color": "B60205",
+      "description": "Security boundaries, isolation, and threat model"
+    },
+    {
+      "name": "area:quality",
+      "color": "D4C5F9",
+      "description": "Conformance, CI, performance, and release evidence"
+    },
+    {
+      "name": "area:devex",
+      "color": "FBCA04",
+      "description": "CLI, documentation, examples, and developer experience"
+    }
+  ],
+  "reuse_existing": [
+    "mode:implement",
+    "mode:verify",
+    "mode:verify_or_fix",
+    "mode:evidence",
+    "mode:gate",
+    "mode:gate_review",
+    "p0",
+    "p1",
+    "spark-task",
+    "spark-gate",
+    "enhancement",
+    "documentation"
+  ],
+  "used_by_packet": [
+    "area:browser-runtime",
+    "area:capabilities",
+    "area:compiler",
+    "area:devex",
+    "area:quality",
+    "area:security",
+    "area:wasm",
+    "documentation",
+    "enhancement",
+    "milestone:browser-wasm",
+    "mode:evidence",
+    "mode:gate",
+    "mode:gate_review",
+    "mode:implement",
+    "mode:verify_or_fix",
+    "p0",
+    "p1",
+    "spark-gate",
+    "spark-task"
+  ],
+  "notes": [
+    "The registration script creates only labels under create.",
+    "Missing reuse_existing labels cause an apply-mode failure.",
+    "milestone:browser-wasm is a label, not a GitHub Milestone object."
+  ]
+}

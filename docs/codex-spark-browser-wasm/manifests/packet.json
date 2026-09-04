@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "Velqu Browser-WASM GitHub Issue Packet",
+  "generated_date": "2026-09-04",
+  "repository": "ther12k/velqu",
+  "research_baseline_commit": "84740c54242a116ad8424dc4a14cca8d3af2dd93",
+  "issue_summary": {
+    "total": 38,
+    "mandatory": 36,
+    "optional": 2,
+    "by_phase": {
+      "00_program": 1,
+      "01_design": 4,
+      "02_kernel": 6,
+      "03_runtime": 6,
+      "04_build_deploy": 6,
+      "05_capabilities": 5,
+      "06_quality_release": 8,
+      "07_optional_parity": 1,
+      "08_gate": 1
+    },
+    "by_mode": {
+      "EVIDENCE": 4,
+      "GATE": 1,
+      "GATE_REVIEW": 1,
+      "IMPLEMENT": 26,
+      "VERIFY_OR_FIX": 6
+    },
+    "by_priority": {
+      "P0": 35,
+      "P1": 3
+    }
+  },
+  "architecture": {
+    "mandatory_wasm_path": [
+      "artifact/manifest verification",
+      "routing and parameter extraction",
+      "request/response schema validation",
+      "capability authorization",
+      "canonical problem mapping"
+    ],
+    "mvp_handler_engine": "isolated browser Worker JavaScript",
+    "optional_handler_engine_spike": "QuickJS-NG compiled to browser WASM",
+    "production_runtime": "native Velqu"
+  },
+  "entry_points": {
+    "master_plan": "docs/codex-spark-browser-wasm/MASTER_PLAN.md",
+    "all_issues": "docs/codex-spark-browser-wasm/ALL_ISSUES.md",
+    "task_index": "docs/codex-spark-browser-wasm/TASK_INDEX.md",
+    "issue_manifest": "docs/codex-spark-browser-wasm/manifests/issues.json",
+    "validator": "scripts/browser-wasm/validate_packet.py",
+    "registration_script": "scripts/browser-wasm/create_github_issues.py"
+  }
+}

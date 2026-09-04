@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "phases": [
+    {
+      "id": "00_program",
+      "title": "Program",
+      "intent": "Coordinate the complete Browser-WASM program and keep product claims tied to completed evidence.",
+      "issue_ids": [
+        "BWASM-EPIC"
+      ],
+      "register_after": []
+    },
+    {
+      "id": "01_design",
+      "title": "Architecture and decisions",
+      "intent": "Freeze boundaries before implementation so the program does not drift into a full port of native q-runtime or a JavaScript-only mock.",
+      "issue_ids": [
+        "BWASM-D-001",
+        "BWASM-D-002",
+        "BWASM-D-003",
+        "BWASM-D-004"
+      ],
+      "register_after": [
+        "00_program"
+      ]
+    },
+    {
+      "id": "02_kernel",
+      "title": "Portable Rust/WASM kernel",
+      "intent": "Put compatibility-critical, host-independent semantics on the real Rust/WASM request path.",
+      "issue_ids": [
+        "BWASM-K-001",
+        "BWASM-K-002",
+        "BWASM-K-003",
+        "BWASM-K-004",
+        "BWASM-K-005",
+        "BWASM-K-006"
+      ],
+      "register_after": [
+        "01_design"
+      ]
+    },
+    {
+      "id": "03_runtime",
+      "title": "Browser runtime and Worker execution",
+      "intent": "Provide a real browser runtime over Request/Response, isolated handler execution, and Treaty without a listening application server.",
+      "issue_ids": [
+        "BWASM-R-001",
+        "BWASM-R-002",
+        "BWASM-R-003",
+        "BWASM-R-004",
+        "BWASM-R-005",
+        "BWASM-R-006"
+      ],
+      "register_after": [
+        "02_kernel"
+      ]
+    },
+    {
+      "id": "04_build_deploy",
+      "title": "Compiler, artifacts, and static deployment",
+      "intent": "Turn the runtime into deterministic static artifacts that can be built, inspected, updated, rolled back, and hosted generically.",
+      "issue_ids": [
+        "BWASM-B-001",
+        "BWASM-B-002",
+        "BWASM-B-003",
+        "BWASM-B-004",
+        "BWASM-B-005",
+        "BWASM-B-006"
+      ],
+      "register_after": [
+        "03_runtime"
+      ]
+    },
+    {
+      "id": "05_capabilities",
+      "title": "Browser capabilities and persistence",
+      "intent": "Expose only browser-safe capabilities, support explicit local persistence, and fail closed for production-only requirements.",
+      "issue_ids": [
+        "BWASM-C-001",
+        "BWASM-C-002",
+        "BWASM-C-003",
+        "BWASM-C-004",
+        "BWASM-C-005"
+      ],
+      "register_after": [
+        "04_build_deploy"
+      ]
+    },
+    {
+      "id": "06_quality_release",
+      "title": "Conformance, security, DevEx, and release qualification",
+      "intent": "Prove cross-target semantics, browser support, security, performance, documentation, and clean external usability.",
+      "issue_ids": [
+        "BWASM-Q-001",
+        "BWASM-Q-002",
+        "BWASM-Q-003",
+        "BWASM-Q-004",
+        "BWASM-Q-005",
+        "BWASM-Q-006",
+        "BWASM-Q-007",
+        "BWASM-Q-008"
+      ],
+      "register_after": [
+        "05_capabilities"
+      ]
+    },
+    {
+      "id": "07_optional_parity",
+      "title": "Optional QuickJS-NG WASM parity",
+      "intent": "Investigate closer QuickJS-NG engine parity without silently making it a prerequisite for the practical MVP.",
+      "issue_ids": [
+        "BWASM-X-001"
+      ],
+      "register_after": [
+        "06_quality_release"
+      ]
+    },
+    {
+      "id": "08_gate",
+      "title": "Release gate",
+      "intent": "Review one exact candidate and make an unambiguous GO or NO-GO decision.",
+      "issue_ids": [
+        "BWASM-GATE"
+      ],
+      "register_after": [
+        "07_optional_parity"
+      ]
+    }
+  ]
+}
