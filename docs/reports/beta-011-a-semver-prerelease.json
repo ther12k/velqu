@@ -1,0 +1,13 @@
+{
+  "format": "velqu-beta-semver-prerelease-v1",
+  "targetVersion": "0.1.0-beta.1",
+  "isValidSemVer": true,
+  "isPrerelease": true,
+  "releaseAuthorityDocument": "docs/beta/governance/RELEASE_AUTHORITY.md",
+  "policy": {
+    "stabilityGuarantee": "None (prerelease carries no API/ABI stability promise)",
+    "publicTag": "beta",
+    "breakingChangeRequirement": "Requires release migration notes"
+  },
+  "dryRunStatus": "PASS"
+}
