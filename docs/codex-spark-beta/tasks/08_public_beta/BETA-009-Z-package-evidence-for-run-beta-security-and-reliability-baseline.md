@@ -4,7 +4,7 @@ parent_task: BETA-009
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
