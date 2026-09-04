@@ -67,6 +67,49 @@ mode) reject startup — they are never silently ignored and never fall
 back to a default. Historical note: an unparsable `PORT` used to be
 silently ignored; as of BETA-007-A it is a typed startup rejection.
 
+## Closed environment namespace (BETA-007-B)
+
+The `VELQU_*` namespace is **closed**: at startup the runtime checks
+every `VELQU_*` variable in the environment against the allowlist
+below, and an unknown name rejects startup with a typed error. A
+typo'd knob (`VELQU_MAXQUEUE`) must fail before ready, never be
+silently ignored. Values of unknown names are never read or echoed —
+they may be secrets. Names outside the `VELQU_*` namespace are not the
+runtime's concern, and the check is case-sensitive.
+
+| Group | Names |
+| ------------------- | ------------------------------------------------ |
+| Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_PORT` |
+| Postgres capability | `VELQU_DATABASE_URL`, `VELQU_PG_POOL_MAX`, `VELQU_PG_POOL_CONNECT_TIMEOUT_MS`, `VELQU_PG_POOL_IDLE_TIMEOUT_MS` |
+| Build-time | `VELQU_STANDALONE_PACK` |
+| Tooling-only (never consumed by the serving runtime; recognized for dev/test convenience) | `VELQU_ALLOC_PROFILE`, `VELQU_BENCH_DEBUG`, `VELQU_PACK`, `VELQU_PG_LIVE_TEST`, `VELQU_RUNTIME`, `VELQU_TEST_TRUST_KEYS` |
+
+```text
+{"level":"error","event":"startup.rejected","stage":"config.resolve",
+ "error":"unknown environment variable VELQU_MAXQUEUE: the VELQU_* namespace is closed (see docs/beta/CONFIGURATION.md)"}
+```
+
+## Startup validation report
+
+After configuration validates, the `ready` line carries a `config`
+block — the resolved, non-secret values plus the layer each field came
+from (`cli` | `env` | `file` | `default`) — so a mis-applied layer is
+visible at startup:
+
+```text
+"config": {
+  "host": "127.0.0.1", "hostSource": "default",
+  "port": 8080, "portSource": "env",
+  "maxBodyBytes": 1048576, "maxBodyBytesSource": "default",
+  "maxQueue": 512, "maxQueueSource": "file",
+  "log": "errors", "logSource": "default",
+  "logSample": 0, "logSampleSource": "default"
+}
+```
+
+The block's keys are a fixed allowlist (test-enforced); it never
+contains credentials or file contents.
+
 ## What is NOT configurable here
 
 - **Secrets.** Capability credentials such as `VELQU_DATABASE_URL`

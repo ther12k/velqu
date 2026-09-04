@@ -4,7 +4,7 @@ parent_task: BETA-007
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,67 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-007-B) — PASS (2026-09-04)
+
+- Branch/PR: beta-007-b (squash-merged; see git log for final hash)
+- Closes: #540
+
+### Behavior implemented
+
+Startup validation pass completing BETA-007-A's typed surface:
+(1) the `VELQU_*` environment namespace is closed — unknown names
+reject startup with a typed `startup.rejected` before the engine or
+listener exist; values of unknown names are never read or echoed;
+(2) the ready line carries a `config` block with the resolved
+non-secret values and per-field provenance (`FieldSources` tracked in
+`config::resolve`), so the validated configuration is visible at
+startup with a fixed, test-enforced key allowlist.
+
+### Changed files
+
+- `crates/q-runtime/src/config.rs` (KNOWN_ENV_VARS allowlist, FieldSource/
+  FieldSources, UnknownEnvVar error, validate_env_namespace,
+  startup_config_json, source tracking in resolve, 5 new tests)
+- `crates/q-runtime/src/lib.rs` (namespace check wired into the
+  config.resolve stage; `config` block in the ready line)
+- `docs/beta/CONFIGURATION.md` (namespace allowlist + startup report
+  sections)
+- `docs/reports/beta-007-b-validation-at-startup.md` (new)
+
+### Required evidence
+
+- **Config tests**: `unknown_velqu_env_name_rejected_value_never_echoed`,
+  `every_known_env_var_passes_the_namespace_check`,
+  `namespace_check_ignores_non_velqu_names`,
+  `resolved_sources_report_the_winning_layer`,
+  `startup_config_json_is_an_exact_field_allowlist`.
+- **Redaction tests**: value-never-echoed property pinned in the
+  unknown-var test; config-block allowlist test proves no
+  secret-shaped fields; A's redaction tests still green.
+- **Examples**: CONFIGURATION.md rejection example + ready-line
+  `config` block example.
+
+### Guardrail proofs
+
+1. **Invalid config fails before ready** — namespace check + resolve
+   run in one fail-closed stage before tokio/engine/listener (exit 2).
+2. **Secrets never appear in inspect/log/error** — unknown-var errors
+   name the variable only; the config block is a fixed non-secret
+   allowlist (test-enforced).
+3. **Defaults are safe** — unchanged defaults; provenance makes
+   "which layer won" visible.
+4. **Configuration is documented/versioned** — allowlist documented
+   in CONFIGURATION.md; additions require code+docs together.
+
+### Gate results (fresh on this branch)
+
+- `cargo test -p q-engine-quickjs` 138 / `-p q-schema-runtime` 67 /
+  `-p velqu-runtime` 87 lib + 35 conformance + 16 fetch/source-map /
+  `-p q-http` 14 / `-p q-bridge` 11 — 0 failures
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)

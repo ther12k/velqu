@@ -160,20 +160,27 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
     };
     stages.push(("router.build".into(), t.elapsed().as_secs_f64() * 1000.0));
 
-    // ---- stage: config.resolve (BETA-007-A: typed environment/file
-    // configuration. Invalid values fail closed BEFORE the engine or
-    // listener exist; values are never clamped into range.)
+    // ---- stage: config.resolve (BETA-007-A/B: typed environment/file
+    // configuration, validated at startup. Invalid values and unknown
+    // VELQU_* names fail closed BEFORE the engine or listener exist;
+    // values are never clamped into range.)
     let t = Instant::now();
-    let resolved = match config::resolve(config::Sources {
-        cli: config::CliConfig {
-            host: cfg.host.clone(),
-            port: cfg.port,
-            config: cfg.config.clone(),
-            log: cfg.log.clone(),
-            log_sample: cfg.log_sample,
-        },
-        env: &|k| std::env::var(k).ok(),
-        read_file: &|p| std::fs::read_to_string(p),
+    // BETA-007-B: the VELQU_* namespace is closed — a typo'd knob
+    // rejects startup instead of being silently ignored. Values of
+    // unknown names are never read or echoed.
+    let env_names: Vec<String> = std::env::vars().map(|(k, _)| k).collect();
+    let resolved = match config::validate_env_namespace(&env_names).and_then(|()| {
+        config::resolve(config::Sources {
+            cli: config::CliConfig {
+                host: cfg.host.clone(),
+                port: cfg.port,
+                config: cfg.config.clone(),
+                log: cfg.log.clone(),
+                log_sample: cfg.log_sample,
+            },
+            env: &|k| std::env::var(k).ok(),
+            read_file: &|p| std::fs::read_to_string(p),
+        })
     }) {
         Ok(r) => r,
         Err(e) => {
@@ -393,6 +400,9 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             "contextProfile": profile.as_str(),
             "serviceProfile": service_profile.as_str(),
             "startupWorkers": startup_workers,
+            // BETA-007-B: the validated, non-secret resolved
+            // configuration with per-field provenance.
+            "config": config::startup_config_json(&resolved),
             "contractHash": pack.contract_hash,
             "startupMs": t0.elapsed().as_secs_f64() * 1000.0,
             "stages": stages.iter()
