@@ -4,7 +4,7 @@ parent_task: BETA-010
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -108,3 +108,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-010-E) — PASS (2026-09-04)
+
+- Branch/PR: beta-010-e (squash-merged; see git log for final hash)
+- Closes: #564
+
+### Behavior implemented
+
+Validated that the release artifacts install and operate in a pristine, clean directory without source trees, node_modules, or build tooling:
+- Added `scripts/clean-install-test.sh` which copies only `target/release/velqu-runtime` and `examples/proof/dist/app.qpack` to an isolated temporary directory (`/tmp/velqu-clean-env-XXXXXX`).
+- Verified `--fingerprint --pack app.qpack` reports `"verdict":"compatible"` in the clean environment.
+- Verified `velqu-runtime` serves HTTP traffic (`/health/live` and `/hello/clean-env`) and exits cleanly upon `SIGTERM`.
+- Verified fail-closed integrity: missing pack or corrupted pack data exits non-zero before serving.
+- Script outputs `CLEAN-INSTALL-TEST-OK`.
+- Documented findings in `docs/reports/beta-010-e-clean-install-tests.md`.
+
+### Changed files
+
+- `scripts/clean-install-test.sh` (clean directory installation and verification script)
+- `docs/reports/beta-010-e-clean-install-tests.md` (evidence report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-010-E-clean-install-tests.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- `scripts/clean-install-test.sh` — PASS (`CLEAN-INSTALL-TEST-OK`).
+- `docs/reports/beta-010-e-clean-install-tests.md`.
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `cargo test -p q-engine-quickjs` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Shared-mode deployment expects the exact matching runtime build and pack pair; mismatched builds fail closed before ready.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.

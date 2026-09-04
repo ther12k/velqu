@@ -602,7 +602,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-010-B — Linux ARM64 glibc when CI is available](tasks/08_public_beta/BETA-010-B-linux-arm64-glibc-when-ci-is-available.md)
 - [x] [BETA-010-C — npm packages under beta tag](tasks/08_public_beta/BETA-010-C-npm-packages-under-beta-tag.md)
 - [x] [BETA-010-D — Runtime binary/QPack tools](tasks/08_public_beta/BETA-010-D-runtime-binary-qpack-tools.md)
-- [ ] [BETA-010-E — Clean install tests](tasks/08_public_beta/BETA-010-E-clean-install-tests.md)
+- [x] [BETA-010-E — Clean install tests](tasks/08_public_beta/BETA-010-E-clean-install-tests.md)
 - [ ] [BETA-010-V — Verify Create supported beta platform and packaging matrix](tasks/08_public_beta/BETA-010-V-verify-create-supported-beta-platform-and-packaging-matrix.md)
 - [ ] [BETA-010-Z — Package evidence for Create supported beta platform and packaging matrix](tasks/08_public_beta/BETA-010-Z-package-evidence-for-create-supported-beta-platform-and-packaging-matrix.md)
 - [ ] [BETA-011-A — Use SemVer prerelease](tasks/08_public_beta/BETA-011-A-use-semver-prerelease.md)
