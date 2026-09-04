@@ -70,6 +70,12 @@ identity, scheme, host, or port from them. If the operator explicitly selects
 and forwarding-header consequences — the runtime still does not trust those
 headers.
 
+The sample's proxy semantics (loopback `proxy_pass`, forwarded headers as
+data, native health endpoints reachable through the boundary) were rehearsed
+end-to-end with a non-TLS derivation of this block (`listen 8080`, backend on
+a private port) before release; the TLS directives themselves are standard
+nginx configuration and require a real certificate environment to exercise.
+
 ## Forwarded header policy (BETA-008-B)
 
 The runtime treats `X-Forwarded-For`, `X-Forwarded-Proto`,

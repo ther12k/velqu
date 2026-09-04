@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -108,3 +108,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-F) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-f (squash-merged; see git log for final hash)
+- Closes: #579
+
+### Behavior implemented
+
+Audited and strengthened `docs/beta/DEPLOYMENT-REVERSE-PROXY.md`:
+- The guide was already beta-accurate (reverse-proxy-first, forwarded-header policy, health/readiness/drain, rollout sequence); the gap was the untested Nginx sample.
+- Rehearsed the sample's proxy semantics end-to-end with a non-TLS derivation (`listen 8080`, backend on private port 3100): runtime in a minimal glibc container + nginx:alpine edge with the doc's config shape. Through the edge: `/health/live` = `{"status":"ok"}`, `/health/ready` = `{"ready":true}`, `/hello/nginx` = `{"message":"Hello nginx"}`.
+- Added an honest note to the doc: proxy semantics rehearsed via the non-TLS derivation; TLS directives require a real certificate environment.
+
+Link check OK. No runtime behavior modified.
+
+### Changed files
+
+- `docs/beta/DEPLOYMENT-REVERSE-PROXY.md` (rehearsal note)
+- `docs/reports/beta-012-f-deployment.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-F-deployment.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation change only; rehearsal used ephemeral local containers, no external systems.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
