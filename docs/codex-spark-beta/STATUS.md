@@ -635,7 +635,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-014-D — Have wording reviewed](tasks/08_public_beta/BETA-014-D-have-wording-reviewed.md)
 - [x] [BETA-014-V — Verify Publish canonical beta benchmark report](tasks/08_public_beta/BETA-014-V-verify-publish-canonical-beta-benchmark-report.md)
 - [x] [BETA-014-Z — Package evidence for Publish canonical beta benchmark report](tasks/08_public_beta/BETA-014-Z-package-evidence-for-publish-canonical-beta-benchmark-report.md)
-- [ ] [BETA-015-A — Source ZIP](tasks/08_public_beta/BETA-015-A-source-zip.md)
+- [x] [BETA-015-A — Source ZIP](tasks/08_public_beta/BETA-015-A-source-zip.md)
 - [ ] [BETA-015-B — Git bundle](tasks/08_public_beta/BETA-015-B-git-bundle.md)
 - [ ] [BETA-015-C — Linux binaries](tasks/08_public_beta/BETA-015-C-linux-binaries.md)
 - [ ] [BETA-015-D — npm package tarballs](tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md)
