@@ -4,7 +4,7 @@ parent_task: BETA-007
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -105,3 +105,68 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-007-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-007-a (squash-merged; see git log for final hash)
+- Closes: #539
+
+### Behavior implemented
+
+Typed, versioned, fail-closed environment/file configuration in the
+new `crates/q-runtime/src/config.rs`: per-field layer stack
+`CLI > env > file > default`; required `configVersion` (only 1
+accepted); `deny_unknown_fields`; declared ranges (body 1..=64 MiB,
+queue 1..=10 000, logSample 0..=1e9, port 1..=65535) that reject
+startup — never clamp; typed `startup.rejected` (exit 2) before
+engine/listener; closed log-mode set via
+`serve::LogMode::parse_checked`; host shape validation (printable
+ASCII, ≤253 bytes); legacy unversioned config files and silent
+`PORT`/`--log` fallbacks deliberately retired.
+
+### Changed files
+
+- `crates/q-runtime/src/config.rs` (new module + 19 tests)
+- `crates/q-runtime/src/lib.rs` (RunConfig Options; resolve wiring;
+  structured config rejection)
+- `crates/q-runtime/src/serve.rs` (`LogMode::parse_checked`/`as_str`)
+- `crates/q-runtime/src/main.rs`, `crates/q-runtime/src/bin/velqu-standalone.rs`
+  (CLI layers become optional)
+- `crates/q-runtime/tests/runtime_conformance.rs` (fixture hardened to
+  versioned schema)
+- `examples/config/velqu.config.json` (new example, CI parse-tested)
+- `docs/beta/CONFIGURATION.md` (new: defaults/bounds/env/precedence/
+  examples/non-goals)
+- `docs/reports/beta-007-a-environment-file-configuration.md` (new)
+
+### Required evidence
+
+- **Config tests**: 19 in `config::tests` (layering, fail-closed
+  matrix, canonicalization, VELQU_CONFIG selection).
+- **Redaction tests**: `redaction_unrelated_env_never_appears_in_errors`,
+  `redaction_file_read_error_reports_path_not_contents`.
+- **Examples**: `examples/config/velqu.config.json` +
+  `docs/beta/CONFIGURATION.md` invocation examples.
+
+### Guardrail proofs
+
+1. **Invalid config fails before ready** — resolution runs before the
+   tokio runtime/engine/listener; typed rejection JSON, exit 2.
+2. **Secrets never appear in inspect/log/error** — config layer never
+   reads credentials; redaction tests pin error rendering.
+3. **Defaults are safe** — historical Limits posture preserved
+   (127.0.0.1:3000, 1 MiB body, 256 queue, errors logging).
+4. **Configuration is documented/versioned** — `configVersion`
+   mandatory; CONFIGURATION.md is the canonical reference.
+
+### Gate results (fresh on this branch)
+
+- `cargo test -p velqu-runtime` -> 82 lib + 35 conformance + 16
+  fetch/source-map, 0 failures; `-p q-http` 14; `-p q-bridge` 11
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened; the queue-limit conformance
+  fixture now uses the versioned schema that this packet makes mandatory.)

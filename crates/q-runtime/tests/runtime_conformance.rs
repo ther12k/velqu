@@ -2365,11 +2365,11 @@ fn body_and_header_limits_reject_oversize() {
 fn queue_limit_returns_503_when_saturated() {
     let dir = temp_dir("queue");
     let pack_path = write_pack(&dir);
-    // config: queue of 1
+    // config: queue of 1 (versioned schema, BETA-007-A)
     let cfg = dir.join("limits.json");
     std::fs::write(
         &cfg,
-        serde_json::to_vec(&serde_json::json!({"maxQueue": 1})).unwrap(),
+        serde_json::to_vec(&serde_json::json!({"configVersion": 1, "maxQueue": 1})).unwrap(),
     )
     .unwrap();
 

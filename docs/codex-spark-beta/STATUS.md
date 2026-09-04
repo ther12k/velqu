@@ -577,7 +577,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-006-F — Redaction](tasks/08_public_beta/BETA-006-F-redaction.md)
 - [x] [BETA-006-V — Verify Implement beta observability baseline](tasks/08_public_beta/BETA-006-V-verify-implement-beta-observability-baseline.md)
 - [x] [BETA-006-Z — Package evidence for Implement beta observability baseline](tasks/08_public_beta/BETA-006-Z-package-evidence-for-implement-beta-observability-baseline.md)
-- [ ] [BETA-007-A — Environment/file configuration](tasks/08_public_beta/BETA-007-A-environment-file-configuration.md)
+- [x] [BETA-007-A — Environment/file configuration](tasks/08_public_beta/BETA-007-A-environment-file-configuration.md)
 - [ ] [BETA-007-B — Validation at startup](tasks/08_public_beta/BETA-007-B-validation-at-startup.md)
 - [ ] [BETA-007-C — Secret value wrapper/redaction](tasks/08_public_beta/BETA-007-C-secret-value-wrapper-redaction.md)
 - [ ] [BETA-007-D — Profile-specific settings](tasks/08_public_beta/BETA-007-D-profile-specific-settings.md)
