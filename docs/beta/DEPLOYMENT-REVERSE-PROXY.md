@@ -1,9 +1,12 @@
 # Deployment behind a reverse proxy
 
-The private-alpha deployment profile is **reverse-proxy first**. Terminate
-public TLS at a trusted edge proxy and keep the Velqu runtime on plain HTTP,
-normally bound to loopback. This is a deployment posture, not a production
-readiness or availability guarantee.
+The beta deployment profile is **reverse-proxy first**. Terminate public
+TLS at a trusted edge proxy and keep the Velqu runtime on plain HTTP, bound
+to loopback. The runtime defaults to `proxyMode: "reverse-proxy"`; this
+mode rejects public binds before ready. `proxyMode: "direct"` is an explicit
+operator opt-in for a boundary whose TLS, access control, forwarding-header
+and exposure consequences the operator owns. This is a deployment posture,
+not a production readiness or availability guarantee.
 
 ## Build and run the runtime privately
 
@@ -13,7 +16,7 @@ bun packages/cli/src/index.ts build --project examples/proof
 cargo build --release -p velqu-runtime
 ./target/release/velqu-runtime \
   --pack examples/proof/dist/app.qpack \
-  --host 127.0.0.1 --port 3000
+  --proxy-mode reverse-proxy --host 127.0.0.1 --port 3000
 ```
 
 The runtime owns routing, readiness, request limits, deadlines, and graceful
@@ -59,9 +62,13 @@ server {
 ```
 
 The proxy must be the only public path to the runtime. Do not expose a plain
-HTTP listener bound to `0.0.0.0` as a secure public deployment. Forwarded
-headers are trusted only at the proxy boundary; the runtime does not add
-forwarded-header parsing in this beta.
+HTTP listener bound to `0.0.0.0` as a secure public deployment in the default
+`reverse-proxy` mode. Forwarded headers are ordinary request data, never
+identity or authorization input (ADR-0034); the runtime does not infer client
+identity, scheme, host, or port from them. If the operator explicitly selects
+`proxyMode: "direct"`, the operator owns the direct-boundary TLS/access-control
+and forwarding-header consequences — the runtime still does not trust those
+headers.
 
 ## Health, readiness, and drain
 

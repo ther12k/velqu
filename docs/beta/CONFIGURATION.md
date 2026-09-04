@@ -1,4 +1,4 @@
-# Runtime Configuration (BETA-007-A)
+# Runtime Configuration (BETA-007-A / BETA-008-A)
 
 Typed configuration for the production hosts (`velqu-runtime`,
 `velqu-standalone`). Every operational field resolves through the same
@@ -23,6 +23,7 @@ out-of-range value is a rejected startup, not a silent correction.
 | `maxQueue`     | `256`       | `1..=10000`                            |
 | `log`          | `errors`    | closed set: `off` \| `errors` \| `full` (case-insensitive) |
 | `logSample`    | `0` (disabled) | `0..=1000000000`                    |
+| `proxyMode`    | `reverse-proxy` | `reverse-proxy` (loopback-only) \| `direct` (operator opt-in) |
 
 ## Config file (versioned)
 
@@ -61,6 +62,7 @@ declaring any other version is rejected at startup.
 | `VELQU_MAX_BODY_BYTES` | `maxBodyBytes` |                                            |
 | `VELQU_MAX_QUEUE`      | `maxQueue`     |                                            |
 | `VELQU_PROFILE`        | (profile select)| BETA-007-D; wins over the file's `activeProfile` |
+| `VELQU_PROXY_MODE`     | `proxyMode`    | `reverse-proxy` (default) or `direct`       |
 | `VELQU_CONFIG`         | (file selector)| ignored when `--config` is given           |
 
 Invalid environment values (wrong type, out of range, unknown log
@@ -80,7 +82,7 @@ runtime's concern, and the check is case-sensitive.
 
 | Group | Names |
 | ------------------- | ------------------------------------------------ |
-| Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_PORT`, `VELQU_PROFILE` |
+| Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_PORT`, `VELQU_PROFILE`, `VELQU_PROXY_MODE` |
 | Postgres capability | `VELQU_DATABASE_URL`, `VELQU_PG_POOL_MAX`, `VELQU_PG_POOL_CONNECT_TIMEOUT_MS`, `VELQU_PG_POOL_IDLE_TIMEOUT_MS` |
 | Build-time | `VELQU_STANDALONE_PACK` |
 | Tooling-only (never consumed by the serving runtime; recognized for dev/test convenience) | `VELQU_ALLOC_PROFILE`, `VELQU_BENCH_DEBUG`, `VELQU_PACK`, `VELQU_PG_LIVE_TEST`, `VELQU_RUNTIME`, `VELQU_TEST_TRUST_KEYS` |
@@ -109,7 +111,17 @@ visible at startup:
 ```
 
 The block's keys are a fixed allowlist (test-enforced); it never
-contains credentials or file contents.
+contains credentials or file contents. It also reports the deployment
+boundary as `proxyMode` and `proxyModeSource`.
+
+## Trusted proxy boundary (BETA-008-A)
+
+The safe default is `proxyMode: "reverse-proxy"`, which requires a loopback
+bind and is intended for public TLS termination at a trusted edge proxy.
+`proxyMode: "direct"` is an explicit operator opt-in; it does not make
+forwarded headers trusted and does not add runtime TLS. See
+`docs/beta/governance/TRUSTED_PROXY_RUNBOOK.md` for the boundary checklist,
+rollout, shutdown, and failure diagnosis.
 
 ## Profile-specific settings (BETA-007-D)
 

@@ -46,6 +46,10 @@ struct Args {
     /// sampling (default 0, or VELQU_LOG_SAMPLE).
     #[arg(long)]
     log_sample: Option<u64>,
+    /// Deployment boundary: reverse-proxy (default, loopback-only) or
+    /// direct (explicit operator-owned public boundary; VELQU_PROXY_MODE).
+    #[arg(long)]
+    proxy_mode: Option<String>,
     /// M26-002-C: the explicit source-rebuild path — ignore embedded
     /// bytecode and evaluate the verified SOURCE bundle.
     #[arg(long)]
@@ -71,6 +75,7 @@ fn main() {
             config: args.config,
             log: args.log,
             log_sample: args.log_sample,
+            proxy_mode: args.proxy_mode,
             no_bytecode: args.no_bytecode,
             // Standalone serves the serverless posture by default.
             service_profile: None,
