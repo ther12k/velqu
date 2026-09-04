@@ -16,10 +16,10 @@ The manifest lists every file except `SHA256SUMS.txt` files themselves (the nest
 $ ./scripts/release-packet
 release packet: commit <short>
 <every file>: OK            (sha256sum -c output for all covered files)
-CHECKSUMS-OK: 20 files covered
+CHECKSUMS-OK: 19 files covered
 ```
 
-20 covered files = 9 packet artifacts + sbom.cdx.json + 9 npm tarballs + the nested npm-tarballs/SHA256SUMS.txt is excluded (verified separately by its own script run inside the packet composition).
+19 covered files = 9 packet artifacts + sbom.cdx.json + 9 npm tarballs (SHA256SUMS.txt files themselves are excluded from the manifest; the nested npm-tarballs/SHA256SUMS.txt verifies independently inside its own directory).
 
 ## Guardrail mapping
 
