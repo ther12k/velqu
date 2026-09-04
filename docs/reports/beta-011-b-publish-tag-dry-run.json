@@ -1,0 +1,21 @@
+{
+  "format": "velqu-beta-publish-tag-dryrun-v1",
+  "targetVersion": "0.1.0-beta.1",
+  "authorizedTags": [
+    "beta",
+    "next"
+  ],
+  "defaultTag": "beta",
+  "dryRunPublish": {
+    "command": "npm publish --tag beta --dry-run",
+    "status": "SIMULATED_SAFE",
+    "packagesInspected": 9,
+    "allPrivate": true
+  },
+  "invariants": {
+    "noAccidentalLatestTag": true,
+    "packagesPrivateGuardActive": true,
+    "versionMutationOccurred": false
+  },
+  "verdict": "PASS"
+}

@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -110,3 +110,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-B) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-b (squash-merged; see git log for final hash)
+- Closes: #568
+
+### Behavior implemented
+
+Defined and verified the distribution tag policy and safe publication simulation:
+- Designated `beta` as the default distribution tag and `next` as alternative prerelease channel.
+- Prohibited publishing under npm default `latest` tag for prereleases (`0.1.0-beta.1`).
+- Added `scripts/publish-tag-dryrun.sh` to simulate publication (`npm publish --tag beta --dry-run`).
+- Audited all 9 workspace packages: all remain protected under `"private": true`.
+- Emitted machine-readable validation artifact to `docs/reports/beta-011-b-publish-tag-dry-run.json` with verdict `PASS`.
+
+### Changed files
+
+- `scripts/publish-tag-dryrun.sh` (tag dry-run verification script)
+- `docs/reports/beta-011-b-publish-tag-dry-run.json` (machine-readable validation artifact)
+- `docs/reports/beta-011-b-publish-next-beta-tag.md` (evidence report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-B-publish-next-beta-tag.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- `scripts/publish-tag-dryrun.sh` — PASS.
+- `docs/reports/beta-011-b-publish-tag-dry-run.json`.
+- `docs/reports/beta-011-b-publish-next-beta-tag.md`.
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Simulation only; actual network registry upload is gated on Owner decision and repository/license finalization.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
