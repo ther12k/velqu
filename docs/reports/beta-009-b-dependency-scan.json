@@ -1,0 +1,51 @@
+{
+  "format": "velqu-beta-dependency-scan-v1",
+  "generatedFrom": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "cargo metadata",
+    "cargo tree"
+  ],
+  "workspacePackages": 12,
+  "resolvedPackages": 268,
+  "externalPackages": 256,
+  "dependencyTreeLines": 488,
+  "licenseDistribution": {
+    "(MIT OR Apache-2.0) AND Unicode-3.0": 2,
+    "Apache-2.0": 1,
+    "Apache-2.0 / MIT": 1,
+    "Apache-2.0 AND ISC": 1,
+    "Apache-2.0 OR BSL-1.0 OR MIT": 2,
+    "Apache-2.0 OR ISC OR MIT": 2,
+    "Apache-2.0 OR MIT": 25,
+    "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT": 4,
+    "BSD-3-Clause": 4,
+    "CDLA-Permissive-2.0": 1,
+    "ISC": 2,
+    "MISSING": 1,
+    "MIT": 43,
+    "MIT OR Apache-2.0": 129,
+    "MIT OR Apache-2.0 OR BSD-1-Clause": 1,
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 1,
+    "MIT OR Apache-2.0 OR Zlib": 1,
+    "MIT/Apache-2.0": 11,
+    "UNLICENSED-BEFORE-OWNER-DECISION": 11,
+    "Unicode-3.0": 18,
+    "Unlicense OR MIT": 3,
+    "Zlib": 1,
+    "Zlib OR Apache-2.0 OR MIT": 3
+  },
+  "externalPackagesMissingLicense": [],
+  "workspaceLicensePosture": [
+    "MISSING",
+    "UNLICENSED-BEFORE-OWNER-DECISION"
+  ],
+  "scannerAvailability": {
+    "cargoAudit": false,
+    "cargoDeny": false,
+    "osvScanner": false,
+    "syft": false
+  },
+  "advisoryDatabaseScan": "not-run: no cargo-audit/cargo-deny/osv-scanner installed in environment",
+  "verdict": "PASS_WITH_DISCLOSURE"
+}

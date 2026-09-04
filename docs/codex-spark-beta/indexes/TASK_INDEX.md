@@ -608,7 +608,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-008-V](../tasks/08_public_beta/BETA-008-V-verify-implement-reverse-proxy-drain-and-deployment-semantics.md) | P0 | verify | PASS | BETA-008-A, BETA-008-B, BETA-008-C, BETA-008-D, BETA-008-E | Verify Implement reverse-proxy, drain, and deployment semantics |
 | [BETA-008-Z](../tasks/08_public_beta/BETA-008-Z-package-evidence-for-implement-reverse-proxy-drain-and-deployment-semantics.md) | P0 | evidence | PASS | BETA-008-V | Package evidence for Implement reverse-proxy, drain, and deployment semantics |
 | [BETA-009-A](../tasks/08_public_beta/BETA-009-A-run-fuzz-suites-for-pack-router-schema-bridge-http.md) | P0 | implement | PASS | M28-GATE, M3-GATE, BETA-004-Z, BETA-005-Z, BETA-007-Z | Run fuzz suites for pack/router/schema/bridge/HTTP |
-| [BETA-009-B](../tasks/08_public_beta/BETA-009-B-dependency-vulnerability-and-license-scan.md) | P0 | implement | TODO | BETA-009-A | Dependency vulnerability and license scan |
+| [BETA-009-B](../tasks/08_public_beta/BETA-009-B-dependency-vulnerability-and-license-scan.md) | P0 | implement | PASS | BETA-009-A | Dependency vulnerability and license scan |
 | [BETA-009-C](../tasks/08_public_beta/BETA-009-C-threat-model-review.md) | P0 | implement | TODO | BETA-009-B | Threat-model review |
 | [BETA-009-D](../tasks/08_public_beta/BETA-009-D-chaos-tests-for-upstream-db-worker-poison.md) | P0 | implement | TODO | BETA-009-C | Chaos tests for upstream/DB/worker poison |
 | [BETA-009-E](../tasks/08_public_beta/BETA-009-E-no-known-critical-high-exploitable-issue.md) | P0 | implement | TODO | BETA-009-D | No known critical/high exploitable issue |
