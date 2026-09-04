@@ -638,7 +638,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-015-A — Source ZIP](tasks/08_public_beta/BETA-015-A-source-zip.md)
 - [x] [BETA-015-B — Git bundle](tasks/08_public_beta/BETA-015-B-git-bundle.md)
 - [x] [BETA-015-C — Linux binaries](tasks/08_public_beta/BETA-015-C-linux-binaries.md)
-- [ ] [BETA-015-D — npm package tarballs](tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md)
+- [x] [BETA-015-D — npm package tarballs](tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md)
 - [ ] [BETA-015-E — QPack tools](tasks/08_public_beta/BETA-015-E-qpack-tools.md)
 - [ ] [BETA-015-F — SBOM](tasks/08_public_beta/BETA-015-F-sbom.md)
 - [ ] [BETA-015-G — Checksums](tasks/08_public_beta/BETA-015-G-checksums.md)

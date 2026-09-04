@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-D) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-d (squash-merged; see git log for final hash)
+- Closes: #600
+
+### Behavior implemented
+
+npm package tarballs deliverable of the beta release evidence:
+- Added `scripts/npm-package-tarballs.sh`: packs all 9 `@velqu/*` workspace packages with `bun pm pack` into `release/npm-tarballs/`, writes and verifies `SHA256SUMS.txt` from inside the directory, fails closed on missing packages.
+- Rehearsed: 9/9 tarballs packed (velqu-core … velqu-treaty, all 0.1.0), checksums all OK, ending `NPM-TARBALLS-OK`.
+- Documented the artifact inventory (sizes + sha256 prefixes) in `docs/reports/beta-015-d-npm-package-tarballs.md`.
+- Packages remain `private`; publication stays Owner-gated (BETA-010-C/BETA-011 posture), and the `0.1.0-beta.1` label is applied at publication under Owner authority, not silently here.
+
+### Changed files
+
+- `scripts/npm-package-tarballs.sh` (new)
+- `docs/reports/beta-015-d-npm-package-tarballs.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Generated evidence only; registry publication is Owner-gated.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
