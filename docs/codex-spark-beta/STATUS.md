@@ -620,7 +620,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-012-F — Deployment](tasks/08_public_beta/BETA-012-F-deployment.md)
 - [x] [BETA-012-G — Troubleshooting](tasks/08_public_beta/BETA-012-G-troubleshooting.md)
 - [x] [BETA-012-H — Performance methodology](tasks/08_public_beta/BETA-012-H-performance-methodology.md)
-- [ ] [BETA-012-I — Limitations/non-goals](tasks/08_public_beta/BETA-012-I-limitations-non-goals.md)
+- [x] [BETA-012-I — Limitations/non-goals](tasks/08_public_beta/BETA-012-I-limitations-non-goals.md)
 - [ ] [BETA-012-V — Verify Complete beta documentation and limitations](tasks/08_public_beta/BETA-012-V-verify-complete-beta-documentation-and-limitations.md)
 - [ ] [BETA-012-Z — Package evidence for Complete beta documentation and limitations](tasks/08_public_beta/BETA-012-Z-package-evidence-for-complete-beta-documentation-and-limitations.md)
 - [ ] [BETA-013-A — Run at least two-hour mixed workload and at least one million requests on reference platform](tasks/08_public_beta/BETA-013-A-run-at-least-two-hour-mixed-workload-and-at-least-one-million-requests-on-refere.md)

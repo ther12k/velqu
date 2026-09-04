@@ -1,6 +1,6 @@
 # Limits and non-goals
 
-Velqu's private alpha is intentionally narrow. This page is the boundary
+Velqu's public beta (`0.1.0-beta.1`) is intentionally narrow. This page is the boundary
 reference for what the current beta path does **not** promise. A feature being
 interesting or technically possible is not evidence that it belongs in the
 release scope.
@@ -12,11 +12,17 @@ release scope.
 - Same-process QuickJS executes **trusted application code only**. It is not a
   hostile-code or multi-tenant sandbox.
 - The documented working platform is Linux x86_64 glibc; Linux ARM64 glibc is
-  included when the build environment is available. Windows and macOS have no
-  beta support promise.
+  included when the build environment is available. Windows is unsupported; macOS
+  is development-only with no production release promise.
 - Runtime queues, request bodies, jobs, heap, stack, deadlines, fetch work,
   and deferred callbacks are bounded. A limit rejection is a designed
   fail-closed result, not an invitation to retry without a policy.
+- **QuickJS bytecode versus JIT**: `app.qpack` embeds QuickJS bytecode.
+  Bytecode eliminates runtime TypeScript transpilation and JS parsing,
+  yielding minimal cold starts and bounded RSS. However, QuickJS remains
+  an interpreted bytecode runtime, not a native-machine-code JIT compiler.
+  For pure CPU compute-bound workloads, JIT engines (V8, JavaScriptCore)
+  will be faster.
 - **No dynamic code execution** (BETA-007-E): every production runtime
   context replaces the `eval` global (direct and indirect forms both
   resolve it) and the dynamic `Function`-construction routes (the
@@ -79,11 +85,12 @@ Use these words carefully:
 
 | Say | Do not say |
 | --- | --- |
-| “private-alpha runtime” | “production-ready” |
+| “public-beta runtime” | “production-ready” |
 | “reverse-proxy-first posture” | “native TLS support” |
 | “bounded best-effort defer” | “durable background jobs” |
 | “measured fixture result” | “universally faster” |
 | “trusted application code” | “hostile-code sandbox” |
+| “QuickJS bytecode” | “native JIT compilation” |
 
 ## Verify the boundary
 
