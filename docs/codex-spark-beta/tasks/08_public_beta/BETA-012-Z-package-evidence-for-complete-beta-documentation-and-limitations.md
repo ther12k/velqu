@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -116,3 +116,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-z (squash-merged; see git log for final hash)
+- Closes: #584
+
+### Behavior implemented
+
+Evidence packaging and parent task closure for **BETA-012** ("Complete beta documentation and limitations"):
+- Flipped parent row `BETA-012` to **PASS** in `docs/beta/04_TASK_LEDGER.md`.
+- Consolidated evidence inventory across all child tasks (BETA-012-A through BETA-012-I, and verification BETA-012-V) in `docs/reports/beta-012-z-package-evidence.md`.
+- Verified all parent acceptance guardrails: every command/sample tested; no universal performance claims; no production-ready/SLA wording; QuickJS bytecode vs JIT compilation accurately explained; docs link check passing with 0 errors.
+
+### Changed files
+
+- `docs/beta/04_TASK_LEDGER.md`
+- `docs/reports/beta-012-z-package-evidence.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-Z-package-evidence-for-complete-beta-documentation-and-limitations.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Evidence packaging and status tracking only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
