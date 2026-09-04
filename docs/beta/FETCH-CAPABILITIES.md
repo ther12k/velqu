@@ -1,22 +1,25 @@
 # Fetch and capabilities
 
-Velqu's private-alpha fetch surface is an explicit capability. It is not
+Velqu's beta fetch surface is an explicit capability. It is not
 available by accident: a project opts in with the CLI scaffold and the
 compiler records the capability in its build artifacts.
 
 ## Opt in from a scaffold
 
 ```bash
-bun packages/cli/src/index.ts init /tmp/velqu-fetch \
-  --name velqu-fetch --with-fetch
-cd /tmp/velqu-fetch
-bun install
-bun run check
-bun run test
+bun packages/cli/src/index.ts create fetch-demo --name fetch-demo --with-fetch
+mkdir -p fetch-demo/node_modules/@velqu
+for p in core schema treaty; do
+  ln -sfn "$(pwd)/packages/$p" "fetch-demo/node_modules/@velqu/$p"
+done
+bun packages/cli/src/index.ts check --project fetch-demo
+# → velqu check: 4 routes in fetch-demo — clean
+bun packages/cli/src/index.ts build --project fetch-demo
 ```
 
 `--with-fetch` adds an `upstream` module and records `fetch` in the generated
-`velqu.capabilities` metadata. The generated route is a fixture demonstrating
+`velqu.capabilities` metadata, echoed in the build's capability manifest
+(`perRoute` inventory). The generated route is a fixture demonstrating
 an outbound request; it is not a promise that a public endpoint is available
 or that network egress is enabled in every deployment.
 
@@ -77,6 +80,6 @@ bun packages/cli/src/index.ts build --project examples/proof
 ```
 
 The scaffold tests verify the optional module and capability metadata; the
-proof build verifies artifact generation. This private-alpha documentation is
+proof build verifies artifact generation. This public-beta documentation is
 not a production-readiness claim. Same-process QuickJS executes trusted code
 only and is not a hostile-code sandbox.

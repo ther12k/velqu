@@ -21,6 +21,7 @@ tags:
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
 - [Treaty client](TREATY.md)
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
+- [Auth: policies and JWT](AUTH.md)
 - [Postgres capability](POSTGRES-CAPABILITY.md)
 - [Runtime profiles](RUNTIME-PROFILES.md)
 - [Deployment behind a reverse proxy](DEPLOYMENT-REVERSE-PROXY.md)
