@@ -19,6 +19,7 @@ tags:
 - [Quickstart](QUICKSTART.md)
 - [Architecture](ARCHITECTURE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
+- [Known limitations (release)](KNOWN-LIMITATIONS.md)
 - [Performance methodology](PERFORMANCE-METHODOLOGY.md)
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
 - [Treaty client](TREATY.md)
