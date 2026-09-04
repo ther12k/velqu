@@ -1,0 +1,158 @@
+{
+  "format": "velqu-beta-npm-package-inventory-v1",
+  "tagPolicy": "beta (owner-authorized publication only)",
+  "packageCount": 9,
+  "packages": [
+    {
+      "path": "packages/capability-auth-jwt/package.json",
+      "name": "@velqu/capability-auth-jwt",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/capability-postgres/package.json",
+      "name": "@velqu/capability-postgres",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/cli/package.json",
+      "name": "@velqu/cli",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": {
+        "velqu": "./src/index.ts"
+      },
+      "dependencies": {
+        "@velqu/compiler": "workspace:*"
+      },
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/compiler/package.json",
+      "name": "@velqu/compiler",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {
+        "typescript": "^5.9.3",
+        "@velqu/contract": "workspace:*",
+        "@velqu/schema": "workspace:*",
+        "@velqu/core": "workspace:*"
+      },
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/contract/package.json",
+      "name": "@velqu/contract",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/core/package.json",
+      "name": "@velqu/core",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/schema/package.json",
+      "name": "@velqu/schema",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/testing/package.json",
+      "name": "@velqu/testing",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {
+        "@velqu/treaty": "workspace:*",
+        "@velqu/core": "workspace:*"
+      },
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    },
+    {
+      "path": "packages/treaty/package.json",
+      "name": "@velqu/treaty",
+      "version": "0.1.0",
+      "private": true,
+      "type": "module",
+      "main": "./src/index.ts",
+      "types": "./src/index.ts",
+      "bin": null,
+      "dependencies": {},
+      "publishConfig": null,
+      "license": null,
+      "repository": null,
+      "publishable": false
+    }
+  ],
+  "privatePackageCount": 9,
+  "publishablePackageCount": 0,
+  "verdict": "PREPARED_NOT_PUBLISHED",
+  "disclosure": "All current workspace packages are private; npm publication and beta tag require owner release authorization and repository/license decision."
+}
