@@ -4,7 +4,7 @@ parent_task: BETA-013
 milestone: BETA
 priority: P0
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -102,3 +102,36 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-013-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-013-v (squash-merged; see git log for final hash)
+- Closes: #589
+
+### Behavior verified
+
+Verification closure for parent task BETA-013 ("Run beta soak and leak qualification"):
+- Validated no monotonic unbounded growth across 2.43M+ requests and continuous chaos (QuickJS heap flat within ~201–206 KiB band, process RSS drift is bounded allocator retention at ~0.298 B/req).
+- Verified quiescence: 0 pending slots, 0 live native tasks, 0 pending native ops at shutdown.
+- Confirmed zero boundary violations and queue limits strictly bounded at capacity.
+- Confirmed comprehensive subsystem coverage (outbound fetch, Postgres DB, JWT auth, timeouts, client cancellation, worker replacement, graceful reload/drain).
+
+### Changed files
+
+- `docs/reports/beta-013-v-verify-soak-leak-qualification.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-013-V-verify-run-beta-soak-and-leak-qualification.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `bun run typecheck` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Verification closure only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
