@@ -77,6 +77,7 @@ fn main() {
             log_sample: args.log_sample,
             proxy_mode: args.proxy_mode,
             no_bytecode: args.no_bytecode,
+            context_profile: None,
             // Standalone serves the serverless posture by default.
             service_profile: None,
         },
