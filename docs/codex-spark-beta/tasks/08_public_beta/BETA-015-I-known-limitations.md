@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-I) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-i (squash-merged; see git log for final hash)
+- Closes: #605
+
+### Behavior implemented
+
+Known-limitations deliverable of the beta release packet:
+- Added canonical inventory `docs/beta/KNOWN-LIMITATIONS.md` (indexed in `docs/beta/INDEX.md`): 18 numbered limitations across runtime/platform, performance boundaries (with measured honest-loss numbers), deployment/operations, packaging/publication, and evidence posture — each entry naming its evidence source.
+- `scripts/release-packet` now ships the file in the packet (conditional copy; covered by the unified checksum manifest).
+- Link check OK (all referenced docs/artifacts exist).
+
+### Changed files
+
+- `docs/beta/KNOWN-LIMITATIONS.md` (new)
+- `docs/beta/INDEX.md` (index entry)
+- `scripts/release-packet` (KNOWN-LIMITATIONS inclusion)
+- `docs/reports/beta-015-i-known-limitations.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-I-known-limitations.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation deliverable; no runtime behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.

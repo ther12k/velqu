@@ -21,6 +21,9 @@ cp benchmarks/manifest.json "$OUT/BENCHMARK_MANIFEST.json"
 if [[ -f docs/beta/CHANGELOG.md ]]; then
   cp docs/beta/CHANGELOG.md "$OUT/CHANGELOG.md"
 fi
+if [[ -f docs/beta/KNOWN-LIMITATIONS.md ]]; then
+  cp docs/beta/KNOWN-LIMITATIONS.md "$OUT/KNOWN-LIMITATIONS.md"
+fi
 
 # BETA-015-C: the packet ships the Linux x86_64 release binary. It must be
 # built from this exact tree (cargo build --release -p velqu-runtime with the
