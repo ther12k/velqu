@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-v (squash-merged; see git log for final hash)
+- Closes: #572
+
+### Verification performed
+
+Every parent BETA-011 acceptance criterion mapped to source and re-confirmed evidence (full matrix in `docs/reports/beta-011-v-verify-beta-publishing-versioning.md`):
+- Version consistency: workspace Cargo.toml, all 9 `@velqu/*` package.json files, and the q-pack compiler identity string are uniformly `0.1.0` (fresh inspection).
+- Re-running release does not mutate existing version: BETA-011-D rehearsal at `370bb8b` (repeat run, SHA256SUMS all OK, zero tracked-file mutation).
+- Rollback procedure is tested: `scripts/yank-rollback-rehearsal.sh` re-run — PASS.
+- Breaking beta changes require notes: `docs/beta/CHANGELOG.md` ships 5 migration notes and is part of the release packet + SHA256SUMS.
+
+Required parent evidence re-confirmed by re-running all rehearsal scripts in this worktree (deterministic output, tree unchanged): dry-run publish (`publish-tag-dryrun.sh` PASS), release workflow (`release-packet` rehearsal), rollback rehearsal (`yank-rollback-rehearsal.sh` PASS), SemVer prerelease policy (`semver-prerelease-check.sh` PASS).
+
+No defects found; no new features added.
+
+### Changed files
+
+- `docs/reports/beta-011-v-verify-beta-publishing-versioning.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-V-verify-automate-beta-publishing-and-versioning.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Publication to npm/GitHub Releases remains Owner-gated; all publishing evidence is dry-run/simulation by design.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
