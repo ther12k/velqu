@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-C) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-c (squash-merged; see git log for final hash)
+- Closes: #599
+
+### Behavior implemented
+
+Linux binaries deliverable of the self-verifying release packet:
+- `scripts/release-packet` now copies `target/release/velqu-runtime` into the packet as `velqu-runtime` and includes it in `SHA256SUMS.txt` (8 entries).
+- Missing release binary fails closed: the packet cannot be built without the Linux x86_64 binary built from this tree.
+- Rehearsed at the clean packet commit: all 8 artifacts verified `OK` including `velqu-runtime`; the binary's SHA-256 equals the manifest-pinned `qRuntimeRelease` digest (commit-bound evidence chain).
+- Updated the artifact inventory in `docs/reports/beta-015-c-linux-binaries.md`.
+
+### Changed files
+
+- `scripts/release-packet` (binary inclusion, fail-closed requirement, checksum entry)
+- `docs/reports/beta-015-c-linux-binaries.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-C-linux-binaries.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Beta platform promise is Linux x86_64 glibc only; no other-platform binaries are claimed (ARM64 remains conditional per BETA-010-B).
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
