@@ -18,6 +18,9 @@ echo "$COMMIT" > "$OUT/SOURCE-COMMIT.txt"
 git bundle create "$OUT/velqu-${SHORT}.bundle" HEAD master
 git archive --format=zip --prefix="velqu-${SHORT}/" -o "$OUT/source-${SHORT}.zip" HEAD
 cp benchmarks/manifest.json "$OUT/BENCHMARK_MANIFEST.json"
+if [[ -f docs/beta/CHANGELOG.md ]]; then
+  cp docs/beta/CHANGELOG.md "$OUT/CHANGELOG.md"
+fi
 
 # Indexes are generated after HEAD is fixed; never copy a possibly stale
 # working-tree index into the release packet.
@@ -49,7 +52,11 @@ done
 (
   cd "$OUT"
   : > SHA256SUMS.txt
-  for f in SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json; do
+  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
+  if [[ -f CHANGELOG.md ]]; then
+    FILES+=(CHANGELOG.md)
+  fi
+  for f in "${FILES[@]}"; do
     sha256sum "$f" >> SHA256SUMS.txt
   done
 )

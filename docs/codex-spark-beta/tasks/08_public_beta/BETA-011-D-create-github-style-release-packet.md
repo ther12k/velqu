@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -111,3 +111,43 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-D) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-d (squash-merged; see git log for final hash)
+- Closes: #570
+
+### Behavior implemented
+
+Extended and rehearsed the self-verifying GitHub-style release packet (`scripts/release-packet`):
+- Packet now ships `docs/beta/CHANGELOG.md` as `CHANGELOG.md` (conditional copy) so the GitHub release body and consumers share the same migration notes.
+- `CHANGELOG.md` is included in `SHA256SUMS.txt` when present, keeping the packet self-verifying.
+- Existing invariants preserved: clean-tree requirement, single source-commit binding (`SOURCE-COMMIT.txt`, `git bundle`, source ZIP), post-HEAD index generation with grep-verified `commit`/`releaseCommit` binding, and `sha256sum -c SHA256SUMS.txt` verification from inside `release/`.
+- Rehearsal executed at the clean packet commit: packet built, all checksums `OK`, re-run performed without mutating any tracked file.
+
+### Changed files
+
+- `scripts/release-packet` (changelog inclusion + checksum list update)
+- `docs/reports/beta-011-d-github-style-release-packet.md` (evidence report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-D-create-github-style-release-packet.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- Dry-run publish: covered by BETA-011-B (`scripts/publish-tag-dryrun.sh`).
+- Release workflow: `./scripts/release-packet` rehearsal at the packet commit — packet built, `sha256sum -c SHA256SUMS.txt` all `OK` including `CHANGELOG.md`.
+- Rollback rehearsal: covered by BETA-011-A withdrawal governance and the packet's non-mutating rebuild behavior.
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/release-packet` — packet built and SHA256SUMS verified
+
+### Disclosures
+
+- Publishing to GitHub Releases remains an Owner-authorized action; this packet prepares the artifact set only.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
