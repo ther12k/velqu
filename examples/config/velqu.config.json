@@ -5,5 +5,6 @@
   "maxBodyBytes": 2097152,
   "maxQueue": 512,
   "log": "errors",
-  "logSample": 0
+  "logSample": 0,
+  "proxyMode": "reverse-proxy"
 }

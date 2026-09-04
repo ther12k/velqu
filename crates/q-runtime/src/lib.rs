@@ -53,6 +53,8 @@ pub struct RunConfig {
     pub config: Option<PathBuf>,
     pub log: Option<String>,
     pub log_sample: Option<u64>,
+    /// BETA-008-A: deployment boundary (`reverse-proxy` or explicit `direct`).
+    pub proxy_mode: Option<String>,
     /// M26-002-C: explicit source-rebuild recovery path.
     pub no_bytecode: bool,
     /// M27-003-D: explicit context-profile override for compatibility
@@ -177,6 +179,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 config: cfg.config.clone(),
                 log: cfg.log.clone(),
                 log_sample: cfg.log_sample,
+                proxy_mode: cfg.proxy_mode.clone(),
             },
             env: &|k| std::env::var(k).ok(),
             read_file: &|p| std::fs::read_to_string(p),
@@ -194,6 +197,16 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             return 2;
         }
     };
+    if let Err(e) = config::validate_proxy_bind(resolved.proxy_mode, &resolved.host) {
+        eprintln!(
+            "{}",
+            serde_json::json!({
+                "level": "error", "event": "startup.rejected",
+                "stage": "config.resolve", "error": e.to_string(),
+            })
+        );
+        return 2;
+    }
     let limits = Limits {
         max_body_bytes: resolved.max_body_bytes,
         max_queue: resolved.max_queue,

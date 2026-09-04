@@ -54,6 +54,9 @@ pub const ENV_CONFIG: &str = "VELQU_CONFIG";
 /// BETA-007-D: selects the active profile from the config file's
 /// `profiles` map; wins over the file's own `activeProfile`.
 pub const ENV_PROFILE: &str = "VELQU_PROFILE";
+/// BETA-008-A: deployment boundary. `reverse-proxy` is the safe default
+/// and requires a loopback bind; `direct` is an explicit operator opt-in.
+pub const ENV_PROXY_MODE: &str = "VELQU_PROXY_MODE";
 
 /// BETA-007-B: the closed `VELQU_*` environment namespace. Startup
 /// rejects any `VELQU_*` name outside this list — a typo'd knob
@@ -71,6 +74,7 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     ENV_MAX_QUEUE,
     ENV_PORT,
     ENV_PROFILE,
+    ENV_PROXY_MODE,
     // postgres capability (BETA-004-E)
     "VELQU_DATABASE_URL",
     "VELQU_PG_POOL_MAX",
@@ -87,6 +91,38 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     "VELQU_TEST_TRUST_KEYS",
 ];
 
+/// BETA-008-A: deployment boundary posture. Forwarded headers are never
+/// trusted for identity in either mode (ADR-0034); this setting controls
+/// only the listener bind guard and startup documentation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProxyMode {
+    ReverseProxy,
+    Direct,
+}
+
+impl ProxyMode {
+    pub fn parse_checked(s: &str) -> Result<Self, String> {
+        match s.to_ascii_lowercase().replace('_', "-").as_str() {
+            "reverse-proxy" => Ok(Self::ReverseProxy),
+            "direct" => Ok(Self::Direct),
+            other => Err(format!(
+                "unknown proxy mode {other:?} (expected reverse-proxy|direct)"
+            )),
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::ReverseProxy => "reverse-proxy",
+            Self::Direct => "direct",
+        }
+    }
+
+    pub fn requires_loopback(&self) -> bool {
+        matches!(self, Self::ReverseProxy)
+    }
+}
+
 /// Where a resolved field came from — reported per-field in the
 /// startup config block so operators can see which layer won.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,6 +131,8 @@ pub enum FieldSource {
     Env,
     /// BETA-007-D: value came from the active profile block.
     Profile,
+    /// BETA-008-A: deployment boundary setting is top-level only.
+    Proxy,
     File,
     Default,
 }
@@ -105,6 +143,7 @@ impl FieldSource {
             FieldSource::Cli => "cli",
             FieldSource::Env => "env",
             FieldSource::Profile => "profile",
+            FieldSource::Proxy => "proxy",
             FieldSource::File => "file",
             FieldSource::Default => "default",
         }
@@ -134,6 +173,9 @@ struct FileConfig {
     /// BETA-007-D: the profile applied unless VELQU_PROFILE selects one.
     #[serde(rename = "activeProfile")]
     active_profile: Option<String>,
+    /// BETA-008-A: deployment posture is top-level, not profile-scoped.
+    #[serde(rename = "proxyMode")]
+    proxy_mode: Option<String>,
     /// BETA-007-D: named override blocks; each block accepts the same
     /// optional fields as the file itself (minus versioning/nesting).
     profiles: Option<std::collections::BTreeMap<String, ProfileBlock>>,
@@ -173,6 +215,8 @@ pub struct CliConfig {
     pub config: Option<PathBuf>,
     pub log: Option<String>,
     pub log_sample: Option<u64>,
+    /// BETA-008-A: explicit deployment boundary override.
+    pub proxy_mode: Option<String>,
 }
 
 /// Injected environment/file lookups so resolution is unit-testable
@@ -195,6 +239,9 @@ pub struct Resolved {
     pub log_sample: u64,
     /// BETA-007-D: the applied profile, when one is active.
     pub active_profile: Option<String>,
+    /// BETA-008-A: listener/deployment boundary posture.
+    pub proxy_mode: ProxyMode,
+    pub proxy_mode_source: FieldSource,
     /// BETA-007-B: per-field provenance, rendered in the ready line.
     pub sources: FieldSources,
 }
@@ -235,6 +282,10 @@ pub enum ConfigError {
     UnknownProfile { name: String, declared: Vec<String> },
     /// A profile name violates the closed shape (1..=32 of a-z 0-9 '-').
     InvalidProfileName { name: String },
+    /// Proxy mode is outside the closed reverse-proxy|direct set.
+    InvalidProxyMode { source: String, value: String },
+    /// Reverse-proxy mode must bind to a loopback host.
+    PublicBindInReverseProxy { host: String },
 }
 
 impl std::fmt::Display for ConfigError {
@@ -292,6 +343,14 @@ impl std::fmt::Display for ConfigError {
             ConfigError::InvalidProfileName { name } => write!(
                 f,
                 "profile name '{name}' is invalid (expected 1..=32 characters of a-z, 0-9, '-')"
+            ),
+            ConfigError::InvalidProxyMode { source, value } => write!(
+                f,
+                "proxy mode from {source} must be reverse-proxy|direct, got {value:?}"
+            ),
+            ConfigError::PublicBindInReverseProxy { host } => write!(
+                f,
+                "reverse-proxy mode requires a loopback bind; host {host:?} is public (use proxyMode=direct only when the operator owns the direct boundary)"
             ),
         }
     }
@@ -379,6 +438,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
     };
     let file_path = file.as_ref().map(|(p, _)| p.as_str());
     let base = file.as_ref().map(|(_, f)| f);
+    let file_proxy_mode = base.and_then(|f| f.proxy_mode.clone());
 
     // ---- layer: profile (BETA-007-D). Selected by VELQU_PROFILE, else
     // the file's activeProfile; overlays the file's base fields. Env
@@ -459,6 +519,25 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         (None, Some(v)) => Some((v, FieldSource::File)),
         (None, None) => None,
     };
+
+    // ---- proxy mode: cli > env > file > default. This is deliberately
+    // top-level only: profile changes must not silently alter the network
+    // exposure boundary.
+    let proxy_mode_value = if let Some(v) = &s.cli.proxy_mode {
+        (v.clone(), FieldSource::Cli)
+    } else if let Some(v) = (s.env)(ENV_PROXY_MODE) {
+        (v, FieldSource::Env)
+    } else if let Some(v) = file_proxy_mode.clone() {
+        (v, FieldSource::File)
+    } else {
+        ("reverse-proxy".to_string(), FieldSource::Default)
+    };
+    let proxy_mode = ProxyMode::parse_checked(&proxy_mode_value.0).map_err(|_| {
+        ConfigError::InvalidProxyMode {
+            source: proxy_mode_value.1.as_str().to_string(),
+            value: proxy_mode_value.0.clone(),
+        }
+    })?;
 
     // ---- host: cli > env > profile > file > default
     let mut sources = FieldSources {
@@ -621,8 +700,22 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         log,
         log_sample,
         active_profile,
+        proxy_mode,
+        proxy_mode_source: proxy_mode_value.1,
         sources,
     })
+}
+
+/// BETA-008-A: reverse-proxy mode is safe only on loopback. Keep the
+/// accepted set intentionally narrow rather than DNS-resolving an
+/// operator-provided name during startup.
+pub fn validate_proxy_bind(mode: ProxyMode, host: &str) -> Result<(), ConfigError> {
+    if mode.requires_loopback() && !matches!(host, "127.0.0.1" | "::1" | "[::1]" | "localhost") {
+        return Err(ConfigError::PublicBindInReverseProxy {
+            host: host.to_string(),
+        });
+    }
+    Ok(())
 }
 
 /// BETA-007-D: closed profile-name shape — 1..=32 characters of
@@ -674,6 +767,8 @@ pub fn startup_config_json(r: &Resolved) -> serde_json::Value {
         "logSample": r.log_sample,
         "logSampleSource": r.sources.log_sample.as_str(),
         "activeProfile": r.active_profile,
+        "proxyMode": r.proxy_mode.as_str(),
+        "proxyModeSource": r.proxy_mode_source.as_str(),
     })
 }
 
@@ -1093,6 +1188,84 @@ mod tests {
     }
 
     #[test]
+    fn proxy_mode_defaults_to_reverse_proxy_and_validates_bind() {
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        assert_eq!(r.proxy_mode, ProxyMode::ReverseProxy);
+        assert_eq!(r.proxy_mode_source, FieldSource::Default);
+        validate_proxy_bind(r.proxy_mode, &r.host).unwrap();
+        assert!(matches!(
+            validate_proxy_bind(ProxyMode::ReverseProxy, "0.0.0.0"),
+            Err(ConfigError::PublicBindInReverseProxy { .. })
+        ));
+        assert!(validate_proxy_bind(ProxyMode::ReverseProxy, "::1").is_ok());
+        assert!(validate_proxy_bind(ProxyMode::Direct, "0.0.0.0").is_ok());
+    }
+
+    #[test]
+    fn proxy_mode_layers_and_is_case_insensitive() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"proxyMode":"direct"}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli.clone(), &no_env, &read).unwrap();
+        assert_eq!(r.proxy_mode, ProxyMode::Direct);
+        assert_eq!(r.proxy_mode_source, FieldSource::File);
+        let e = env_of(&[("VELQU_PROXY_MODE", "REVERSE_PROXY")]);
+        let r = resolve_with(cli.clone(), &e, &read).unwrap();
+        assert_eq!(r.proxy_mode, ProxyMode::ReverseProxy);
+        assert_eq!(r.proxy_mode_source, FieldSource::Env);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            proxy_mode: Some("direct".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli, &e, &read).unwrap();
+        assert_eq!(r.proxy_mode, ProxyMode::Direct);
+        assert_eq!(r.proxy_mode_source, FieldSource::Cli);
+    }
+
+    #[test]
+    fn invalid_proxy_mode_fails_closed() {
+        let e = env_of(&[("VELQU_PROXY_MODE", "public")]);
+        let err = resolve_with(cli_default(), &e, &no_file).unwrap_err();
+        assert!(matches!(err, ConfigError::InvalidProxyMode { .. }), "{err}");
+        let e = env_of(&[("VELQU_PROXY_MODE", "direct")]);
+        let cli = CliConfig {
+            host: Some("0.0.0.0".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli, &e, &no_file).unwrap();
+        assert!(matches!(validate_proxy_bind(r.proxy_mode, &r.host), Ok(())));
+    }
+
+    #[test]
+    fn startup_config_reports_proxy_mode_without_secrets() {
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        let v = startup_config_json(&r);
+        assert_eq!(v["proxyMode"], "reverse-proxy");
+        assert_eq!(v["proxyModeSource"], "default");
+        assert!(!v.to_string().contains("DATABASE_URL"));
+    }
+
+    #[test]
+    fn unknown_proxy_mode_file_field_is_rejected_by_schema() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"proxyMod":"direct"}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        assert!(matches!(err, ConfigError::FileSchema { .. }), "{err}");
+    }
+
+    #[test]
     fn unknown_velqu_env_name_rejected_value_never_echoed() {
         // The canonical typo story: VELQU_MAXQUEUE is not VELQU_MAX_QUEUE.
         let names = vec![
@@ -1173,6 +1346,8 @@ mod tests {
             "logSample",
             "logSampleSource",
             "activeProfile",
+            "proxyMode",
+            "proxyModeSource",
         ];
         let keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, expected, "config block keys are a fixed allowlist");
