@@ -656,7 +656,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-015-C](../tasks/08_public_beta/BETA-015-C-linux-binaries.md) | P0 | implement | PASS | BETA-015-B | Linux binaries |
 | [BETA-015-D](../tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md) | P0 | implement | PASS | BETA-015-C | npm package tarballs |
 | [BETA-015-E](../tasks/08_public_beta/BETA-015-E-qpack-tools.md) | P0 | implement | PASS | BETA-015-D | QPack tools |
-| [BETA-015-F](../tasks/08_public_beta/BETA-015-F-sbom.md) | P0 | implement | TODO | BETA-015-E | SBOM |
+| [BETA-015-F](../tasks/08_public_beta/BETA-015-F-sbom.md) | P0 | implement | PASS | BETA-015-E | SBOM |
 | [BETA-015-G](../tasks/08_public_beta/BETA-015-G-checksums.md) | P0 | implement | TODO | BETA-015-F | Checksums |
 | [BETA-015-H](../tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md) | P0 | implement | TODO | BETA-015-G | Review/evidence indexes |
 | [BETA-015-I](../tasks/08_public_beta/BETA-015-I-known-limitations.md) | P0 | implement | TODO | BETA-015-H | Known limitations |

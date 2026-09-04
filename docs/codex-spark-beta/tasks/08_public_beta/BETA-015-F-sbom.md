@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-F) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-f (squash-merged; see git log for final hash)
+- Closes: #602
+
+### Behavior implemented
+
+SBOM deliverable of the beta release packet:
+- Added `scripts/sbom.sh`: generates a deterministic CycloneDX 1.5 SBOM at `release/sbom.cdx.json` from `cargo metadata` plus the shipped `@velqu/*` npm packages.
+- Rehearsed: 277 components (12 workspace crates + 256 external crates + 9 npm packages); all components carry license data; zero external crates missing licenses; commit-bound via `velqu:source-commit`; verdict PASS.
+- License posture recorded honestly: workspace crates carry `UNLICENSED-BEFORE-OWNER-DECISION`; npm packages carry `NOASSERTION` + `velqu:license-posture: owner-decision-pending` (license is an owner decision).
+- Fails closed if any external crate lacks license data.
+
+### Changed files
+
+- `scripts/sbom.sh` (new)
+- `docs/reports/beta-015-f-sbom.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-F-sbom.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Advisory-database scanning unavailable in this environment (BETA-009-B disclosure); the SBOM covers dependency/license identification.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
