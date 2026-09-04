@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -110,3 +110,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-E) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-e (squash-merged; see git log for final hash)
+- Closes: #571
+
+### Behavior implemented
+
+Rehearsed and validated the release yank/rollback procedure (dry-run only, Owner-gated execution):
+- Added `scripts/yank-rollback-rehearsal.sh` implementing the withdrawal governance of `docs/beta/governance/RELEASE_AUTHORITY.md`.
+- Covers all four Owner withdrawal triggers: incomplete evidence, checksum mismatch, security withdrawal, beta-limits violation.
+- Rehearsed actions: `npm dist-tag rm/add` (channel repoint to last stable prerelease), `npm yank`, GitHub release unpublish, and packet-level withdrawal record `{withdrawnVersion, reason, recordedAt, evidenceRewritten: false}`.
+- Enforced invariant: withdrawal appends a record and never rewrites historical evidence.
+- Emits `docs/reports/beta-011-e-yank-rollback-rehearsal.json` with verdict `PASS`; script exits non-zero if any invariant regresses.
+
+### Changed files
+
+- `scripts/yank-rollback-rehearsal.sh`
+- `docs/reports/beta-011-e-yank-rollback-rehearsal.json`
+- `docs/reports/beta-011-e-yank-rollback.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-E-support-yanking-rollback.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence mapping
+
+- Dry-run publish: BETA-011-B (`scripts/publish-tag-dryrun.sh`).
+- Release workflow: BETA-011-D (`scripts/release-packet` rehearsal at clean commit, SHA256SUMS all OK).
+- Rollback rehearsal: this packet (`scripts/yank-rollback-rehearsal.sh` — PASS).
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/yank-rollback-rehearsal.sh` — PASS
+
+### Disclosures
+
+- Dry-run only; actual yank/withdrawal requires an authorized published release and an Owner decision.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
