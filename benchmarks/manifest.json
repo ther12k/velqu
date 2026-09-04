@@ -1,7 +1,7 @@
 {
   "format": "velqu-benchmark-manifest-v2",
-  "generatedAt": "2026-09-04T01:57:33.625775Z",
-  "commit": "88ac7dbee1cbe58fd89502763317a6b9e0c93284",
+  "generatedAt": "2026-09-04T02:20:32.294875Z",
+  "commit": "85d9f02ff2d5b79c7f1485ded978fdd569e1f18d",
   "reviewedImplementationCommit": "4e6904951729ea14b48ca39a9564a950cc83e98e",
   "environment": {
     "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.39",

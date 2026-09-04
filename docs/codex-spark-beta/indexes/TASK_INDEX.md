@@ -599,7 +599,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-007-D](../tasks/08_public_beta/BETA-007-D-profile-specific-settings.md) | P0 | implement | PASS | BETA-007-C | Profile-specific settings |
 | [BETA-007-E](../tasks/08_public_beta/BETA-007-E-no-dynamic-code-execution.md) | P0 | implement | PASS | BETA-007-D | No dynamic code execution |
 | [BETA-007-V](../tasks/08_public_beta/BETA-007-V-verify-implement-configuration-and-secret-handling.md) | P0 | verify | PASS | BETA-007-A, BETA-007-B, BETA-007-C, BETA-007-D, BETA-007-E | Verify Implement configuration and secret handling |
-| [BETA-007-Z](../tasks/08_public_beta/BETA-007-Z-package-evidence-for-implement-configuration-and-secret-handling.md) | P0 | evidence | TODO | BETA-007-V | Package evidence for Implement configuration and secret handling |
+| [BETA-007-Z](../tasks/08_public_beta/BETA-007-Z-package-evidence-for-implement-configuration-and-secret-handling.md) | P0 | evidence | PASS | BETA-007-V | Package evidence for Implement configuration and secret handling |
 | [BETA-008-A](../tasks/08_public_beta/BETA-008-A-trusted-proxy-configuration.md) | P0 | implement | TODO | M3-GATE, BETA-006-Z | Trusted proxy configuration |
 | [BETA-008-B](../tasks/08_public_beta/BETA-008-B-forwarded-header-policy.md) | P0 | implement | TODO | BETA-008-A | Forwarded header policy |
 | [BETA-008-C](../tasks/08_public_beta/BETA-008-C-liveness-readiness-startup-endpoints.md) | P0 | implement | TODO | BETA-008-B | Liveness/readiness/startup endpoints |
