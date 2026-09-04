@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-G) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-g (squash-merged; see git log for final hash)
+- Closes: #603
+
+### Behavior implemented
+
+Unified checksums deliverable of the beta release packet:
+- `scripts/release-packet` now composes the SBOM (`scripts/sbom.sh`) and the 9 npm tarballs (`scripts/npm-package-tarballs.sh`) into the same `release/` directory during packet assembly.
+- One top-level `SHA256SUMS.txt` covers every shipped file (packet artifacts, binaries, SBOM, npm tarballs), deterministically sorted (`LC_ALL=C`), verified via `sha256sum -c` from inside `release/`; the final line prints `CHECKSUMS-OK: <n> files covered`.
+- Rehearsed at the clean packet commit: 20 files covered, all OK (transcript in the PR body).
+- Fail-closed posture preserved: clean tree + release binaries required before any checksum is written.
+
+### Changed files
+
+- `scripts/release-packet` (SBOM + tarball composition; unified top-level checksum manifest)
+- `docs/reports/beta-015-g-checksums.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-G-checksums.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Packet assembly requires the release binaries and bun toolchain (fail-closed); publication remains Owner-gated.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.

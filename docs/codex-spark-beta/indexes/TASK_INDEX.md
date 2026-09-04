@@ -657,7 +657,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-015-D](../tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md) | P0 | implement | PASS | BETA-015-C | npm package tarballs |
 | [BETA-015-E](../tasks/08_public_beta/BETA-015-E-qpack-tools.md) | P0 | implement | PASS | BETA-015-D | QPack tools |
 | [BETA-015-F](../tasks/08_public_beta/BETA-015-F-sbom.md) | P0 | implement | PASS | BETA-015-E | SBOM |
-| [BETA-015-G](../tasks/08_public_beta/BETA-015-G-checksums.md) | P0 | implement | TODO | BETA-015-F | Checksums |
+| [BETA-015-G](../tasks/08_public_beta/BETA-015-G-checksums.md) | P0 | implement | PASS | BETA-015-F | Checksums |
 | [BETA-015-H](../tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md) | P0 | implement | TODO | BETA-015-G | Review/evidence indexes |
 | [BETA-015-I](../tasks/08_public_beta/BETA-015-I-known-limitations.md) | P0 | implement | TODO | BETA-015-H | Known limitations |
 | [BETA-015-V](../tasks/08_public_beta/BETA-015-V-verify-generate-beta-release-evidence-sbom-and-checksums.md) | P0 | verify | TODO | BETA-015-A, BETA-015-B, BETA-015-C, BETA-015-D, BETA-015-E, BETA-015-F, BETA-015-G, BETA-015-H, BETA-015-I | Verify Generate beta release evidence, SBOM, and checksums |

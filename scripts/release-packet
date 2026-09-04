@@ -68,17 +68,22 @@ for f in "$OUT/REVIEW_INDEX.json" "$OUT/EVIDENCE_INDEX.json"; do
   grep -q "\\\"commit\\\": \\\"$COMMIT\\\"" "$f"
 done
 
+# BETA-015-F/G: compose the SBOM and the npm tarballs into the same release
+# directory so ONE checksum manifest covers the whole packet.
+./scripts/sbom.sh "$OUT/sbom.cdx.json" >/dev/null
+./scripts/npm-package-tarballs.sh "$OUT/npm-tarballs" >/dev/null
+
+# BETA-015-G: single top-level checksum manifest over every shipped file
+# (packet artifacts, SBOM, and npm tarballs). Nested SHA256SUMS.txt files
+# verify independently inside their own directory.
 (
   cd "$OUT"
-  : > SHA256SUMS.txt
-  FILES=(SOURCE-COMMIT.txt "velqu-${SHORT}.bundle" "source-${SHORT}.zip" velqu-runtime velqu-bytecode BENCHMARK_MANIFEST.json REVIEW_INDEX.json EVIDENCE_INDEX.json)
-  if [[ -f CHANGELOG.md ]]; then
-    FILES+=(CHANGELOG.md)
-  fi
-  for f in "${FILES[@]}"; do
-    sha256sum "$f" >> SHA256SUMS.txt
-  done
+  find . -type f ! -name SHA256SUMS.txt | sed 's|^\./||' | LC_ALL=C sort |
+    while IFS= read -r f; do
+      sha256sum "$f"
+    done > SHA256SUMS.txt
 )
 
 echo "release packet: commit ${SHORT}"
 (cd "$OUT" && sha256sum -c SHA256SUMS.txt)
+echo "CHECKSUMS-OK: $(grep -c . "$OUT/SHA256SUMS.txt") files covered"
