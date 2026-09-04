@@ -52,6 +52,69 @@ pub const ENV_MAX_BODY_BYTES: &str = "VELQU_MAX_BODY_BYTES";
 pub const ENV_MAX_QUEUE: &str = "VELQU_MAX_QUEUE";
 pub const ENV_CONFIG: &str = "VELQU_CONFIG";
 
+/// BETA-007-B: the closed `VELQU_*` environment namespace. Startup
+/// rejects any `VELQU_*` name outside this list — a typo'd knob
+/// (`VELQU_MAXQUEUE`) must fail before ready, never be silently
+/// ignored. Values of unknown names are never read or echoed (they
+/// may be secrets). Tooling-only names are recognized for dev/test
+/// convenience but never consumed by the serving runtime.
+pub const KNOWN_ENV_VARS: &[&str] = &[
+    // runtime configuration (BETA-007-A)
+    ENV_CONFIG,
+    ENV_HOST,
+    ENV_LOG,
+    ENV_LOG_SAMPLE,
+    ENV_MAX_BODY_BYTES,
+    ENV_MAX_QUEUE,
+    ENV_PORT,
+    // postgres capability (BETA-004-E)
+    "VELQU_DATABASE_URL",
+    "VELQU_PG_POOL_MAX",
+    "VELQU_PG_POOL_CONNECT_TIMEOUT_MS",
+    "VELQU_PG_POOL_IDLE_TIMEOUT_MS",
+    // build-time (embedded standalone pack)
+    "VELQU_STANDALONE_PACK",
+    // tooling-only (bench binaries, dev server, test gating)
+    "VELQU_ALLOC_PROFILE",
+    "VELQU_BENCH_DEBUG",
+    "VELQU_PACK",
+    "VELQU_PG_LIVE_TEST",
+    "VELQU_RUNTIME",
+    "VELQU_TEST_TRUST_KEYS",
+];
+
+/// Where a resolved field came from — reported per-field in the
+/// startup config block so operators can see which layer won.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldSource {
+    Cli,
+    Env,
+    File,
+    Default,
+}
+
+impl FieldSource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FieldSource::Cli => "cli",
+            FieldSource::Env => "env",
+            FieldSource::File => "file",
+            FieldSource::Default => "default",
+        }
+    }
+}
+
+/// Per-field provenance of the resolved configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FieldSources {
+    pub host: FieldSource,
+    pub port: FieldSource,
+    pub max_body_bytes: FieldSource,
+    pub max_queue: FieldSource,
+    pub log: FieldSource,
+    pub log_sample: FieldSource,
+}
+
 /// Versioned, typed config-file schema (`--config` / `VELQU_CONFIG`).
 ///
 /// `configVersion` is mandatory; unknown fields are rejected outright so
@@ -100,6 +163,8 @@ pub struct Resolved {
     pub max_queue: usize,
     pub log: &'static str,
     pub log_sample: u64,
+    /// BETA-007-B: per-field provenance, rendered in the ready line.
+    pub sources: FieldSources,
 }
 
 /// Typed configuration rejection. Rendered reasons name the field, the
@@ -131,6 +196,9 @@ pub enum ConfigError {
     InvalidHost { source: String, reason: String },
     /// log mode outside the closed off|errors|full set.
     InvalidLogMode { source: String, value: String },
+    /// A `VELQU_*` environment name outside the closed namespace. The
+    /// variable's VALUE is deliberately never read or echoed.
+    UnknownEnvVar { var: String },
 }
 
 impl std::fmt::Display for ConfigError {
@@ -166,6 +234,10 @@ impl std::fmt::Display for ConfigError {
             ConfigError::InvalidLogMode { source, value } => write!(
                 f,
                 "log mode from {source} must be off|errors|full, got {value:?}"
+            ),
+            ConfigError::UnknownEnvVar { var } => write!(
+                f,
+                "unknown environment variable {var}: the VELQU_* namespace is closed (see docs/beta/CONFIGURATION.md)"
             ),
         }
     }
@@ -266,14 +338,25 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         };
 
     // ---- host: cli > env > file > default
+    let mut sources = FieldSources {
+        host: FieldSource::Default,
+        port: FieldSource::Default,
+        max_body_bytes: FieldSource::Default,
+        max_queue: FieldSource::Default,
+        log: FieldSource::Default,
+        log_sample: FieldSource::Default,
+    };
     let host = if let Some(h) = &s.cli.host {
         validate_host(h, "cli")?;
+        sources.host = FieldSource::Cli;
         h.clone()
     } else if let Some(h) = (s.env)(ENV_HOST) {
         validate_host(&h, "env:VELQU_HOST")?;
+        sources.host = FieldSource::Env;
         h
     } else if let Some(h) = file_host {
         validate_host(&h, &file_source(file_path))?;
+        sources.host = FieldSource::File;
         h
     } else {
         DEFAULT_HOST.to_string()
@@ -285,14 +368,18 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         Ok(v as u16)
     };
     let port = if let Some(p) = s.cli.port {
+        sources.port = FieldSource::Cli;
         port_src(p as u64, "cli")?
     } else if let Some(v) = (s.env)(ENV_PORT) {
         let n = parse_env_u64(&v, ENV_PORT)?;
+        sources.port = FieldSource::Env;
         port_src(n, "env:VELQU_PORT")?
     } else if let Some(v) = (s.env)(ENV_LEGACY_PORT) {
         let n = parse_env_u64(&v, ENV_LEGACY_PORT)?;
+        sources.port = FieldSource::Env;
         port_src(n, "env:PORT")?
     } else if let Some(p) = file_port {
+        sources.port = FieldSource::File;
         port_src(p as u64, &file_source(file_path))?
     } else {
         DEFAULT_PORT
@@ -308,6 +395,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             MAX_BODY_BYTES_CEILING as u64,
             "env:VELQU_MAX_BODY_BYTES",
         )?;
+        sources.max_body_bytes = FieldSource::Env;
         n as usize
     } else if let Some(n) = file_body {
         check_range(
@@ -317,6 +405,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             MAX_BODY_BYTES_CEILING as u64,
             &file_source(file_path),
         )?;
+        sources.max_body_bytes = FieldSource::File;
         n as usize
     } else {
         DEFAULT_MAX_BODY_BYTES
@@ -332,6 +421,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             MAX_QUEUE_CEILING as u64,
             "env:VELQU_MAX_QUEUE",
         )?;
+        sources.max_queue = FieldSource::Env;
         n as usize
     } else if let Some(n) = file_queue {
         check_range(
@@ -341,6 +431,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             MAX_QUEUE_CEILING as u64,
             &file_source(file_path),
         )?;
+        sources.max_queue = FieldSource::File;
         n as usize
     } else {
         DEFAULT_MAX_QUEUE
@@ -348,10 +439,13 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
 
     // ---- log: cli > env > file > default (closed set, canonicalized)
     let log: &'static str = if let Some(v) = &s.cli.log {
+        sources.log = FieldSource::Cli;
         parse_log(v, "cli")?
     } else if let Some(v) = (s.env)(ENV_LOG) {
+        sources.log = FieldSource::Env;
         parse_log(&v, "env:VELQU_LOG")?
     } else if let Some(v) = file_log {
+        sources.log = FieldSource::File;
         parse_log(&v, &file_source(file_path))?
     } else {
         DEFAULT_LOG
@@ -360,6 +454,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
     // ---- logSample: cli > env > file > default
     let log_sample = if let Some(v) = s.cli.log_sample {
         check_range("logSample", v, 0, LOG_SAMPLE_CEILING, "cli")?;
+        sources.log_sample = FieldSource::Cli;
         v
     } else if let Some(v) = (s.env)(ENV_LOG_SAMPLE) {
         let n = parse_env_u64(&v, ENV_LOG_SAMPLE)?;
@@ -370,6 +465,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             LOG_SAMPLE_CEILING,
             "env:VELQU_LOG_SAMPLE",
         )?;
+        sources.log_sample = FieldSource::Env;
         n
     } else if let Some(n) = file_sample {
         check_range(
@@ -379,6 +475,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             LOG_SAMPLE_CEILING,
             &file_source(file_path),
         )?;
+        sources.log_sample = FieldSource::File;
         n
     } else {
         0
@@ -391,6 +488,40 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         max_queue,
         log,
         log_sample,
+        sources,
+    })
+}
+
+/// BETA-007-B: validate that every `VELQU_*` name in the environment is
+/// on the closed allowlist. Unknown names reject startup (a typo'd knob
+/// must never be silently ignored); values are never read. Names
+/// outside the `VELQU_*` namespace are not the runtime's concern.
+pub fn validate_env_namespace(names: &[String]) -> Result<(), ConfigError> {
+    for name in names {
+        if name.starts_with("VELQU_") && !KNOWN_ENV_VARS.contains(&name.as_str()) {
+            return Err(ConfigError::UnknownEnvVar { var: name.clone() });
+        }
+    }
+    Ok(())
+}
+
+/// BETA-007-B: the validated, non-secret resolved configuration as the
+/// `config` block of the startup `ready` line — field values plus the
+/// layer each field came from. Keys are a fixed allowlist (tested).
+pub fn startup_config_json(r: &Resolved) -> serde_json::Value {
+    serde_json::json!({
+        "host": r.host,
+        "hostSource": r.sources.host.as_str(),
+        "port": r.port,
+        "portSource": r.sources.port.as_str(),
+        "maxBodyBytes": r.max_body_bytes,
+        "maxBodyBytesSource": r.sources.max_body_bytes.as_str(),
+        "maxQueue": r.max_queue,
+        "maxQueueSource": r.sources.max_queue.as_str(),
+        "log": r.log,
+        "logSource": r.sources.log.as_str(),
+        "logSample": r.log_sample,
+        "logSampleSource": r.sources.log_sample.as_str(),
     })
 }
 
@@ -763,5 +894,93 @@ mod tests {
         assert_eq!(r.host, "127.0.0.1");
         assert_eq!(r.log, "errors");
         assert_eq!(r.log_sample, 0);
+    }
+
+    #[test]
+    fn unknown_velqu_env_name_rejected_value_never_echoed() {
+        // The canonical typo story: VELQU_MAXQUEUE is not VELQU_MAX_QUEUE.
+        let names = vec![
+            "PATH".to_string(),
+            "VELQU_MAXQUEUE".to_string(),
+            "VELQU_DATABASE_URL".to_string(),
+        ];
+        let err = validate_env_namespace(&names).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::UnknownEnvVar { ref var } if var == "VELQU_MAXQUEUE"),
+            "{err}"
+        );
+        // The rendered rejection names the variable, never a value.
+        let rendered = err.to_string();
+        assert!(rendered.contains("VELQU_MAXQUEUE"), "{rendered}");
+        assert!(!rendered.contains('='));
+    }
+
+    #[test]
+    fn every_known_env_var_passes_the_namespace_check() {
+        let names: Vec<String> = KNOWN_ENV_VARS.iter().map(|s| s.to_string()).collect();
+        validate_env_namespace(&names).expect("the documented namespace must validate");
+    }
+
+    #[test]
+    fn namespace_check_ignores_non_velqu_names() {
+        let names = vec!["PATH".to_string(), "PORT".to_string(), "HOME".to_string()];
+        validate_env_namespace(&names).expect("non-VELQU_ names are not ours to validate");
+        // Case-sensitive: the namespace is VELQU_, not velqu_.
+        let lower = vec!["velqu_port".to_string()];
+        validate_env_namespace(&lower).expect("namespace prefix is case-sensitive");
+    }
+
+    #[test]
+    fn resolved_sources_report_the_winning_layer() {
+        // All defaults.
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        assert_eq!(r.sources.host, FieldSource::Default);
+        assert_eq!(r.sources.port, FieldSource::Default);
+        assert_eq!(r.sources.max_queue, FieldSource::Default);
+
+        // File wins over default; env wins over file; cli wins over env.
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"maxQueue":512,"log":"off"}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            log_sample: Some(10),
+            ..cli_default()
+        };
+        let e = env_of(&[("VELQU_MAX_QUEUE", "1024")]);
+        let r = resolve_with(cli, &e, &read).unwrap();
+        assert_eq!(r.sources.max_queue, FieldSource::Env);
+        assert_eq!(r.sources.log, FieldSource::File);
+        assert_eq!(r.sources.log_sample, FieldSource::Cli);
+        assert_eq!(r.max_queue, 1024);
+        assert_eq!(r.log, "off");
+        assert_eq!(r.log_sample, 10);
+    }
+
+    #[test]
+    fn startup_config_json_is_an_exact_field_allowlist() {
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        let v = startup_config_json(&r);
+        let obj = v.as_object().expect("config block must be an object");
+        let expected: Vec<&str> = vec![
+            "host",
+            "hostSource",
+            "port",
+            "portSource",
+            "maxBodyBytes",
+            "maxBodyBytesSource",
+            "maxQueue",
+            "maxQueueSource",
+            "log",
+            "logSource",
+            "logSample",
+            "logSampleSource",
+        ];
+        let keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, expected, "config block keys are a fixed allowlist");
+        // Default provenance is visible, and no secret-shaped field exists.
+        assert_eq!(obj["portSource"], "default");
+        assert_eq!(obj["log"], "errors");
     }
 }
