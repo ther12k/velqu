@@ -632,7 +632,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-012-B](../tasks/08_public_beta/BETA-012-B-quickstart.md) | P1 | implement | PASS | BETA-012-A | Quickstart |
 | [BETA-012-C](../tasks/08_public_beta/BETA-012-C-architecture.md) | P1 | implement | PASS | BETA-012-B | Architecture |
 | [BETA-012-D](../tasks/08_public_beta/BETA-012-D-contracts-treaty.md) | P1 | implement | PASS | BETA-012-C | Contracts/Treaty |
-| [BETA-012-E](../tasks/08_public_beta/BETA-012-E-fetch-postgres-auth.md) | P1 | implement | TODO | BETA-012-D | Fetch/Postgres/auth |
+| [BETA-012-E](../tasks/08_public_beta/BETA-012-E-fetch-postgres-auth.md) | P1 | implement | PASS | BETA-012-D | Fetch/Postgres/auth |
 | [BETA-012-F](../tasks/08_public_beta/BETA-012-F-deployment.md) | P1 | implement | TODO | BETA-012-E | Deployment |
 | [BETA-012-G](../tasks/08_public_beta/BETA-012-G-troubleshooting.md) | P1 | implement | TODO | BETA-012-F | Troubleshooting |
 | [BETA-012-H](../tasks/08_public_beta/BETA-012-H-performance-methodology.md) | P1 | implement | TODO | BETA-012-G | Performance methodology |
