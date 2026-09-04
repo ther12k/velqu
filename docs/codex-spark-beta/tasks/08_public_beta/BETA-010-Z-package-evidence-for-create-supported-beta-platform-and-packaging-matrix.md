@@ -4,7 +4,7 @@ parent_task: BETA-010
 milestone: BETA
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -120,3 +120,57 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-010-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-010-z (squash-merged; see git log for final hash)
+- Closes: #566
+
+### Behavior verified and packaged
+
+Parent task BETA-010 is closed as **PASS** and flipped in `docs/beta/04_TASK_LEDGER.md`.
+- **Published platform list is exact**: Linux x86_64 glibc is the sole public beta platform promise (`docs/beta/governance/PLATFORM_SUPPORT.md`, `docs/reports/beta-010-a-linux-x86-64-glibc-platform.md`).
+- **Unsupported platforms fail with guidance**: ARM64 documented as conditional CI portability signal; macOS development-only; Windows/musl unsupported (`docs/reports/beta-010-b-linux-arm64-glibc-ci.md`).
+- **Packages contain no accidental source/compiler artifacts**: 9 `@velqu/*` packages explicitly marked `private: true`, preventing unauthorized publish (`scripts/npm-package-inventory.sh` -> `PREPARED_NOT_PUBLISHED`). Dockerfile excludes build tooling.
+- **Install works in clean environment**: `scripts/clean-install-test.sh` executes release binary and verified pack in an isolated temporary directory with zero repository state (`CLEAN-INSTALL-TEST-OK`).
+- `scripts/qpack-tools-inventory.sh`: validated `velqu-runtime`, `velqu-standalone`, `velqu-bytecode`, `velqu pack inspect`, and `velqu pack migrate` (`docs/reports/beta-010-d-qpack-tools-inventory.json`).
+
+### Changed files
+
+- `docs/reports/beta-010-z-package-evidence.md` (new packaging evidence report)
+- `docs/beta/04_TASK_LEDGER.md` (BETA-010 flipped from TODO to PASS)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-010-Z-package-evidence-for-create-supported-beta-platform-and-packaging-matrix.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- `docs/reports/beta-010-a-linux-x86-64-glibc-platform.md`
+- `docs/reports/beta-010-b-linux-arm64-glibc-ci.md`
+- `docs/reports/beta-010-c-npm-package-inventory.json`
+- `docs/reports/beta-010-c-npm-beta-tag.md`
+- `docs/reports/beta-010-d-qpack-tools-inventory.json`
+- `docs/reports/beta-010-d-runtime-binary-qpack-tools.md`
+- `docs/reports/beta-010-e-clean-install-tests.md`
+- `docs/reports/beta-010-v-verify-platform-packaging-matrix.md`
+- `docs/reports/beta-010-z-package-evidence.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `cargo test -p q-engine-quickjs` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `scripts/clean-install-test.sh` — `CLEAN-INSTALL-TEST-OK`
+- `scripts/artifact-smoke.sh` — `SMOKE-OK`
+- `scripts/proxy-smoke.sh` — `PROXY-SMOKE-OK`
+
+### Disclosures
+
+- Evidence packaging only; no runtime functional changes.
+- Public beta platform scope is strictly Linux x86_64 glibc.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
