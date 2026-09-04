@@ -619,7 +619,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-012-E — Fetch/Postgres/auth](tasks/08_public_beta/BETA-012-E-fetch-postgres-auth.md)
 - [x] [BETA-012-F — Deployment](tasks/08_public_beta/BETA-012-F-deployment.md)
 - [x] [BETA-012-G — Troubleshooting](tasks/08_public_beta/BETA-012-G-troubleshooting.md)
-- [ ] [BETA-012-H — Performance methodology](tasks/08_public_beta/BETA-012-H-performance-methodology.md)
+- [x] [BETA-012-H — Performance methodology](tasks/08_public_beta/BETA-012-H-performance-methodology.md)
 - [ ] [BETA-012-I — Limitations/non-goals](tasks/08_public_beta/BETA-012-I-limitations-non-goals.md)
 - [ ] [BETA-012-V — Verify Complete beta documentation and limitations](tasks/08_public_beta/BETA-012-V-verify-complete-beta-documentation-and-limitations.md)
 - [ ] [BETA-012-Z — Package evidence for Complete beta documentation and limitations](tasks/08_public_beta/BETA-012-Z-package-evidence-for-complete-beta-documentation-and-limitations.md)
