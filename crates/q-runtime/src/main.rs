@@ -17,20 +17,23 @@ struct Args {
     /// Path to the application pack (velqu.qpack v1)
     #[arg(long)]
     pack: Option<PathBuf>,
-    /// TCP port (default 3000, or PORT env)
+    /// TCP port (default 3000, or VELQU_PORT / PORT env)
     #[arg(long)]
     port: Option<u16>,
-    #[arg(long, default_value = "127.0.0.1")]
-    host: String,
-    /// Optional limits/config JSON overriding defaults
+    /// TCP host (default 127.0.0.1, or VELQU_HOST env)
+    #[arg(long)]
+    host: Option<String>,
+    /// Versioned limits/config JSON (configVersion: 1); selects the
+    /// file layer, overridable per-field by VELQU_* env
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Request logging mode: off | errors | full (default: errors)
-    #[arg(long, default_value = "errors")]
-    log: String,
-    /// Sample successful completion logs every N requests; 0 disables sampling.
-    #[arg(long, default_value_t = 0)]
-    log_sample: u64,
+    /// Request logging mode: off | errors | full (default errors, or VELQU_LOG)
+    #[arg(long)]
+    log: Option<String>,
+    /// Sample successful completion logs every N requests; 0 disables
+    /// sampling (default 0, or VELQU_LOG_SAMPLE).
+    #[arg(long)]
+    log_sample: Option<u64>,
     /// M26-002-C: the explicit source-rebuild path — ignore embedded
     /// bytecode and evaluate the verified SOURCE bundle (sanctioned
     /// recovery for cross-target bytecode; rebuild the pack otherwise).

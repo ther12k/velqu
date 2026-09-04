@@ -51,6 +51,27 @@ impl LogMode {
             _ => LogMode::Errors,
         }
     }
+
+    /// BETA-007-A: typed parse for configuration surfaces — unknown
+    /// values are a typed rejection, never a silent fallback.
+    pub fn parse_checked(s: &str) -> Result<LogMode, String> {
+        match s.to_ascii_lowercase().as_str() {
+            "off" => Ok(LogMode::Off),
+            "errors" => Ok(LogMode::Errors),
+            "full" => Ok(LogMode::Full),
+            other => Err(format!(
+                "unknown log mode {other:?} (expected off|errors|full)"
+            )),
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LogMode::Off => "off",
+            LogMode::Errors => "errors",
+            LogMode::Full => "full",
+        }
+    }
 }
 
 #[allow(dead_code)]

@@ -10,6 +10,7 @@
 
 /// M4A-009-C: policy-gated outbound fetch dialer bridging the engine to the
 /// shared outbound pool.
+pub mod config;
 pub mod fetch_bridge;
 pub mod fetch_stack;
 pub mod problems;
@@ -42,13 +43,16 @@ pub enum PackSource {
 }
 
 /// Runtime configuration shared by both binaries (CLI flags map 1:1).
+/// Fields that are `None` were not given on the CLI and resolve through
+/// the BETA-007-A configuration layers: environment, then the versioned
+/// config file, then built-in defaults (`config::resolve`).
 #[derive(Debug, Clone)]
 pub struct RunConfig {
     pub port: Option<u16>,
-    pub host: String,
+    pub host: Option<String>,
     pub config: Option<PathBuf>,
-    pub log: String,
-    pub log_sample: u64,
+    pub log: Option<String>,
+    pub log_sample: Option<u64>,
     /// M26-002-C: explicit source-rebuild recovery path.
     pub no_bytecode: bool,
     /// M27-003-D: explicit context-profile override for compatibility
@@ -156,35 +160,39 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
     };
     stages.push(("router.build".into(), t.elapsed().as_secs_f64() * 1000.0));
 
-    // ---- limits (config file may override)
-    let mut limits = Limits::default();
-    if let Some(cfg_path) = &cfg.config {
-        match std::fs::read_to_string(cfg_path) {
-            Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
-                Ok(v) => {
-                    if let Some(b) = v.get("maxBodyBytes").and_then(|x| x.as_u64()) {
-                        limits.max_body_bytes = b as usize;
-                    }
-                    if let Some(q) = v.get("maxQueue").and_then(|x| x.as_u64()) {
-                        limits.max_queue = q as usize;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("config parse error: {e}");
-                    return 2;
-                }
-            },
-            Err(e) => {
-                eprintln!("config read error: {e}");
-                return 2;
-            }
+    // ---- stage: config.resolve (BETA-007-A: typed environment/file
+    // configuration. Invalid values fail closed BEFORE the engine or
+    // listener exist; values are never clamped into range.)
+    let t = Instant::now();
+    let resolved = match config::resolve(config::Sources {
+        cli: config::CliConfig {
+            host: cfg.host.clone(),
+            port: cfg.port,
+            config: cfg.config.clone(),
+            log: cfg.log.clone(),
+            log_sample: cfg.log_sample,
+        },
+        env: &|k| std::env::var(k).ok(),
+        read_file: &|p| std::fs::read_to_string(p),
+    }) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!(
+                "{}",
+                serde_json::json!({
+                    "level": "error", "event": "startup.rejected",
+                    "stage": "config.resolve", "error": e.to_string(),
+                })
+            );
+            return 2;
         }
-    }
-
-    let port = cfg
-        .port
-        .or_else(|| std::env::var("PORT").ok().and_then(|p| p.parse().ok()))
-        .unwrap_or(3000);
+    };
+    let limits = Limits {
+        max_body_bytes: resolved.max_body_bytes,
+        max_queue: resolved.max_queue,
+        ..Default::default()
+    };
+    stages.push(("config.resolve".into(), t.elapsed().as_secs_f64() * 1000.0));
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -332,7 +340,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
 
         // ---- stage: listen
         let t = Instant::now();
-        let addr = format!("{}:{}", cfg.host, port);
+        let addr = format!("{}:{}", resolved.host, resolved.port);
         let listener = match tokio::net::TcpListener::bind(&addr).await {
             Ok(l) => l,
             Err(e) => {
@@ -447,8 +455,8 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             // M3-008-C: per-reason load-shed counters, rendered in the
             // shutdown report.
             load_shed: q_capabilities::LoadShedCounters::new(),
-            log_mode: serve::LogMode::parse_mode(&cfg.log),
-            log_sample: cfg.log_sample,
+            log_mode: serve::LogMode::parse_mode(resolved.log),
+            log_sample: resolved.log_sample,
             log_sequence: std::sync::atomic::AtomicU64::new(0),
             metrics: std::sync::Arc::new(serve::StageMetrics::default()),
             route_metrics: serve::RouteStatusMetrics::from_route_ids(route_metric_ids),
