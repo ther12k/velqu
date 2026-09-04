@@ -1,0 +1,22 @@
+# BETA-008-E — local container smoke behind an optional edge proxy.
+# The runtime port is loopback-published only; public TLS belongs at the edge.
+services:
+  velqu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: velqu-proof:beta
+    environment:
+      VELQU_HOST: 0.0.0.0
+      VELQU_PROXY_MODE: direct
+      VELQU_LOG: errors
+    ports:
+      - "127.0.0.1:3000:3000"
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/health/ready | grep -q 'ready'" ]
+      interval: 5s
+      timeout: 2s
+      start_period: 5s
+      retries: 5
