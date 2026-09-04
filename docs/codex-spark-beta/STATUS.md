@@ -593,7 +593,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-008-Z — Package evidence for Implement reverse-proxy, drain, and deployment semantics](tasks/08_public_beta/BETA-008-Z-package-evidence-for-implement-reverse-proxy-drain-and-deployment-semantics.md)
 - [x] [BETA-009-A — Run fuzz suites for pack/router/schema/bridge/HTTP](tasks/08_public_beta/BETA-009-A-run-fuzz-suites-for-pack-router-schema-bridge-http.md)
 - [x] [BETA-009-B — Dependency vulnerability and license scan](tasks/08_public_beta/BETA-009-B-dependency-vulnerability-and-license-scan.md)
-- [ ] [BETA-009-C — Threat-model review](tasks/08_public_beta/BETA-009-C-threat-model-review.md)
+- [x] [BETA-009-C — Threat-model review](tasks/08_public_beta/BETA-009-C-threat-model-review.md)
 - [ ] [BETA-009-D — Chaos tests for upstream/DB/worker poison](tasks/08_public_beta/BETA-009-D-chaos-tests-for-upstream-db-worker-poison.md)
 - [ ] [BETA-009-E — No known critical/high exploitable issue](tasks/08_public_beta/BETA-009-E-no-known-critical-high-exploitable-issue.md)
 - [ ] [BETA-009-V — Verify Run beta security and reliability baseline](tasks/08_public_beta/BETA-009-V-verify-run-beta-security-and-reliability-baseline.md)
