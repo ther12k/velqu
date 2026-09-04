@@ -3,6 +3,7 @@
 //! Independently benchmarkable (no engine/route knowledge).
 
 use std::collections::VecDeque;
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -51,11 +52,42 @@ impl Default for Limits {
     }
 }
 
+/// Ingress headers that are ordinary request data, never identity,
+/// authentication, authorization, scheme, or routing input (ADR-0034).
+/// Keep this list closed and case-insensitive; adding a normalization or
+/// trust shortcut here would change the deployment security boundary.
+pub const UNTRUSTED_INGRESS_HEADERS: [&str; 7] = [
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-all",
+    "forwarded",
+    "host",
+];
+
+/// Returns true for an ingress header that must never be treated as a
+/// connection identity claim. Header values remain readable as application
+/// data when a route declares them.
+pub fn is_untrusted_ingress_header(name: &str) -> bool {
+    UNTRUSTED_INGRESS_HEADERS.contains(&name.to_ascii_lowercase().as_str())
+}
+
+/// The only peer identity available to the runtime: the accepted TCP
+/// connection peer. Forwarded headers are deliberately not consulted.
+#[inline]
+pub fn connection_peer(peer_addr: SocketAddr, _headers: &hyper::HeaderMap) -> SocketAddr {
+    peer_addr
+}
+
 /// Native request parts retained through admission (M24-002-A). Method, Uri,
 /// HeaderMap, and the body stream stay in their hyper forms; the consumer
 /// materializes fields only when its pipeline needs them.
 pub struct NativeRequest {
     pub request_id: String,
+    /// Connection peer address from `TcpListener::accept`; never derived
+    /// from a forwarded/header claim.
+    pub peer_addr: SocketAddr,
     pub method: hyper::Method,
     pub uri: hyper::Uri,
     pub headers: hyper::HeaderMap,
@@ -67,6 +99,7 @@ impl std::fmt::Debug for NativeRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NativeRequest")
             .field("request_id", &self.request_id)
+            .field("peer_addr", &self.peer_addr)
             .field("method", &self.method)
             .field("uri", &self.uri)
             .field("header_count", &self.headers.len())
@@ -246,6 +279,13 @@ impl HttpHost {
         self.shared.limits
     }
 
+    /// Returns the connection peer supplied by the accept loop. This API
+    /// intentionally has no forwarded-header parameter: a proxy claim can
+    /// never become a runtime identity by accident.
+    pub fn peer_addr(req: &NativeRequest) -> SocketAddr {
+        connection_peer(req.peer_addr, &req.headers)
+    }
+
     /// Accept loop. Returns once `shutdown` fires AND in-flight work drained.
     ///
     /// M3-007-C: connection tasks are tracked; after the accept loop
@@ -278,7 +318,7 @@ impl HttpHost {
                     if *shutdown.borrow() { break; }
                 }
                 accepted = listener.accept() => {
-                    let (stream, _peer) = match accepted {
+                    let (stream, peer_addr) = match accepted {
                         Ok(x) => x,
                         Err(e) => return Err(e),
                     };
@@ -287,7 +327,11 @@ impl HttpHost {
                     let watcher = graceful.watcher();
                     connections.spawn(async move {
                         let io = TokioIo::new(stream);
-                        let service = ReqService { host: host.clone(), handler: Arc::clone(&handler) };
+                        let service = ReqService {
+                            host: host.clone(),
+                            handler: Arc::clone(&handler),
+                            peer_addr,
+                        };
                         let conn = hyper::server::conn::http1::Builder::new()
                             .keep_alive(true)
                             // hyper's default 8 KiB buffer would reject large
@@ -351,6 +395,7 @@ fn query_raw_len(uri: &hyper::Uri) -> usize {
 struct ReqService<H> {
     host: HttpHost,
     handler: Arc<H>,
+    peer_addr: SocketAddr,
 }
 
 impl<H, F> Service<Request<Incoming>> for ReqService<H>
@@ -367,6 +412,7 @@ where
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         let host = self.host.clone();
         let handler = Arc::clone(&self.handler);
+        let peer_addr = self.peer_addr;
         Box::pin(async move {
             let permit = match host.shared.queue.clone().try_acquire_owned() {
                 Ok(p) => p,
@@ -378,7 +424,7 @@ where
                     ));
                 }
             };
-            let out = match admit(&host, req) {
+            let out = match admit(&host, req, peer_addr) {
                 Ok(native) => handler(native).await,
                 Err(e) => (Err(e), "admission".into(), "admission"),
             };
@@ -405,7 +451,11 @@ where
 /// Admission over the native head only: URI/header limits are enforced here
 /// with zero materialization — no query parse, no header clone, no body poll.
 /// The queue permit is already held by the caller (before this function).
-fn admit(host: &HttpHost, req: Request<Incoming>) -> Result<NativeRequest, HttpError> {
+fn admit(
+    host: &HttpHost,
+    req: Request<Incoming>,
+    peer_addr: SocketAddr,
+) -> Result<NativeRequest, HttpError> {
     let limits = host.shared.limits;
     let (parts, body) = req.into_parts();
     let uri = parts.uri;
@@ -438,6 +488,7 @@ fn admit(host: &HttpHost, req: Request<Incoming>) -> Result<NativeRequest, HttpE
             host.shared.start_unix_ms,
             host.shared.request_clock.fetch_add(1, Ordering::Relaxed)
         ),
+        peer_addr,
         method: parts.method,
         uri,
         headers: parts.headers,
@@ -581,6 +632,33 @@ fn now_unix_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn forwarded_headers_are_data_not_identity() {
+        for name in [
+            "X-Forwarded-For",
+            "x-forwarded-proto",
+            "X-Forwarded-Host",
+            "X-Forwarded-Port",
+            "X-Forwarded-All",
+            "Forwarded",
+            "Host",
+        ] {
+            assert!(
+                is_untrusted_ingress_header(name),
+                "{name} must stay untrusted"
+            );
+        }
+        for name in ["Authorization", "X-Trace-Id", "Content-Type"] {
+            assert!(!is_untrusted_ingress_header(name));
+        }
+
+        let peer = "127.0.0.1:4321".parse().unwrap();
+        let mut headers = hyper::HeaderMap::new();
+        headers.insert("x-forwarded-for", "203.0.113.10".parse().unwrap());
+        headers.insert("host", "attacker.invalid".parse().unwrap());
+        assert_eq!(connection_peer(peer, &headers), peer);
+    }
 
     #[test]
     fn query_parsing_and_decoding() {

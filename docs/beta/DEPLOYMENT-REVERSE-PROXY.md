@@ -70,6 +70,23 @@ identity, scheme, host, or port from them. If the operator explicitly selects
 and forwarding-header consequences — the runtime still does not trust those
 headers.
 
+## Forwarded header policy (BETA-008-B)
+
+The runtime treats `X-Forwarded-For`, `X-Forwarded-Proto`,
+`X-Forwarded-Host`, `X-Forwarded-Port`, `X-Forwarded-All`, RFC 7239
+`Forwarded`, and `Host` as ordinary request data only. They are never used for
+client identity, authentication, authorization, scheme reconstruction, or
+route selection. A forged forwarding claim therefore cannot authenticate a
+request or redirect it to another route. If an application needs identity to
+cross the proxy, use a signed application-layer token; proxy header trust is
+out of scope.
+
+The runtime records the TCP connection peer from `TcpListener::accept`; it does
+not replace that peer with a header claim. Forwarded headers can still be
+read when the route explicitly declares them, because readability as data is
+not trust. The peer is an internal host value, not an application `ctx` field;
+this keeps identity and authorization decisions out of the JS request ABI.
+
 ## Health, readiness, and drain
 
 Use `/health/live` for process/listener liveness and `/health/ready` for
