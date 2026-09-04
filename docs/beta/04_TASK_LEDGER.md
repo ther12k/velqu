@@ -111,7 +111,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | BETA-005 | P0 | PASS | M27-GATE, M25-GATE | BETA | Implement JWT/auth reference package |
 | BETA-006 | P0 | PASS | M3-GATE, M28-GATE | BETA | Implement beta observability baseline |
 | BETA-007 | P0 | PASS | M27-GATE | BETA | Implement configuration and secret handling |
-| BETA-008 | P0 | TODO | M3-GATE, BETA-006 | BETA | Implement reverse-proxy, drain, and deployment semantics |
+| BETA-008 | P0 | PASS | M3-GATE, BETA-006 | BETA | Implement reverse-proxy, drain, and deployment semantics |
 | BETA-009 | P0 | TODO | M28-GATE, M3-GATE, BETA-004, BETA-005, BETA-007 | BETA | Run beta security and reliability baseline |
 | BETA-010 | P1 | TODO | M26-GATE, M4A-002 | BETA | Create supported beta platform and packaging matrix |
 | BETA-011 | P1 | TODO | M4A-GATE, BETA-010 | BETA | Automate beta publishing and versioning |
