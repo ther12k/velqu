@@ -1,0 +1,35 @@
+{
+  "format": "velqu-beta-yank-rollback-rehearsal-v1",
+  "targetVersion": "0.1.0-beta.1",
+  "rollbackTarget": "0.1.0-alpha.0",
+  "defaultTag": "beta",
+  "triggerConditions": [
+    "release evidence is incomplete",
+    "checksums do not match",
+    "a security issue requires withdrawal",
+    "a release violates stated beta limits"
+  ],
+  "rehearsal": {
+    "distTagRemoval": "npm dist-tag rm @velqu/cli beta --dry-run",
+    "distTagRepoint": "npm dist-tag add @velqu/cli@0.1.0-alpha.0 beta --dry-run",
+    "packageYank": "npm yank @velqu/cli@0.1.0-beta.1 --dry-run",
+    "githubReleaseWithdraw": "gh release unpublish <tag> --yes (or delete) with withdrawal note",
+    "packetWithdrawalRecord": {
+      "schema": {
+        "withdrawnVersion": "0.1.0-beta.1",
+        "reason": "<one of the four trigger conditions>",
+        "recordedAt": "<UTC ISO-8601>",
+        "evidenceRewritten": false
+      },
+      "invariant": "Withdrawal appends a record; historical evidence files are never modified."
+    }
+  },
+  "checks": {
+    "allDryRun": true,
+    "triggerConditionsRecorded": true,
+    "rollbackTargetIsStableChannel": true,
+    "authorityDocumentPresent": true,
+    "packetBuilderSupportsWithdrawal": true
+  },
+  "verdict": "PASS"
+}
