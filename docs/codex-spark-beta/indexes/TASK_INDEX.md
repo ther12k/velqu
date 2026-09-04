@@ -627,7 +627,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-011-D](../tasks/08_public_beta/BETA-011-D-create-github-style-release-packet.md) | P1 | implement | PASS | BETA-011-C | Create GitHub-style release packet |
 | [BETA-011-E](../tasks/08_public_beta/BETA-011-E-support-yanking-rollback.md) | P1 | implement | PASS | BETA-011-D | Support yanking/rollback |
 | [BETA-011-V](../tasks/08_public_beta/BETA-011-V-verify-automate-beta-publishing-and-versioning.md) | P1 | verify | PASS | BETA-011-A, BETA-011-B, BETA-011-C, BETA-011-D, BETA-011-E | Verify Automate beta publishing and versioning |
-| [BETA-011-Z](../tasks/08_public_beta/BETA-011-Z-package-evidence-for-automate-beta-publishing-and-versioning.md) | P1 | evidence | TODO | BETA-011-V | Package evidence for Automate beta publishing and versioning |
+| [BETA-011-Z](../tasks/08_public_beta/BETA-011-Z-package-evidence-for-automate-beta-publishing-and-versioning.md) | P1 | evidence | PASS | BETA-011-V | Package evidence for Automate beta publishing and versioning |
 | [BETA-012-A](../tasks/08_public_beta/BETA-012-A-installation.md) | P1 | implement | TODO | M4A-GATE, BETA-004-Z, BETA-005-Z, BETA-008-Z | Installation |
 | [BETA-012-B](../tasks/08_public_beta/BETA-012-B-quickstart.md) | P1 | implement | TODO | BETA-012-A | Quickstart |
 | [BETA-012-C](../tasks/08_public_beta/BETA-012-C-architecture.md) | P1 | implement | TODO | BETA-012-B | Architecture |

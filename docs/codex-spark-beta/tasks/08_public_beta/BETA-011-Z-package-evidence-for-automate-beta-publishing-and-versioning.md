@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -119,3 +119,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-z (squash-merged; see git log for final hash)
+- Closes: #573
+
+### Evidence packaged
+
+Full evidence closure for parent BETA-011; ledger row flipped to PASS in `docs/beta/04_TASK_LEDGER.md`:
+- Packet inventory A–E + V with canonical evidence paths and PR numbers (#1167–#1172) in `docs/reports/beta-011-z-package-evidence.md`.
+- All four acceptance guardrails mapped to evidence: version uniformity (0.1.0 across Cargo.toml / 9 packages / q-pack compiler string), non-mutating release re-run (370bb8b rehearsal), tested rollback (`yank-rollback-rehearsal.sh` PASS), breaking-change notes (`docs/beta/CHANGELOG.md` shipped in packet).
+- All three rehearsal scripts re-run in this worktree: PASS with deterministic output, zero tree changes.
+
+### Changed files
+
+- `docs/reports/beta-011-z-package-evidence.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-Z-package-evidence-for-automate-beta-publishing-and-versioning.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+- `docs/beta/04_TASK_LEDGER.md` (BETA-011 → PASS)
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (101+6+5+2+37+3)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- npm/GitHub publication remains Owner-gated; all publishing evidence is dry-run/simulation by design.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
