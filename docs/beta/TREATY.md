@@ -69,6 +69,29 @@ Bun-only extensions such as `preconnect` are not part of the client contract.
 Use `treatyRoutes` when publishing a client for an explicit route allowlist so
 unused routes can be tree-shaken.
 
+## Contract lock and diff
+
+The build emits `contract.lock.json` — the frozen public-surface snapshot.
+`velqu contract diff` compares a fresh build against a lock and exits
+non-zero when a change is breaking, so it gates CI and deployment:
+
+```bash
+# unchanged surface → exit 0
+bun packages/cli/src/index.ts contract diff --project examples/proof
+# → contract diff: no changes
+
+# a lock from an older surface that also declared users.delete → exit 2
+bun packages/cli/src/index.ts contract diff --project examples/proof \
+  --against /path/to/older/contract.lock.json
+# → compatible       users.create: route added
+# → breaking         users.delete: route removed
+```
+
+Removals of declared routes/statuses are breaking; additions are
+compatible. The generated Treaty types change with the same diff, so a
+breaking-contract exit also means regenerated clients will stop
+compiling against the old surface — by design.
+
 ## Verify the example
 
 From the repository root:
@@ -81,5 +104,5 @@ bun packages/cli/src/index.ts build --project examples/proof
 
 These tests cover generated type projections, path/query/body/status typing,
 unit/runtime/remote parity, runtime-local actual binary execution, and client
-bundle isolation. This is private-alpha evidence, not a production-readiness
+bundle isolation. This is public-beta evidence, not a production-readiness
 claim; the generated proof credentials are fixtures only.

@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -109,3 +109,40 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-D) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-d (squash-merged; see git log for final hash)
+- Closes: #577
+
+### Behavior implemented
+
+Updated Contracts/Treaty documentation to public-beta accuracy:
+- `docs/beta/TREATY.md`: new "Contract lock and diff" section with both tested outcomes of `velqu contract diff` (clean → exit 0; breaking → exit 2 with `breaking <route>: route removed`), and the design note that breaking contracts stop regenerated clients from compiling. Private-alpha framing → public-beta.
+- `docs/beta/ROUTES-SCHEMAS.md`: closing evidence line → public-beta toolchain.
+
+Every command/sample tested: proof build; contract diff clean (exit 0), compatible-add (exit 0), and breaking (exit 2) paths; `bun test conformance/treaty examples/proof` (21 pass / 0 fail incl. runtime-local Treaty over the actual binary); typecheck.
+
+### Changed files
+
+- `docs/beta/TREATY.md`
+- `docs/beta/ROUTES-SCHEMAS.md`
+- `docs/reports/beta-012-d-contracts-treaty.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-D-contracts-treaty.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation change only; no runtime behavior modified. Breaking-diff sample used a temporary lock outside the repository.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.

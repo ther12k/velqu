@@ -615,7 +615,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-012-A — Installation](tasks/08_public_beta/BETA-012-A-installation.md)
 - [x] [BETA-012-B — Quickstart](tasks/08_public_beta/BETA-012-B-quickstart.md)
 - [x] [BETA-012-C — Architecture](tasks/08_public_beta/BETA-012-C-architecture.md)
-- [ ] [BETA-012-D — Contracts/Treaty](tasks/08_public_beta/BETA-012-D-contracts-treaty.md)
+- [x] [BETA-012-D — Contracts/Treaty](tasks/08_public_beta/BETA-012-D-contracts-treaty.md)
 - [ ] [BETA-012-E — Fetch/Postgres/auth](tasks/08_public_beta/BETA-012-E-fetch-postgres-auth.md)
 - [ ] [BETA-012-F — Deployment](tasks/08_public_beta/BETA-012-F-deployment.md)
 - [ ] [BETA-012-G — Troubleshooting](tasks/08_public_beta/BETA-012-G-troubleshooting.md)

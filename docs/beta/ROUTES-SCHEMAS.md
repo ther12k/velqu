@@ -136,5 +136,5 @@ bun packages/cli/src/index.ts build --project examples/proof
 ```
 
 These commands test the proof application's routes, policy, service, and
-health module. Generated artifacts are evidence of the current private-alpha
+health module. Generated artifacts are evidence of the current public-beta
 toolchain, not a production-readiness claim.
