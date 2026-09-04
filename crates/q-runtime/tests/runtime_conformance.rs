@@ -1241,6 +1241,56 @@ authorization: Bearer q-demo-token
 }
 
 #[test]
+fn health_endpoints_are_native_and_startup_identity_is_structured() {
+    let dir = temp_dir("health-contract");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start(&pack_path, port);
+
+    // Startup readiness is a structured JSON identity line, not just a
+    // process bind signal. It must carry the route/engine/config fields.
+    let ready: Value = serde_json::from_str(&server.ready_line).expect("ready JSON");
+    assert_eq!(ready["event"], "ready");
+    assert_eq!(ready["mode"], "shared");
+    assert_eq!(ready["addr"], format!("127.0.0.1:{port}"));
+    assert_eq!(ready["config"]["host"], "127.0.0.1");
+    assert_eq!(ready["config"]["port"], port);
+    assert_eq!(ready["config"]["proxyMode"], "reverse-proxy");
+
+    let live = http(
+        port,
+        "GET /health/live HTTP/1.1
+host: forged.invalid
+",
+        None,
+    );
+    assert_eq!(live.status, 200);
+    assert_eq!(live.text(), "{\"status\":\"ok\"}");
+    assert_eq!(live.header("x-velqu-stage"), Some("native"));
+    let live_head = http(
+        port,
+        "HEAD /health/live HTTP/1.1
+host: forged.invalid
+",
+        None,
+    );
+    assert_eq!(live_head.status, 200);
+    assert!(live_head.body.is_empty());
+
+    let ready_resp = http(
+        port,
+        "GET /health/ready HTTP/1.1
+host: forged.invalid
+",
+        None,
+    );
+    assert_eq!(ready_resp.status, 200);
+    assert_eq!(ready_resp.json()["ready"], true);
+    assert_eq!(ready_resp.header("x-velqu-stage"), Some("native"));
+    server.stop();
+}
+
+#[test]
 fn fingerprint_flag_reports_exact_tuple_and_verifies_without_serving() {
     // M26-009-C: --fingerprint prints the runtime's enforced tuple and,
     // with --pack, runs FULL verification without ever binding a port.

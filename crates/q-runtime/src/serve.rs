@@ -564,7 +564,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         if state.health.is_ready() {
             let resp = PlainResponse {
                 status: 200,
-                headers: vec![("content-type".into(), "application/json".into())],
+                headers: vec![
+                    ("content-type".into(), "application/json".into()),
+                    ("x-velqu-stage".into(), "native".into()),
+                ],
                 body: b"{\"ready\":true}".to_vec(),
                 head_only: method_str == "HEAD",
             };
