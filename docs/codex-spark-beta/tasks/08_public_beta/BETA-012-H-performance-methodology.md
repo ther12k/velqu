@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -110,3 +110,41 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-H) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-h (squash-merged; see git log for final hash)
+- Closes: #581
+
+### Behavior implemented
+
+Added `docs/beta/PERFORMANCE-METHODOLOGY.md` (indexed in `docs/beta/INDEX.md`), defining:
+- Core performance invariants: no universal performance claims; normative targets vs measured evidence separation; reproducible methodology; complete distribution reporting ($n$, mean, p50, p95, p99).
+- Accurate explanation of QuickJS bytecode vs JIT compilation: bytecode compilation into `app.qpack` eliminates cold-start parse/transpile overhead and guarantees deterministic verification, but remains an interpreted bytecode execution that will be outpaced by JIT engines on compute-heavy CPU-bound tasks.
+- Overview of benchmark suites (Cold-start, Bridge microbenchmarks, Real-world W0–W5 matrix).
+- Local testing and validation commands (`python3 scripts/validate-benchmark-evidence.py`, `./scripts/validate-okf`).
+- Non-goals and beta disclosures (non-SLA, trusted execution only, hardware dependency).
+
+### Changed files
+
+- `docs/beta/PERFORMANCE-METHODOLOGY.md` (new)
+- `docs/beta/INDEX.md` (index entry)
+- `docs/reports/beta-012-h-performance-methodology.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-H-performance-methodology.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p velqu-runtime` — pass (8 suites ok)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation and methodology only; no runtime behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
