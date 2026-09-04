@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -111,3 +111,44 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-A) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-a (squash-merged; see git log for final hash)
+- Closes: #567
+
+### Behavior implemented
+
+Established and validated the SemVer prerelease policy:
+- Target version is `0.1.0-beta.1` as authorized in `docs/beta/governance/RELEASE_AUTHORITY.md`.
+- Conforms to SemVer 2.0.0 with explicit prerelease identifier `-beta.1`, conveying zero API/ABI stability guarantees.
+- Added `scripts/semver-prerelease-check.sh` to validate the versioning format and policy. Emits `docs/reports/beta-011-a-semver-prerelease.json` with verdict `PASS`.
+- Confirmed rollback and withdrawal governance: Owner maintains authority to withdraw or yank packages without altering historical evidence.
+
+### Changed files
+
+- `scripts/semver-prerelease-check.sh` (version structure validation script)
+- `docs/reports/beta-011-a-semver-prerelease.json` (machine-readable validation artifact)
+- `docs/reports/beta-011-a-semver-prerelease.md` (evidence report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-A-use-semver-prerelease.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- `scripts/semver-prerelease-check.sh` — PASS.
+- `docs/reports/beta-011-a-semver-prerelease.json`.
+- `docs/reports/beta-011-a-semver-prerelease.md`.
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Monorepo package manifests retain `0.1.0` (with `private: true`) until release publication automation activates under owner authority.
+- Pre-release versions carry no SLA or backward compatibility guarantees.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
