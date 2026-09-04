@@ -4,7 +4,7 @@ parent_task: BETA-006
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -124,3 +124,81 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-006-Z) — PASS (2026-09-04)
+
+- Branch/PR: beta-006-z (squash-merged; see git log for final hash)
+- Closes: #538
+- Parent verification: BETA-006-V PASS (PR #1137); this packet packages
+  the source-backed evidence across all child packets (A through F + V)
+  and flips parent task BETA-006 to PASS in
+  `docs/beta/04_TASK_LEDGER.md`.
+
+### Evidence package
+
+- **Implementation packets (squash-merged):**
+  - BETA-006-A (PR #1131): request/route/status/duration metrics —
+    `RouteStatusMetrics` with one bounded entry per static pack route
+    plus `<unknown>`, status classes 2xx/3xx/4xx/5xx, duration
+    total+max µs, LogMode gating (Off/Errors/Full + sampling).
+  - BETA-006-B (PR #1132): `worker_ops_status` — queues, quarantine,
+    replacements, drain, load-shed with closed vocabularies.
+  - BETA-006-C (PR #1133): fetch + postgres pool observability —
+    counts/gauges/bounds only (no query text, no URLs).
+  - BETA-006-D (PR #1134): memory/tasks/slots gauges in the same
+    bounded ops snapshot.
+  - BETA-006-E (PR #1135): trace IDs via x-trace-id/traceparent
+    (≤128 printable ASCII) — the "or" arm, no tracing-system
+    integration.
+  - BETA-006-F (PR #1136): redaction — `completion_log_json` field
+    allowlist with defensive query-strip.
+  - BETA-006-V (PR #1137): verification closure; fresh full-gate run
+    reproduces.
+
+### Required evidence
+
+- **Metrics schema**: serde structs in `crates/q-runtime/src/serve.rs`
+  (`RouteStatusMetrics`, `RouteStatusEntrySnapshot`,
+  `worker_ops_status`); documented JSON shapes in
+  `docs/reports/beta-006-a-request-route-status-duration.md` and
+  `docs/reports/beta-006-b-worker-ops-status.md`.
+- **Overhead benchmark**: disabled-vs-enabled overhead accounting and
+  the `record_overhead_is_budgeted` test (A report); per-request cost
+  is O(1) atomic increments plus one structured-log build when
+  enabled; matched raw soak/load runs are BETA-013/014 scope — stated
+  without overclaim.
+- **Redaction audit**: test-enforced field allowlist (F, 4 tests
+  including query-strip defense); per-packet redaction audits in the
+  A/C/D/E/F reports; no-secret sweep carried from BETA-005-E.
+
+### Parent guardrail proofs
+
+1. **Disabled overhead measured** — LogMode Off costs nothing on the
+   hot path; duration capture is a single Instant copy.
+2. **Enabled overhead budgeted** — O(1) atomic increments per request;
+   pool/worker snapshots only at bounded transitions.
+3. **Cardinality is bounded** — one entry per static pack route plus
+   `<unknown>`; status classes, not codes; fixed field sets; closed
+   vocabularies for load-shed reasons.
+4. **No secrets/PII by default** — completion-log field allowlist as
+   code; pool snapshots carry counts/gauges/bounds only.
+5. **Dashboards/examples exist** — serde-serializable JSON shapes
+   documented per report (request.complete, ops.worker.status, pools,
+   route metrics) — the substrate dashboards render.
+
+### Gate results (fresh on this branch)
+
+- `cargo test -p q-engine-quickjs` 138 pass / `-p q-schema-runtime` 67
+  pass / `-p q-http` 14 pass / `-p q-bridge` 11 pass / `-p
+  velqu-runtime` 114 pass — 0 failures
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)
+
+### Ledger
+
+- `docs/beta/04_TASK_LEDGER.md`: BETA-006 flipped TODO -> **PASS**.
+- STATUS.md and TASK_INDEX.md updated to PASS (BETA-006-Z row).
