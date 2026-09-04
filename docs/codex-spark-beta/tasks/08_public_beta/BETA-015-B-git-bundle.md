@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -101,3 +101,35 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-B) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-b (squash-merged; see git log for final hash)
+- Closes: #598
+
+### Behavior implemented
+
+Verified the git bundle deliverable of the self-verifying release packet:
+- Rehearsed `./scripts/release-packet` at the clean packet commit: all 7 artifacts verified `OK` by `sha256sum -c SHA256SUMS.txt` including `velqu-<short>.bundle`.
+- Ran `git bundle verify` and `git bundle list-heads` on the produced bundle: the bundle is a well-formed self-contained history whose head equals `SOURCE-COMMIT.txt` (one-commit binding proven; transcript in the PR body and `docs/reports/beta-015-b-git-bundle.md`).
+- Documented the artifact inventory and guardrail mapping.
+
+### Changed files
+
+- `docs/reports/beta-015-b-git-bundle.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-B-git-bundle.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Evidence/reporting packet only; no runtime behavior modified. Publication remains Owner-gated.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
