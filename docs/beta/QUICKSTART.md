@@ -1,111 +1,137 @@
-# Velqu Quickstart (private alpha)
+# Velqu Quickstart (public beta)
 
-This is the shortest supported learning path for the current Velqu private
-alpha. Production execution is the Rust runtime loading a compiled QPack;
-Bun is used for development, package, and test tooling only.
+The shortest supported path from checkout to a running typed service.
+Every command and response below was executed end-to-end against this
+repository; shown bodies are the actual ones.
 
-> **Private-alpha notice:** the `@velqu/*` packages currently resolve through
-> the monorepo workspace and are not published to npm. Run the commands below
-> from a Velqu checkout. A standalone generated project needs local workspace
-> package links until the public beta packaging work is complete.
+Production execution is the Rust runtime loading a compiled QPack; Bun
+is used for development, package, and test tooling only.
+
+> **Beta notice:** the supported beta target is Linux x86_64 glibc
+> (macOS works for development only). The `@velqu/*` packages resolve
+> through the monorepo workspace and are not published to npm, so the
+> commands below run from a Velqu checkout and link workspace packages
+> into the scaffold.
 
 ## Prerequisites
 
-- Linux or macOS
-- Bun `1.4.0`
-- Rust toolchain supported by the repository lockfile
+- Linux x86_64 (beta target)
+- Bun `1.4.0` (build/dev tooling)
+- Rust toolchain from the repository lockfile
 - A checkout of this repository
 
 From the repository root:
 
 ```bash
 bun install --frozen-lockfile
+cargo build --release -p velqu-runtime
 ```
 
 ## Create a starter project
 
-Generate a small app in a new directory. The default `serverless` profile is
-one worker and is the least surprising development profile.
-
 ```bash
-bun packages/cli/src/index.ts init /tmp/velqu-hello --name velqu-hello
-cd /tmp/velqu-hello
+bun packages/cli/src/index.ts create hello-velqu --name hello-velqu
 ```
 
-The scaffold contains a health route, a greetings module, a Treaty client
-example, and tests. It contains no credentials and does not provision a
- database or external service.
-
-For a multi-worker service profile, use the explicit runtime grammar
-`service:N` (`N` from 1 through 64):
-
-```bash
-bun /path/to/velqu/packages/cli/src/index.ts init . \
-  --name velqu-service --profile service:4
-```
-
-Bare `service` is invalid; the worker count is required.
-
-## Develop, check, and test
-
-Run these from the generated project directory:
+The scaffold contains a health route, a greetings module with a service
+and a test, a Treaty client example, and tooling config. The default
+`serverless` profile runs one worker and is the least surprising
+development profile; a multi-worker service uses the explicit grammar
+`service:N` (`N` from 1 through 64; bare `service` is invalid):
 
 ```bash
-bun install
-bun run check
-bun run test
-bun run dev
+bun packages/cli/src/index.ts create hello-svc --name hello-svc --profile service:4
 ```
 
-`bun run dev` starts the development reload loop. It compiles the application
-when a change is detected; production startup does not perform route/schema
-compilation or TypeScript transpilation.
+Because the scaffold declares `workspace:*` dependencies, link the
+workspace packages into it (repeat per scaffolded project):
 
-The scaffold uses `workspace:*` dependencies in this private alpha. If the
-standalone directory cannot resolve them, run it inside the monorepo or create
-local links under `node_modules/@velqu/` as described in its generated
-`README.md`.
+```bash
+mkdir -p hello-velqu/node_modules/@velqu
+for p in core schema treaty; do
+  ln -sfn "$(pwd)/packages/$p" "hello-velqu/node_modules/@velqu/$p"
+done
+```
 
 ## Build a production QPack
 
-Build from the project directory:
-
 ```bash
-bun run build
+bun packages/cli/src/index.ts build --project hello-velqu
 ```
 
-The output directory contains `app.qpack` plus the route, schema, capability,
-contract, OpenAPI, lock, and build-report artifacts. Inspect the compiled
-route plan without executing handlers:
+emits `hello-velqu/dist/app.qpack` (deterministic, byte-identical for
+identical source and toolchain) plus the route, schema, capability,
+contract, OpenAPI, lock, and build-report artifacts. Inspect the
+compiled route plan without executing handlers:
 
 ```bash
-bun /path/to/velqu/packages/cli/src/index.ts inspect --project . --json
+bun packages/cli/src/index.ts inspect --project hello-velqu --json
 ```
 
-Run the Rust runtime against the produced pack from the repository checkout:
+## Run and call it
 
 ```bash
-cargo run --release -p velqu-runtime -- --pack /tmp/velqu-hello/dist/app.qpack
+./target/release/velqu-runtime --pack hello-velqu/dist/app.qpack --port 8080
 ```
 
-The exact runtime flags may evolve during private-alpha development; use
-`velqu --help` and the generated build report for the current artifact paths.
+in another shell:
+
+```bash
+curl -sf http://127.0.0.1:8080/health/live
+# → {"status":"ok"}
+curl -sf http://127.0.0.1:8080/greetings/world
+# → {"message":"Hello, world!"}
+```
+
+The runtime binds `127.0.0.1` by default (reverse-proxy posture;
+`docs/beta/INSTALL.md` covers direct and container modes) and fails
+closed before ready on any config, pack, or engine mismatch.
+
+## Develop, check, and test
+
+From the repository root, the development reload loop serves the
+scaffold while watching for changes (production startup never performs
+route/schema compilation or TypeScript transpilation — the dev loop is
+the only place compilation happens per change):
+
+```bash
+bun packages/cli/src/index.ts dev --project hello-velqu --port 8084
+```
+
+```
+curl -sf http://127.0.0.1:8084/health/live
+# → {"status":"ok"}
+curl -sf http://127.0.0.1:8084/greetings/dev
+# → {"message":"Hello, dev!"}
+```
+
+Inside the scaffold, `bun run check`, `bun run test`, and
+`bun run build` map to the same CLI commands.
 
 ## What this quickstart does not promise
 
-- This is not a production-readiness claim. The forward finish line is
-  `0.1.0-beta.1`; see [the beta definition](01_BETA_DEFINITION.md).
-- Same-process QuickJS executes trusted application code only; it is not a
-  hostile-code sandbox.
-- `defer` is bounded, in-memory best-effort work, not a durable job queue.
-- Performance numbers are not implied by this walkthrough. Claims require
-  matched raw samples and p50/p95/p99 evidence under `benchmarks/raw/`.
+- This is not a production-readiness claim and carries no SLA. The
+  beta release line is `0.1.0-beta.1`; see
+  [the beta definition](01_BETA_DEFINITION.md).
+- `app.qpack` embeds QuickJS bytecode: it improves startup and enables
+  strict verification, but it is not native-machine-code JIT
+  compilation.
+- Same-process QuickJS executes trusted application code only; it is
+  not a hostile-code sandbox.
+- `defer` is bounded, in-memory best-effort work, not a durable job
+  queue.
+- Performance numbers are not implied by this walkthrough. Claims
+  require matched raw samples and p50/p95/p99 evidence under
+  `benchmarks/raw/`.
 
 ## Next steps
 
-- Read the [scope matrix](02_SCOPE_MATRIX.md) for supported and deferred
-  capabilities.
-- Read the generated project's `README.md` for its route and Treaty examples.
+- Read the [scope matrix](02_SCOPE_MATRIX.md) for supported and
+  deferred capabilities.
+- Installation modes (shared/standalone/container):
+  [INSTALL.md](INSTALL.md).
+- Read the generated project's `README.md` for its route and Treaty
+  examples.
 - Run the repository gate before sharing changes:
 
 ```bash

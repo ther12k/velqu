@@ -613,7 +613,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-011-V — Verify Automate beta publishing and versioning](tasks/08_public_beta/BETA-011-V-verify-automate-beta-publishing-and-versioning.md)
 - [x] [BETA-011-Z — Package evidence for Automate beta publishing and versioning](tasks/08_public_beta/BETA-011-Z-package-evidence-for-automate-beta-publishing-and-versioning.md)
 - [x] [BETA-012-A — Installation](tasks/08_public_beta/BETA-012-A-installation.md)
-- [ ] [BETA-012-B — Quickstart](tasks/08_public_beta/BETA-012-B-quickstart.md)
+- [x] [BETA-012-B — Quickstart](tasks/08_public_beta/BETA-012-B-quickstart.md)
 - [ ] [BETA-012-C — Architecture](tasks/08_public_beta/BETA-012-C-architecture.md)
 - [ ] [BETA-012-D — Contracts/Treaty](tasks/08_public_beta/BETA-012-D-contracts-treaty.md)
 - [ ] [BETA-012-E — Fetch/Postgres/auth](tasks/08_public_beta/BETA-012-E-fetch-postgres-auth.md)
