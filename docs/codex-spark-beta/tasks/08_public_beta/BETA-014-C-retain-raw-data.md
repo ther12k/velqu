@@ -4,7 +4,7 @@ parent_task: BETA-014
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -107,3 +107,37 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-014-C) — PASS (2026-09-04)
+
+- Branch/PR: beta-014-c (squash-merged; see git log for final hash)
+- Closes: #593
+
+### Behavior implemented
+
+Verified and documented the raw benchmark sample retention architecture in `docs/reports/beta-014-c-retain-raw-data.md`:
+- Deterministic compression: `deterministicGzip` zeroes volatile metadata to guarantee byte-identical `.jsonl.gz` outputs from identical input rows.
+- Lossless verification: exact row counts and raw SHA-256 hashes are verified without drift or truncation.
+- Zero cherry-picking: all failed, timed-out, and slow requests are preserved in the raw data files.
+- Tested via `benchmarks/real-world/retain.test.ts` (5 passed, 0 failed), `python3 scripts/validate-benchmark-evidence.py` (PASS), and `./scripts/validate-okf` (PASS).
+
+### Changed files
+
+- `docs/reports/beta-014-c-retain-raw-data.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-014-C-retain-raw-data.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Raw data retention verification only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
