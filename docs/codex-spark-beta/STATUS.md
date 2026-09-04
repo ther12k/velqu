@@ -641,7 +641,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-015-D — npm package tarballs](tasks/08_public_beta/BETA-015-D-npm-package-tarballs.md)
 - [x] [BETA-015-E — QPack tools](tasks/08_public_beta/BETA-015-E-qpack-tools.md)
 - [x] [BETA-015-F — SBOM](tasks/08_public_beta/BETA-015-F-sbom.md)
-- [ ] [BETA-015-G — Checksums](tasks/08_public_beta/BETA-015-G-checksums.md)
+- [x] [BETA-015-G — Checksums](tasks/08_public_beta/BETA-015-G-checksums.md)
 - [ ] [BETA-015-H — Review/evidence indexes](tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md)
 - [ ] [BETA-015-I — Known limitations](tasks/08_public_beta/BETA-015-I-known-limitations.md)
 - [ ] [BETA-015-V — Verify Generate beta release evidence, SBOM, and checksums](tasks/08_public_beta/BETA-015-V-verify-generate-beta-release-evidence-sbom-and-checksums.md)
