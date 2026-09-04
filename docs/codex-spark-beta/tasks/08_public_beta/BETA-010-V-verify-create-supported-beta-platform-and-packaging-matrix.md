@@ -4,7 +4,7 @@ parent_task: BETA-010
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -118,3 +118,45 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-010-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-010-v (squash-merged; see git log for final hash)
+- Closes: #565
+
+### Behavior verified
+
+Validated all parent acceptance criteria for task BETA-010 ("Create supported beta platform and packaging matrix"):
+- **Published platform list is exact**: Linux x86_64 glibc is the only supported public platform promise (`docs/beta/governance/PLATFORM_SUPPORT.md`). Pinned toolchain, glibc version, and kernel transcript documented in `docs/reports/beta-010-a-linux-x86-64-glibc-platform.md`.
+- **Unsupported platforms fail with guidance**: `PLATFORM_SUPPORT.md` and `docs/reports/beta-010-b-linux-arm64-glibc-ci.md` define boundaries; ARM64 remains conditional CI-only; macOS is development-only best effort; Windows and musl are unsupported.
+- **Packages contain no accidental source/compiler artifacts**: All 9 `@velqu/*` packages in `packages/*/package.json` are explicitly marked `private: true` (`scripts/npm-package-inventory.sh` -> `PREPARED_NOT_PUBLISHED`). Multi-stage Dockerfile excludes build tooling from the runtime image.
+- **Install works in clean environment**: `scripts/clean-install-test.sh` executes release binary and verified pack in an isolated temporary directory with zero repository state, validates fingerprint, serves routes, and exits cleanly (`CLEAN-INSTALL-TEST-OK`).
+- Fixed `scripts/artifact-smoke.sh` standalone pack build to use an absolute path (`realpath "$PACK"`).
+
+### Changed files
+
+- `scripts/artifact-smoke.sh` (use absolute path for `VELQU_STANDALONE_PACK`)
+- `docs/reports/beta-010-v-verify-platform-packaging-matrix.md` (verification report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-010-V-verify-create-supported-beta-platform-and-packaging-matrix.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `cargo test -p q-engine-quickjs` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `scripts/clean-install-test.sh` — `CLEAN-INSTALL-TEST-OK`
+- `scripts/artifact-smoke.sh` — `SMOKE-OK`
+- `scripts/proxy-smoke.sh` — `PROXY-SMOKE-OK`
+
+### Disclosures
+
+- Verification-only task; no runtime functional changes.
+- Linux x86_64 glibc is the sole public beta platform; ARM64 remains conditional until hosted CI and owner acceptance are complete.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
