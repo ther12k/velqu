@@ -4,7 +4,7 @@ parent_task: BETA-012
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -122,3 +122,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-012-V) — PASS (2026-09-04)
+
+- Branch/PR: beta-012-v (squash-merged; see git log for final hash)
+- Closes: #583
+
+### Behavior verified
+
+Verification closure for parent task BETA-012 ("Complete beta documentation and limitations"):
+- Every command/sample across all beta docs tested and verified against actual builds.
+- Universal performance claims explicitly rejected; QuickJS bytecode vs JIT compilation trade-offs accurately documented.
+- Public beta (`0.1.0-beta.1`) non-SLA status and evaluation/internal-service framing enforced across all documentation.
+- Link check and Docs CI: `./scripts/validate-okf` checked all 189 internal markdown links with 0 errors.
+- Example execution: `examples/proof` pack built, runtime served on loopback, `/health/live` returned `{"status":"ok"}`.
+
+### Changed files
+
+- `docs/reports/beta-012-v-verify-beta-documentation-limitations.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-012-V-verify-complete-beta-documentation-and-limitations.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-engine-quickjs` — pass (24+117+1)
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `bun run typecheck` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation verification only; no production runtime behavior changed.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
