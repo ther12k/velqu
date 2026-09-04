@@ -4,7 +4,7 @@ parent_task: BETA-011
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -110,3 +110,46 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-011-C) — PASS (2026-09-04)
+
+- Branch/PR: beta-011-c (squash-merged; see git log for final hash)
+- Closes: #569
+
+### Behavior implemented
+
+Generated canonical changelog and breaking change migration notes for `0.1.0-beta.1`:
+- Created `docs/beta/CHANGELOG.md` adhering to Keep a Changelog and SemVer 2.0.0 guidelines.
+- Outlined key architectural features: single contract model, zero-copy ingress, strict bounds, no dynamic code execution, observability baseline, reverse-proxy-first loopback default with bounded drain, and first-party capabilities (`runtime:postgres@1`, `@velqu/capability-auth-jwt`).
+- Provided explicit migration guidance for 5 breaking changes:
+  1. Mandatory configuration versioning (`configVersion: 1`).
+  2. Closed environment namespace (`VELQU_*`).
+  3. Disabled dynamic code execution (`eval` and `new Function`).
+  4. Reverse-proxy loopback enforcement (public bind requires explicit `proxyMode: "direct"`).
+  5. Forwarded headers treated as ordinary data, never client identity.
+- Documented findings in `docs/reports/beta-011-c-changelog-migration-notes.md`.
+
+### Changed files
+
+- `docs/beta/CHANGELOG.md` (changelog and migration documentation)
+- `docs/reports/beta-011-c-changelog-migration-notes.md` (evidence report)
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-011-C-generate-changelog-and-migration-notes.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Required evidence
+
+- `docs/beta/CHANGELOG.md`.
+- `docs/reports/beta-011-c-changelog-migration-notes.md`.
+
+### Gates
+
+- `cargo test -p q-pack` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Documentation and notes only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
