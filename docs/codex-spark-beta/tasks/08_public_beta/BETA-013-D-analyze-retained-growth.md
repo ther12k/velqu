@@ -4,7 +4,7 @@ parent_task: BETA-013
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -94,3 +94,39 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-013-D) — PASS (2026-09-04)
+
+- Branch/PR: beta-013-d (squash-merged; see git log for final hash)
+- Closes: #588
+
+### Behavior implemented
+
+Completed detailed retained growth and memory leak analysis for the soak and reliability qualification:
+- QuickJS heap retention: initial 201,376 B/worker; final 206,130 B (W0) / 202,000 B (W1). Flat trajectory with zero linear drift across 2.43M requests and 14 worker rebuilds.
+- Process RSS: 5,760 KiB initial to 6,460 KiB final (+700 KiB total, ~0.298 B/req), exhibiting asymptotic saturation characteristic of glibc ptmalloc arena fragmentation rather than an unbounded leak.
+- Quiescence verification: 0 pending slots at shutdown, 0 live native tasks, 0 pending native ops, 0 scheduler boundary violations.
+- Documented in `docs/reports/beta-013-d-retained-growth-analysis.md`.
+
+### Changed files
+
+- `docs/reports/beta-013-d-retained-growth-analysis.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-013-D-analyze-retained-growth.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-engine-quickjs` — pass
+- `cargo test -p velqu-runtime` — pass
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Retained growth analysis only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
