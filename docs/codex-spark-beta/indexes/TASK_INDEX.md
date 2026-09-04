@@ -623,7 +623,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-010-Z](../tasks/08_public_beta/BETA-010-Z-package-evidence-for-create-supported-beta-platform-and-packaging-matrix.md) | P1 | evidence | PASS | BETA-010-V | Package evidence for Create supported beta platform and packaging matrix |
 | [BETA-011-A](../tasks/08_public_beta/BETA-011-A-use-semver-prerelease.md) | P1 | implement | PASS | M4A-GATE, BETA-010-Z | Use SemVer prerelease |
 | [BETA-011-B](../tasks/08_public_beta/BETA-011-B-publish-next-beta-tag.md) | P1 | implement | PASS | BETA-011-A | Publish `next`/beta tag |
-| [BETA-011-C](../tasks/08_public_beta/BETA-011-C-generate-changelog-and-migration-notes.md) | P1 | implement | TODO | BETA-011-B | Generate changelog and migration notes |
+| [BETA-011-C](../tasks/08_public_beta/BETA-011-C-generate-changelog-and-migration-notes.md) | P1 | implement | PASS | BETA-011-B | Generate changelog and migration notes |
 | [BETA-011-D](../tasks/08_public_beta/BETA-011-D-create-github-style-release-packet.md) | P1 | implement | TODO | BETA-011-C | Create GitHub-style release packet |
 | [BETA-011-E](../tasks/08_public_beta/BETA-011-E-support-yanking-rollback.md) | P1 | implement | TODO | BETA-011-D | Support yanking/rollback |
 | [BETA-011-V](../tasks/08_public_beta/BETA-011-V-verify-automate-beta-publishing-and-versioning.md) | P1 | verify | TODO | BETA-011-A, BETA-011-B, BETA-011-C, BETA-011-D, BETA-011-E | Verify Automate beta publishing and versioning |
