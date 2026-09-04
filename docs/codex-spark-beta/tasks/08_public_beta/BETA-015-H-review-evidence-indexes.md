@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -117,3 +117,42 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-015-H) — PASS (2026-09-05)
+
+- Branch/PR: beta-015-h (squash-merged; see git log for final hash)
+- Closes: #604
+
+### Behavior implemented
+
+Review/evidence indexes deliverable of the beta release packet:
+- Refreshed both stale M4A-era index templates to beta release state:
+  - `REVIEW_INDEX.json`: milestone BETA-PUBLIC-BETA-RELEASE; gates for BETA-001..014 parent closure and the BETA-015 packet; honest open items (PACK_FORMAT v1 pin, M3-009 owner target, npm/license Owner-gated, CI disclosure); verification verify-ALL-PASS with 434 TS tests.
+  - `EVIDENCE_INDEX.json`: same binding posture; benchmark inventory extended with ramp crossover/losses; reports refreshed to the beta evidence set; release block documents the unified checksums + SBOM + npm tarballs composition.
+- Commit/generation fields remain packet-bound placeholders (`scripts/release-packet` rewrites and grep-verifies them after HEAD is fixed).
+- Rehearsed `./scripts/release-packet` at the clean packet commit: both indexes regenerated bound to the commit and checksummed (transcript in the PR body).
+
+### Changed files
+
+- `REVIEW_INDEX.json`
+- `EVIDENCE_INDEX.json`
+- `docs/reports/beta-015-h-review-evidence-indexes.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `cargo test -p q-http` — pass (15)
+- `cargo test -p q-schema-runtime` — pass (58)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` / `cargo clippy -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Index templates carry placeholder commit fields; actual values are bound only inside a packet built from a clean tree.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.

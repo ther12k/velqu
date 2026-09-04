@@ -1,56 +1,55 @@
 {
   "format": "velqu-review-index-v1",
-  "generatedAt": "2026-09-01T00:00:00Z",
+  "generatedAt": "BOUND_BY_RELEASE_PACKET_AFTER_HEAD_IS_FIXED",
   "commit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
   "releaseCommit": "BOUND_BY_RELEASE_PACKET_TO_CLEAN_HEAD",
-  "milestone": "M4A-DEVELOPER-PREVIEW",
+  "milestone": "BETA-PUBLIC-BETA-RELEASE",
   "status": "PASS",
-  "reviewedImplementationCommit": "936e1f0",
-  "evidenceCheckpoint": "936e1f0",
+  "reviewedImplementationCommit": "template",
+  "evidenceCheckpoint": "template",
   "bindingRule": "scripts/release-packet rewrites commit, releaseCommit, and generatedAt in packet-local indexes after the clean candidate HEAD is fixed",
   "gates": [
     {
-      "gate": "M4A package dependency closure",
+      "gate": "BETA-001..BETA-014 parent closure (observability, competitors, crossover suites, postgres, jwt, config/secrets, reverse-proxy/drain/deployment, security baseline, platform/packaging, publishing/versioning, documentation/limitations, soak/leak, canonical benchmark report)",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/07_m4a_developer_preview/*-Z-*.md"
+        "docs/codex-spark-beta/tasks/08_public_beta/*-Z-*.md",
+        "docs/beta/04_TASK_LEDGER.md"
       ],
       "tests": [
+        "./scripts/verify",
         "scripts/spark-queue"
       ],
-      "evidence": "M4A-001-Z through M4A-010-Z all status PASS (PRs #1041, #1047, #1053, #1059, #1065, #1072, #1078, #1087, #1094, #1100)"
+      "evidence": "BETA-001..BETA-014 parent rows PASS in docs/beta/04_TASK_LEDGER.md; per-packet Z evidence reports under docs/reports/beta-*.md (PRs #1112–#1202)"
     },
     {
-      "gate": "Actual-runtime dev loop, CLI, scaffolding, Treaty modes, published contract artifacts, diagnostics, bounded defer, documentation, realistic proof service, and invited alpha feedback closure",
+      "gate": "BETA-015 self-verifying release packet (source ZIP, git bundle, linux binaries, npm tarballs, qpack tools, SBOM, unified checksums, indexes, known limitations)",
       "status": "PASS",
       "source": [
-        "packages/cli/src/index.ts",
-        "packages/compiler/src/index.ts",
-        "packages/treaty/src/index.ts",
-        "packages/testing/src/index.ts",
-        "examples/proof/src/app.ts",
-        "crates/q-engine-quickjs/src/worker.rs",
-        "crates/q-runtime/src/lib.rs",
-        "crates/q-runtime/src/fetch_bridge.rs"
+        "scripts/release-packet",
+        "scripts/sbom.sh",
+        "scripts/npm-package-tarballs.sh",
+        "scripts/qpack-tools-inventory.sh"
       ],
       "tests": [
-        "packages/cli/src/clean-install.test.ts",
-        "conformance/treaty/treaty.conformance.test.ts",
-        "examples/proof/src/tests/metrics-readiness-shutdown.scenario.test.ts",
-        "examples/proof/src/tests/treaty-client.scenario.test.ts",
-        "crates/q-engine-quickjs/tests/engine.rs",
-        "crates/q-runtime/tests/runtime_conformance.rs"
+        "release-packet clean-tree rehearsal: sha256sum -c SHA256SUMS.txt all OK",
+        "git bundle verify: bundle HEAD equals SOURCE-COMMIT.txt",
+        "sbom.sh: CycloneDX 1.5, 277 components, 277/277 license coverage, verdict PASS",
+        "qpack-tools-inventory.sh: verdict PASS"
       ],
-      "evidence": "M4A-001..M4A-010 V+Z packets; 24-route proof service; clean install verification; docs/reports/m4a-gate-review.md"
+      "evidence": "docs/reports/beta-015-a..g evidence reports (PRs #1203–#1209); this packet closes the index deliverable"
     }
   ],
   "openItems": [
     "PACK_FORMAT_CURRENT pinned to v1: compiler emits formatVersion 1 and runtime loads JSON packs by default; v2 binary sections/reader/bytecode path exist behind tests but are not the default production path. Carried forward from M26 gate review; requires owner-authorized follow-up packet.",
-    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports)."
+    "Owner decision pending: numeric 2-worker scaling target for M3-009 (measurements published in m3-009 reports).",
+    "npm publication Owner-gated: all @velqu/* packages remain private; beta/next dist-tag policy rehearsed (BETA-011-B) but not executed.",
+    "License selection Owner-gated: workspace crates UNLICENSED-BEFORE-OWNER-DECISION; npm packages NOASSERTION (SBOM records posture).",
+    "Standing CI disclosure: verify workflows stall with zero executed steps at PR creation since ~#714; local gates are the acceptance basis."
   ],
   "verification": {
     "command": "./scripts/verify",
-    "result": "PASS \u2014 exit 0 at candidate commit 936e1f0",
-    "typescriptTests": 327
+    "result": "PASS — exit 0 (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified locally; CI stalled, standing disclosure)",
+    "typescriptTests": 434
   }
 }
