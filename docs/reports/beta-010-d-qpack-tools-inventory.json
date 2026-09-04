@@ -1,0 +1,27 @@
+{
+  "format": "velqu-beta-qpack-tools-inventory-v1",
+  "tools": {
+    "velquRuntime": {
+      "path": "target/release/velqu-runtime",
+      "exists": true,
+      "fingerprintCheck": "compatible"
+    },
+    "velquStandalone": {
+      "path": "target/release/velqu-standalone",
+      "exists": true
+    },
+    "velquBytecode": {
+      "path": "target/release/velqu-bytecode",
+      "exists": true
+    },
+    "cliPackInspect": {
+      "command": "velqu pack inspect <pack> --json",
+      "status": "ok"
+    },
+    "cliPackMigrate": {
+      "command": "velqu pack migrate <pack> --json",
+      "status": "ok"
+    }
+  },
+  "verdict": "PASS"
+}

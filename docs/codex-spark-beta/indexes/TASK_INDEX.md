@@ -617,7 +617,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-010-A](../tasks/08_public_beta/BETA-010-A-linux-x86-64-glibc-mandatory-working-assumption.md) | P1 | implement | PASS | M26-GATE, M4A-002-Z | Linux x86_64 glibc mandatory working assumption |
 | [BETA-010-B](../tasks/08_public_beta/BETA-010-B-linux-arm64-glibc-when-ci-is-available.md) | P1 | implement | PASS | BETA-010-A | Linux ARM64 glibc when CI is available |
 | [BETA-010-C](../tasks/08_public_beta/BETA-010-C-npm-packages-under-beta-tag.md) | P1 | implement | PASS | BETA-010-B | npm packages under beta tag |
-| [BETA-010-D](../tasks/08_public_beta/BETA-010-D-runtime-binary-qpack-tools.md) | P1 | implement | TODO | BETA-010-C | Runtime binary/QPack tools |
+| [BETA-010-D](../tasks/08_public_beta/BETA-010-D-runtime-binary-qpack-tools.md) | P1 | implement | PASS | BETA-010-C | Runtime binary/QPack tools |
 | [BETA-010-E](../tasks/08_public_beta/BETA-010-E-clean-install-tests.md) | P1 | implement | TODO | BETA-010-D | Clean install tests |
 | [BETA-010-V](../tasks/08_public_beta/BETA-010-V-verify-create-supported-beta-platform-and-packaging-matrix.md) | P1 | verify | TODO | BETA-010-A, BETA-010-B, BETA-010-C, BETA-010-D, BETA-010-E | Verify Create supported beta platform and packaging matrix |
 | [BETA-010-Z](../tasks/08_public_beta/BETA-010-Z-package-evidence-for-create-supported-beta-platform-and-packaging-matrix.md) | P1 | evidence | TODO | BETA-010-V | Package evidence for Create supported beta platform and packaging matrix |
