@@ -633,7 +633,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-014-B — Pin all candidates/artifacts](tasks/08_public_beta/BETA-014-B-pin-all-candidates-artifacts.md)
 - [x] [BETA-014-C — Retain raw data](tasks/08_public_beta/BETA-014-C-retain-raw-data.md)
 - [x] [BETA-014-D — Have wording reviewed](tasks/08_public_beta/BETA-014-D-have-wording-reviewed.md)
-- [ ] [BETA-014-V — Verify Publish canonical beta benchmark report](tasks/08_public_beta/BETA-014-V-verify-publish-canonical-beta-benchmark-report.md)
+- [x] [BETA-014-V — Verify Publish canonical beta benchmark report](tasks/08_public_beta/BETA-014-V-verify-publish-canonical-beta-benchmark-report.md)
 - [ ] [BETA-014-Z — Package evidence for Publish canonical beta benchmark report](tasks/08_public_beta/BETA-014-Z-package-evidence-for-publish-canonical-beta-benchmark-report.md)
 - [ ] [BETA-015-A — Source ZIP](tasks/08_public_beta/BETA-015-A-source-zip.md)
 - [ ] [BETA-015-B — Git bundle](tasks/08_public_beta/BETA-015-B-git-bundle.md)
