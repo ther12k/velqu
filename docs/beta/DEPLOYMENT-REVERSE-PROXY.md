@@ -90,11 +90,15 @@ this keeps identity and authorization decisions out of the JS request ABI.
 ## Health, readiness, and drain
 
 Use `/health/live` for process/listener liveness and `/health/ready` for
-traffic admission. A deployment controller should remove a worker from the
-proxy upstream before sending its shutdown signal, then allow in-flight
-requests to drain within the configured budget. A readiness failure is not a
-license to retry requests blindly; preserve the client's idempotency and
-retry policy at the edge.
+traffic admission. Both endpoints accept GET and HEAD, return JSON, and are
+served natively before route handler JavaScript. `/health/live` stays 200 while
+the process/listener is alive; `/health/ready` returns 200 only while the
+engine is healthy and returns 503 with the stable `engine quarantined` problem
+when the engine is unavailable. A deployment controller should remove a worker
+from the proxy upstream before sending its shutdown signal, then allow
+in-flight requests to drain within the configured budget. A readiness failure
+is not a license to retry requests blindly; preserve the client's idempotency
+and retry policy at the edge.
 
 A safe rollout sequence is:
 

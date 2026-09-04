@@ -602,7 +602,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-007-Z](../tasks/08_public_beta/BETA-007-Z-package-evidence-for-implement-configuration-and-secret-handling.md) | P0 | evidence | PASS | BETA-007-V | Package evidence for Implement configuration and secret handling |
 | [BETA-008-A](../tasks/08_public_beta/BETA-008-A-trusted-proxy-configuration.md) | P0 | implement | PASS | M3-GATE, BETA-006-Z | Trusted proxy configuration |
 | [BETA-008-B](../tasks/08_public_beta/BETA-008-B-forwarded-header-policy.md) | P0 | implement | PASS | BETA-008-A | Forwarded header policy |
-| [BETA-008-C](../tasks/08_public_beta/BETA-008-C-liveness-readiness-startup-endpoints.md) | P0 | implement | TODO | BETA-008-B | Liveness/readiness/startup endpoints |
+| [BETA-008-C](../tasks/08_public_beta/BETA-008-C-liveness-readiness-startup-endpoints.md) | P0 | implement | PASS | BETA-008-B | Liveness/readiness/startup endpoints |
 | [BETA-008-D](../tasks/08_public_beta/BETA-008-D-graceful-drain-and-termination.md) | P0 | implement | TODO | BETA-008-C | Graceful drain and termination |
 | [BETA-008-E](../tasks/08_public_beta/BETA-008-E-container-example.md) | P0 | implement | TODO | BETA-008-D | Container example |
 | [BETA-008-V](../tasks/08_public_beta/BETA-008-V-verify-implement-reverse-proxy-drain-and-deployment-semantics.md) | P0 | verify | TODO | BETA-008-A, BETA-008-B, BETA-008-C, BETA-008-D, BETA-008-E | Verify Implement reverse-proxy, drain, and deployment semantics |
