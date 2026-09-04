@@ -18,6 +18,7 @@ tags:
 - [Current baseline](00_CURRENT_BASELINE.md)
 - [Quickstart](QUICKSTART.md)
 - [Architecture](ARCHITECTURE.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
 - [Treaty client](TREATY.md)
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
