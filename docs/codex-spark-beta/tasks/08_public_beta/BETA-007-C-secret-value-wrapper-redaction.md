@@ -4,7 +4,7 @@ parent_task: BETA-007
 milestone: BETA
 priority: P0
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -110,3 +110,62 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-007-C) — PASS (2026-09-04)
+
+- Branch/PR: beta-007-c (squash-merged; see git log for final hash)
+- Closes: #541
+
+### Behavior implemented
+
+`config::SecretString` — typed wrapper for secret configuration
+values, wired at the VELQU_DATABASE_URL environment boundary:
+Debug/Display always render `[redacted]` (holders included), the only
+read path is the explicit grep-auditable `expose()`, `from_env`
+wraps at first touch, no Clone/PartialEq. `run()` now exposes the
+database URL only to the pool constructor; behavior otherwise
+unchanged (same fail-closed rejections).
+
+### Changed files
+
+- `crates/q-runtime/src/config.rs` (SecretString + 3 tests)
+- `crates/q-runtime/src/lib.rs` (postgres URL wrapped at the env
+  boundary; exposed only to `pool_from_url_and_env`)
+- `docs/beta/CONFIGURATION.md` ("Secret value wrapper" section)
+- `docs/reports/beta-007-c-secret-value-wrapper-redaction.md` (new)
+
+### Required evidence
+
+- **Config tests**: `secret_debug_and_display_render_redacted`,
+  `secret_expose_is_the_only_read_path`,
+  `secret_from_env_wraps_without_disclosure`.
+- **Redaction tests**: the wrapper tests pin the no-disclosure
+  property (including Debug of holder containers); existing redaction
+  layers still green (config errors BETA-007-A, config block
+  allowlist BETA-007-B, completion logs BETA-006-F, pool URL
+  redaction BETA-004).
+- **Examples**: CONFIGURATION.md "Secret value wrapper" section
+  documents the wrapper→pool flow and the honest non-goal on memory
+  zeroization.
+
+### Guardrail proofs
+
+1. **Invalid config fails before ready** — unchanged fail-closed
+   postgres rejections; wrapper is behavior-preserving.
+2. **Secrets never appear in inspect/log/error** — Debug/Display
+   `[redacted]`; single explicit read path; layered redaction tests
+   all green.
+3. **Defaults are safe** — untouched.
+4. **Configuration is documented/versioned** — wrapper documented in
+   CONFIGURATION.md.
+
+### Gate results (fresh on this branch)
+
+- `cargo test -p velqu-runtime` -> 90 lib (3 new) + 35 conformance +
+  16 fetch/source-map, 0 failures
+- fmt / clippy (`-D warnings`) / typecheck -> clean
+- `bun test` -> 434 pass / 0 fail (67 files)
+- `./scripts/verify` -> ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+- `./scripts/validate-okf` -> PASS
+  (verify run inside an isolated netns; standing port-3000 environment
+  note, BETA-002-C record. No test weakened.)
