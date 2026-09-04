@@ -4,7 +4,7 @@ parent_task: BETA-014
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -111,3 +111,38 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result (BETA-014-B) — PASS (2026-09-04)
+
+- Branch/PR: beta-014-b (squash-merged; see git log for final hash)
+- Closes: #592
+
+### Behavior implemented
+
+Verified that all candidate versions, drivers, images, and benchmark artifacts are strictly pinned:
+- Competitor candidate pins in `benchmarks/real-world/versions.json` (`velqu: workspace:0.1.0`, `elysia: 2.0.0-beta.4`, `hono: 4.13.5`, `fastify: 5.12.1`) matching frozen `bun.lock` and `package.json` with zero floating ranges.
+- Driver and runtime pins: `pg: 8.23.0`, `postgres: 3.4.9`, `bun: 1.4.0`, `nodeLtsMajor: 22`, `postgresImage: postgres:17.5-alpine3.22` (matching `compose.yaml`).
+- Artifact digest pins: all QPack benchmark targets (`app-25.qpack` through `app-10000-bc.qpack`) pinned by SHA-256 and byte sizes in `benchmarks/manifest.json`.
+- Tested via `benchmarks/real-world/versions.test.ts` (9 passed, 0 failed), `python3 scripts/validate-benchmark-evidence.py` (PASS), and `./scripts/validate-okf` (PASS).
+
+### Changed files
+
+- `docs/reports/beta-014-b-pin-candidates-artifacts.md`
+- `docs/codex-spark-beta/tasks/08_public_beta/BETA-014-B-pin-all-candidates-artifacts.md`
+- `docs/codex-spark-beta/STATUS.md`
+- `docs/codex-spark-beta/indexes/TASK_INDEX.md`
+
+### Gates
+
+- `cargo test -p q-pack` — pass (100+2)
+- `bun test` — 434 pass / 0 fail (67 files)
+- `bun run typecheck` — pass
+- `cargo fmt --all --check` — pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — pass
+- `./scripts/validate-okf` — pass
+- `./scripts/verify` — ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+### Disclosures
+
+- Candidate pinning verification only; no runtime binary behavior modified.
+- Standing CI disclosure: verify workflows stall/fail with zero executed steps at PR creation since roughly #714; local gates/evidence are acceptance basis.
