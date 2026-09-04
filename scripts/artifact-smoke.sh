@@ -83,7 +83,8 @@ echo "cold-start: $SAMPLES samples, p50 ${MEDIAN}ms (raw: $(tr '\n' ' ' < /tmp/s
 STANDALONE=${STANDALONE_BIN:-target/release/velqu-standalone}
 if [[ ! -x "$STANDALONE" ]]; then
   echo "building standalone binary (feature standalone, pack $PACK)"
-  VELQU_STANDALONE_PACK="$PACK" cargo build --release -p velqu-runtime --features standalone \
+  ABS_PACK=$(realpath "$PACK")
+  VELQU_STANDALONE_PACK="$ABS_PACK" cargo build --release -p velqu-runtime --features standalone \
     || { echo "FAIL: standalone build failed" >&2; exit 1; }
 fi
 STANDALONE_PORT=$((PORT + 3))
