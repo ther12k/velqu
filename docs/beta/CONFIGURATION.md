@@ -5,7 +5,7 @@ Typed configuration for the production hosts (`velqu-runtime`,
 layer stack — first hit wins:
 
 ```text
-CLI flag > environment > config file > built-in default
+CLI flag > environment > active profile > config file > built-in default
 ```
 
 Invalid configuration **fails closed before ready**: startup prints a
@@ -60,6 +60,7 @@ declaring any other version is rejected at startup.
 | `VELQU_LOG_SAMPLE`     | `logSample`    | sample successful completions every N      |
 | `VELQU_MAX_BODY_BYTES` | `maxBodyBytes` |                                            |
 | `VELQU_MAX_QUEUE`      | `maxQueue`     |                                            |
+| `VELQU_PROFILE`        | (profile select)| BETA-007-D; wins over the file's `activeProfile` |
 | `VELQU_CONFIG`         | (file selector)| ignored when `--config` is given           |
 
 Invalid environment values (wrong type, out of range, unknown log
@@ -79,7 +80,7 @@ runtime's concern, and the check is case-sensitive.
 
 | Group | Names |
 | ------------------- | ------------------------------------------------ |
-| Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_PORT` |
+| Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_PORT`, `VELQU_PROFILE` |
 | Postgres capability | `VELQU_DATABASE_URL`, `VELQU_PG_POOL_MAX`, `VELQU_PG_POOL_CONNECT_TIMEOUT_MS`, `VELQU_PG_POOL_IDLE_TIMEOUT_MS` |
 | Build-time | `VELQU_STANDALONE_PACK` |
 | Tooling-only (never consumed by the serving runtime; recognized for dev/test convenience) | `VELQU_ALLOC_PROFILE`, `VELQU_BENCH_DEBUG`, `VELQU_PACK`, `VELQU_PG_LIVE_TEST`, `VELQU_RUNTIME`, `VELQU_TEST_TRUST_KEYS` |
@@ -109,6 +110,40 @@ visible at startup:
 
 The block's keys are a fixed allowlist (test-enforced); it never
 contains credentials or file contents.
+
+## Profile-specific settings (BETA-007-D)
+
+The config file may declare named profile blocks and select one as
+active. The active profile overlays the file's base fields; the layer
+stack stays `CLI > env > profile > file > default`.
+
+```json
+{
+  "configVersion": 1,
+  "activeProfile": "production",
+  "maxQueue": 256,
+  "profiles": {
+    "production": { "log": "errors", "maxQueue": 512 },
+    "development": { "log": "full", "maxQueue": 64 }
+  }
+}
+```
+
+- `profiles` maps names to blocks accepting the same optional fields
+  as the file (`host`, `port`, `maxBodyBytes`, `maxQueue`, `log`,
+  `logSample`). Unknown fields inside a block — including a nested
+  `profiles` — reject the file.
+- The active profile is selected by `VELQU_PROFILE` (wins) or the
+  file's `activeProfile`. Selecting an undeclared name rejects
+  startup with a typed error naming the declared set.
+- Profile names are a closed shape: 1..=32 characters of `a-z`,
+  `0-9`, `-`; all declared names are validated even when inactive.
+- Every profile field value passes the same bounds and closed sets as
+  anywhere else (out-of-range rejects, never clamps).
+- The `config` block of the ready line reports the applied profile
+  (`activeProfile`) and `profile` provenance on the fields it set.
+- With no `VELQU_PROFILE` and no `activeProfile`, no profile layer
+  applies — the plain file behavior is unchanged.
 
 ## Secret value wrapper (BETA-007-C)
 

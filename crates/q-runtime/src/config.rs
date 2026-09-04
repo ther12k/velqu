@@ -51,6 +51,9 @@ pub const ENV_LOG_SAMPLE: &str = "VELQU_LOG_SAMPLE";
 pub const ENV_MAX_BODY_BYTES: &str = "VELQU_MAX_BODY_BYTES";
 pub const ENV_MAX_QUEUE: &str = "VELQU_MAX_QUEUE";
 pub const ENV_CONFIG: &str = "VELQU_CONFIG";
+/// BETA-007-D: selects the active profile from the config file's
+/// `profiles` map; wins over the file's own `activeProfile`.
+pub const ENV_PROFILE: &str = "VELQU_PROFILE";
 
 /// BETA-007-B: the closed `VELQU_*` environment namespace. Startup
 /// rejects any `VELQU_*` name outside this list — a typo'd knob
@@ -67,6 +70,7 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     ENV_MAX_BODY_BYTES,
     ENV_MAX_QUEUE,
     ENV_PORT,
+    ENV_PROFILE,
     // postgres capability (BETA-004-E)
     "VELQU_DATABASE_URL",
     "VELQU_PG_POOL_MAX",
@@ -89,6 +93,8 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
 pub enum FieldSource {
     Cli,
     Env,
+    /// BETA-007-D: value came from the active profile block.
+    Profile,
     File,
     Default,
 }
@@ -98,6 +104,7 @@ impl FieldSource {
         match self {
             FieldSource::Cli => "cli",
             FieldSource::Env => "env",
+            FieldSource::Profile => "profile",
             FieldSource::File => "file",
             FieldSource::Default => "default",
         }
@@ -124,6 +131,29 @@ pub struct FieldSources {
 struct FileConfig {
     #[serde(rename = "configVersion")]
     config_version: u64,
+    /// BETA-007-D: the profile applied unless VELQU_PROFILE selects one.
+    #[serde(rename = "activeProfile")]
+    active_profile: Option<String>,
+    /// BETA-007-D: named override blocks; each block accepts the same
+    /// optional fields as the file itself (minus versioning/nesting).
+    profiles: Option<std::collections::BTreeMap<String, ProfileBlock>>,
+    host: Option<String>,
+    port: Option<u16>,
+    #[serde(rename = "maxBodyBytes")]
+    max_body_bytes: Option<u64>,
+    #[serde(rename = "maxQueue")]
+    max_queue: Option<u64>,
+    log: Option<String>,
+    #[serde(rename = "logSample")]
+    log_sample: Option<u64>,
+}
+
+/// BETA-007-D: one profile block. Unknown fields inside a block are
+/// rejected exactly like at the file level; nesting profiles inside a
+/// profile is structurally impossible (unknown field).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileBlock {
     host: Option<String>,
     port: Option<u16>,
     #[serde(rename = "maxBodyBytes")]
@@ -163,6 +193,8 @@ pub struct Resolved {
     pub max_queue: usize,
     pub log: &'static str,
     pub log_sample: u64,
+    /// BETA-007-D: the applied profile, when one is active.
+    pub active_profile: Option<String>,
     /// BETA-007-B: per-field provenance, rendered in the ready line.
     pub sources: FieldSources,
 }
@@ -199,6 +231,10 @@ pub enum ConfigError {
     /// A `VELQU_*` environment name outside the closed namespace. The
     /// variable's VALUE is deliberately never read or echoed.
     UnknownEnvVar { var: String },
+    /// The selected profile is not declared in the config file.
+    UnknownProfile { name: String, declared: Vec<String> },
+    /// A profile name violates the closed shape (1..=32 of a-z 0-9 '-').
+    InvalidProfileName { name: String },
 }
 
 impl std::fmt::Display for ConfigError {
@@ -238,6 +274,24 @@ impl std::fmt::Display for ConfigError {
             ConfigError::UnknownEnvVar { var } => write!(
                 f,
                 "unknown environment variable {var}: the VELQU_* namespace is closed (see docs/beta/CONFIGURATION.md)"
+            ),
+            ConfigError::UnknownProfile { name, declared } => {
+                if declared.is_empty() {
+                    write!(
+                        f,
+                        "active profile '{name}' is not declared: the config file declares no profiles"
+                    )
+                } else {
+                    write!(
+                        f,
+                        "active profile '{name}' is not declared (declared: {})",
+                        declared.join(", ")
+                    )
+                }
+            }
+            ConfigError::InvalidProfileName { name } => write!(
+                f,
+                "profile name '{name}' is invalid (expected 1..=32 characters of a-z, 0-9, '-')"
             ),
         }
     }
@@ -323,21 +377,90 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
             Some((display, parsed))
         }
     };
-    let (file_path, file_host, file_port, file_body, file_queue, file_log, file_sample) =
-        match &file {
-            Some((p, f)) => (
-                Some(p.as_str()),
-                f.host.clone(),
-                f.port,
-                f.max_body_bytes,
-                f.max_queue,
-                f.log.clone(),
-                f.log_sample,
-            ),
-            None => (None, None, None, None, None, None, None),
-        };
+    let file_path = file.as_ref().map(|(p, _)| p.as_str());
+    let base = file.as_ref().map(|(_, f)| f);
 
-    // ---- host: cli > env > file > default
+    // ---- layer: profile (BETA-007-D). Selected by VELQU_PROFILE, else
+    // the file's activeProfile; overlays the file's base fields. Env
+    // and CLI still win above it. Declared names and the selected name
+    // are shape-validated; an undeclared active profile rejects startup.
+    if let Some(f) = base {
+        if let Some(profiles) = &f.profiles {
+            for name in profiles.keys() {
+                if !valid_profile_name(name) {
+                    return Err(ConfigError::InvalidProfileName { name: name.clone() });
+                }
+            }
+        }
+    }
+    let env_profile = (s.env)(ENV_PROFILE)
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+    if let Some(name) = &env_profile {
+        if !valid_profile_name(name) {
+            return Err(ConfigError::InvalidProfileName { name: name.clone() });
+        }
+    }
+    let active_profile: Option<String> = match env_profile {
+        Some(p) => Some(p),
+        None => base.and_then(|f| f.active_profile.clone()),
+    };
+    let profile: Option<ProfileBlock> = match &active_profile {
+        None => None,
+        Some(name) => {
+            let declared = base.and_then(|f| f.profiles.as_ref());
+            match declared.and_then(|m| m.get(name)) {
+                Some(b) => Some(b.clone()),
+                None => {
+                    let mut names: Vec<String> = declared
+                        .map(|m| m.keys().cloned().collect())
+                        .unwrap_or_default();
+                    names.sort();
+                    return Err(ConfigError::UnknownProfile {
+                        name: name.clone(),
+                        declared: names,
+                    });
+                }
+            }
+        }
+    };
+
+    // File-layer value + provenance per field (the profile overlays the
+    // file's base fields).
+    macro_rules! overlay {
+        ($profile_field:ident, $base_field:ident) => {
+            match (
+                profile.as_ref().and_then(|b| b.$profile_field.clone()),
+                base.and_then(|f| f.$base_field.clone()),
+            ) {
+                (Some(v), _) => Some((v, FieldSource::Profile)),
+                (None, Some(v)) => Some((v, FieldSource::File)),
+                (None, None) => None,
+            }
+        };
+    }
+    let fl_host = overlay!(host, host);
+    let fl_port: Option<(u16, FieldSource)> = match (
+        profile.as_ref().and_then(|b| b.port),
+        base.and_then(|f| f.port),
+    ) {
+        (Some(v), _) => Some((v, FieldSource::Profile)),
+        (None, Some(v)) => Some((v, FieldSource::File)),
+        (None, None) => None,
+    };
+    let fl_body: Option<(u64, FieldSource)> = overlay!(max_body_bytes, max_body_bytes);
+    let fl_queue: Option<(u64, FieldSource)> = overlay!(max_queue, max_queue);
+    let fl_log = overlay!(log, log);
+    let fl_sample: Option<(u64, FieldSource)> = match (
+        profile.as_ref().and_then(|b| b.log_sample),
+        base.and_then(|f| f.log_sample),
+    ) {
+        (Some(v), _) => Some((v, FieldSource::Profile)),
+        (None, Some(v)) => Some((v, FieldSource::File)),
+        (None, None) => None,
+    };
+
+    // ---- host: cli > env > profile > file > default
     let mut sources = FieldSources {
         host: FieldSource::Default,
         port: FieldSource::Default,
@@ -354,15 +477,18 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         validate_host(&h, "env:VELQU_HOST")?;
         sources.host = FieldSource::Env;
         h
-    } else if let Some(h) = file_host {
-        validate_host(&h, &file_source(file_path))?;
-        sources.host = FieldSource::File;
+    } else if let Some((h, layer)) = fl_host {
+        validate_host(
+            &h,
+            &layer_source(layer, file_path, active_profile.as_deref()),
+        )?;
+        sources.host = layer;
         h
     } else {
         DEFAULT_HOST.to_string()
     };
 
-    // ---- port: cli > VELQU_PORT > PORT > file > default
+    // ---- port: cli > VELQU_PORT > PORT > profile > file > default
     let port_src = |v: u64, source: &str| -> Result<u16, ConfigError> {
         check_range("port", v, 1, u16::MAX as u64, source)?;
         Ok(v as u16)
@@ -378,14 +504,17 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         let n = parse_env_u64(&v, ENV_LEGACY_PORT)?;
         sources.port = FieldSource::Env;
         port_src(n, "env:PORT")?
-    } else if let Some(p) = file_port {
-        sources.port = FieldSource::File;
-        port_src(p as u64, &file_source(file_path))?
+    } else if let Some((p, layer)) = fl_port {
+        sources.port = layer;
+        port_src(
+            p as u64,
+            &layer_source(layer, file_path, active_profile.as_deref()),
+        )?
     } else {
         DEFAULT_PORT
     };
 
-    // ---- maxBodyBytes: env > file > default
+    // ---- maxBodyBytes: env > profile > file > default
     let max_body_bytes = if let Some(v) = (s.env)(ENV_MAX_BODY_BYTES) {
         let n = parse_env_u64(&v, ENV_MAX_BODY_BYTES)?;
         check_range(
@@ -397,21 +526,21 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         )?;
         sources.max_body_bytes = FieldSource::Env;
         n as usize
-    } else if let Some(n) = file_body {
+    } else if let Some((n, layer)) = fl_body {
         check_range(
             "maxBodyBytes",
             n,
             1,
             MAX_BODY_BYTES_CEILING as u64,
-            &file_source(file_path),
+            &layer_source(layer, file_path, active_profile.as_deref()),
         )?;
-        sources.max_body_bytes = FieldSource::File;
+        sources.max_body_bytes = layer;
         n as usize
     } else {
         DEFAULT_MAX_BODY_BYTES
     };
 
-    // ---- maxQueue: env > file > default
+    // ---- maxQueue: env > profile > file > default
     let max_queue = if let Some(v) = (s.env)(ENV_MAX_QUEUE) {
         let n = parse_env_u64(&v, ENV_MAX_QUEUE)?;
         check_range(
@@ -423,35 +552,38 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         )?;
         sources.max_queue = FieldSource::Env;
         n as usize
-    } else if let Some(n) = file_queue {
+    } else if let Some((n, layer)) = fl_queue {
         check_range(
             "maxQueue",
             n,
             1,
             MAX_QUEUE_CEILING as u64,
-            &file_source(file_path),
+            &layer_source(layer, file_path, active_profile.as_deref()),
         )?;
-        sources.max_queue = FieldSource::File;
+        sources.max_queue = layer;
         n as usize
     } else {
         DEFAULT_MAX_QUEUE
     };
 
-    // ---- log: cli > env > file > default (closed set, canonicalized)
+    // ---- log: cli > env > profile > file > default (closed set, canonicalized)
     let log: &'static str = if let Some(v) = &s.cli.log {
         sources.log = FieldSource::Cli;
         parse_log(v, "cli")?
     } else if let Some(v) = (s.env)(ENV_LOG) {
         sources.log = FieldSource::Env;
         parse_log(&v, "env:VELQU_LOG")?
-    } else if let Some(v) = file_log {
-        sources.log = FieldSource::File;
-        parse_log(&v, &file_source(file_path))?
+    } else if let Some((v, layer)) = fl_log {
+        sources.log = layer;
+        parse_log(
+            &v,
+            &layer_source(layer, file_path, active_profile.as_deref()),
+        )?
     } else {
         DEFAULT_LOG
     };
 
-    // ---- logSample: cli > env > file > default
+    // ---- logSample: cli > env > profile > file > default
     let log_sample = if let Some(v) = s.cli.log_sample {
         check_range("logSample", v, 0, LOG_SAMPLE_CEILING, "cli")?;
         sources.log_sample = FieldSource::Cli;
@@ -467,15 +599,15 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         )?;
         sources.log_sample = FieldSource::Env;
         n
-    } else if let Some(n) = file_sample {
+    } else if let Some((n, layer)) = fl_sample {
         check_range(
             "logSample",
             n,
             0,
             LOG_SAMPLE_CEILING,
-            &file_source(file_path),
+            &layer_source(layer, file_path, active_profile.as_deref()),
         )?;
-        sources.log_sample = FieldSource::File;
+        sources.log_sample = layer;
         n
     } else {
         0
@@ -488,8 +620,27 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         max_queue,
         log,
         log_sample,
+        active_profile,
         sources,
     })
+}
+
+/// BETA-007-D: closed profile-name shape — 1..=32 characters of
+/// a-z, 0-9, '-'.
+fn valid_profile_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 32
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+/// Error-label for a file/profile-layer value.
+fn layer_source(layer: FieldSource, file_path: Option<&str>, profile: Option<&str>) -> String {
+    match layer {
+        FieldSource::Profile => format!("profile:{}", profile.unwrap_or("?")),
+        _ => file_source(file_path),
+    }
 }
 
 /// BETA-007-B: validate that every `VELQU_*` name in the environment is
@@ -522,6 +673,7 @@ pub fn startup_config_json(r: &Resolved) -> serde_json::Value {
         "logSource": r.sources.log.as_str(),
         "logSample": r.log_sample,
         "logSampleSource": r.sources.log_sample.as_str(),
+        "activeProfile": r.active_profile,
     })
 }
 
@@ -1020,6 +1172,7 @@ mod tests {
             "logSource",
             "logSample",
             "logSampleSource",
+            "activeProfile",
         ];
         let keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, expected, "config block keys are a fixed allowlist");
@@ -1059,5 +1212,177 @@ mod tests {
         assert_eq!(s.expose(), "postgres://u:pw@h/db");
         assert!(!format!("{:?}", s).contains("pw"));
         assert!(SecretString::from_env("VELQU_MISSING", &lookup).is_none());
+    }
+
+    #[test]
+    fn profile_overrides_file_but_not_env() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"activeProfile":"production","maxQueue":256,
+                "profiles":{"production":{"maxQueue":512,"log":"full"}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli.clone(), &no_env, &read).unwrap();
+        assert_eq!(r.active_profile.as_deref(), Some("production"));
+        assert_eq!(r.max_queue, 512);
+        assert_eq!(r.sources.max_queue, FieldSource::Profile);
+        assert_eq!(r.log, "full");
+        assert_eq!(r.sources.log, FieldSource::Profile);
+        // Base file fields still apply where the profile is silent.
+        assert_eq!(r.sources.host, FieldSource::Default);
+
+        // Env still wins above the profile layer.
+        let e = env_of(&[("VELQU_MAX_QUEUE", "1024")]);
+        let r = resolve_with(cli, &e, &read).unwrap();
+        assert_eq!(r.max_queue, 1024);
+        assert_eq!(r.sources.max_queue, FieldSource::Env);
+    }
+
+    #[test]
+    fn velqu_profile_env_selects_and_beats_file_selection() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"activeProfile":"dev",
+                "profiles":{"dev":{"log":"full"},"production":{"log":"errors","maxQueue":4096}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli.clone(), &no_env, &read).unwrap();
+        assert_eq!(r.active_profile.as_deref(), Some("dev"));
+        assert_eq!(r.log, "full");
+
+        let e = env_of(&[("VELQU_PROFILE", "production")]);
+        let r = resolve_with(cli, &e, &read).unwrap();
+        assert_eq!(r.active_profile.as_deref(), Some("production"));
+        assert_eq!(r.log, "errors");
+        assert_eq!(r.max_queue, 4096);
+        assert_eq!(r.sources.max_queue, FieldSource::Profile);
+    }
+
+    #[test]
+    fn unknown_active_profile_fails_closed() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"activeProfile":"staging","profiles":{"production":{}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        let rendered = err.to_string();
+        assert!(
+            rendered.contains("staging") && rendered.contains("production"),
+            "{rendered}"
+        );
+
+        // Same when the undeclared name comes from VELQU_PROFILE.
+        let read2 = file_map(&[(
+            "/app/v2.json",
+            r#"{"configVersion":1,"profiles":{"production":{}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/v2.json".into()),
+            ..cli_default()
+        };
+        let e = env_of(&[("VELQU_PROFILE", "staging")]);
+        let err = resolve_with(cli, &e, &read2).unwrap_err();
+        assert!(matches!(err, ConfigError::UnknownProfile { .. }), "{err}");
+
+        // Active profile with no profiles map at all.
+        let read3 = file_map(&[("/app/v3.json", r#"{"configVersion":1,"activeProfile":"x"}"#)]);
+        let cli = CliConfig {
+            config: Some("/app/v3.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read3).unwrap_err();
+        assert!(err.to_string().contains("declares no profiles"), "{err}");
+    }
+
+    #[test]
+    fn profile_names_are_validated() {
+        // Declared name violating the shape.
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"profiles":{"PROD!":{}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidProfileName { .. }),
+            "{err}"
+        );
+
+        // Selected name from env violating the shape.
+        let read2 = file_map(&[(
+            "/app/v2.json",
+            r#"{"configVersion":1,"profiles":{"dev":{}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/v2.json".into()),
+            ..cli_default()
+        };
+        let e = env_of(&[("VELQU_PROFILE", "../etc")]);
+        let err = resolve_with(cli, &e, &read2).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidProfileName { .. }),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn profile_blocks_reject_unknown_fields_and_nesting() {
+        // Unknown field inside a block.
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"activeProfile":"p","profiles":{"p":{"maxQeue":1}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        assert!(matches!(err, ConfigError::FileSchema { .. }), "{err}");
+
+        // Nesting profiles inside a profile is structurally rejected.
+        let read2 = file_map(&[(
+            "/app/v2.json",
+            r#"{"configVersion":1,"activeProfile":"p","profiles":{"p":{"profiles":{}}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/v2.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read2).unwrap_err();
+        assert!(matches!(err, ConfigError::FileSchema { .. }), "{err}");
+    }
+
+    #[test]
+    fn active_profile_reported_in_startup_config() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"activeProfile":"production","profiles":{"production":{"log":"full"}}}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli, &no_env, &read).unwrap();
+        let v = startup_config_json(&r);
+        assert_eq!(v["activeProfile"], "production");
+        assert_eq!(v["logSource"], "profile");
+
+        // No profile: the key is present but null.
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        let v = startup_config_json(&r);
+        assert!(v["activeProfile"].is_null());
     }
 }
