@@ -49,14 +49,32 @@ impl CryptoRandom {
         if dest.is_empty() {
             return Ok(());
         }
-        getrandom::getrandom(dest).map_err(|e| CryptoError::EntropyUnavailable(e.to_string()))
+        #[cfg(feature = "native")]
+        {
+            getrandom::getrandom(dest).map_err(|e| CryptoError::EntropyUnavailable(e.to_string()))
+        }
+        #[cfg(not(feature = "native"))]
+        {
+            let _ = dest;
+            Err(CryptoError::EntropyUnavailable(
+                "OS entropy is native-only; browser kernels source randomness from the host bridge (ADR-0037)".into(),
+            ))
+        }
     }
 
     /// Generate a standard RFC 4122 v4 UUID using OS CSPRNG.
     pub fn random_uuid() -> Result<String, CryptoError> {
         let mut bytes = [0u8; 16];
+        #[cfg(feature = "native")]
         getrandom::getrandom(&mut bytes)
             .map_err(|e| CryptoError::EntropyUnavailable(e.to_string()))?;
+        #[cfg(not(feature = "native"))]
+        {
+            let _ = bytes;
+            return Err(CryptoError::EntropyUnavailable(
+                "OS entropy is native-only; browser kernels source randomness from the host bridge (ADR-0037)".into(),
+            ));
+        }
 
         // Set version to 4 (0100 in bits 4..7 of byte 6)
         bytes[6] = (bytes[6] & 0x0F) | 0x40;

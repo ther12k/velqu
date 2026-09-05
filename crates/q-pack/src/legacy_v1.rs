@@ -20,6 +20,7 @@
 //! fuzzed, and fixture-pinned — deprecated, not abandoned.
 
 use crate::{detect_pack_format_mode, PackError, QPack};
+#[cfg(feature = "native")]
 use std::path::Path;
 
 /// Load and fully verify a legacy v1 JSON pack from disk.
@@ -27,6 +28,7 @@ use std::path::Path;
 /// Fails closed on anything that is not a well-formed `formatVersion: 1`
 /// pack; see [`crate::detect_pack_format_mode`] for the mode gate that
 /// runs before this adapter is reached.
+#[cfg(feature = "native")]
 pub fn read_and_verify(path: &Path) -> Result<QPack, PackError> {
     // The caller (verify) has already gated the numeric mode; re-checking
     // here keeps this adapter safe when called directly.
