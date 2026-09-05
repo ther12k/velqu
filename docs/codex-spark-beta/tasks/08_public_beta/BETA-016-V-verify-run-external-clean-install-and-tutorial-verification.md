@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: VERIFY
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -124,3 +124,17 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-v-verify-external-journey.md`.
+- All five external stages re-confirmed OK at closure (install, scaffold,
+  tests/dev/build, deploy+rollback, treaty) with no leftover listeners on
+  :3000/:8080 and all transcripts present.
+- All four parent guardrails PASS with transcript-backed evidence;
+  cross-journey issue summary recorded (8 items, resolutions included).
+- Note recorded: `fresh=no-velqu-material` is the pre-install image gate
+  (BETA-016-A), intentionally false post-journey.
+- Gates: q-pack, velqu-runtime, bun test 434/0 (netns), typecheck, fmt,
+  clippy, `./scripts/verify` ALL PASS.
+- Standing CI disclosure applies; local gates are the acceptance basis.
