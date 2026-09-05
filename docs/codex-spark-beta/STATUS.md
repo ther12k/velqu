@@ -653,7 +653,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-016-E — Deploy proof service](tasks/08_public_beta/BETA-016-E-deploy-proof-service.md)
 - [x] [BETA-016-F — Use Treaty client](tasks/08_public_beta/BETA-016-F-use-treaty-client.md)
 - [x] [BETA-016-V — Verify Run external clean-install and tutorial verification](tasks/08_public_beta/BETA-016-V-verify-run-external-clean-install-and-tutorial-verification.md)
-- [ ] [BETA-016-Z — Package evidence for Run external clean-install and tutorial verification](tasks/08_public_beta/BETA-016-Z-package-evidence-for-run-external-clean-install-and-tutorial-verification.md)
+- [x] [BETA-016-Z — Package evidence for Run external clean-install and tutorial verification](tasks/08_public_beta/BETA-016-Z-package-evidence-for-run-external-clean-install-and-tutorial-verification.md)
 - [x] [BETA-017-A — Repository/organization](tasks/08_public_beta/BETA-017-A-repository-organization.md)
 - [x] [BETA-017-B — License/contribution model](tasks/08_public_beta/BETA-017-B-license-contribution-model.md)
 - [x] [BETA-017-C — Release authority](tasks/08_public_beta/BETA-017-C-release-authority.md)

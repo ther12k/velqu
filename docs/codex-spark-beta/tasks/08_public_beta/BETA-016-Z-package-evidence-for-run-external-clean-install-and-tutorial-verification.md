@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -123,3 +123,12 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Evidence report: `docs/reports/beta-016-z-package-evidence.md`
+  (packet inventory BETA-016-A…F + V, PRs #1214–#1220; guardrail→evidence
+  mapping; consolidated 9-item issue ledger; full gate transcript).
+- Parent guardrails all proven with transcript-backed evidence.
+- Parent ledger `docs/beta/04_TASK_LEDGER.md` flipped `BETA-016` TODO → PASS.
+- Standing CI disclosure applies; local gates are the acceptance basis.
