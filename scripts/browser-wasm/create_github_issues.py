@@ -167,8 +167,11 @@ def main() -> int:
         print("ERROR: GitHub CLI 'gh' was not found.", file=sys.stderr)
         return 2
 
-    # Validate auth/repository before any write.
-    run_gh(["auth", "status"])
+    # Validate auth/repository before any write. Exercise the token
+    # directly: `gh auth status` enumerates every keyring account and
+    # fails when any unrelated stored entry is invalid, which would
+    # block registration even with a fully working active account.
+    run_gh(["api", "user"])
     run_gh(["repo", "view", args.repo, "--json", "nameWithOwner"])
 
     existing_label_rows = json.loads(

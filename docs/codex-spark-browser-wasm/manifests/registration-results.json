@@ -2,34 +2,40 @@
   "repository": "ther12k/velqu",
   "results": [
     {
-      "id": "BWASM-EPIC",
+      "id": "BWASM-K-001",
       "action": "created",
-      "title": "[BWASM-EPIC] BWASM-EPIC \u2014 Velqu Browser-WASM runtime program",
-      "url": "https://github.com/ther12k/velqu/issues/1179"
+      "title": "[BWASM-K-001] BWASM-K-001 \u2014 Extract a portable runtime model crate",
+      "url": "https://github.com/ther12k/velqu/issues/1229"
     },
     {
-      "id": "BWASM-D-001",
+      "id": "BWASM-K-002",
       "action": "created",
-      "title": "[BWASM-D-001] BWASM-D-001 \u2014 Freeze the Browser-WASM product and runtime contract",
-      "url": "https://github.com/ther12k/velqu/issues/1180"
+      "title": "[BWASM-K-002] BWASM-K-002 \u2014 Split byte-based QPack core from native loading and tooling",
+      "url": "https://github.com/ther12k/velqu/issues/1230"
     },
     {
-      "id": "BWASM-D-002",
+      "id": "BWASM-K-003",
       "action": "created",
-      "title": "[BWASM-D-002] BWASM-D-002 \u2014 Produce the wasm32 portability baseline and dependency split map",
-      "url": "https://github.com/ther12k/velqu/issues/1181"
+      "title": "[BWASM-K-003] BWASM-K-003 \u2014 Extract a host-independent router core",
+      "url": "https://github.com/ther12k/velqu/issues/1231"
     },
     {
-      "id": "BWASM-D-003",
+      "id": "BWASM-K-004",
       "action": "created",
-      "title": "[BWASM-D-003] BWASM-D-003 \u2014 Define the browser execution threat model and isolation contract",
-      "url": "https://github.com/ther12k/velqu/issues/1182"
+      "title": "[BWASM-K-004] BWASM-K-004 \u2014 Qualify the schema runtime for wasm32 and expose bounded validation",
+      "url": "https://github.com/ther12k/velqu/issues/1232"
     },
     {
-      "id": "BWASM-D-004",
+      "id": "BWASM-K-005",
       "action": "created",
-      "title": "[BWASM-D-004] BWASM-D-004 \u2014 Ratify support matrix, compatibility claims, and release budgets",
-      "url": "https://github.com/ther12k/velqu/issues/1183"
+      "title": "[BWASM-K-005] BWASM-K-005 \u2014 Implement the Rust Browser Kernel and wasm-bindgen ABI",
+      "url": "https://github.com/ther12k/velqu/issues/1233"
+    },
+    {
+      "id": "BWASM-K-006",
+      "action": "created",
+      "title": "[BWASM-K-006] BWASM-K-006 \u2014 Verify and package portable-kernel evidence",
+      "url": "https://github.com/ther12k/velqu/issues/1234"
     }
   ]
 }
