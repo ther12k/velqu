@@ -1,0 +1,15 @@
+   Compiling zerovec-derive v0.11.4
+   Compiling displaydoc v0.2.7
+   Compiling serde_derive v1.0.229
+    Checking getrandom v0.2.17
+error: the wasm*-unknown-unknown targets are not supported by default, you may need to enable the "js" feature. For more information see: https://docs.rs/getrandom/#webassembly-support
+   --> /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/getrandom-0.2.17/src/lib.rs:346:9
+    |
+346 | /         compile_error!("the wasm*-unknown-unknown targets are not supported by \
+347 | |                         default, you may need to enable the \"js\" feature. \
+348 | |                         For more information see: \
+349 | |                         https://docs.rs/getrandom/#webassembly-support");
+    | |________________________________________________________________________^
+
+error: could not compile `getrandom` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
