@@ -169,6 +169,11 @@ pub fn reject_mixed_mode_bytes(bytes: &[u8]) -> Result<(), PackError> {
 ///
 /// This is authenticity, not integrity: per-section digests detect
 /// corruption in-band; this proves WHO authorized the bytes.
+/// Native-only: Ed25519 release-tooling signatures and trust config
+/// (ADR-0026 — out-of-band authenticity). The browser kernel is
+/// integrity-only by contract (ADR-0037 §4) and builds without this
+/// module.
+#[cfg(feature = "native")]
 pub mod signatures {
     use serde::{Deserialize, Serialize};
 
@@ -480,6 +485,7 @@ pub mod sources_sidecar {
         /// - standalone mode: `<executable>.sources.json` next to the
         ///   binary, binding to the EMBEDDED pack bytes (the executable
         ///   itself never reads it — ADR-0027).
+        #[cfg(feature = "native")]
         pub fn sidecar_path_for(artifact: &std::path::Path) -> std::path::PathBuf {
             let mut s = artifact.as_os_str().to_os_string();
             s.push(".sources.json");
@@ -489,6 +495,7 @@ pub mod sources_sidecar {
         /// Tooling entry point: load a sidecar file and verify it binds
         /// to the given pack bytes (hash + format version). Untrusted
         /// input — advisory for symbolization only.
+        #[cfg(feature = "native")]
         pub fn load_and_verify(
             sidecar_path: &std::path::Path,
             pack_bytes: &[u8],
@@ -553,7 +560,7 @@ pub mod qpack2 {
         /// directory validation borrows zero-copy section views out of
         /// the mapping — no owned copy of the pack is reconstructed.
         pub enum PackBytes {
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "native"))]
             Mapped(memmap2::Mmap),
             /// Pack bytes compiled into a standalone binary
             /// (`include_bytes!`-style, M26-009-B wiring). Zero-copy by
@@ -567,7 +574,7 @@ pub mod qpack2 {
             type Target = [u8];
             fn deref(&self) -> &[u8] {
                 match self {
-                    #[cfg(unix)]
+                    #[cfg(all(unix, feature = "native"))]
                     PackBytes::Mapped(m) => m.as_ref(),
                     PackBytes::Embedded(b) => b,
                     PackBytes::Owned(v) => v.as_slice(),
@@ -580,6 +587,7 @@ pub mod qpack2 {
             /// unix; empty/unmappable/other platforms fall back to a
             /// bounded owned read. Validation rejects malformed lengths
             /// identically on either path (same `&[u8]` consumer).
+            #[cfg(feature = "native")]
             pub fn open(path: &std::path::Path) -> Result<PackBytes, String> {
                 let file =
                     std::fs::File::open(path).map_err(|e| format!("open pack failed: {e}"))?;
@@ -3680,7 +3688,7 @@ fn default_deadline() -> u64 {
     5_000
 }
 
-pub use q_engine::{FunctionDecl, FunctionKind};
+pub use q_runtime_model::{FunctionDecl, FunctionKind};
 
 /// Canonical HTTP method → terminal slot index (mirrors q-router's METHOD_* map).
 pub const METHOD_SLOTS: [&str; 7] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
@@ -4116,10 +4124,17 @@ impl SharedPack {
 // The sharing-discipline declaration (ADR-0036 §4): shared-immutable
 // pack artifacts are explicitly audited as worker-shareable (explicit
 // impl only — the marker makes the decision reviewable).
+// Native-only: cross-worker sharing of immutable pack artifacts
+// (ADR-0036) is a native multi-worker concern; the browser kernel has
+// no shared-pack workers.
+#[cfg(feature = "native")]
 impl q_capabilities::SharedAcrossWorkers for SharedPack {}
 
 impl QPack {
     /// Load + fully verify a pack. Fails before any serving can happen.
+    /// Native-only (filesystem); portable callers use
+    /// [`QPack::verify_from_slice`].
+    #[cfg(feature = "native")]
     pub fn load_and_verify(path: &std::path::Path) -> Result<QPack, PackError> {
         Self::load_and_verify_with(path, BytecodePolicy::Enforce)
     }
@@ -4130,6 +4145,7 @@ impl QPack {
     /// every other fingerprint dimension still enforces. This is the
     /// sanctioned recovery path for cross-target bytecode: rebuild the
     /// pack, or start with `--no-bytecode` to run from source.
+    #[cfg(feature = "native")]
     pub fn load_and_verify_with(
         path: &std::path::Path,
         policy: BytecodePolicy,

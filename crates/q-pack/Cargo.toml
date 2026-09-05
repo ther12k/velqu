@@ -5,12 +5,32 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-q-engine = { workspace = true }
+# BWASM-K-002: model types come from the portable crate; q-engine
+# (tokio) is no longer a dependency of the byte-based pack core.
+q-runtime-model = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-memmap2 = { workspace = true }
-ed25519-dalek = { workspace = true }
 thiserror = { workspace = true }
 q-schema-runtime = { workspace = true }
-q-capabilities = { workspace = true }
+# Declared as a direct path (not workspace-inherited): the capability
+# inventory is part of pack verification and must exist on every target,
+# but the browser build carries it WITHOUT the native feature (no OS
+# entropy). A workspace-inherited `default-features = false` was ignored
+# by cargo in this graph; the direct declaration is honored.
+q-capabilities = { path = "../q-capabilities", default-features = false }
+
+# Native-only: filesystem/mmap loading, Ed25519 release-tooling
+# signatures, and OS entropy. The browser kernel (ADR-0037 §4/§6)
+# verifies packs from bytes, integrity-only, with no fs and no
+# authenticity machinery.
+memmap2 = { workspace = true, optional = true }
+ed25519-dalek = { workspace = true, optional = true }
+
+[features]
+default = ["native"]
+native = [
+    "dep:memmap2",
+    "dep:ed25519-dalek",
+    "q-capabilities/native",
+]

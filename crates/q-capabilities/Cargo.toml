@@ -10,7 +10,13 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 url = { workspace = true }
 percent-encoding = { workspace = true }
-getrandom = { workspace = true }
+getrandom = { workspace = true, optional = true }
+
+[features]
+# Native-only: OS entropy via getrandom. Browser kernels source
+# randomness from the host bridge (ADR-0037 §5) and build without this.
+native = ["dep:getrandom"]
+default = ["native"]
 
 [dev-dependencies]
 # Test-only: drives the M28-006-B slow-consumer backpressure pump tests.

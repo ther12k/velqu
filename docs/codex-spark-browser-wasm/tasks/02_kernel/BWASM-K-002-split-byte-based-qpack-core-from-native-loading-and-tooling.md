@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -122,4 +122,13 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-002 (#1230)
+- Candidate commit: see PR; report `docs/reports/bwasm-k-002-qpack-core-split.md`
+- Split: `feature = "native"` boundary inside q-pack (task-sanctioned "crate or feature"); fs/mmap/signatures/sidecar-fs/entropy native-only; q-engine dep removed in favor of q-runtime-model; q-capabilities getrandom native-gated (fails closed non-native per ADR-0037 §5).
+- Evidence: wasm32 + native checks; dep tree 0 forbidden; 102 q-pack + 298 q-capabilities tests pass; fmt/clippy/validate-okf clean; verify ALL PASS after documented manifest refresh.
+- On-target wasm execution testing deferred to K-005/K-006 (no bindgen harness yet) — recorded honestly.
+- Follow-ups: K-003 (#1231), K-004 (#1232), K-005 (#1233), K-006 (#1234)
 ```

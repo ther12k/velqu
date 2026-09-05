@@ -1334,7 +1334,7 @@ dependencies = [
  "ed25519-dalek",
  "memmap2",
  "q-capabilities",
- "q-engine",
+ "q-runtime-model",
  "q-schema-runtime",
  "serde",
  "serde_json",
