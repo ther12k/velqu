@@ -140,3 +140,10 @@ Follow-up issue links:
   explicitly not QuickJS parity; quickjs-wasm behind owner gate.
 - Candidate commit: see PR (bwasm-d-001). Gates: validate-okf pass;
   verify ALL PASS.
+- **Correction (2026-09-05):** the ADR was merged as `accepted` with a
+  blanket owner-acceptance claim. Precise provenance: the architecture
+  invariant is owner-specified verbatim (owner packet); the remaining
+  ADR text is agent-authored and NOT yet owner-ratified. ADR-0037 is
+  now `proposed`; the K-phase gate stays closed pending owner
+  ratification of the design freeze (D-004 BLOCKED). See the
+  bwasm-design-corrections packet.
