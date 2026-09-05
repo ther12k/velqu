@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -109,3 +109,21 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-f-use-treaty-client.md`.
+- External transcript: dev server on 127.0.0.1:3000 with an identity
+  precheck; typed Treaty calls live (`Health OK`, `Created greeting`,
+  `Message: Greetings from Treaty!`); scaffold contract tests 5 pass /
+  0 fail **without skipping**; teardown releases the port; second run
+  repeats cleanly.
+- Corrections carried: BETA-016-E's rollback script resolved `$HOME` as
+  root and silently skipped the service stop (claim corrected; lifecycle
+  re-run end to end with owner-aware paths, pidfile fail-closed, port
+  release assertions); `kill -0` liveness replaced by kernel state reads
+  (zombie-vs-live) and behavioral port checks; `/proc`-scan teardown
+  replaces absent `pkill`.
+- Gates: `cargo test -p velqu-runtime` 37+3; `bun test` 434/0 (netns);
+  `bun run typecheck` pass.
+- Standing CI disclosure applies; local gates are the acceptance basis.

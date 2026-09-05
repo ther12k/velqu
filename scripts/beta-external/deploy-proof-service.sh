@@ -101,30 +101,50 @@ EOF
   rollback)
     [ "$(id -u)" = "0" ] || { echo "run 'rollback' as root (operator provisioning)" >&2; exit 1; }
     echo "== external deploy transcript (rollback) =="
-    PIDOWNER="${SUDO_USER:-beta}"
+    # Paths must resolve against the OWNING user's home, not the invoking
+    # user's: root's $HOME is /root, which silently no-ops the cleanup
+    # (BETA-016-F correction of the BETA-016-E rollback).
+    OWNER_HOME="$(getent passwd beta | cut -d: -f6)"
+    USER_PIDFILE="$OWNER_HOME/proof-service.pid"
+    USER_APP="$OWNER_HOME/velqu/examples/proof"
+    USER_PACK="$USER_APP/dist/app.qpack"
 
     step "remove edge site + stop nginx"
     rm -f "$NGINX_SITE" "$NGINX_ENABLED"
     service nginx stop >/dev/null 2>&1 || true
-    echo "edge removed"
+    curl -sf --max-time 2 "http://127.0.0.1:$EDGE_PORT/health/live" >/dev/null 2>&1 \
+      && fail "edge still answering after removal"
+    echo "edge removed (port $EDGE_PORT closed)"
 
-    step "SIGTERM the service (pidfile $PIDFILE, owner $PIDOWNER)"
-    if [ -f "$PIDFILE" ]; then
-      kill -TERM "$(cat "$PIDFILE")" 2>/dev/null || true
-      for _ in $(seq 1 50); do
-        kill -0 "$(cat "$PIDFILE")" 2>/dev/null || break
+    step "SIGTERM the service (pidfile $USER_PIDFILE, owner beta)"
+    [ -f "$USER_PIDFILE" ] || fail "pidfile missing at $USER_PIDFILE — cannot verify service stop"
+    PID="$(cat "$USER_PIDFILE")"
+    kill -TERM "$PID" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+      if [ -d "/proc/$PID" ]; then
+        # kill -0 succeeds for ZOMBIES too, and this container's init
+        # (sleep infinity) never reaps — read the kernel state instead.
+        STATE="$(cut -d' ' -f3 /proc/$PID/stat 2>/dev/null || echo gone)"
+        [ "$STATE" = "Z" ] && break
+        [ "$STATE" = "gone" ] && break
         sleep 0.1
-      done
-      kill -0 "$(cat "$PIDFILE")" 2>/dev/null && fail "service did not exit after SIGTERM"
-      echo "service stopped (graceful)"
-    else
-      echo "no pidfile; service not running"
+      else
+        break
+      fi
+    done
+    if [ -d "/proc/$PID" ]; then
+      STATE="$(cut -d' ' -f3 /proc/$PID/stat 2>/dev/null || echo gone)"
+      { [ "$STATE" != "Z" ] && [ "$STATE" != "gone" ]; } \
+        && fail "service did not exit after SIGTERM (state=$STATE)"
     fi
+    echo "service stopped (graceful; kernel state $STATE)"
 
-    step "remove build artifacts (dist) and pidfile"
-    rm -rf "$APP/dist" "$PIDFILE"
-    [ ! -f "$PACK" ] || fail "pack still present after rollback"
-    echo "ROLLBACK-OK: edge removed, service stopped, artifacts removed"
+    step "assert upstream port released, remove build artifacts + pidfile"
+    curl -sf --max-time 2 "http://127.0.0.1:$UPSTREAM_PORT/health/live" >/dev/null 2>&1 \
+      && fail "upstream $UPSTREAM_PORT still answering after service stop"
+    rm -rf "$USER_APP/dist" "$USER_PIDFILE"
+    [ ! -f "$USER_PACK" ] || fail "pack still present after rollback"
+    echo "ROLLBACK-OK: edge closed, service stopped, upstream released, artifacts removed"
     ;;
 
   *)
