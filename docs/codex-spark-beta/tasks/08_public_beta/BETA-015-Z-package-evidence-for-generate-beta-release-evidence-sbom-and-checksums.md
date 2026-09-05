@@ -4,7 +4,7 @@ parent_task: BETA-015
 milestone: BETA
 priority: P0
 mode: EVIDENCE
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -126,3 +126,16 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Evidence report: `docs/reports/beta-015-z-package-evidence.md`
+  (packet inventory BETA-015-A…I + V, PRs #1203–#1212; guardrail→evidence
+  mapping; release-packet rehearsal with `CHECKSUMS-OK`; full gate transcript).
+- Parent guardrails all proven: checksums verify from the release directory,
+  artifacts bind to one source commit, SBOM covers 277/277 component licenses,
+  packet indexes/known-limitations carry no stale metadata.
+- Parent ledger `docs/beta/04_TASK_LEDGER.md` flipped `BETA-015` TODO → PASS.
+- Publication (GitHub Release / npm / license fields) remains Owner-gated.
+- Standing CI disclosure applies (verify workflows zero-step since ~#714);
+  local gates are the acceptance basis.

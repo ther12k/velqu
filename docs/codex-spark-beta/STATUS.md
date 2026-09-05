@@ -645,7 +645,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-015-H — Review/evidence indexes](tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md)
 - [x] [BETA-015-I — Known limitations](tasks/08_public_beta/BETA-015-I-known-limitations.md)
 - [x] [BETA-015-V — Verify Generate beta release evidence, SBOM, and checksums](tasks/08_public_beta/BETA-015-V-verify-generate-beta-release-evidence-sbom-and-checksums.md)
-- [ ] [BETA-015-Z — Package evidence for Generate beta release evidence, SBOM, and checksums](tasks/08_public_beta/BETA-015-Z-package-evidence-for-generate-beta-release-evidence-sbom-and-checksums.md)
+- [x] [BETA-015-Z — Package evidence for Generate beta release evidence, SBOM, and checksums](tasks/08_public_beta/BETA-015-Z-package-evidence-for-generate-beta-release-evidence-sbom-and-checksums.md)
 - [ ] [BETA-016-A — Fresh Linux VM/container](tasks/08_public_beta/BETA-016-A-fresh-linux-vm-container.md)
 - [ ] [BETA-016-B — Install CLI/runtime](tasks/08_public_beta/BETA-016-B-install-cli-runtime.md)
 - [ ] [BETA-016-C — Scaffold app](tasks/08_public_beta/BETA-016-C-scaffold-app.md)
