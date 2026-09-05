@@ -35,8 +35,12 @@ RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y \
     && ln -s "${CARGO_HOME}/bin/rustup" /usr/local/bin/rustup
 
 # The verification packets act as an external user: unprivileged account,
-# empty home, no Velqu material anywhere on the filesystem.
-RUN useradd --create-home --uid 1000 beta
+# empty home, no Velqu material anywhere on the filesystem. The tooling
+# homes are chowned to `beta` so cargo/bun can write registries and
+# caches (BETA-016-B: a root-owned CARGO_HOME failed crate downloads
+# with "Permission denied" for the unprivileged user).
+RUN useradd --create-home --uid 1000 beta \
+    && chown -R beta:beta /opt/cargo /opt/rustup /opt/bun
 USER beta
 WORKDIR /home/beta
 

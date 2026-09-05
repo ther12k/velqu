@@ -25,6 +25,14 @@ echo "git=$(git --version)"
 echo "bun_install_dir=${BUN_INSTALL:-unset}"
 echo "rustup_toolchain=$(rustup show active-toolchain 2>/dev/null || echo unset)"
 
+# Tooling homes must be writable by the unprivileged user (BETA-016-B:
+# a root-owned CARGO_HOME broke crate downloads with Permission denied).
+for d in "${CARGO_HOME:-}" "${RUSTUP_HOME:-}" "${BUN_INSTALL:-}"; do
+  [ -n "$d" ] || fail "tooling home env unset"
+  [ -w "$d" ] || fail "tooling home not writable by $(id -un): $d"
+done
+echo "tooling_homes_writable=yes"
+
 # Freshness: no Velqu material may exist in the fresh environment.
 if [ -d /velqu ] || find /home/beta -maxdepth 2 -iname '*velqu*' | grep -q .; then
   fail "fresh environment contains Velqu material"

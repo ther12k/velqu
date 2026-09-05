@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -109,3 +109,21 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-b-install-cli-runtime.md`.
+- Deliverable: `scripts/beta-external/install-cli-runtime.sh` (fail-closed
+  external install from a source archive, per INSTALL.md Step 1) plus the
+  environment forward fix (tooling homes chowned to `beta`; manifest probe
+  asserts `tooling_homes_writable=yes`).
+- External transcript: user `beta` in `velqu-beta-external:0.1.0-beta.1`
+  (digest `sha256:9076de16f6ec…a2f5570`), archive sha256
+  `9509435365…cfe85d` at commit `cfe3604`, 6 steps → `INSTALL-OK`;
+  runtime + CLI `--help` verified; uninstall = `rm -rf ~/velqu`.
+- Issues found and fixed: (1) archive without root directory broke
+  extraction → `--prefix=velqu/` + guard; (2) root-owned CARGO_HOME broke
+  unprivileged crate downloads → chown + probe writability check.
+- Gates: `cargo test -p velqu-runtime` 37+3 pass; `bun test` 434/0 (netns);
+  `bun run typecheck` pass.
+- Standing CI disclosure applies; local gates are the acceptance basis.
