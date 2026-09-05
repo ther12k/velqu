@@ -119,7 +119,7 @@ Status values: `TODO`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`, `WAIVED`. A wai
 | BETA-013 | P0 | PASS | BETA-004, BETA-005, BETA-006, BETA-008, BETA-009 | BETA | Run beta soak and leak qualification |
 | BETA-014 | P1 | PASS | BETA-002, BETA-003, BETA-004, BETA-005, BETA-013 | BETA | Publish canonical beta benchmark report |
 | BETA-015 | P0 | PASS | BETA-009, BETA-010, BETA-011, BETA-013, BETA-014 | BETA | Generate beta release evidence, SBOM, and checksums |
-| BETA-016 | P1 | TODO | BETA-011, BETA-012, BETA-015 | BETA | Run external clean-install and tutorial verification |
+| BETA-016 | P1 | PASS | BETA-011, BETA-012, BETA-015 | BETA | Run external clean-install and tutorial verification |
 | BETA-017 | P0 | PASS | — | BETA | Resolve beta owner decisions |
 | BETA-GATE | P0 | TODO | BETA-001, BETA-002, BETA-003, BETA-004, BETA-005, BETA-006, BETA-007, BETA-008, BETA-009, BETA-010, BETA-011, BETA-012, BETA-013, BETA-014, BETA-015, BETA-016, BETA-017 | BETA | Public Beta Readiness and Release exit gate |
 
