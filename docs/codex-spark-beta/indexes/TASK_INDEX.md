@@ -661,7 +661,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-015-H](../tasks/08_public_beta/BETA-015-H-review-evidence-indexes.md) | P0 | implement | PASS | BETA-015-G | Review/evidence indexes |
 | [BETA-015-I](../tasks/08_public_beta/BETA-015-I-known-limitations.md) | P0 | implement | PASS | BETA-015-H | Known limitations |
 | [BETA-015-V](../tasks/08_public_beta/BETA-015-V-verify-generate-beta-release-evidence-sbom-and-checksums.md) | P0 | verify | PASS | BETA-015-A, BETA-015-B, BETA-015-C, BETA-015-D, BETA-015-E, BETA-015-F, BETA-015-G, BETA-015-H, BETA-015-I | Verify Generate beta release evidence, SBOM, and checksums |
-| [BETA-015-Z](../tasks/08_public_beta/BETA-015-Z-package-evidence-for-generate-beta-release-evidence-sbom-and-checksums.md) | P0 | evidence | TODO | BETA-015-V | Package evidence for Generate beta release evidence, SBOM, and checksums |
+| [BETA-015-Z](../tasks/08_public_beta/BETA-015-Z-package-evidence-for-generate-beta-release-evidence-sbom-and-checksums.md) | P0 | evidence | PASS | BETA-015-V | Package evidence for Generate beta release evidence, SBOM, and checksums |
 | [BETA-016-A](../tasks/08_public_beta/BETA-016-A-fresh-linux-vm-container.md) | P1 | implement | TODO | BETA-011-Z, BETA-012-Z, BETA-015-Z | Fresh Linux VM/container |
 | [BETA-016-B](../tasks/08_public_beta/BETA-016-B-install-cli-runtime.md) | P1 | implement | TODO | BETA-016-A | Install CLI/runtime |
 | [BETA-016-C](../tasks/08_public_beta/BETA-016-C-scaffold-app.md) | P1 | implement | TODO | BETA-016-B | Scaffold app |
