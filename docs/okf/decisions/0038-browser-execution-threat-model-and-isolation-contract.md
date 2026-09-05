@@ -1,10 +1,11 @@
 ---
 type: Architecture Decision Record
 title: ADR-0038 Browser Execution Threat Model and Isolation Contract
-status: proposed
+status: accepted
 date: 2026-09-05
 implements: BWASM-D-003 (isolation contract), ADR-0037 (browser-wasm product contract), ADR-0026 (integrity is not authenticity), ADR-0035 (same-process trusted code assumption)
-owner-acceptance: PENDING. The Browser-WASM packet and the owner's 2026-09-05 instruction authorized preparing these design documents; neither specifies nor ratifies this threat model's specifics (CSP baselines, preview-origin policy, bounds values). This ADR is agent-authored under that authorization and is NOT owner-ratified. This frontmatter previously recorded blanket "owner acceptance"; corrected 2026-09-05.
+owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md).
+owner-acceptance: ratified (as corrected — including the ambient-API honesty section). History: the Browser-WASM packet and the owner's 2026-09-05 instruction authorized preparing these design documents; neither specifies nor ratifies this threat model's specifics (CSP baselines, preview-origin policy, bounds values). This ADR is agent-authored under that authorization; the owner ratified the corrected version (including the §5 ambient-API honesty section) on 2026-09-05. Frontmatter history: previously recorded blanket "owner acceptance"; corrected, then properly ratified, 2026-09-05.
 ---
 
 # ADR-0038: Browser Execution Threat Model and Isolation Contract

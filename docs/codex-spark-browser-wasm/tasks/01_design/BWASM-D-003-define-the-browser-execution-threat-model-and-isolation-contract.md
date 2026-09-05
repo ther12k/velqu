@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `BLOCKED`
+Status: `PASS`
 
 ---
 
@@ -150,3 +150,13 @@ Follow-up issue links:
   browser-API use by trusted handler code — corrected in ADR-0038
   (platform-enforceable backstops vs trusted-code conventions are now
   separated). ADR-0038 is `proposed` pending owner ratification.
+
+---
+
+## Result amendment (2026-09-05, later same day)
+
+- Owner ratified ADR-0038 **as corrected** (decision record:
+  `docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md`,
+  OD-BWASM-001). ADR status `proposed` → `accepted`.
+- The ratification explicitly includes the ambient-API honesty section;
+  this removes the blocker recorded in the correction amendment.
