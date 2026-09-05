@@ -36,8 +36,8 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D/V)", () => {
     const files = generateStarterProject({ name: "default-app" });
     const pkg = JSON.parse(files["package.json"]);
 
-    expect(pkg.scripts.dev).toBe("velqu dev");
-    expect(pkg.scripts.build).toBe("velqu build");
+    expect(pkg.scripts.dev).toBe("bun node_modules/@velqu/cli/src/index.ts dev --project .");
+    expect(pkg.scripts.build).toBe("bun node_modules/@velqu/cli/src/index.ts build --project .");
     expect(pkg.velqu.profile).toBe("serverless");
     expect(pkg.velqu.capabilities).toEqual([]);
     expect(files["src/app.ts"]).toContain("Configured runtime profile: serverless");
@@ -47,8 +47,8 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D/V)", () => {
     const files = generateStarterProject({ name: "service-app", profile: "service:4" });
     const pkg = JSON.parse(files["package.json"]);
 
-    expect(pkg.scripts.dev).toBe("velqu dev --profile service:4");
-    expect(pkg.scripts.build).toBe("velqu build --profile service:4");
+    expect(pkg.scripts.dev).toBe("bun node_modules/@velqu/cli/src/index.ts dev --project . --profile service:4");
+    expect(pkg.scripts.build).toBe("bun node_modules/@velqu/cli/src/index.ts build --project . --profile service:4");
     expect(pkg.velqu.profile).toBe("service:4");
     expect(files["src/app.ts"]).toContain("Configured runtime profile: service:4");
   });
@@ -161,7 +161,7 @@ describe("Optional fetch & profile scaffolding choices (M4A-003-D/V)", () => {
     expect(stdout).toContain("fetch: enabled");
 
     const pkg = JSON.parse(await Bun.file(join(target, "package.json")).text());
-    expect(pkg.scripts.dev).toBe("velqu dev --profile service:4");
+    expect(pkg.scripts.dev).toBe("bun node_modules/@velqu/cli/src/index.ts dev --project . --profile service:4");
     expect(pkg.velqu.profile).toBe("service:4");
     expect(pkg.velqu.capabilities).toEqual(["fetch"]);
     expect(existsSync(join(target, "src", "modules", "upstream", "routes.ts"))).toBeTrue();

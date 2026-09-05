@@ -532,12 +532,20 @@ export class DevServer {
       resolve("./target/debug/velqu-runtime"),
       resolve(process.cwd(), "target/release/velqu-runtime"),
       resolve(process.cwd(), "target/debug/velqu-runtime"),
+      // The install tree this CLI ships in (external installs and
+      // monorepo checkouts share the packages/cli -> target layout,
+      // BETA-016-D).
+      resolve(import.meta.dir, "../../../target/release/velqu-runtime"),
+      resolve(import.meta.dir, "../../../target/debug/velqu-runtime"),
     ].filter(Boolean);
 
     for (const c of candidates) {
       if (existsSync(c!)) return c!;
     }
-    throw new Error(`velqu-runtime binary not found (looked in: ${candidates.join(", ")})`);
+    throw new Error(
+      `velqu-runtime binary not found (looked in: ${candidates.join(", ")}; ` +
+        "build it with `cargo build --release -p velqu-runtime` or point VELQU_RUNTIME at it)",
+    );
   }
 
   private log(msg: string): void {

@@ -87,8 +87,15 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
     throw new Error(resolved.error);
   }
 
-  const devScript = `velqu dev${resolved.devFlag}`;
-  const buildScript = `velqu build${resolved.buildFlag}`;
+  // Scaffold scripts invoke the CLI through its workspace-linked path:
+  // outside the monorepo there is no global `velqu` binary (the @velqu/*
+  // packages resolve via the documented node_modules links, BETA-016-D),
+  // and `bun <file.ts>` runs identically in both environments. The
+  // project is explicit (`.`) because the CLI's bare default assumes the
+  // monorepo's examples/proof layout.
+  const cliCmd = "bun node_modules/@velqu/cli/src/index.ts";
+  const devScript = `${cliCmd} dev --project .${resolved.devFlag}`;
+  const buildScript = `${cliCmd} build --project .${resolved.buildFlag}`;
 
   const packageJson = JSON.stringify(
     {
@@ -100,7 +107,7 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
       scripts: {
         dev: devScript,
         build: buildScript,
-        check: "velqu check",
+        check: `${cliCmd} check --project .`,
         test: "bun test",
         client: "bun run src/client.ts",
       },
