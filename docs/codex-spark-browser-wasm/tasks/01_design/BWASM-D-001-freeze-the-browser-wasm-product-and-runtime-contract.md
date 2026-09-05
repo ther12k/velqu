@@ -147,3 +147,11 @@ Follow-up issue links:
   now `proposed`; the K-phase gate stays closed pending owner
   ratification of the design freeze (D-004 BLOCKED). See the
   bwasm-design-corrections packet.
+
+---
+
+## Result amendment (2026-09-05, later same day)
+
+- Owner confirmed the agent-authored remainder of ADR-0037 matches
+  intent; ADR `proposed` → `accepted` (OD-BWASM-001 decision record).
+  Design freeze complete across D-001..D-004.

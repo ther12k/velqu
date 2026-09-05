@@ -1,34 +1,100 @@
 {
   "budgets_id": "bwasm-d-004-budgets",
   "date": "2026-09-05",
-  "status": "proposed-unratified",
-  "ratification": "Blocked: no owner decision record exists for any numeric budget or support-lane classification (see docs/reports/bwasm-d-004-support-matrix-budgets.md). Authorization to prepare design documents is not acceptance of proposed decisions.",
+  "status": "ratified-targets",
+  "ratification": "Owner ratified 2026-09-05 (interactive review session); decision record: docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md. Targets revisable only by ADR amendment with measured evidence; lanes stay experimental-untested until BWASM-Q-002 evidence exists.",
   "size_budgets": {
     "unit": "compressed transfer bytes",
     "note": "compression codec must be brotli (server default for wasm); gzip-9 numbers are interim proxies until brotli tooling is wired into measurement",
-    "base_wasm_kernel": { "target_max": 512000, "component": "q-browser-kernel (verification/routing/validation/authz/problem mapping; no engine, no host)" },
-    "runtime_js_glue": { "target_max": 51200, "component": "@velqu/browser-runtime dispatcher, Worker lifecycle, artifact loader" },
-    "per_app_handler_bundle": { "target_max": 102400, "component": "generated handlers, typical 24-route app reference" },
-    "optional_capability_bundle_each": { "target_max": 51200, "component": "loaded only when the artifact declares the capability" },
-    "total_initial_transfer": { "target_max": 1048576, "component": "base + glue + one app + declared capabilities" }
+    "base_wasm_kernel": {
+      "target_max": 512000,
+      "component": "q-browser-kernel (verification/routing/validation/authz/problem mapping; no engine, no host)"
+    },
+    "runtime_js_glue": {
+      "target_max": 51200,
+      "component": "@velqu/browser-runtime dispatcher, Worker lifecycle, artifact loader"
+    },
+    "per_app_handler_bundle": {
+      "target_max": 102400,
+      "component": "generated handlers, typical 24-route app reference"
+    },
+    "optional_capability_bundle_each": {
+      "target_max": 51200,
+      "component": "loaded only when the artifact declares the capability"
+    },
+    "total_initial_transfer": {
+      "target_max": 1048576,
+      "component": "base + glue + one app + declared capabilities"
+    }
   },
   "behavioral_budgets": {
-    "cold_start_to_first_ready": { "target_max_ms": 2000, "environment": "mid-tier 2022 Android-class, throttled 4G", "procedure": "BWASM-Q-005 §cold (pending)" },
-    "warm_start_to_first_ready": { "target_max_ms": 500, "environment": "same, cached artifact", "procedure": "BWASM-Q-005 §warm (pending)" },
-    "kernel_per_request_overhead": { "target_p50_ms": 5, "target_p99_ms": 15, "environment": "desktop reference, loopback", "procedure": "BWASM-Q-005 §latency, matched-candidate (pending)" },
-    "memory_repeated_lifecycle": { "criterion": "100 load/unload cycles; heap flat after warmup within run noise; numeric noise threshold UNSET pending measurement variance data", "procedure": "BWASM-Q-005 §leak (pending; mirrors BETA-013 soak methodology)" }
+    "cold_start_to_first_ready": {
+      "target_max_ms": 2000,
+      "environment": "mid-tier 2022 Android-class, throttled 4G",
+      "procedure": "BWASM-Q-005 §cold (pending)"
+    },
+    "warm_start_to_first_ready": {
+      "target_max_ms": 500,
+      "environment": "same, cached artifact",
+      "procedure": "BWASM-Q-005 §warm (pending)"
+    },
+    "kernel_per_request_overhead": {
+      "target_p50_ms": 5,
+      "target_p99_ms": 15,
+      "environment": "desktop reference, loopback",
+      "procedure": "BWASM-Q-005 §latency, matched-candidate (pending)"
+    },
+    "memory_repeated_lifecycle": {
+      "criterion": "100 load/unload cycles; heap flat after warmup within run noise; numeric noise threshold UNSET pending measurement variance data",
+      "procedure": "BWASM-Q-005 §leak (pending; mirrors BETA-013 soak methodology)"
+    }
   },
   "support_matrix": {
-    "status": "proposed-unratified",
-    "note": "no browser-runtime CI lanes exist yet; no lane may be called tested until BWASM-Q-002 evidence exists",
+    "status": "ratified-policy-lanes-untested",
+    "note": "Policy ratified 2026-09-05: no lane may be called tested until BWASM-Q-002 evidence exists; current lane classes reflect that (all experimental-untested).",
     "lanes": [
-      { "lane": "Chrome/Edge desktop (last 2 majors)", "class": "experimental-untested", "proposed_class": "tested", "promotion_requires": "BWASM-Q-002 real-browser CI lane passing conformance" },
-      { "lane": "Firefox desktop (last 2 majors)", "class": "experimental-untested", "proposed_class": "tested", "promotion_requires": "same" },
-      { "lane": "Safari desktop (last 2 majors)", "class": "experimental-untested", "proposed_class": "tested", "promotion_requires": "same" },
-      { "lane": "Chrome Android (last 2 majors)", "class": "experimental-untested", "proposed_class": "supported", "promotion_requires": "independent device qualification; desktop results do not establish mobile support" },
-      { "lane": "Safari iOS (last 2 majors)", "class": "experimental-untested", "proposed_class": "experimental", "promotion_requires": "device-lane evidence (Worker/WASM memory ceilings, storage partitioning)" },
-      { "lane": "older evergreen versions", "class": "experimental-untested", "proposed_class": "experimental", "promotion_requires": "n/a; no claims permitted" },
-      { "lane": "browsers lacking WebAssembly+Workers+ES2022+streams", "class": "out-of-scope", "proposed_class": "out-of-scope", "promotion_requires": "n/a; startup must fail closed naming the missing feature" }
+      {
+        "lane": "Chrome/Edge desktop (last 2 majors)",
+        "class": "experimental-untested",
+        "proposed_class": "tested",
+        "promotion_requires": "BWASM-Q-002 real-browser CI lane passing conformance"
+      },
+      {
+        "lane": "Firefox desktop (last 2 majors)",
+        "class": "experimental-untested",
+        "proposed_class": "tested",
+        "promotion_requires": "same"
+      },
+      {
+        "lane": "Safari desktop (last 2 majors)",
+        "class": "experimental-untested",
+        "proposed_class": "tested",
+        "promotion_requires": "same"
+      },
+      {
+        "lane": "Chrome Android (last 2 majors)",
+        "class": "experimental-untested",
+        "proposed_class": "supported",
+        "promotion_requires": "independent device qualification; desktop results do not establish mobile support"
+      },
+      {
+        "lane": "Safari iOS (last 2 majors)",
+        "class": "experimental-untested",
+        "proposed_class": "experimental",
+        "promotion_requires": "device-lane evidence (Worker/WASM memory ceilings, storage partitioning)"
+      },
+      {
+        "lane": "older evergreen versions",
+        "class": "experimental-untested",
+        "proposed_class": "experimental",
+        "promotion_requires": "n/a; no claims permitted"
+      },
+      {
+        "lane": "browsers lacking WebAssembly+Workers+ES2022+streams",
+        "class": "out-of-scope",
+        "proposed_class": "out-of-scope",
+        "promotion_requires": "n/a; startup must fail closed naming the missing feature"
+      }
     ]
   },
   "measurability_prototype": {
@@ -39,7 +105,11 @@
       "rustc --target wasm32-unknown-unknown --crate-type cdylib -O -o mini.wasm mini.rs",
       "gzip -9 -kc mini.wasm | wc -c"
     ],
-    "results": { "raw_bytes": 1474978, "gzip9_bytes": 305342, "sha256": "5f6291a14050585f95454829263c1ae1736ce86502c937f9dcaa7ec815169d56" },
+    "results": {
+      "raw_bytes": 1474978,
+      "gzip9_bytes": 305342,
+      "sha256": "5f6291a14050585f95454829263c1ae1736ce86502c937f9dcaa7ec815169d56"
+    },
     "findings": [
       "std-linked cdylib dominates size: a one-function module is ~1.44 MiB raw / ~299 KiB gzip-9",
       "wasm-opt absent on measurement host; without it, Rust wasm output cannot be dead-code-eliminated to realistic kernel size",

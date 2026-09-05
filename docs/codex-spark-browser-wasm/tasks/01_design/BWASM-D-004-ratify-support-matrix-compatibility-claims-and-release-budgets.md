@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `BLOCKED`
+Status: `PASS`
 
 ---
 
@@ -143,3 +143,16 @@ Follow-up issue links:
   no lane may be called tested until BWASM-Q-002 exists.
 - No kernel code written. Gates: validate-okf pass; verify ALL PASS
   (post-setup, netns).
+
+---
+
+## Result amendment (2026-09-05, later same day)
+
+- Owner ratified ADR-0039 **as targets** (decision record:
+  `docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md`,
+  OD-BWASM-001). ADR status `proposed` → `accepted`;
+  `evidence/budgets.json` status → `ratified-targets`.
+- Required evidence now complete: support matrix, machine-readable
+  budgets, known-limitations baseline, **owner decision record**.
+- Lanes remain experimental-untested until BWASM-Q-002 evidence; budget
+  changes require ADR amendment with measured evidence.

@@ -1,10 +1,10 @@
 ---
 type: Architecture Decision Record
 title: ADR-0039 Browser Support Matrix, Compatibility Claims, and Release Budgets
-status: proposed
+status: accepted
 date: 2026-09-05
 implements: BWASM-D-004 (support matrix and budgets), ADR-0037 (browser-wasm product contract), ADR-0038 (threat model), ADR-0023 (canonical hashing)
-owner-acceptance: pending; authorization to prepare design documents is not acceptance of their proposed decisions.
+owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md).
 ---
 
 # ADR-0039: Browser Support Matrix, Compatibility Claims, and Release Budgets
@@ -19,9 +19,9 @@ size/startup/latency/memory/offline/update — with measurement
 procedures attached, so targets and measured results are never
 conflated (AGENTS.md constraint 12).
 
-**Everything numeric in this ADR is an unratified proposed target until the
-Q-phase (BWASM-Q-002/Q-005) publishes measured evidence against these
-procedures.** Budgets are revisable by ADR amendment if measurement
+**Everything numeric in this ADR is a normative target, ratified by the owner on
+2026-09-05, until the Q-phase (BWASM-Q-002/Q-005) publishes measured
+evidence against these procedures.** Budgets are revisable by ADR amendment if measurement
 proves them wrong; silently missing a budget is not.
 
 ## Decision
@@ -140,7 +140,13 @@ measured evidence attached.
   until the owner crosses the design-freeze gate (ADR-0037 frontmatter
   note).
 
-## Ratification blockers
+## Ratification record
+
+All blockers below were resolved on 2026-09-05 by the owner decision
+record (`docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md`);
+the items are retained as the historical blocker list.
+
+## Former ratification blockers (resolved 2026-09-05)
 
 - Owner acceptance of ADR-0037/0038/0039 is not evidenced by a generic
   instruction to continue implementation. Keep the design gate closed.
