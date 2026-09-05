@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -109,3 +109,22 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-c-scaffold-app.md`.
+- Deliverable: `scripts/beta-external/scaffold-app.sh` — external-user
+  scaffold verification using the QUICKSTART `create` command verbatim,
+  documented `@velqu/{core,schema,treaty}` links, structure checks, and
+  `velqu check` (must report 3 routes).
+- External transcript: `create hello-velqu --name hello-velqu` produced
+  the documented scaffold (package.json, src/app.ts, health + greetings
+  modules); `velqu check` → "3 routes — clean"; `SCAFFOLD-OK`;
+  uninstall `rm -rf ~/hello-velqu`.
+- Issues recorded: (1) `create --help` silently scaffolds a default
+  project instead of printing help — diagnostics wart logged for the
+  parent rollup, journey unaffected; (2) probe pollution incident
+  cleaned and verification re-run pristine.
+- Gates: `cargo test -p velqu-runtime` 37+3 pass; `bun test` 434/0
+  (netns); `bun run typecheck` pass.
+- Standing CI disclosure applies; local gates are the acceptance basis.

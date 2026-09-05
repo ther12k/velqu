@@ -648,7 +648,7 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-015-Z — Package evidence for Generate beta release evidence, SBOM, and checksums](tasks/08_public_beta/BETA-015-Z-package-evidence-for-generate-beta-release-evidence-sbom-and-checksums.md)
 - [x] [BETA-016-A — Fresh Linux VM/container](tasks/08_public_beta/BETA-016-A-fresh-linux-vm-container.md)
 - [x] [BETA-016-B — Install CLI/runtime](tasks/08_public_beta/BETA-016-B-install-cli-runtime.md)
-- [ ] [BETA-016-C — Scaffold app](tasks/08_public_beta/BETA-016-C-scaffold-app.md)
+- [x] [BETA-016-C — Scaffold app](tasks/08_public_beta/BETA-016-C-scaffold-app.md)
 - [ ] [BETA-016-D — Run tests/dev/build](tasks/08_public_beta/BETA-016-D-run-tests-dev-build.md)
 - [ ] [BETA-016-E — Deploy proof service](tasks/08_public_beta/BETA-016-E-deploy-proof-service.md)
 - [ ] [BETA-016-F — Use Treaty client](tasks/08_public_beta/BETA-016-F-use-treaty-client.md)
