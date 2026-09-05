@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -123,3 +123,21 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result (2026-09-05)
+
+- Status: PASS. ADR-0038 accepted:
+  `docs/okf/decisions/0038-browser-execution-threat-model-and-isolation-contract.md`
+  (index updated).
+- Actors, assets, and four trust boundaries modeled; trusted vs
+  untrusted-preview modes with separate preview origin + sandboxed
+  iframe; CSP/Permissions-Policy/Referrer-Policy baseline; kernel-side
+  bounds, network defaults (credentialless, declared allowlist), storage
+  namespacing, hash-keyed verified cache, kill-and-replace recovery;
+  abuse-case disposition table; forbidden sandbox claims binding on all
+  BWASM evidence/docs.
+- Owner acceptance recorded in ADR frontmatter (owner packet +
+  standing instruction, 2026-09-05).
+- Gates: validate-okf pass; verify ALL PASS (post-setup).
