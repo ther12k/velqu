@@ -1,0 +1,22 @@
+# BWASM-K-004 evidence tooling — measures the REAL wasm size
+# contribution of q-schema-runtime by exporting a validate entry point
+# (a bare cdylib exports nothing, which would measure an empty module).
+# Not part of any workspace build; built standalone against the
+# repository crate by scripts/bwasm-size-probe/measure.sh.
+[workspace]
+
+[package]
+name = "bwasm-size-probe"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+q-schema-runtime = { path = "../../crates/q-schema-runtime" }
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
