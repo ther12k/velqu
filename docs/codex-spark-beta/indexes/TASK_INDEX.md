@@ -667,7 +667,7 @@ All 59 G0 atomic packets and the G0 gate are **PASS** at the recorded evidence c
 | [BETA-016-C](../tasks/08_public_beta/BETA-016-C-scaffold-app.md) | P1 | implement | PASS | BETA-016-B | Scaffold app |
 | [BETA-016-D](../tasks/08_public_beta/BETA-016-D-run-tests-dev-build.md) | P1 | implement | PASS | BETA-016-C | Run tests/dev/build |
 | [BETA-016-E](../tasks/08_public_beta/BETA-016-E-deploy-proof-service.md) | P1 | implement | PASS | BETA-016-D | Deploy proof service |
-| [BETA-016-F](../tasks/08_public_beta/BETA-016-F-use-treaty-client.md) | P1 | implement | TODO | BETA-016-E | Use Treaty client |
+| [BETA-016-F](../tasks/08_public_beta/BETA-016-F-use-treaty-client.md) | P1 | implement | PASS | BETA-016-E | Use Treaty client |
 | [BETA-016-V](../tasks/08_public_beta/BETA-016-V-verify-run-external-clean-install-and-tutorial-verification.md) | P1 | verify | TODO | BETA-016-A, BETA-016-B, BETA-016-C, BETA-016-D, BETA-016-E, BETA-016-F | Verify Run external clean-install and tutorial verification |
 | [BETA-016-Z](../tasks/08_public_beta/BETA-016-Z-package-evidence-for-run-external-clean-install-and-tutorial-verification.md) | P1 | evidence | TODO | BETA-016-V | Package evidence for Run external clean-install and tutorial verification |
 | [BETA-017-A](../tasks/08_public_beta/BETA-017-A-repository-organization.md) | P0 | implement | TODO | — | Repository/organization |
