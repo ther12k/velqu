@@ -1,0 +1,33 @@
+[package]
+name = "q-browser-kernel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+# BWASM-K-005: the browser kernel composes ONLY portable crates —
+# model types, byte-based pack core (no native features), router core,
+# schema runtime, capability inventory. No tokio, no host runtime.
+q-runtime-model = { workspace = true }
+q-pack = { path = "../q-pack", default-features = false }
+q-router = { path = "../q-router", default-features = false }
+q-schema-runtime = { workspace = true }
+q-capabilities = { path = "../q-capabilities", default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# JS ABI layer. Optional so native and wasm32-wasip1 test builds carry
+# no bindgen surface; the browser cdylib build enables it:
+#   cargo build --target wasm32-unknown-unknown --features bindgen -p q-browser-kernel
+[dependencies.wasm-bindgen]
+version = "=0.2.108"
+optional = true
+
+[features]
+bindgen = ["dep:wasm-bindgen"]
+
+[dev-dependencies]
+sha2 = { workspace = true }

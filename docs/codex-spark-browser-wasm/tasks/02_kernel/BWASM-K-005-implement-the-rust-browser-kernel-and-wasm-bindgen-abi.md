@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -126,4 +126,15 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-005 (#1233)
+- Candidate commit: see PR; report `docs/reports/bwasm-k-005-browser-kernel-abi.md`
+- q-browser-kernel: init (bounded, integrity-verified, source-bundle policy), plan_request (routing + validation + capability authz, stable problems), complete_invocation (declared-status + response-schema enforcement), authorize_capability; wasm-bindgen ABI (schema-pinned =0.2.108).
+- Tests: native 15/15; ON-TARGET 14/14 (wasm32-wasip1); import audit CLEAN (2 bindgen shims only); dep audit 0 host crates.
+- Artifacts (hashed in evidence/kernel/): wasm 1,731,509 raw / 572,711 gzip-9 (sha256 db72b8e8…); JS glue 2,830 gzip-9 (sha256 900618ab…).
+- ⚠ BUDGET FINDING recorded (not waived): composed kernel exceeds the ≤500 KiB ratified budget; baseline for the Q-005 size packet.
+- Native-only test scoping documented (Node WASI 16 MiB allocation limitation).
+- Follow-ups: K-006 (#1234) packages the kernel evidence; R-phase builds the JS runtime on this ABI.
 ```

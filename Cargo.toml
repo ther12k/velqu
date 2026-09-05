@@ -8,6 +8,7 @@ members = [
     "crates/q-engine-quickjs",
     "crates/q-http",
     "crates/q-router",
+    "crates/q-browser-kernel",
     "crates/q-bridge",
     "crates/q-pack",
     "crates/q-schema-runtime",

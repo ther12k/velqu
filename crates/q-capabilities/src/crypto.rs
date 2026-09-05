@@ -64,32 +64,33 @@ impl CryptoRandom {
 
     /// Generate a standard RFC 4122 v4 UUID using OS CSPRNG.
     pub fn random_uuid() -> Result<String, CryptoError> {
-        let mut bytes = [0u8; 16];
-        #[cfg(feature = "native")]
-        getrandom::getrandom(&mut bytes)
-            .map_err(|e| CryptoError::EntropyUnavailable(e.to_string()))?;
         #[cfg(not(feature = "native"))]
         {
-            let _ = bytes;
-            return Err(CryptoError::EntropyUnavailable(
+            Err(CryptoError::EntropyUnavailable(
                 "OS entropy is native-only; browser kernels source randomness from the host bridge (ADR-0037)".into(),
-            ));
+            ))
         }
+        #[cfg(feature = "native")]
+        {
+            let mut bytes = [0u8; 16];
+            getrandom::getrandom(&mut bytes)
+                .map_err(|e| CryptoError::EntropyUnavailable(e.to_string()))?;
 
-        // Set version to 4 (0100 in bits 4..7 of byte 6)
-        bytes[6] = (bytes[6] & 0x0F) | 0x40;
-        // Set variant to RFC 4122 (10xx in bits 6..7 of byte 8)
-        bytes[8] = (bytes[8] & 0x3F) | 0x80;
+            // Set version to 4 (0100 in bits 4..7 of byte 6)
+            bytes[6] = (bytes[6] & 0x0F) | 0x40;
+            // Set variant to RFC 4122 (10xx in bits 6..7 of byte 8)
+            bytes[8] = (bytes[8] & 0x3F) | 0x80;
 
-        let mut buf = String::with_capacity(36);
-        use std::fmt::Write;
-        for (i, b) in bytes.iter().enumerate() {
-            if i == 4 || i == 6 || i == 8 || i == 10 {
-                buf.push('-');
+            let mut buf = String::with_capacity(36);
+            use std::fmt::Write;
+            for (i, b) in bytes.iter().enumerate() {
+                if i == 4 || i == 6 || i == 8 || i == 10 {
+                    buf.push('-');
+                }
+                let _ = write!(buf, "{b:02x}");
             }
-            let _ = write!(buf, "{b:02x}");
+            Ok(buf)
         }
-        Ok(buf)
     }
 }
 
