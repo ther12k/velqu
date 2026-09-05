@@ -663,4 +663,4 @@ Update a checkbox only after the task commit and required tests pass.
 - [x] [BETA-017-G — Public benchmark wording](tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md)
 - [x] [BETA-017-V — Verify Resolve beta owner decisions](tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md)
 - [x] [BETA-017-Z — Package evidence for Resolve beta owner decisions](tasks/08_public_beta/BETA-017-Z-package-evidence-for-resolve-beta-owner-decisions.md)
-- [ ] [BETA-GATE — Public Beta Readiness and Release exit gate](gates/BETA-GATE.md)
+- [x] [BETA-GATE — Public Beta Readiness and Release exit gate](gates/BETA-GATE.md)
