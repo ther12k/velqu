@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `BLOCKED`
 
 ---
 
@@ -123,3 +123,23 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result (2026-09-05)
+
+- Status: **BLOCKED — issue stays open.** Deliverables exist as
+  PROPOSED material: ADR-0039 (status proposed), machine-readable
+  `evidence/budgets.json`, measurability prototype, known-limitations
+  baseline, report `docs/reports/bwasm-d-004-support-matrix-budgets.md`.
+- Exact blocker: **no owner decision record** for any numeric budget or
+  lane classification; design-preparation authorization is not
+  acceptance. Secondary: ADR-0038's ambient-authority claim requires
+  correction before security budgets can be ratified (a Worker exposes
+  browser APIs regardless of the capability bridge; trusted-mode
+  handlers are convention-bound, not prevented).
+- Corrections recorded: ADR-0037/0038 owner-acceptance provenance
+  overstated (follow-up correction packet); #1182 should be reopened;
+  no lane may be called tested until BWASM-Q-002 exists.
+- No kernel code written. Gates: validate-okf pass; verify ALL PASS
+  (post-setup, netns).
