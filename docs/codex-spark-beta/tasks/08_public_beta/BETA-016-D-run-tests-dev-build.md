@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -102,3 +102,19 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-d-run-tests-dev-build.md`.
+- External transcript: scaffold `bun run test` passes; `bun run build`
+  twice with identical `app.qpack` sha256 `cb00bc37…` (determinism holds
+  externally); `bun run check` clean; `velqu dev` on :8084 probed
+  (`{"status":"ok"}`, `{"message":"Hello, dev!"}`); production runtime
+  on :8081 probed (`{"message":"Hello, world!"}`); `DEVBUILD-OK`.
+- Product fixes carried (surfaced by this verification): scaffold
+  scripts invoke the CLI via its linked path with `--project .`;
+  dev-server resolves the runtime from its install tree + actionable
+  error; QUICKSTART link step includes `cli`; test assertions updated.
+- Gates: `bun test` 434/0 (netns); `bun run typecheck` pass;
+  `cargo test -p velqu-runtime` 37+3; `cargo fmt` clean.
+- Standing CI disclosure applies; local gates are the acceptance basis.

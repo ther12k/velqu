@@ -32,7 +32,7 @@ step "bun $CLI create $(basename "$APP") --name $(basename "$APP")"
 
 step "link @velqu workspace packages (documented quickstart step)"
 mkdir -p "$APP/node_modules/@velqu"
-for p in core schema treaty; do
+for p in core schema treaty cli; do
   ln -sfn "$INSTALL/packages/$p" "$APP/node_modules/@velqu/$p"
 done
 ls "$APP/node_modules/@velqu"

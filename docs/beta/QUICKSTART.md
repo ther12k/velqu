@@ -43,12 +43,14 @@ development profile; a multi-worker service uses the explicit grammar
 bun packages/cli/src/index.ts create hello-svc --name hello-svc --profile service:4
 ```
 
-Because the scaffold declares `workspace:*` dependencies, link the
-workspace packages into it (repeat per scaffolded project):
+Because the scaffold declares `workspace:*` dependencies and its
+scripts invoke the CLI through the linked package, link the workspace
+packages into it (repeat per scaffolded project; `cli` is what makes
+`bun run dev`/`check`/`build` work):
 
 ```bash
 mkdir -p hello-velqu/node_modules/@velqu
-for p in core schema treaty; do
+for p in core schema treaty cli; do
   ln -sfn "$(pwd)/packages/$p" "hello-velqu/node_modules/@velqu/$p"
 done
 ```
