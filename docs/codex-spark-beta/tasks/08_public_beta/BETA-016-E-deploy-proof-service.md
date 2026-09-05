@@ -4,7 +4,7 @@ parent_task: BETA-016
 milestone: BETA
 priority: P1
 mode: IMPLEMENT
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -102,3 +102,18 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Report: `docs/reports/beta-016-e-deploy-proof-service.md`.
+- External transcript: proof pack built from the installed tree; runtime
+  serves it on `127.0.0.1:3000` in reverse-proxy mode (asserted from the
+  startup log); nginx edge on `127.0.0.1:8080` (operator provisioning);
+  through-edge probes match INSTALL.md verbatim (`{"status":"ok"}`,
+  `{"message":"Hello beta"}`, ready) — `VERIFY-OK`; rollback removes the
+  edge, SIGTERM-stops the service (exit enforced), removes artifacts —
+  `ROLLBACK-OK`; post-rollback verify fails closed.
+- Deliverable: `scripts/beta-external/deploy-proof-service.sh`
+  (app|edge|verify|rollback subcommands).
+- Gates: `bun test` 434/0 (netns); `bun run typecheck` pass.
+- Standing CI disclosure applies; local gates are the acceptance basis.
