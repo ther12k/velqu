@@ -2,40 +2,40 @@
   "repository": "ther12k/velqu",
   "results": [
     {
-      "id": "BWASM-K-001",
+      "id": "BWASM-R-001",
       "action": "created",
-      "title": "[BWASM-K-001] BWASM-K-001 \u2014 Extract a portable runtime model crate",
-      "url": "https://github.com/ther12k/velqu/issues/1229"
+      "title": "[BWASM-R-001] BWASM-R-001 \u2014 Create @velqu/browser-runtime package and public runtime contract",
+      "url": "https://github.com/ther12k/velqu/issues/1242"
     },
     {
-      "id": "BWASM-K-002",
+      "id": "BWASM-R-002",
       "action": "created",
-      "title": "[BWASM-K-002] BWASM-K-002 \u2014 Split byte-based QPack core from native loading and tooling",
-      "url": "https://github.com/ther12k/velqu/issues/1230"
+      "title": "[BWASM-R-002] BWASM-R-002 \u2014 Implement Fetch-compatible browser dispatcher",
+      "url": "https://github.com/ther12k/velqu/issues/1243"
     },
     {
-      "id": "BWASM-K-003",
+      "id": "BWASM-R-003",
       "action": "created",
-      "title": "[BWASM-K-003] BWASM-K-003 \u2014 Extract a host-independent router core",
-      "url": "https://github.com/ther12k/velqu/issues/1231"
+      "title": "[BWASM-R-003] BWASM-R-003 \u2014 Define and emit the browser handler-bundle contract",
+      "url": "https://github.com/ther12k/velqu/issues/1244"
     },
     {
-      "id": "BWASM-K-004",
+      "id": "BWASM-R-004",
       "action": "created",
-      "title": "[BWASM-K-004] BWASM-K-004 \u2014 Qualify the schema runtime for wasm32 and expose bounded validation",
-      "url": "https://github.com/ther12k/velqu/issues/1232"
+      "title": "[BWASM-R-004] BWASM-R-004 \u2014 Execute handlers in isolated Workers with cancellation and hard recovery",
+      "url": "https://github.com/ther12k/velqu/issues/1245"
     },
     {
-      "id": "BWASM-K-005",
+      "id": "BWASM-R-005",
       "action": "created",
-      "title": "[BWASM-K-005] BWASM-K-005 \u2014 Implement the Rust Browser Kernel and wasm-bindgen ABI",
-      "url": "https://github.com/ther12k/velqu/issues/1233"
+      "title": "[BWASM-R-005] BWASM-R-005 \u2014 Integrate capability registry and Treaty with the browser runtime",
+      "url": "https://github.com/ther12k/velqu/issues/1246"
     },
     {
-      "id": "BWASM-K-006",
+      "id": "BWASM-R-006",
       "action": "created",
-      "title": "[BWASM-K-006] BWASM-K-006 \u2014 Verify and package portable-kernel evidence",
-      "url": "https://github.com/ther12k/velqu/issues/1234"
+      "title": "[BWASM-R-006] BWASM-R-006 \u2014 Verify and package browser-runtime evidence",
+      "url": "https://github.com/ther12k/velqu/issues/1247"
     }
   ]
 }
