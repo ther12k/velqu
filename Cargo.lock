@@ -1293,6 +1293,7 @@ name = "q-engine"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "q-runtime-model",
  "serde",
  "serde_json",
  "tokio",
@@ -1348,6 +1349,16 @@ dependencies = [
  "q-engine",
  "q-pack",
  "thiserror",
+]
+
+[[package]]
+name = "q-runtime-model"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]

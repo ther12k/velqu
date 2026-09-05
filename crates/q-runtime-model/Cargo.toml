@@ -1,12 +1,13 @@
 [package]
-name = "q-engine"
+name = "q-runtime-model"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-q-runtime-model = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
 bytes = { workspace = true }
+
+[dev-dependencies]
+sha2 = { workspace = true }

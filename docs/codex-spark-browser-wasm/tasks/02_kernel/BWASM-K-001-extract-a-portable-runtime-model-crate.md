@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -122,3 +122,13 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-001 (#1229)
+- Candidate commit: see PR; report `docs/reports/bwasm-k-001-portable-runtime-model.md`
+- Files changed: `Cargo.toml`, `Cargo.lock`, `crates/q-engine/Cargo.toml`, `crates/q-engine/src/lib.rs`, new `crates/q-runtime-model/`, report
+- Commands/tests: native + wasm32 model checks; 4 fixture tests; q-engine/q-router/q-pack/q-bridge regressions; validate-okf; verify ALL PASS
+- Acceptance: all four criteria PASS; no unresolved in-scope P0
+- Follow-ups: K-002 (#1230), K-003 (#1231), K-004 (#1232), K-005 (#1233), K-006 (#1234)
+- Standing CI disclosure: local gates are the acceptance basis (`verify` workflows have zero executed steps since ~#714).
