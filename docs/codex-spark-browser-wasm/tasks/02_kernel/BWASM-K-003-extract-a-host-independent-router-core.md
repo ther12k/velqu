@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -122,4 +122,12 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-003 (#1231)
+- Candidate commit: see PR; report `docs/reports/bwasm-k-003-router-core.md`
+- q-engine dep removed (46 refs → q-runtime-model, identical types); q-pack via portable no-default path dep; wasm32 check passes with default features; dep audit 0 host crates; 15/15 router tests; frozen semantics spec added (every rule names its pinning test); workspace/fmt/clippy/okf clean; verify ALL PASS (two-pass manifest refresh).
+- On-target fixture execution deferred to K-005/K-006 (no harness yet) — recorded honestly.
+- Follow-ups: K-004 (#1232), K-005 (#1233), K-006 (#1234)
 ```

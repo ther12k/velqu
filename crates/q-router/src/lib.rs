@@ -1,9 +1,46 @@
-//! q-router — native route table consumed from pre-compiled pack segments.
+//! q-router — the host-independent route core (native and WASM build the
+//! same code, BWASM-K-003).
 //!
 //! The router performs ZERO parsing or compilation at runtime: `PathSegment`
 //! arrays come verbatim from the pack (built by the compiler). `Router::build`
 //! rejects duplicate and canonically-equivalent routes (COMP-004) and is run
 //! once at startup.
+//!
+//! # Matching semantics (frozen; each rule names its pinning test)
+//!
+//! - **Base path / segments** — matching is segment-based over the raw
+//!   path; the path is split on `/` with no base-path prefixing or
+//!   rewriting (`compiled_and_reference_routers_are_property_equivalent`).
+//! - **Percent decoding** — NONE. Captured values are the RAW path
+//!   bytes; percent sequences survive untouched by policy (M24-004-A
+//!   corpus: `capture_ranges_encoding_corpus_is_raw_and_panic_free`).
+//! - **Query exclusion** — only the path participates in matching;
+//!   query strings never reach the matcher.
+//! - **Trailing slash** — a trailing separator yields a trailing empty
+//!   segment; it is matched like any other segment, not normalized away
+//!   (corpus covers `/trailing/`).
+//! - **Malformed URL bytes** — the matcher is byte-oriented and
+//!   panic-free over arbitrary bytes; multibyte UTF-8 and stray percent
+//!   sequences are data, never parser traps (same corpus test).
+//! - **Ambiguity / duplicates** — routes that are canonically
+//!   equivalent for a method are REJECTED at build
+//!   (`canonical_collision_rejected`), including same-shape routes
+//!   differing only in parameter names
+//!   (`same_shape_different_methods_preserve_route_specific_parameter_names`).
+//! - **Method semantics** — exact method matching with `HEAD` mapped to
+//!   `GET` (`head_maps_to_get`); a path matched for another method is a
+//!   405-style miss carrying the `Allow` set
+//!   (`method_not_allowed_has_allow_header_set`,
+//!   `static_route_for_other_method_does_not_shadow_parameter_route`).
+//! - **Precedence** — static segments win over parameters; parameters
+//!   win over wildcards; cross-method routes never shadow
+//!   (`static_preferred_over_param`,
+//!   `parameter_route_for_other_method_does_not_shadow_wildcard_route`).
+//!
+//! These rules are the native baseline AND the browser-kernel contract:
+//! the same crate, built for wasm32, implements them on the WASM request
+//! path (ADR-0037 §1); the test module is the shared fixture set for
+//! both targets.
 
 use q_pack::{PathSegment, RouteEntry, SegKind};
 
@@ -71,7 +108,7 @@ pub struct RouterNode {
 #[derive(Debug, Clone)]
 pub struct CompiledRoute {
     pub index: usize,
-    pub route_id: q_engine::RouteId,
+    pub route_id: q_runtime_model::RouteId,
     pub method: String,
     pub segments: Vec<PathSegment>,
     /// M24-004-B: indices into the Router's interned param-name table;
@@ -79,16 +116,16 @@ pub struct CompiledRoute {
     pub param_name_ids: Vec<u32>,
     pub has_params: bool,
     pub plan: Option<q_pack::RoutePlanDecl>,
-    pub handler_id: Option<q_engine::HandlerId>,
-    pub policy_id: Option<q_engine::PolicyId>,
-    pub policy_handler_id: Option<q_engine::HandlerId>,
-    pub params_schema_id: Option<q_engine::SchemaId>,
-    pub query_schema_id: Option<q_engine::SchemaId>,
-    pub headers_schema_id: Option<q_engine::SchemaId>,
-    pub body_schema_id: Option<q_engine::SchemaId>,
+    pub handler_id: Option<q_runtime_model::HandlerId>,
+    pub policy_id: Option<q_runtime_model::PolicyId>,
+    pub policy_handler_id: Option<q_runtime_model::HandlerId>,
+    pub params_schema_id: Option<q_runtime_model::SchemaId>,
+    pub query_schema_id: Option<q_runtime_model::SchemaId>,
+    pub headers_schema_id: Option<q_runtime_model::SchemaId>,
+    pub body_schema_id: Option<q_runtime_model::SchemaId>,
     pub default_status: u16,
     pub allowed_statuses: Vec<u16>,
-    pub response_strategy: q_engine::ResponseStrategy,
+    pub response_strategy: q_runtime_model::ResponseStrategy,
     pub deadline_ms: u64,
 }
 
@@ -100,7 +137,7 @@ pub enum MatchResult {
     /// M24-004-A: captures are byte ranges into the resolved path — no owned
     /// parameter string exists until `materialize_params` is called.
     Found {
-        route_id: q_engine::RouteId,
+        route_id: q_runtime_model::RouteId,
         route_index: usize,
         param_ranges: Vec<(u32, u32)>,
         head: bool,
@@ -168,17 +205,17 @@ impl Router {
                 deadline_ms,
             ) = if let Some(p) = &r.plan {
                 let strategy = match p.response_strategy {
-                    q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
-                    q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                    q_pack::Strategy::Native => q_runtime_model::ResponseStrategy::Native,
+                    q_pack::Strategy::Js => q_runtime_model::ResponseStrategy::Js,
                 };
                 (
-                    Some(q_engine::HandlerId(p.handler_id)),
-                    p.policy_id.map(q_engine::PolicyId),
-                    p.policy_handler_id.map(q_engine::HandlerId),
-                    p.params_schema_id.map(q_engine::SchemaId),
-                    p.query_schema_id.map(q_engine::SchemaId),
-                    p.headers_schema_id.map(q_engine::SchemaId),
-                    p.body_schema_id.map(q_engine::SchemaId),
+                    Some(q_runtime_model::HandlerId(p.handler_id)),
+                    p.policy_id.map(q_runtime_model::PolicyId),
+                    p.policy_handler_id.map(q_runtime_model::HandlerId),
+                    p.params_schema_id.map(q_runtime_model::SchemaId),
+                    p.query_schema_id.map(q_runtime_model::SchemaId),
+                    p.headers_schema_id.map(q_runtime_model::SchemaId),
+                    p.body_schema_id.map(q_runtime_model::SchemaId),
                     p.default_status,
                     p.allowed_statuses.clone(),
                     strategy,
@@ -195,10 +232,10 @@ impl Router {
                     r.responses.keys().filter_map(|k| k.parse().ok()).collect();
                 let response_strategy = match r.responses.get(&default_status.to_string()) {
                     Some(decl) => match decl.strategy {
-                        q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
-                        q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                        q_pack::Strategy::Native => q_runtime_model::ResponseStrategy::Native,
+                        q_pack::Strategy::Js => q_runtime_model::ResponseStrategy::Js,
                     },
-                    None => q_engine::ResponseStrategy::Js,
+                    None => q_runtime_model::ResponseStrategy::Js,
                 };
                 (
                     None,
@@ -226,7 +263,7 @@ impl Router {
 
             compiled.push(CompiledRoute {
                 index: i,
-                route_id: q_engine::RouteId(i as u32),
+                route_id: q_runtime_model::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
                 param_name_ids,
@@ -337,17 +374,17 @@ impl Router {
                     deadline_ms,
                 ) = if let Some(p) = &r.plan {
                     let strategy = match p.response_strategy {
-                        q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
-                        q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                        q_pack::Strategy::Native => q_runtime_model::ResponseStrategy::Native,
+                        q_pack::Strategy::Js => q_runtime_model::ResponseStrategy::Js,
                     };
                     (
-                        Some(q_engine::HandlerId(p.handler_id)),
-                        p.policy_id.map(q_engine::PolicyId),
-                        p.policy_handler_id.map(q_engine::HandlerId),
-                        p.params_schema_id.map(q_engine::SchemaId),
-                        p.query_schema_id.map(q_engine::SchemaId),
-                        p.headers_schema_id.map(q_engine::SchemaId),
-                        p.body_schema_id.map(q_engine::SchemaId),
+                        Some(q_runtime_model::HandlerId(p.handler_id)),
+                        p.policy_id.map(q_runtime_model::PolicyId),
+                        p.policy_handler_id.map(q_runtime_model::HandlerId),
+                        p.params_schema_id.map(q_runtime_model::SchemaId),
+                        p.query_schema_id.map(q_runtime_model::SchemaId),
+                        p.headers_schema_id.map(q_runtime_model::SchemaId),
+                        p.body_schema_id.map(q_runtime_model::SchemaId),
                         p.default_status,
                         p.allowed_statuses.clone(),
                         strategy,
@@ -364,10 +401,10 @@ impl Router {
                         r.responses.keys().filter_map(|k| k.parse().ok()).collect();
                     let response_strategy = match r.responses.get(&default_status.to_string()) {
                         Some(decl) => match decl.strategy {
-                            q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
-                            q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                            q_pack::Strategy::Native => q_runtime_model::ResponseStrategy::Native,
+                            q_pack::Strategy::Js => q_runtime_model::ResponseStrategy::Js,
                         },
-                        None => q_engine::ResponseStrategy::Js,
+                        None => q_runtime_model::ResponseStrategy::Js,
                     };
                     (
                         None,
@@ -395,7 +432,7 @@ impl Router {
 
                 compiled.push(CompiledRoute {
                     index: i,
-                    route_id: q_engine::RouteId(i as u32),
+                    route_id: q_runtime_model::RouteId(i as u32),
                     method: r.method.clone(),
                     segments: r.path_segments.clone(),
                     param_name_ids,
@@ -461,8 +498,8 @@ impl Router {
                 .map(|p| p.response_strategy)
                 .unwrap_or(q_pack::Strategy::Js)
             {
-                q_pack::Strategy::Native => q_engine::ResponseStrategy::Native,
-                q_pack::Strategy::Js => q_engine::ResponseStrategy::Js,
+                q_pack::Strategy::Native => q_runtime_model::ResponseStrategy::Native,
+                q_pack::Strategy::Js => q_runtime_model::ResponseStrategy::Js,
             };
             let default_status = r
                 .responses
@@ -483,13 +520,13 @@ impl Router {
                 plan_deadline,
             ) = match &r.plan {
                 Some(p) => (
-                    Some(q_engine::HandlerId(p.handler_id)),
-                    p.policy_id.map(q_engine::PolicyId),
-                    p.policy_handler_id.map(q_engine::HandlerId),
-                    p.params_schema_id.map(q_engine::SchemaId),
-                    p.query_schema_id.map(q_engine::SchemaId),
-                    p.headers_schema_id.map(q_engine::SchemaId),
-                    p.body_schema_id.map(q_engine::SchemaId),
+                    Some(q_runtime_model::HandlerId(p.handler_id)),
+                    p.policy_id.map(q_runtime_model::PolicyId),
+                    p.policy_handler_id.map(q_runtime_model::HandlerId),
+                    p.params_schema_id.map(q_runtime_model::SchemaId),
+                    p.query_schema_id.map(q_runtime_model::SchemaId),
+                    p.headers_schema_id.map(q_runtime_model::SchemaId),
+                    p.body_schema_id.map(q_runtime_model::SchemaId),
                     p.default_status,
                     p.allowed_statuses.clone(),
                     p.deadline_ms,
@@ -517,7 +554,7 @@ impl Router {
                 .collect::<Vec<u32>>();
             compiled.push(CompiledRoute {
                 index: i,
-                route_id: q_engine::RouteId(i as u32),
+                route_id: q_runtime_model::RouteId(i as u32),
                 method: r.method.clone(),
                 segments: r.path_segments.clone(),
                 param_name_ids,

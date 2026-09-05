@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-q-engine = { workspace = true }
-q-pack = { workspace = true }
+# BWASM-K-003: the router core is host-independent — model identities
+# come from the portable crate and route declarations from the
+# byte-based pack core (no native features). No tokio, no engine, no
+# host runtime.
+q-runtime-model = { workspace = true }
+q-pack = { path = "../q-pack", default-features = false }
 thiserror = { workspace = true }
