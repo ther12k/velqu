@@ -1,0 +1,162 @@
+{
+  "baseline_id": "bwasm-d-002-wasm32-baseline",
+  "date": "2026-09-05",
+  "toolchain": "rustc 1.96.0 (ac68faa20 2026-05-25), rust-std wasm32-unknown-unknown",
+  "target": "wasm32-unknown-unknown",
+  "command": "cargo check --target wasm32-unknown-unknown -p <crate>",
+  "method": "exact compiler output retained per crate in evidence/wasm32/check-<crate>.log; exit codes captured directly (no pipes)",
+  "class_vocabulary": ["portable", "split-required", "native-only", "browser-only"],
+  "crates": [
+    {
+      "crate": "q-schema-runtime",
+      "path": "crates/q-schema-runtime",
+      "direct_deps": ["regex", "serde", "serde_json"],
+      "wasm32_check": "PASS",
+      "exit": 0,
+      "classification": "portable",
+      "blocker": null,
+      "evidence": "evidence/wasm32/check-q-schema-runtime.log",
+      "notes": "compiles clean on wasm32-unknown-unknown as-is; K-004 qualification (test suite on target) still required before kernel use"
+    },
+    {
+      "crate": "q-router",
+      "path": "crates/q-router",
+      "direct_deps": ["q-engine", "q-pack", "thiserror"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "split-required",
+      "blocker": {
+        "crate": "mio v1.2.2",
+        "via": "q-router -> q-engine -> tokio -> mio",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature."
+      },
+      "evidence": "evidence/wasm32/check-q-router.log",
+      "notes": "router plan/lookup semantics are host-independent; the K-003 cut removes the q-engine edge from the router core"
+    },
+    {
+      "crate": "q-engine",
+      "path": "crates/q-engine",
+      "direct_deps": ["serde", "tokio", "bytes"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "split-required",
+      "blocker": {
+        "crate": "tokio v1.53.1 -> mio v1.2.2",
+        "via": "direct tokio dependency",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature."
+      },
+      "evidence": "evidence/wasm32/check-q-engine.log",
+      "notes": "tokio is direct; host-independent model types (route plan, decision enums, bounds) are the K-001 extraction source"
+    },
+    {
+      "crate": "q-bridge",
+      "path": "crates/q-bridge",
+      "direct_deps": ["q-engine", "serde", "thiserror", "bytes"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "split-required",
+      "blocker": {
+        "crate": "mio v1.2.2",
+        "via": "q-bridge -> q-engine -> tokio -> mio",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature."
+      },
+      "evidence": "evidence/wasm32/check-q-bridge.log",
+      "notes": "blocked only via the q-engine edge; re-measured after K-001/K-003 cuts"
+    },
+    {
+      "crate": "q-pack",
+      "path": "crates/q-pack",
+      "direct_deps": ["ed25519-dalek", "memmap2", "q-capabilities", "q-engine", "serde", "serde_json"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "split-required",
+      "blocker": {
+        "crate": "mio v1.2.2 (via q-engine) and getrandom v0.2.17 (via q-capabilities)",
+        "via": "q-pack -> q-engine -> tokio -> mio; q-pack -> q-capabilities -> getrandom",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature.; error: the wasm*-unknown-unknown targets are not supported by default, you may need to enable the \"js\" feature."
+      },
+      "evidence": "evidence/wasm32/check-q-pack.log",
+      "notes": "memmap2 itself compiled (no error observed); the byte-based verification core (K-002) must not depend on q-engine or on native mmap loading"
+    },
+    {
+      "crate": "q-capabilities",
+      "path": "crates/q-capabilities",
+      "direct_deps": ["getrandom", "percent-encoding", "serde", "serde_json", "sha2", "url"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "split-required",
+      "blocker": {
+        "crate": "getrandom v0.2.17",
+        "via": "direct dependency",
+        "exact_error": "error: the wasm*-unknown-unknown targets are not supported by default, you may need to enable the \"js\" feature. For more information see: https://docs.rs/getrandom/#webassembly-support"
+      },
+      "evidence": "evidence/wasm32/check-q-capabilities.log",
+      "notes": "smallest cut: feature-gate getrandom as native-only; browser kernel sources randomness from the host bridge (browser crypto), never from ambient ambient entropy"
+    },
+    {
+      "crate": "q-http",
+      "path": "crates/q-http",
+      "direct_deps": ["tokio", "hyper", "hyper-util"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "native-only",
+      "blocker": {
+        "crate": "tokio/hyper ingress stack",
+        "via": "direct dependencies",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature."
+      },
+      "evidence": "evidence/wasm32/check-q-http.log",
+      "notes": "native ingress; the browser dispatcher is a separate TS surface (BWASM-R-002) over the kernel ABI, not a port of q-http"
+    },
+    {
+      "crate": "q-engine-quickjs",
+      "path": "crates/q-engine-quickjs",
+      "direct_deps": ["rquickjs (pinned 0.12.2), tokio"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "native-only",
+      "blocker": {
+        "crate": "rquickjs native C bindings (+ tokio edge)",
+        "via": "direct",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature. (build stops at mio before rquickjs; rquickjs C engine is itself native-only)"
+      },
+      "evidence": "evidence/wasm32/check-q-engine-quickjs.log",
+      "notes": "QuickJS-NG-in-WASM is the experimental profile behind the ADR-0037 owner gate (BWASM-X-001), not this program's default"
+    },
+    {
+      "crate": "velqu-runtime",
+      "path": "crates/q-runtime",
+      "direct_deps": ["bytes", "clap", "q-bridge", "q-engine", "q-engine-quickjs", "q-http", "q-pack", "q-router", "q-schema-runtime", "serde", "serde_json", "sha2", "sourcemap", "tokio"],
+      "wasm32_check": "FAIL",
+      "exit": 101,
+      "classification": "native-only",
+      "blocker": {
+        "crate": "tokio -> mio (+ hyper-rustls stack)",
+        "via": "direct",
+        "exact_error": "error: This wasm target is unsupported by mio. If using Tokio, disable the net feature."
+      },
+      "evidence": "evidence/wasm32/check-velqu-runtime.log",
+      "notes": "the native host remains the production deployment (ADR-0037 §1); browser kernel is a new composition, not this crate"
+    }
+  ],
+  "planned_browser_only": [
+    {
+      "crate": "q-browser-kernel (BWASM-K-005)",
+      "classification": "browser-only",
+      "notes": "new composition crate exposing the message-based wasm-bindgen ABI; composes only portable-classified code"
+    },
+    {
+      "package": "@velqu/browser-runtime (BWASM-R-001)",
+      "classification": "browser-only",
+      "notes": "TS runtime: dispatcher, Worker lifecycle, artifact loading/caching, capability bridge"
+    }
+  ],
+  "smallest_dependency_cuts_for_k_phase": [
+    "K-001: extract host-independent runtime model types (route plan, decisions, bounds) from q-engine into a new portable crate; q-engine keeps tokio",
+    "K-002: split byte-based QPack verification core from native loading (memmap2 stays in the native loader only); feature-gate q-capabilities getrandom as native-only",
+    "K-003: cut the q-router -> q-engine edge; router core consumes the portable model crate only",
+    "K-004: q-schema-runtime needs no cut; qualify by running its suite on the target",
+    "re-measure q-bridge and q-pack on wasm32 after K-001..K-003 land (expected green without their native edges)"
+  ],
+  "raw_evidence_dir": "docs/codex-spark-browser-wasm/evidence/wasm32/"
+}

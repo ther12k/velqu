@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -129,3 +129,24 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result (2026-09-05)
+
+- Status: PASS. Report: `docs/reports/bwasm-d-002-wasm32-portability-baseline.md`;
+  machine-readable inventory:
+  `docs/codex-spark-browser-wasm/evidence/wasm32-baseline.json`;
+  exact retained compiler logs:
+  `docs/codex-spark-browser-wasm/evidence/wasm32/check-<crate>.log`.
+- Measured: `q-schema-runtime` compiles clean on wasm32 (portable);
+  q-router/q-engine/q-bridge/q-pack fail only via the `q-engine -> tokio
+  -> mio` edge (split-required); `q-capabilities` fails on `getrandom`
+  (feature-gate native-only); q-http/q-engine-quickjs/velqu-runtime are
+  native-only by architecture.
+- Smallest K-phase cuts frozen: K-001 model-type extraction from
+  q-engine; K-002 byte-core split (memmap2 confined to native loader) +
+  getrandom gate; K-003 router/q-engine edge cut; K-004 on-target test
+  qualification; re-measure bridge+pack after cuts.
+- Candidate commit: see PR (bwasm-d-002). Gates: validate-okf pass;
+  verify ALL PASS (post-setup).
