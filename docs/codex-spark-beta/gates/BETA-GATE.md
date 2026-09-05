@@ -4,7 +4,7 @@ parent_task: BETA-GATE
 milestone: BETA
 priority: P0
 mode: GATE_REVIEW
-status: TODO
+status: PASS
 context_card: context/milestones/BETA.md
 commit_required: true
 ---
@@ -129,3 +129,21 @@ Stop after this task is committed and handed off. Do not automatically begin the
 ## Handoff format
 
 Use `templates/TASK_RESULT_TEMPLATE.md`. If blocked, use `templates/BLOCKER_TEMPLATE.md`.
+
+## Result
+
+- Status: PASS. Milestone report: `docs/reports/beta-gate-review.md`.
+- Candidate commit `65da9ed`, clean tree; all 17 BETA parents PASS in
+  `docs/beta/04_TASK_LEDGER.md` (zero waivers); full gate battery re-run
+  from the candidate (bun test 434/0 netns, typecheck, fmt, clippy,
+  validate-okf, `./scripts/verify` ALL PASS).
+- Gate artifacts produced via `./scripts/release-packet`: commit-named
+  source archive, git bundle (verified), binaries, SBOM (277/277),
+  9 npm tarballs, top-level SHA-256 manifest (`CHECKSUMS-OK`); indexes
+  commit-bound by the packet script.
+- Unresolved items disclosed honestly (OD-BETA-007/009 open governance
+  decisions; owner-gated pack-format v2 flip, M3-009 target, npm,
+  licenses; standing CI disclosure) — none is a P0/P1 beta-exit
+  criterion and none is waived.
+- Ledger `docs/beta/04_TASK_LEDGER.md` flipped `BETA-GATE` TODO → PASS.
+- Standing CI disclosure applies; local gates are the acceptance basis.
