@@ -4,6 +4,7 @@ members = [
     "crates/q-runtime",
     "crates/q-bytecode-tool",
     "crates/q-engine",
+    "crates/q-runtime-model",
     "crates/q-engine-quickjs",
     "crates/q-http",
     "crates/q-router",
@@ -24,6 +25,7 @@ repository = "private-until-owner-decision"
 [workspace.dependencies]
 q-runtime = { path = "crates/q-runtime" }
 q-engine = { path = "crates/q-engine" }
+q-runtime-model = { path = "crates/q-runtime-model" }
 q-engine-quickjs = { path = "crates/q-engine-quickjs" }
 q-http = { path = "crates/q-http" }
 q-router = { path = "crates/q-router" }
