@@ -5,7 +5,7 @@ Mode: `EVIDENCE` — Package evidence from one exact candidate; do not mix imple
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -128,4 +128,14 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-006 (#1234)
+- Candidate commit: 69187c8bcb7005da940f27ecf9baea6dcb5f2787; report `docs/reports/bwasm-k-006-kernel-evidence.md`; raw evidence `docs/codex-spark-browser-wasm/evidence/kernel-verification/` (00-environment … 05-reviewer-findings + artifacts + reproducible abi-check.cjs).
+- Verification at one commit: 203 native tests; wasm32 checks for every portable configuration; on-target execution (schema 67 + kernel 14); dep audits 0; import audit CLEAN; **JS-ABI driven end-to-end from real JavaScript** (nodejs-target glue, JS-ABI-OK).
+- Reviewer sign-off: three external reviewer runs were rate-limited (provider); a mechanical structured self-audit is committed (VERDICT: KERNEL-REVIEW-PASS, 0×P0 0×P1 3×P2 notes) with owner sign-off explicitly invited — recorded, not hidden.
+- Open item carried: base-kernel size 572,711 B gzip-9 > 500 KiB ratified budget (Q-gate finding, per ADR-0039).
+- Verify: run 1 ALL PASS (canonical); two later runs flaked on different timing tests under external host load (~10 load average from operator applications); both tests pass in isolation — full history in the report.
+- K-PHASE COMPLETE (K-001..K-006). R-phase registration is the next owner-gated step per OD-BWASM-001 decision 4.
 ```

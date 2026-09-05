@@ -1,0 +1,2 @@
+== K-006 consolidated verification — commit 69187c8bcb7005da940f27ecf9baea6dcb5f2787 ==
+== env: Linux 7.0.0-30-generic x86_64, rustc rustc 1.96.0 (ac68faa20 2026-05-25), cargo cargo 1.96.0 (30a34c682 2026-05-25), node v22.23.2, bun 1.4.0, wasm-bindgen wasm-bindgen 0.2.108

@@ -1,0 +1,1 @@
+JS-ABI-OK: init+plan(200/404)+complete(200/contract-violation) through the real wasm-bindgen surface

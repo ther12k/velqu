@@ -1,0 +1,38 @@
+== native tests (all portable crates + kernel) ==
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 100 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 58 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== wasm32-unknown-unknown checks ==
+q-runtime-model:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.69s
+q-schema-runtime:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.59s
+q-router:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.13s
+q-pack[portable,no-default-features]: Finished dev profile in 0.07s (verified after the batch; correction noted inline)
+(q-pack WITH default native features intentionally fails for wasm32 — memmap2/ed25519 are native-only by design, K-002)
+q-browser-kernel:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s
+q-browser-kernel+bindgen:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.22s
+== on-target execution (wasm32-wasip1) ==
+schema: test result: ok. 58 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+schema: test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+schema: test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+schema: test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+kernel: test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+kernel: test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+kernel: test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== dependency audits (wasm32 graph, forbidden crates) ==
+q-runtime-model forbidden-deps=0
+q-router forbidden-deps=0
+q-pack[portable,no-default-features] forbidden-deps=0
+(correction: 4 was measured with default native features — the native configuration; portable-configuration audit is 0)
+q-browser-kernel forbidden-deps=0
