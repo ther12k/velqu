@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -123,4 +123,13 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-05)
+
+- Issue: BWASM-K-004 (#1232)
+- Candidate commit: see PR; report `docs/reports/bwasm-k-004-schema-wasm32-qualification.md`
+- Qualification: full suite (67 tests) EXECUTED on-target (wasm32-wasip1, Node WASI runner committed at scripts/wasm-wasi-node-runner.mjs + .cargo/config.toml); test names and outcomes identical to native; fuzz validator ran 1.65 s of real work on-target.
+- Bounded validation surface documented as the kernel contract (MAX_VALIDATE_DEPTH=64, typed problems, ordered finite errors); no-JS-fallback guardrail recorded for K-005.
+- Size measured via committed probe: 1,216,002 B raw / 386,429 B gzip-9 (sha256 2b78355c…); proxy caveats (no wasm-opt/brotli on host) recorded against the ratified ≤500 KiB budget.
+- Follow-ups: K-005 (#1233) must bind the kernel ABI to THIS crate (no JS validator substitution); K-006 (#1234) re-measures inside the real kernel build.
 ```

@@ -1,0 +1,10 @@
+# BWASM-K-004 — on-target test execution for wasm32-wasip1 via Node's
+# WASI (preview1). Lets `cargo test --target wasm32-wasip1` EXECUTE the
+# real Rust test suites as WebAssembly. Cargo runs test binaries with
+# cwd = the package directory (crates/<name>), so the runner path is
+# package-relative.
+#
+# (wasm32-unknown-unknown remains the release target — ADR-0037; WASI
+# exists here only so std's test harness can run on-target.)
+[target.wasm32-wasip1]
+runner = ["node", "--experimental-wasi-unstable-preview1", "../../scripts/wasm-wasi-node-runner.mjs"]
