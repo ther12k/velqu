@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `PASS`
+Status: `BLOCKED`
 
 ---
 
@@ -141,3 +141,12 @@ Follow-up issue links:
 - Owner acceptance recorded in ADR frontmatter (owner packet +
   standing instruction, 2026-09-05).
 - Gates: validate-okf pass; verify ALL PASS (post-setup).
+- **Correction (2026-09-05) — status PASS → BLOCKED, issue #1182
+  reopened:** the PASS rested on an owner-acceptance claim the evidence
+  does not support (the threat model's specifics are agent-authored;
+  the owner authorized preparation, not acceptance). Additionally the
+  §5 ambient-authority wording overstated the runtime's power: the
+  capability bridge mediates declared calls but cannot prevent direct
+  browser-API use by trusted handler code — corrected in ADR-0038
+  (platform-enforceable backstops vs trusted-code conventions are now
+  separated). ADR-0038 is `proposed` pending owner ratification.

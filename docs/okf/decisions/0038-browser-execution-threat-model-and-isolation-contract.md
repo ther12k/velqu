@@ -1,10 +1,10 @@
 ---
 type: Architecture Decision Record
 title: ADR-0038 Browser Execution Threat Model and Isolation Contract
-status: accepted
+status: proposed
 date: 2026-09-05
 implements: BWASM-D-003 (isolation contract), ADR-0037 (browser-wasm product contract), ADR-0026 (integrity is not authenticity), ADR-0035 (same-process trusted code assumption)
-owner-acceptance: Owner-directed via the Browser-WASM GitHub packet (ZIP SHA-256 a25e3610513f9a7c9a54c3fcf4dc104dfc13fe6df314d0f43602ba86fc1dd2bc) and the owner's standing instruction of 2026-09-05 to freeze the four design decisions (BWASM-D-001..004) before kernel work.
+owner-acceptance: PENDING. The Browser-WASM packet and the owner's 2026-09-05 instruction authorized preparing these design documents; neither specifies nor ratifies this threat model's specifics (CSP baselines, preview-origin policy, bounds values). This ADR is agent-authored under that authorization and is NOT owner-ratified. This frontmatter previously recorded blanket "owner acceptance"; corrected 2026-09-05.
 ---
 
 # ADR-0038: Browser Execution Threat Model and Isolation Contract
@@ -105,9 +105,22 @@ isolation beyond what the browser origin model provides.
   the kernel rejects undeclared targets with typed problems before the
   Worker sees them.
 - **Credentials**: handler code never receives cookies, tokens, or
-  ambient editor-origin authority; the capability bridge strips
-  credential surfaces; auth is the application's explicit contract
-  (BETA-005 reference stays native-deployment guidance).
+  ambient editor-origin authority *from the runtime*; the capability
+  bridge strips credential surfaces from declared capability calls; auth
+  is the application's explicit contract (BETA-005 reference stays
+  native-deployment guidance).
+- **Ambient-API honesty (corrected 2026-09-05)**: in trusted
+  (production) mode, the capability bridge mediates *declared* calls
+  but **cannot prevent** handler code from calling browser APIs
+  directly (a Worker exposes `fetch`, storage, and other platform
+  surfaces). Trusted-handler non-use of ambient APIs is a **convention
+  enforced by review and the compiler's import policy
+  (BWASM-B-003), not a runtime guarantee**. Platform-enforceable
+  backstops are origin isolation and CSP `connect-src`; storage
+  partitioning is per-origin. Any wording implying the runtime *blocks*
+  ambient access in trusted mode is wrong; untrusted-preview isolation
+  is solely the deployment posture of §3 (separate origin + sandboxed
+  iframe), never a runtime property.
 - **Storage**: browser persistence only through the namespaced KV
   capability (per-app namespace derived from artifact identity); no
   shared/global storage; no ambient localStorage access from handlers.
