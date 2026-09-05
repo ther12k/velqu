@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -124,3 +124,19 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result (2026-09-05)
+
+- Status: PASS. ADR-0037 accepted:
+  `docs/okf/decisions/0037-browser-wasm-product-and-runtime-contract.md`
+  (index updated). Evidence report:
+  `docs/reports/bwasm-d-001-freeze-contract.md`.
+- Owner acceptance recorded with date + provenance (owner packet ZIP
+  SHA-256 a25e3610…, standing instruction 2026-09-05).
+- Decision table + semantics classification frozen; diagrams and
+  two-boundary ownership explicit; SW = adapter; Worker handlers
+  explicitly not QuickJS parity; quickjs-wasm behind owner gate.
+- Candidate commit: see PR (bwasm-d-001). Gates: validate-okf pass;
+  verify ALL PASS.
