@@ -1,0 +1,10 @@
+== artifact hashes (commit 69187c8bcb7005da940f27ecf9baea6dcb5f2787) ==
+db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de  docs/codex-spark-browser-wasm/evidence/kernel-verification/q_browser_kernel_bg.wasm
+8434c8575f330c8ae666cf7a57afef5c49fd3d02d8f5f3216c0b7eb9d302e5de  docs/codex-spark-browser-wasm/evidence/kernel-verification/q_browser_kernel.js
+c5b20ee56a2a28d65b71b93891839c8c367b98d7da8218e4b826076ae80950db  docs/codex-spark-browser-wasm/evidence/kernel-verification/fixture-pack.json
+
+== sizes ==
+docs/codex-spark-browser-wasm/evidence/kernel-verification/q_browser_kernel_bg.wasm 1731509 bytes
+docs/codex-spark-browser-wasm/evidence/kernel-verification/q_browser_kernel.js 8563 bytes
+bg.wasm gzip-9: 572711
+glue.js gzip-9: 2051
