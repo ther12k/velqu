@@ -22,10 +22,15 @@
  * - workspace paths are sanitized out of emitted metadata (acceptance 5).
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 import { extractApp, CompileError, type ExtractedApp } from "./extract";
+import {
+  scanImportPolicy,
+  assertImportPolicyOk,
+  IMPORT_POLICY_VERSION,
+} from "./import-policy";
 
 /** Browser target identity carried in the manifest. */
 export const BROWSER_TARGET = "browser-wasm" as const;
@@ -45,6 +50,22 @@ export interface BrowserWasmBuildResult {
   readonly outDir: string;
   readonly files: Record<string, string>;
   readonly routes: number;
+}
+
+function entryFileOf(project: string, app: ExtractedApp): string {
+  // extractApp resolved the entry already; the first route's source file
+  // is inside the app tree — use the project path forms the CLI accepts.
+  const candidates = [
+    project,
+    join(project, "src", "app.ts"),
+    join(project, "app.ts"),
+    join(project, "src", "index.ts"),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c) && statSync(c).isFile()) return c;
+  }
+  // Fall back to the first route module's file (app trees always have one).
+  return app.routes[0]?.sourceFile ?? project;
 }
 
 /** Host-path sanitizer: no workspace prefix crosses into artifacts. */
@@ -69,7 +90,10 @@ export function buildBrowserWasmArtifacts(
 ): BrowserWasmBuildResult {
   // Build-time diagnostics FIRST: native-only constructs must fail HERE,
   // before any artifact directory is created (nothing is emitted on the
-  // diagnostic path).
+  // diagnostic path). BWASM-B-003: the browser import policy runs before
+  // emission too — forbidden/transitive/deployment-required imports block
+  // the build (fail closed; ADR-0038 §5 trusted-handler enforcement).
+  assertImportPolicyOk(scanImportPolicy(entryFileOf(opts.project, app)));
   for (const r of app.routes) {
     if (r.liveness) {
       throw new CompileError(
@@ -152,6 +176,7 @@ export function buildBrowserWasmArtifacts(
   const manifest = {
     formatVersion: 1,
     target: BROWSER_TARGET,
+    importPolicyVersion: IMPORT_POLICY_VERSION,
     handlerAbiVersion: EMITTED_HANDLER_ABI_VERSION,
     kernelAbiVersion: EMITTED_KERNEL_ABI_VERSION,
     appId: app.appId,

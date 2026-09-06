@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -123,4 +123,12 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-B-003 (#1257)
+- Candidate commit: see PR; policy spec `docs/specs/browser-import-policy.md`; report `docs/reports/bwasm-b-003-import-policy.md`; evidence `evidence/import-policy/` (positive fixtures: browser-demo + proof clean; negative fixture log exit 0).
+- scanImportPolicy: transitive relative-import walk, re-export + require following, static-dynamic classification, opaque dynamic import forbidden, eval/new Function forbidden, server-only drivers deployment-required with capability remediation; IMPORT_POLICY_VERSION=1 recorded in emitted browser-manifest.json; wired into the browser target BEFORE emission (fail closed, no escape hatch).
+- Tests 9 fixture-based (package totals green); typecheck clean; verify ALL PASS.
+- Follow-ups: Q-phase bundle post-scan re-checks the compiled form (documented boundary); B-004 (#1258) SW adapter.
 ```

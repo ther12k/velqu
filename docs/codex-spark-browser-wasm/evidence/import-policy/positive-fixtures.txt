@@ -1,0 +1,2 @@
+examples/browser-demo: violations=0 policyVersion=1
+examples/proof: violations=0
