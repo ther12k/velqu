@@ -21,6 +21,24 @@
  * BWASM-B-002).
  */
 
+import {
+  dispatchFetchRequest,
+  DispatcherError,
+  DEFAULT_MAX_BODY_BYTES,
+} from "./dispatcher";
+
+export {
+  dispatchFetchRequest,
+  DispatcherError,
+  UNSUPPORTED_SEMANTICS,
+  DEFAULT_MAX_BODY_BYTES,
+  MAX_MULTIPART_PARTS,
+  MAX_QUERY_PAIRS,
+  MAX_HEADER_PAIRS,
+  type DispatcherOptions,
+  type DispatcherRejection,
+} from "./dispatcher";
+
 // ---------------------------------------------------------------------------
 // Kernel ABI mirror (K-005 wasm-bindgen surface)
 // ---------------------------------------------------------------------------
@@ -132,18 +150,28 @@ export interface BrowserRuntimeOptions {
   readonly kernel: KernelModule;
   /** Expected kernel ABI version; defaults to the current contract (1). */
   readonly expectedAbiVersion?: number;
+  /** Bounded request-body cap (default 1 MiB; ADR-0037 §5). */
+  readonly maxBodyBytes?: number;
+  /** Abort signal applied to every fetch (R-002 abort contract). */
+  readonly signal?: AbortSignal | null;
+  /**
+   * R-004 seam: executes an invoke plan and returns the completion
+   * result. Defaults to the declared-default executor (the kernel's
+   * declared-status enforcement still runs on the completion).
+   */
+  readonly executeHandler?: (
+    plan: KernelInvokePlan,
+  ) => Promise<{
+    kind: "response";
+    status: number;
+    headers: Array<[string, string]>;
+    body: unknown;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
 // BrowserRuntime
 // ---------------------------------------------------------------------------
-
-interface KernelResponseShape {
-  readonly kind: "response";
-  readonly status: number;
-  readonly headers: ReadonlyArray<readonly [string, string]>;
-  readonly body?: unknown;
-}
 
 /**
  * The browser runtime. Create via {@link createBrowserRuntime}; call
@@ -233,59 +261,29 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
     },
     abiVersion: kernelAbi,
 
-    async fetch(request: Request): Promise<Response> {
+    fetch(request: Request): Promise<Response> {
       requireReady();
-
-      const url = new URL(request.url);
-      const query: Array<[string, string]> = [];
-      url.searchParams.forEach((value, key) => query.push([key, value]));
-      const headers: Array<[string, string]> = [];
-      request.headers.forEach((value, key) => headers.push([key, value]));
-      let body: string | undefined;
-      if (request.method !== "GET" && request.method !== "HEAD") {
-        body = await request.text();
-      }
-
-      const message: KernelPlanRequest = {
-        abiVersion: kernelAbi,
-        method: request.method,
-        path: url.pathname,
-        query,
-        headers,
-        ...(body !== undefined ? { body } : {}),
-      };
-
-      const plan = parseKernelMessage<KernelPlanResult>(
-        instance.plan_request(JSON.stringify(message)),
-        "plan",
-      );
-      if (isProblem(plan)) {
-        return problemResponse(plan.problem);
-      }
-
-      // Handler execution is the dispatcher's concern (BWASM-R-002):
-      // this boundary contract resolves the plan's default response via
-      // the kernel completion path so the Request→Response seam is real
-      // end-to-end today. The dispatcher replaces `executeHandler`.
-      const completion = {
-        abiVersion: kernelAbi,
-        routeId: plan.routeId,
-        result: await executeHandler(plan),
-      };
-      const completed = parseKernelMessage<KernelResponseShape | KernelProblemShape>(
-        instance.complete_invocation(JSON.stringify(completion)),
-        "completion",
-      );
-      if (isProblem(completed)) {
-        return problemResponse(completed.problem);
-      }
-      return new Response(
-        completed.body === undefined ? null : JSON.stringify(completed.body),
-        {
-          status: completed.status,
-          headers: new Headers(completed.headers.map(([k, v]) => [k, v] as [string, string])),
-        },
-      );
+      // R-002: the dispatcher owns boundary normalization, body forms,
+      // abort, HEAD policy, and the kernel round-trip. The kernel stays
+      // the only routing/validation authority (no JS fast path).
+      return dispatchFetchRequest(instance, kernelAbi, request, {
+        maxBodyBytes: options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
+        signal: options.signal ?? null,
+        ...(options.executeHandler ? { executeHandler: options.executeHandler } : {}),
+      }).catch((cause: unknown) => {
+        if (cause instanceof BrowserRuntimeError) throw cause;
+        if (cause instanceof DispatcherError) {
+          const code =
+            cause.rejection.kind === "protocol"
+              ? "KERNEL_PROTOCOL"
+              : cause.rejection.kind === "unsupported"
+                ? "REQUEST_INVALID"
+                : "REQUEST_INVALID";
+          throw new BrowserRuntimeError(code, cause.message, { cause });
+        }
+        if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
+        throw new BrowserRuntimeError("KERNEL_PROTOCOL", String(cause), { cause });
+      });
     },
 
     authorizeCapability(name: string): { authorized: boolean } | KernelProblemShape["problem"] {
@@ -311,38 +309,4 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
       instance.dispose();
     },
   };
-}
-
-/**
- * Placeholder handler execution seam (BWASM-R-002 owns the real Worker
- * dispatcher). Today the boundary resolves a plan with the route's
- * declared default status and an empty object body so the complete
- * path (declared-status enforcement!) is exercised for real: an
- * undeclared default would produce the kernel's contract-violation
- * problem, proving the seam end-to-end.
- */
-async function executeHandler(plan: KernelInvokePlan): Promise<{
-  kind: "response";
-  status: number;
-  headers: Array<[string, string]>;
-  body: unknown;
-}> {
-  return {
-    kind: "response",
-    status: plan.defaultStatus,
-    headers: [["content-type", "application/json"]],
-    body: {},
-  };
-}
-
-function problemResponse(problem: KernelProblemShape["problem"]): Response {
-  const headers = new Headers();
-  headers.set("content-type", "application/problem+json");
-  if (problem.allow && problem.allow.length > 0) {
-    headers.set("allow", problem.allow.join(", "));
-  }
-  return new Response(JSON.stringify({ ...problem }), {
-    status: problem.status,
-    headers,
-  });
 }

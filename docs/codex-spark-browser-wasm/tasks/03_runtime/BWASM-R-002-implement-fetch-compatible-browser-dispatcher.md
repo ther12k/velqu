@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -123,4 +123,14 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-002 (#1243)
+- Candidate commit: see PR; report `docs/reports/bwasm-r-002-browser-dispatcher.md`; diff evidence `evidence/dispatcher/native-browser-diff.txt`
+- Dispatcher: boundary normalization, bounded body forms (text/json/urlencoded/multipart-metadata; binary/streaming fail-closed per UNSUPPORTED_SEMANTICS), abort before+during dispatch, HEAD bodyless via kernel HEAD→GET, OPTIONS via kernel 405+Allow, duplicate-header joined form; executeHandler = R-004 seam.
+- NATIVE-BROWSER-DIFF-OK: 9-entry corpus, plan-level outcomes identical between native runtime (proof pack, netns) and dispatcher + REAL kernel wasm (nodejs glue, hashed).
+- Expected difference documented: /health/ready = native host-level probe (not an artifact route); browser 404 correct.
+- Tests 27/27; typecheck clean; verify ALL PASS.
+- Follow-ups: R-003 (#1244) handler-bundle contract, R-004 (#1245) Worker execution.
 ```
