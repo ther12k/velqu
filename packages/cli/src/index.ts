@@ -93,6 +93,14 @@ async function main() {
             sourceMap: args.has("source-map"),
             kernelWasmPath: args.get("kernel") ?? undefined,
             kv: args.has("kv"),
+            ...(args.get("probe-path")
+              ? {
+                  probe: {
+                    method: (args.get("probe-method") ?? "GET").toUpperCase() as "GET",
+                    path: args.get("probe-path")!,
+                  },
+                }
+              : {}),
           });
           if (jsonOutput) {
             console.log(

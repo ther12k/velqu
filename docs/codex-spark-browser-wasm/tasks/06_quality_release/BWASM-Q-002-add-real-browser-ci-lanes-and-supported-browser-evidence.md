@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -56,12 +56,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Every claimed supported browser has a blocking evidence lane.
-- [ ] A browser absent from evidence is marked unverified/unsupported rather than implicitly supported.
-- [ ] CI tests actual emitted release-like artifacts, not development source imports only.
-- [ ] Failures upload enough logs/traces/artifacts for diagnosis.
-- [ ] Experimental lanes cannot satisfy a release gate.
-- [ ] Matrix ownership and update cadence are documented.
+- [x] Every claimed supported browser has a blocking evidence lane.
+- [x] A browser absent from evidence is marked unverified/unsupported rather than implicitly supported.
+- [x] CI tests actual emitted release-like artifacts, not development source imports only.
+- [x] Failures upload enough logs/traces/artifacts for diagnosis.
+- [x] Experimental lanes cannot satisfy a release gate.
+- [x] Matrix ownership and update cadence are documented.
 
 ## Targeted tests and commands
 
@@ -76,10 +76,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] CI workflow definitions.
-- [ ] Representative green run links/logs.
-- [ ] Browser/OS matrix manifest.
-- [ ] Failure artifact example.
+- [x] CI workflow definitions.
+- [x] Representative green run links/logs.
+- [x] Browser/OS matrix manifest.
+- [x] Failure artifact example.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -126,3 +126,37 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). Real-browser lanes exist and are bound to the
+support matrix:
+
+- **Lane runner** `scripts/browser-e2e-rehearsal.py`: six smoke suites
+  (kernel boot, dispatcher probe, SW install/activate/control, offline
+  navigation, real IndexedDB KV durability, update apply-on-reload)
+  against EMITTED `velqu build --target browser-wasm` artifacts served
+  statically — not development source imports.
+- **CI workflow** `.github/workflows/browser-lanes.yml`: Chromium
+  required-blocking; Firefox/WebKit experimental allowed-failure (can
+  never satisfy a release gate); weekly scheduled full matrix; failure
+  artifact upload.
+- **Matrix manifest** `evidence/browser-matrix.json`: lane
+  classifications, ownership (BWASM program), cadence (PR + weekly),
+  feature baseline with fail-closed absence semantics, and the
+  unverified-means-unsupported policy.
+- **Green evidence**: Chromium 151.0.7922.34 local run, all 7 checks
+  (`evidence/browser-lanes/chromium.json`, source-commit-bound);
+  Firefox/WebKit recorded experimental-untested (binaries not yet
+  provisioned here) — never claimed.
+- Support matrix updated (`docs/specs/browser-support-matrix.md`):
+  Chromium lane marked tested; all other browsers explicitly
+  experimental/unverified.
+
+Honest notes: single required lane (Chromium/Linux); headless only; the
+standing CI-runner stall (~#714) means the workflow is a committed
+definition whose runs cannot currently execute — the local green run is
+explicitly labeled a local run, not a CI run. Report:
+`docs/reports/bwasm-q-002-browser-lanes.md`.

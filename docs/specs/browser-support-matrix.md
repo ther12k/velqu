@@ -31,6 +31,20 @@ differential suite fails on unreviewed drift.
 | Service Worker offline/asset lane | browser-only | B-004/B-006; no native counterpart |
 | SW cache activation/upgrade/rollback | browser-only | B-006 rehearsal lanes |
 
+## Browser lanes (BWASM-Q-002)
+
+| lane | status | evidence |
+|---|---|---|
+| Chromium desktop, Linux x64 (Chrome for Testing 151) | **tested** — required CI lane | `evidence/browser-lanes/chromium.json` (E1–E6 all pass on emitted artifacts) |
+| Firefox desktop | experimental — lane defined, browser binary not yet provisioned | untested; never claimed |
+| WebKit (Safari driver) | experimental — lane defined, binary not yet provisioned | untested; never claimed |
+| mobile (Chrome Android / Safari iOS) | experimental / untested | per ADR-0039; device qualification required |
+
+CI workflow: `.github/workflows/browser-lanes.yml` (Chromium required;
+Firefox/WebKit experimental allowed-failure; weekly scheduled full run;
+failure artifacts uploaded). Lane ownership: BWASM program; cadence and
+update policy live in `evidence/browser-matrix.json`.
+
 ## Frozen classification counts (Q-001 corpus, 2026-09-06)
 
 The committed differential suite pins: **4 exact-parity,
