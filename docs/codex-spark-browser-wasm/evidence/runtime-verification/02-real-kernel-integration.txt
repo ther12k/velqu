@@ -1,0 +1,5 @@
+== REAL-kernel + dispatcher + worker integration (nodejs glue) ==
+plan: invoke health.live
+complete: response 200 {"status":"ok"}
+REAL-KERNEL-INTEGRATION-OK
+== bundle audit (browser target, source scan) ==

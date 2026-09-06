@@ -1,0 +1,12 @@
+
+ 59 pass
+ 0 fail
+ 123 expect() calls
+Ran 59 tests across 6 files. [391.00ms]
+== pack fixture ==
+1364 bytes
+
+== full verify (R-006) ==
+run at this commit after full toolchain setup: ALL PASS (M0-M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE)
+(earlier run failed only on the known missing-debug-fixture class: embed bytecode NotFound
+ before `cargo build -p q-bytecode-tool` — documented, then completed setup and re-ran)
