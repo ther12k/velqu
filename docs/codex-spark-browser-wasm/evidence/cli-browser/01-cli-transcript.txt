@@ -1,0 +1,181 @@
+== BWASM-B-005 CLI transcript — commit ee4d2a0 (pre-commit worktree; source of PR) ==
+== env: Linux 7.0.0-30-generic x86_64, bun 1.4.0, node v22.23.2 ==
+
+$ bun packages/cli/src/index.ts build --target browser-wasm --project examples/browser-demo
+velqu build [browser-wasm]: 2 routes → examples/browser-demo/dist/browser
+  buildId: ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa
+  pack           app.qpack                9333B  11adb3cea470…
+  kernelWasm     kernel.wasm              1731509B  db72b8e82da5…
+  handlerBundle  app.bundle.js            30514B  36a936de406c…
+  manifest       browser-manifest.json    499B  39694342ef0e…
+  contract       contract.json            1603B  be8f2fd060e9…
+  schemas        schema-manifest.json     1082B  a0bc84783d07…
+  capabilities   capability-manifest.json 449B  1ec7da6bea1e…
+  kernel: ABI v1, 1731509B (db72b8e82da5…)
+
+$ bun packages/cli/src/index.ts inspect browser --project examples/browser-demo
+browser deployment: examples/browser-demo/dist/browser
+  buildId: ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa
+  target: browser-wasm (handlerAbi v1, kernelAbi v1)
+  integrity: verified (7 artifacts)
+  build-input    app.browser.js             1218B  430ac67cb4ff…
+  handlerBundle  app.bundle.js              30514B  36a936de406c…
+  pack           app.qpack                  9333B  11adb3cea470…
+  manifest       browser-manifest.json      499B  39694342ef0e…
+  capabilities   capability-manifest.json   449B  1ec7da6bea1e…
+  contract       contract.json              1603B  be8f2fd060e9…
+  shell          index.html                 978B  7b961fec1cb3…
+  shell          kernel.js                  9039B  dba80f5d7aba…
+  kernelWasm     kernel.wasm                1731509B  db72b8e82da5…
+  shell          page.js                    34869B  02b37406b23b…
+  schemas        schema-manifest.json       1082B  a0bc84783d07…
+  shell          service-worker.js          27034B  255cc3daddfb…
+  artifact-manifest velqu-artifacts.json       1918B  b9373919149b…
+  shell          worker.js                  32155B  f0196ea93b3e…
+  capabilities:
+    declared: []
+    nativeOps: [timer]
+  deployment requirements:
+    - static hosting only — no Velqu application server is implied by this artifact set
+    - deployment-required imports were rejected at build time (BWASM-B-003 import policy)
+    - pack references native operations (timer) — the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime
+
+$ bun packages/cli/src/index.ts export --project examples/browser-demo --out examples/browser-demo/dist/browser-export
+velqu export: 13 files (1880982B) → examples/browser-demo/dist/browser-export
+  buildId: ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa
+  app.bundle.js              30514B  36a936de406c…
+  app.qpack                  9333B  11adb3cea470…
+  browser-manifest.json      499B  39694342ef0e…
+  capability-manifest.json   449B  1ec7da6bea1e…
+  contract.json              1603B  be8f2fd060e9…
+  index.html                 978B  7b961fec1cb3…
+  kernel.js                  9039B  dba80f5d7aba…
+  kernel.wasm                1731509B  db72b8e82da5…
+  page.js                    34869B  02b37406b23b…
+  schema-manifest.json       1082B  a0bc84783d07…
+  service-worker.js          27034B  255cc3daddfb…
+  velqu-artifacts.json       1918B  b9373919149b…
+  worker.js                  32155B  f0196ea93b3e…
+
+$ bun packages/cli/src/index.ts inspect browser --project examples/browser-demo --json   (schema-versioned JSON output)
+{
+  "schemaVersion": 1,
+  "status": "ok",
+  "command": "inspect",
+  "target": "browser",
+  "ok": true,
+  "problems": [],
+  "buildId": "ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa",
+  "browserDir": "examples/browser-demo/dist/browser",
+  "integrity": {
+    "verified": true,
+    "checkedArtifacts": 7
+  },
+  "targetCompatibility": {
+    "target": "browser-wasm",
+    "handlerAbiVersion": 1,
+    "kernelAbiVersion": 1,
+    "cliSupports": true
+  },
+  "capabilities": {
+    "declared": [],
+    "perRoute": {
+      "hello.get": [],
+      "echo.post": []
+    },
+    "nativeOps": {
+      "timer": "cancellable delay (ms) → Promise<number>"
+    }
+  },
+  "deploymentRequirements": [
+    "static hosting only — no Velqu application server is implied by this artifact set",
+    "deployment-required imports were rejected at build time (BWASM-B-003 import policy)",
+    "pack references native operations (timer) — the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime"
+  ],
+  "artifactInventory": [
+    {
+      "file": "app.browser.js",
+      "bytes": 1218,
+      "sha256": "430ac67cb4ff18e092a1e82a4104bb59b29609185232e3e54cf332c2c584cae1",
+      "role": "build-input"
+    },
+    {
+      "file": "app.bundle.js",
+      "bytes": 30514,
+      "sha256": "36a936de406c7b82831da1672fd5d345785774f6c2fb567577e1aceda35cfb48",
+      "role": "handlerBundle"
+    },
+    {
+      "file": "app.qpack",
+      "bytes": 9333,
+      "sha256": "11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd",
+      "role": "pack"
+    },
+    {
+      "file": "browser-manifest.json",
+      "bytes": 499,
+      "sha256": "39694342ef0e7c838fd8b8f03abed70a13a2e906d667c28007738519aed4d19d",
+      "role": "manifest"
+    },
+    {
+      "file": "capability-manifest.json",
+      "bytes": 449,
+      "sha256": "1ec7da6bea1e467e90569d8caefb7a40ed70cdb3072f71e4a2cbd27e5a4a264a",
+      "role": "capabilities"
+    },
+    {
+      "file": "contract.json",
+      "bytes": 1603,
+      "sha256": "be8f2fd060e9947826733256166b66691da5283ededa4c65c911fb1e27e2124e",
+      "role": "contract"
+    },
+    {
+      "file": "index.html",
+      "bytes": 978,
+      "sha256": "7b961fec1cb3c43e95eec8620933fee4b50e75a0a6e5d605c8a32d127cf8fa74",
+      "role": "shell"
+    },
+    {
+      "file": "kernel.js",
+      "bytes": 9039,
+      "sha256": "dba80f5d7aba55b2a484bc5967c0a8e17e18d76fc1b13235fcf69640a60accb4",
+      "role": "shell"
+    },
+    {
+      "file": "kernel.wasm",
+      "bytes": 1731509,
+      "sha256": "db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de",
+      "role": "kernelWasm"
+    },
+    {
+      "file": "page.js",
+      "bytes": 34869,
+      "sha256": "02b37406b23b26d45d54cfacc28173494e8a12f8dfa3fffd50b44adb3316cc9d",
+      "role": "shell"
+    },
+    {
+      "file": "schema-manifest.json",
+      "bytes": 1082,
+      "sha256": "a0bc84783d077115c40b6f0a9ef6336a41ad49ff6d1eff0cf0a95326b5dc2911",
+      "role": "schemas"
+    },
+    {
+      "file": "service-worker.js",
+      "bytes": 27034,
+      "sha256": "255cc3daddfb764556dff81c855b20683589365fca8941d156a92a72ba186b96",
+      "role": "shell"
+    },
+    {
+      "file": "velqu-artifacts.json",
+      "bytes": 1918,
+      "sha256": "b9373919149b27ba5f131e75b4d31141edb176a83ef26479d7783fd43b1d7e1f",
+      "role": "artifact-manifest"
+    },
+    {
+      "file": "worker.js",
+      "bytes": 32155,
+      "sha256": "f0196ea93b3e8d44589aa2bf04786d86f0a6c743bff9ed65a5c58cf934f5d989",
+      "role": "shell"
+    }
+  ]
+}

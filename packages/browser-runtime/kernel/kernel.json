@@ -1,0 +1,21 @@
+{
+  "kernelAbiVersion": 1,
+  "description": "Vendored q-browser-kernel artifacts (K-005/K-006 build) consumed by `velqu build --target browser-wasm` (BWASM-B-005). Hash-pinned: the build fails closed if these bytes change.",
+  "provenance": {
+    "crate": "q-browser-kernel",
+    "builtWith": "rustc 1.96.0 (ac68faa20 2026-05-25), wasm-bindgen 0.2.108 (nodejs-target glue)",
+    "verifiedAtCommit": "69187c8bcb7005da940f27ecf9baea6dcb5f2787",
+    "verificationEvidence": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt"
+  },
+  "wasm": {
+    "file": "q_browser_kernel_bg.wasm",
+    "sha256": "db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de",
+    "bytes": 1731509
+  },
+  "glue": {
+    "file": "q_browser_kernel.nodejs-glue.js",
+    "sha256": "8434c8575f330c8ae666cf7a57afef5c49fd3d02d8f5f3216c0b7eb9d302e5de",
+    "bytes": 8563,
+    "note": "wasm-bindgen nodejs-target glue used as the deterministic transform source for the browser kernel module (see @velqu/cli browser-deploy)."
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "status": "ok",
+  "command": "export",
+  "source": "examples/browser-demo/dist/browser",
+  "outDir": "examples/browser-demo/dist/browser-export",
+  "buildId": "ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa",
+  "files": [
+    {
+      "file": "app.bundle.js",
+      "bytes": 30514,
+      "sha256": "36a936de406c7b82831da1672fd5d345785774f6c2fb567577e1aceda35cfb48"
+    },
+    {
+      "file": "app.qpack",
+      "bytes": 9333,
+      "sha256": "11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd"
+    },
+    {
+      "file": "browser-manifest.json",
+      "bytes": 499,
+      "sha256": "39694342ef0e7c838fd8b8f03abed70a13a2e906d667c28007738519aed4d19d"
+    },
+    {
+      "file": "capability-manifest.json",
+      "bytes": 449,
+      "sha256": "1ec7da6bea1e467e90569d8caefb7a40ed70cdb3072f71e4a2cbd27e5a4a264a"
+    },
+    {
+      "file": "contract.json",
+      "bytes": 1603,
+      "sha256": "be8f2fd060e9947826733256166b66691da5283ededa4c65c911fb1e27e2124e"
+    },
+    {
+      "file": "index.html",
+      "bytes": 978,
+      "sha256": "7b961fec1cb3c43e95eec8620933fee4b50e75a0a6e5d605c8a32d127cf8fa74"
+    },
+    {
+      "file": "kernel.js",
+      "bytes": 9039,
+      "sha256": "dba80f5d7aba55b2a484bc5967c0a8e17e18d76fc1b13235fcf69640a60accb4"
+    },
+    {
+      "file": "kernel.wasm",
+      "bytes": 1731509,
+      "sha256": "db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de"
+    },
+    {
+      "file": "page.js",
+      "bytes": 34869,
+      "sha256": "02b37406b23b26d45d54cfacc28173494e8a12f8dfa3fffd50b44adb3316cc9d"
+    },
+    {
+      "file": "schema-manifest.json",
+      "bytes": 1082,
+      "sha256": "a0bc84783d077115c40b6f0a9ef6336a41ad49ff6d1eff0cf0a95326b5dc2911"
+    },
+    {
+      "file": "service-worker.js",
+      "bytes": 27034,
+      "sha256": "255cc3daddfb764556dff81c855b20683589365fca8941d156a92a72ba186b96"
+    },
+    {
+      "file": "velqu-artifacts.json",
+      "bytes": 1918,
+      "sha256": "b9373919149b27ba5f131e75b4d31141edb176a83ef26479d7783fd43b1d7e1f"
+    },
+    {
+      "file": "worker.js",
+      "bytes": 32155,
+      "sha256": "f0196ea93b3e8d44589aa2bf04786d86f0a6c743bff9ed65a5c58cf934f5d989"
+    }
+  ],
+  "totalBytes": 1880982
+}
