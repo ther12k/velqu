@@ -2,40 +2,40 @@
   "repository": "ther12k/velqu",
   "results": [
     {
-      "id": "BWASM-R-001",
+      "id": "BWASM-B-001",
       "action": "created",
-      "title": "[BWASM-R-001] BWASM-R-001 \u2014 Create @velqu/browser-runtime package and public runtime contract",
-      "url": "https://github.com/ther12k/velqu/issues/1242"
+      "title": "[BWASM-B-001] BWASM-B-001 \u2014 Add compiler target browser-wasm",
+      "url": "https://github.com/ther12k/velqu/issues/1255"
     },
     {
-      "id": "BWASM-R-002",
+      "id": "BWASM-B-002",
       "action": "created",
-      "title": "[BWASM-R-002] BWASM-R-002 \u2014 Implement Fetch-compatible browser dispatcher",
-      "url": "https://github.com/ther12k/velqu/issues/1243"
+      "title": "[BWASM-B-002] BWASM-B-002 \u2014 Define content-addressed browser artifact manifest and loader",
+      "url": "https://github.com/ther12k/velqu/issues/1256"
     },
     {
-      "id": "BWASM-R-003",
+      "id": "BWASM-B-003",
       "action": "created",
-      "title": "[BWASM-R-003] BWASM-R-003 \u2014 Define and emit the browser handler-bundle contract",
-      "url": "https://github.com/ther12k/velqu/issues/1244"
+      "title": "[BWASM-B-003] BWASM-B-003 \u2014 Enforce browser import policy with source-located diagnostics",
+      "url": "https://github.com/ther12k/velqu/issues/1257"
     },
     {
-      "id": "BWASM-R-004",
+      "id": "BWASM-B-004",
       "action": "created",
-      "title": "[BWASM-R-004] BWASM-R-004 \u2014 Execute handlers in isolated Workers with cancellation and hard recovery",
-      "url": "https://github.com/ther12k/velqu/issues/1245"
+      "title": "[BWASM-B-004] BWASM-B-004 \u2014 Add Service Worker adapter and static-host bootstrap",
+      "url": "https://github.com/ther12k/velqu/issues/1258"
     },
     {
-      "id": "BWASM-R-005",
+      "id": "BWASM-B-005",
       "action": "created",
-      "title": "[BWASM-R-005] BWASM-R-005 \u2014 Integrate capability registry and Treaty with the browser runtime",
-      "url": "https://github.com/ther12k/velqu/issues/1246"
+      "title": "[BWASM-B-005] BWASM-B-005 \u2014 Add CLI build, preview, inspect, and export workflows",
+      "url": "https://github.com/ther12k/velqu/issues/1259"
     },
     {
-      "id": "BWASM-R-006",
+      "id": "BWASM-B-006",
       "action": "created",
-      "title": "[BWASM-R-006] BWASM-R-006 \u2014 Verify and package browser-runtime evidence",
-      "url": "https://github.com/ther12k/velqu/issues/1247"
+      "title": "[BWASM-B-006] BWASM-B-006 \u2014 Verify cache activation, upgrades, rollback, and static deployment",
+      "url": "https://github.com/ther12k/velqu/issues/1260"
     }
   ]
 }
