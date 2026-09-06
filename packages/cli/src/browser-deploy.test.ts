@@ -283,6 +283,22 @@ describe("B-005 inspect (integrity + inventory)", () => {
     }
   });
 
+  it("declares the C-001 capability adapters with exact versions", async () => {
+    const report = await inspectBrowserDeployment(browserDir);
+    expect(report.declaredCapabilityAdapters.map((a) => a.id)).toEqual([
+      "runtime:timers",
+      "runtime:crypto",
+      "runtime:console",
+      "runtime:fetch",
+      "runtime:abort",
+      "runtime:text",
+      "runtime:url",
+    ]);
+    for (const a of report.declaredCapabilityAdapters) expect(a.version).toBe(1);
+    // and the declared set flows into the deployment requirements text
+    expect(report.deploymentRequirements.join("\n")).toContain("runtime:timers@1");
+  });
+
   it("surfaces deployment requirements honestly", async () => {
     const report = await inspectBrowserDeployment(browserDir);
     const text = report.deploymentRequirements.join("\n");

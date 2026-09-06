@@ -36,7 +36,13 @@ import type {
   ArtifactRole,
   BrowserArtifactManifest,
 } from "@velqu/browser-runtime";
-import { emitArtifactManifest, loadArtifacts, workerBootstrapSource } from "@velqu/browser-runtime";
+import {
+  emitArtifactManifest,
+  loadArtifacts,
+  workerBootstrapSource,
+  createBrowserCapabilityGraph,
+  ringBufferSink,
+} from "@velqu/browser-runtime";
 import {
   build as nativeBuild,
   buildBrowserWasmArtifacts,
@@ -221,6 +227,11 @@ export interface ComposeOptions {
    * build served a request; dev-diagnostic shell surface only).
    */
   readonly probe?: ProbeRequest;
+  /**
+   * C-001: outbound origins the generated page's fetch capability may
+   * reach. DEFAULT-DENY: omitted/empty denies every request.
+   */
+  readonly fetchAllowlist?: ReadonlyArray<string>;
 }
 
 export interface ProbeRequest {
@@ -255,7 +266,7 @@ function normalizeBasePath(raw: string | undefined): string {
 }
 
 /** Generated page bootstrap (bundled into page.js). */
-function pageEntrySource(basePath: string, appId: string, probe: ProbeRequest | null): string {
+function pageEntrySource(basePath: string, appId: string, probe: ProbeRequest | null, fetchAllowlist: ReadonlyArray<string>): string {
   const probeLines = probe
     ? [
         "  // B-006 self-probe (build-time option): executes one declared route",
@@ -281,6 +292,8 @@ function pageEntrySource(basePath: string, appId: string, probe: ProbeRequest | 
 import {
   loadArtifactsWithFallback,
   createBrowserRuntime,
+  createBrowserCapabilityGraph,
+  ringBufferSink,
   WorkerHost,
   bootstrapServiceWorker,
 } from "@velqu/browser-runtime";
@@ -291,6 +304,15 @@ const statusEl = document.getElementById("velqu-status");
 const setStatus = (text) => { if (statusEl) statusEl.textContent = text; };
 
 try {
+  // BWASM-C-001: the capability baseline installs BEFORE any handler
+  // runs; availability is introspectable from the descriptors alone.
+  // Outbound fetch is DEFAULT-DENY (${JSON.stringify(fetchAllowlist.length)} allowlisted origin(s)).
+  const capabilities = createBrowserCapabilityGraph({
+    consoleSink: ringBufferSink(128),
+    fetchPolicy: { allowedOrigins: ${JSON.stringify(fetchAllowlist)} },
+  });
+  const capabilityLog = capabilities.graph.console;
+
   setStatus("loading verified artifacts…");
   const loaded = await loadArtifactsWithFallback({
     fetch: (url) => fetch(url),
@@ -339,6 +361,7 @@ ${probeLines}
       handlerAbiVersion: loaded.manifest.handlerAbiVersion,
       kernelAbiVersion: loaded.manifest.kernelAbiVersion,
       serviceWorker: swOutcome.kind,
+      capabilities: capabilities.descriptors,
 ${probeInfo}
       reason: swOutcome.kind === "injected-fetch-fallback" ? swOutcome.reason : undefined,
     }, null, 2);
@@ -618,7 +641,7 @@ export async function composeBrowserDeployment(opts: ComposeOptions): Promise<Co
   // (entries never import each other), so the deployed names land
   // directly: page.js, worker.js, service-worker.js, app.bundle.js.
   const appId = app.appId;
-  writeFileSync(join(browserDir, "page.js"), pageEntrySource(basePath, appId, opts.probe ?? null));
+  writeFileSync(join(browserDir, "page.js"), pageEntrySource(basePath, appId, opts.probe ?? null, opts.fetchAllowlist ?? []));
   writeFileSync(join(browserDir, "worker.js"), workerEntrySource());
   writeFileSync(
     join(browserDir, "app.bundle.js"),
@@ -662,11 +685,19 @@ export async function composeBrowserDeployment(opts: ComposeOptions): Promise<Co
     urls[role] = url;
   }
   const browserManifest = JSON.parse(readFileSync(join(browserDir, "browser-manifest.json"), "utf8"));
+  // BWASM-C-001: the deployment declares its capability adapters
+  // (id + exact version) in the artifact manifest — install-side only;
+  // the baseline graph is constructed here just to derive descriptors.
+  const baselineGraph = createBrowserCapabilityGraph({
+    consoleSink: ringBufferSink(16),
+    fetchPolicy: { allowedOrigins: opts.fetchAllowlist ?? [] }, // default deny
+  });
   const { manifest, manifestJson } = await emitArtifactManifest({
     appId: browserManifest.appId as string,
     handlerAbiVersion: browserManifest.handlerAbiVersion as number,
     kernelAbiVersion: browserManifest.kernelAbiVersion as number,
     packSha256: browserManifest.packSha256 as string,
+    capabilities: baselineGraph.descriptors.map(({ id, version }) => ({ id, version })),
     // Partial role set is the loader contract (per-manifest role maps);
     // the emitter type overstates completeness — see B-002 loader keys().
     artifacts: artifacts as Record<ArtifactRole, Uint8Array>,
@@ -741,6 +772,8 @@ export interface InspectProblem {
 
 export interface BrowserDeploymentInspect {
   readonly ok: boolean;
+  /** BWASM-C-001: declared capability adapters (id + version). */
+  readonly declaredCapabilityAdapters: ReadonlyArray<{ id: string; version: number }>;
   readonly problems: ReadonlyArray<InspectProblem>;
   readonly buildId: string | null;
   readonly browserDir: string;
@@ -813,6 +846,19 @@ export async function inspectBrowserDeployment(
     }
   }
 
+  let declaredAdapters: ReadonlyArray<{ id: string; version: number }> = [];
+  const artifactsManifestPath = join(browserDir, "velqu-artifacts.json");
+  if (existsSync(artifactsManifestPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(artifactsManifestPath, "utf8")) as {
+        capabilities?: ReadonlyArray<{ id: string; version: number }>;
+      };
+      declaredAdapters = parsed.capabilities ?? [];
+    } catch {
+      // integrity problems surface through the loader above
+    }
+  }
+
   const browserManifestPath = join(browserDir, "browser-manifest.json");
   const capsPath = join(browserDir, "capability-manifest.json");
   const browserManifest = existsSync(browserManifestPath)
@@ -857,6 +903,11 @@ export async function inspectBrowserDeployment(
     "static hosting only — no Velqu application server is implied by this artifact set",
     "deployment-required imports were rejected at build time (BWASM-B-003 import policy)",
   ];
+  if (declaredAdapters.length > 0) {
+    deploymentRequirements.push(
+      `capability adapters declared: ${declaredAdapters.map((a) => `${a.id}@${a.version}`).join(", ")}`,
+    );
+  }
   if (caps.declared.length > 0) {
     deploymentRequirements.push(
       `declared capabilities require their host bridges: ${caps.declared.join(", ")}`,
@@ -874,6 +925,7 @@ export async function inspectBrowserDeployment(
     problems,
     buildId,
     browserDir,
+    declaredCapabilityAdapters: declaredAdapters,
     integrity: { verified: problems.length === 0, checkedArtifacts: checked },
     targetCompatibility: {
       target: browserManifest?.target ?? "unknown",

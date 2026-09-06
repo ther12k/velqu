@@ -49,6 +49,8 @@ export interface BrowserArtifactManifest {
   readonly target: "browser-wasm";
   readonly handlerAbiVersion: number;
   readonly kernelAbiVersion: number;
+  /** Declared capability adapters (BWASM-C-001); absent in older sets. */
+  readonly capabilities?: ReadonlyArray<{ readonly id: string; readonly version: number }>;
   readonly appId: string;
   readonly packSha256: string;
   readonly artifacts: Readonly<Record<ArtifactRole, ArtifactEntry>>;
@@ -94,6 +96,13 @@ export function canonicalManifestJson(
     target: manifest.target,
     handlerAbiVersion: manifest.handlerAbiVersion,
     kernelAbiVersion: manifest.kernelAbiVersion,
+    ...(Array.isArray((manifest as { capabilities?: unknown }).capabilities)
+      ? {
+          capabilities: [...(manifest as { capabilities: ReadonlyArray<{ id: string; version: number }> }).capabilities]
+            .map((c) => ({ id: c.id, version: c.version }))
+            .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : a.version - b.version)),
+        }
+      : {}),
     appId: manifest.appId,
     packSha256: manifest.packSha256,
     artifacts: Object.fromEntries(
@@ -121,6 +130,12 @@ export interface EmitInput {
   readonly handlerAbiVersion: number;
   readonly kernelAbiVersion: number;
   readonly packSha256: string;
+  /**
+   * Declared capability adapters (BWASM-C-001): id + exact version per
+   * installed adapter. Optional; present in the canonical bytes ONLY
+   * when provided (older manifests canonicalize identically).
+   */
+  readonly capabilities?: ReadonlyArray<{ readonly id: string; readonly version: number }>;
   /** role → artifact bytes exactly as deployed. */
   readonly artifacts: Record<ArtifactRole, Uint8Array>;
   /** Deploy-relative URL per role (e.g. "app.qpack", "kernel.wasm"). */
@@ -147,6 +162,7 @@ export async function emitArtifactManifest(input: EmitInput): Promise<{
     target: "browser-wasm" as const,
     handlerAbiVersion: input.handlerAbiVersion,
     kernelAbiVersion: input.kernelAbiVersion,
+    ...(input.capabilities ? { capabilities: input.capabilities } : {}),
     appId: input.appId,
     packSha256: input.packSha256,
     artifacts,

@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -54,12 +54,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] No adapter exposes editor credentials, ambient cookies, storage, DOM, or unrestricted network access.
-- [ ] Timer and fetch stop or discard work after cancellation according to the contract.
-- [ ] Crypto mismatch with native algorithms is rejected or documented; it is not silently substituted.
-- [ ] Log and response floods are bounded and produce structured limit errors.
-- [ ] Fetch credentials default to omit and redirects cannot escape policy.
-- [ ] Capability availability is introspectable before handler execution.
+- [x] No adapter exposes editor credentials, ambient cookies, storage, DOM, or unrestricted network access.
+- [x] Timer and fetch stop or discard work after cancellation according to the contract.
+- [x] Crypto mismatch with native algorithms is rejected or documented; it is not silently substituted.
+- [x] Log and response floods are bounded and produce structured limit errors.
+- [x] Fetch credentials default to omit and redirects cannot escape policy.
+- [x] Capability availability is introspectable before handler execution.
 
 ## Targeted tests and commands
 
@@ -75,10 +75,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Capability conformance matrix.
-- [ ] Network-policy traces.
-- [ ] Limit/cancellation logs.
-- [ ] Adapter manifest examples.
+- [x] Capability conformance matrix.
+- [x] Network-policy traces.
+- [x] Limit/cancellation logs.
+- [x] Adapter manifest examples.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -125,3 +125,41 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). The browser capability baseline ships as a frozen
+capability graph (`createBrowserCapabilityGraph`) mirroring the native
+prelude graph: `runtime:timers@1` (bounded browser timer with typed
+cancellation that clears the timer), `runtime:crypto@1` (WebCrypto
+subset — SHA-2 digests pinned to shared FIPS vectors + bounded random;
+everything else rejected by name with `CryptoSemanticsMismatch`),
+`runtime:console@1` (native-parity redactor port, 16 KiB/32-arg/64-record
+ceilings, typed flood errors, injectable bounded host sink,
+correlation ids), `runtime:fetch@1` (default-deny origin allowlist,
+method/scheme allowlists, 16 MiB body ceilings, in-adapter deadline race,
+credentials forced to omit, redirects DENIED — stricter-than-native delta
+documented), plus ambient abort/text/url entries.
+
+Adapters are declared with exact versions in the deployment's
+`velqu-artifacts.json` (optional B-002 canonical `capabilities` field,
+backward compatible — legacy manifests verify unchanged) and are
+introspectable before handler execution (frozen descriptors, `describe()`,
+`velqu inspect browser`). Availability is an install-time decision.
+
+Tests: 23 new (browser-runtime), package 121/121, CLI browser-deploy
+35/35, tsc clean. Evidence:
+`evidence/capabilities/c001/{01-capability-tests,02-policy-traces,
+03-adapter-manifest-example}`. Report:
+`docs/reports/bwasm-c-001-browser-capability-baseline.md`.
+
+Honest notes: fetch redirect handling is DENY (stricter than native
+Manual — browser fetch cannot expose redirect chains; delta documented,
+not claimed equivalent); crypto parity is pinned-subset only (no HMAC
+until shared vectors); Bun Request fidelity gaps (credentials/redirect
+reflection) are compensated by in-adapter enforcement; the colon+space
+secret form leaks in the NATIVE redactor too — parity preserved, noted
+as a native limitation. C-005 owns fail-closed routing for the
+deployment-required class.
