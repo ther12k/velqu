@@ -106,6 +106,7 @@
       "hello.get": [],
       "echo.post": []
     },
+    "portability": {},
     "nativeOps": {
       "timer": "cancellable delay (ms) → Promise<number>"
     },

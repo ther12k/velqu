@@ -793,6 +793,8 @@ export interface BrowserDeploymentInspect {
   readonly ok: boolean;
   /** BWASM-C-001: declared capability adapters (id + version). */
   readonly declaredCapabilityAdapters: ReadonlyArray<{ id: string; version: number }>;
+  /** BWASM-C-005: portability classification per declared capability. */
+  readonly portabilityStates: Readonly<Record<string, { state: string; remediation: string }>>;
   readonly problems: ReadonlyArray<InspectProblem>;
   readonly buildId: string | null;
   readonly browserDir: string;
@@ -866,6 +868,7 @@ export async function inspectBrowserDeployment(
   }
 
   let declaredAdapters: ReadonlyArray<{ id: string; version: number }> = [];
+  let portabilityStates: Readonly<Record<string, { state: string; remediation: string }>> = {};
   const artifactsManifestPath = join(browserDir, "velqu-artifacts.json");
   if (existsSync(artifactsManifestPath)) {
     try {
@@ -880,6 +883,16 @@ export async function inspectBrowserDeployment(
 
   const browserManifestPath = join(browserDir, "browser-manifest.json");
   const capsPath = join(browserDir, "capability-manifest.json");
+  if (existsSync(capsPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(capsPath, "utf8")) as {
+        portability?: Readonly<Record<string, { state: string; remediation: string }>>;
+      };
+      portabilityStates = parsed.portability ?? {};
+    } catch {
+      // integrity problems surface through the loader above
+    }
+  }
   const browserManifest = existsSync(browserManifestPath)
     ? (JSON.parse(readFileSync(browserManifestPath, "utf8")) as {
         target: string;
@@ -945,6 +958,7 @@ export async function inspectBrowserDeployment(
     buildId,
     browserDir,
     declaredCapabilityAdapters: declaredAdapters,
+    portabilityStates,
     integrity: { verified: problems.length === 0, checkedArtifacts: checked },
     targetCompatibility: {
       target: browserManifest?.target ?? "unknown",

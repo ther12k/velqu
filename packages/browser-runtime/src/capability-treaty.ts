@@ -33,7 +33,8 @@ export interface CapabilityHandle {
 export type CapabilityRejection =
   | { readonly reason: "not-declared"; readonly capability: string; readonly detail: string }
   | { readonly reason: "not-in-inventory"; readonly capability: string; readonly detail: string }
-  | { readonly reason: "version-mismatch"; readonly capability: string; readonly detail: string };
+  | { readonly reason: "version-mismatch"; readonly capability: string; readonly detail: string }
+  | { readonly reason: "policy-forbidden"; readonly capability: string; readonly detail: string };
 
 export class CapabilityError extends Error {
   readonly rejection: CapabilityRejection;
@@ -43,7 +44,9 @@ export class CapabilityError extends Error {
         ? `route does not declare capability "${rejection.capability}"`
         : rejection.reason === "not-in-inventory"
           ? `capability "${rejection.capability}" is not in the artifact inventory (deployment-required)`
-          : `capability "${rejection.capability}" version mismatch: ${rejection.detail}`;
+          : rejection.reason === "policy-forbidden"
+            ? `capability "${rejection.capability}" refused by deployment policy: ${rejection.detail}`
+            : `capability "${rejection.capability}" version mismatch: ${rejection.detail}`;
     super(`[@velqu/browser-runtime:capability] ${detail}`);
     this.name = "CapabilityError";
     this.rejection = rejection;
@@ -51,17 +54,79 @@ export class CapabilityError extends Error {
 }
 
 /**
+ * Deployment capability policy (BWASM-C-005): ids classified
+ * `deployment-required` or `forbidden` by the portability registry are
+ * refused at INSTALL time and again at INVOKE time — before any side
+ * effect. The host supplies the classification (derived from the
+ * compiler's portability registry, so build/inspect/runtime agree).
+ */
+export interface CapabilityPolicy {
+  /** Ids that require the native runtime; refused on the browser side. */
+  readonly deploymentRequired?: ReadonlyArray<string>;
+  /** Ids that never exist and are never simulated. */
+  readonly forbidden?: ReadonlyArray<string>;
+}
+
+/**
+ * The stable deployment-required problem (BWASM-C-005 step 5):
+ * RFC-9457-compatible with the capability id, route id, reason, and
+ * safe remediation metadata — NO secret values or provider-private data
+ * (the caller supplies only safe remediation text).
+ */
+export function deploymentRequiredProblem(options: {
+  readonly capabilityId: string;
+  readonly routeId: string;
+  readonly reason: string;
+  readonly remediation: string;
+}): { status: 501; body: Record<string, unknown> } {
+  return {
+    status: 501,
+    body: {
+      problemId: "deployment-required",
+      type: "https://velqu.dev/problems/deployment-required",
+      title: "Capability requires native deployment",
+      status: 501,
+      capabilityId: options.capabilityId,
+      routeId: options.routeId,
+      reason: options.reason,
+      remediation: options.remediation,
+    },
+  };
+}
+
+/**
  * The registry: installed handles (host bridge) checked against the
- * kernel's per-route authorization.
+ * kernel's per-route authorization AND the deployment capability policy.
  */
 export class CapabilityRegistry {
   private readonly handles = new Map<string, CapabilityHandle>();
   private readonly runtime: BrowserRuntime;
+  private readonly policy: CapabilityPolicy;
 
-  constructor(runtime: BrowserRuntime, handles: ReadonlyArray<CapabilityHandle>) {
+  constructor(runtime: BrowserRuntime, handles: ReadonlyArray<CapabilityHandle>, policy?: CapabilityPolicy) {
     this.runtime = runtime;
+    this.policy = policy ?? {};
     for (const handle of handles) {
+      this.assertInstallable(handle);
       this.handles.set(handle.id, handle);
+    }
+  }
+
+  /** Fail closed at INSTALL: policy-refused ids never become callable. */
+  private assertInstallable(handle: CapabilityHandle): void {
+    if (this.policy.forbidden?.includes(handle.id)) {
+      throw new CapabilityError({
+        reason: "policy-forbidden",
+        capability: handle.id,
+        detail: "install refused: no such capability exists and it is never simulated",
+      });
+    }
+    if (this.policy.deploymentRequired?.includes(handle.id)) {
+      throw new CapabilityError({
+        reason: "policy-forbidden",
+        capability: handle.id,
+        detail: "install refused: deployment-required on the browser target (use the native runtime)",
+      });
     }
   }
 
@@ -81,6 +146,22 @@ export class CapabilityRegistry {
         reason: "not-declared",
         capability: capabilityId,
         detail: "side effect refused before any authorization or execution",
+      });
+    }
+    // 1b. BWASM-C-005: deployment policy gate BEFORE kernel auth and the
+    // handle call — policy-refused ids never reach side effects.
+    if (this.policy.forbidden?.includes(capabilityId)) {
+      throw new CapabilityError({
+        reason: "policy-forbidden",
+        capability: capabilityId,
+        detail: "no such capability exists and it is never simulated",
+      });
+    }
+    if (this.policy.deploymentRequired?.includes(capabilityId)) {
+      throw new CapabilityError({
+        reason: "policy-forbidden",
+        capability: capabilityId,
+        detail: "deployment-required on the browser target (use the native runtime)",
       });
     }
     // 2. The kernel inventory must carry it (deployment-required class).

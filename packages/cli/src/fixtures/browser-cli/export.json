@@ -4,7 +4,7 @@
   "command": "export",
   "source": "examples/browser-demo/dist/browser",
   "outDir": "examples/browser-demo/dist/browser-export",
-  "buildId": "49c64f102aece4279de07686e6bb0bce5ffa5864287ac891b718323219b4dffd",
+  "buildId": "6a8bb6f35f988dc7737492ec4cd1c4098b7a8a36ee9e6dff837e1c3678544307",
   "files": [
     {
       "file": "app.bundle.js",
@@ -23,8 +23,8 @@
     },
     {
       "file": "capability-manifest.json",
-      "bytes": 449,
-      "sha256": "1ec7da6bea1e467e90569d8caefb7a40ed70cdb3072f71e4a2cbd27e5a4a264a"
+      "bytes": 470,
+      "sha256": "6b60640866f3ebfce9f6036a34945914c28e241c6b54ebd232438340a0c76fdb"
     },
     {
       "file": "contract.json",
@@ -59,12 +59,12 @@
     {
       "file": "service-worker.js",
       "bytes": 7789,
-      "sha256": "f99212aafce20738bf6d725bad49ae494b6b724bf48f5a60afda23268f3bf09e"
+      "sha256": "0639b222af93f33719d6786ddb29ee9529ed11df4e123fed451c5d8bf579d61c"
     },
     {
       "file": "velqu-artifacts.json",
       "bytes": 2370,
-      "sha256": "1e1913a8a82994f059e787c10d7fa49cf6f8d834d9577474526fc75cf71030e1"
+      "sha256": "c2060692038323f3698db05b7e32e0122d240c69413d8d7f27427f84fc7f3dba"
     },
     {
       "file": "worker.js",
@@ -72,5 +72,5 @@
       "sha256": "34342da3f31af9dd01d9b943c8d07db759846e309e507a7d5c465c2e423abc06"
     }
   ],
-  "totalBytes": 1904551
+  "totalBytes": 1904572
 }

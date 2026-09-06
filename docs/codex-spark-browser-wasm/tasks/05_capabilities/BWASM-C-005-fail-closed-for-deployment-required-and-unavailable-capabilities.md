@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -58,12 +58,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Secrets, real remote Postgres credentials, payments, email delivery, public webhooks, cron, and durable queues are never silently mocked unless an explicit simulation profile is selected.
-- [ ] Deployment-required responses contain no secret values or provider-specific private data.
-- [ ] Build, inspect, runtime, and Treaty surfaces agree on the capability classification.
-- [ ] The app-builder can determine whether deployment is required without executing the route.
-- [ ] Capability checks happen before handler or adapter side effects.
-- [ ] Unknown classifications fail closed.
+- [x] Secrets, real remote Postgres credentials, payments, email delivery, public webhooks, cron, and durable queues are never silently mocked unless an explicit simulation profile is selected.
+- [x] Deployment-required responses contain no secret values or provider-specific private data.
+- [x] Build, inspect, runtime, and Treaty surfaces agree on the capability classification.
+- [x] The app-builder can determine whether deployment is required without executing the route.
+- [x] Capability checks happen before handler or adapter side effects.
+- [x] Unknown classifications fail closed.
 
 ## Targeted tests and commands
 
@@ -79,10 +79,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Capability portability registry.
-- [ ] Problem schema and examples.
-- [ ] Build/runtime consistency report.
-- [ ] No-side-effect proof logs.
+- [x] Capability portability registry.
+- [x] Problem schema and examples.
+- [x] Build/runtime consistency report.
+- [x] No-side-effect proof logs.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -129,3 +129,39 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). Capability portability is a single registry with
+five states (`browser`, `browser-and-native`, `simulated`,
+`deployment-required`, `forbidden`; unknown → forbidden, fail closed)
+threaded through four agreeing surfaces:
+
+- **Build**: the browser-wasm target refuses deployment-required and
+  forbidden route capabilities with source-located CompileErrors before
+  any artifact is emitted; `simulate: true` is an explicit profile that
+  RECORDS `simulatedCapabilities` in browser-manifest.json (never mocks);
+  forbidden names fail even under simulate.
+- **Artifacts**: `build()` records per-grant `portability` (state + safe
+  remediation) in capability-manifest.json, carried into the browser set.
+- **Runtime**: `CapabilityRegistry` policy gates at INSTALL and INVOKE —
+  refused ids never reach kernel authorization or the handle call
+  (pinned 0/0 counters); `deploymentRequiredProblem()` is the stable
+  501 RFC-9457 shape (capabilityId, routeId, reason, remediation —
+  secret-free, pinned).
+- **CLI/app-builder**: `portabilityReport()` is a pure function over
+  extracted declarations (no execution); `velqu inspect browser`
+  surfaces portabilityStates + deploymentRequirements in
+  schema-versioned JSON.
+
+Tests: 16 new (compiler + runtime); affected suites 235/235; tsc clean.
+Evidence: `evidence/capabilities/c005/{01-c005-tests,02-portability-
+registry.json,03-problem-schema-example.json,04-consistency-report.txt}`.
+Report: `docs/reports/bwasm-c-005-fail-closed-capabilities.md`.
+
+Honest notes: the runtime policy is host-supplied data derived from the
+compiler registry (browser-runtime stays standalone; inspect reports both
+sides); `simulate` records acceptance of the gap and provides NO mock;
+native-side postgres behavior is unchanged (C-002 wire contract).

@@ -31,6 +31,7 @@ import {
   assertImportPolicyOk,
   IMPORT_POLICY_VERSION,
 } from "./import-policy";
+import { classifyCapability, CAPABILITY_PORTABILITY_REGISTRY } from "./capability-portability";
 
 /** Browser target identity carried in the manifest. */
 export const BROWSER_TARGET = "browser-wasm" as const;
@@ -44,6 +45,14 @@ export interface BrowserWasmBuildOptions {
   project: string;
   /** build output root; browser set lands in `<outDir>/browser` */
   outDir: string;
+  /**
+   * BWASM-C-005: explicit simulation profile. Default FALSE — routes
+   * declaring deployment-required capabilities fail the browser-wasm
+   * build (statically known impossible). With this flag the build
+   * records the simulated state in the manifest instead of refusing;
+   * it NEVER provides a mock implementation.
+   */
+  simulate?: boolean;
 }
 
 export interface BrowserWasmBuildResult {
@@ -102,7 +111,28 @@ export function buildBrowserWasmArtifacts(
           `into a native-only service (${sanitizeSourceLocation(r.sourceFile)})`,
       );
     }
+    // BWASM-C-005: fail at build time when capability usage is statically
+    // known impossible for the selected target (deployment-required or
+    // forbidden). Unknown names classify as forbidden (fail closed).
+    for (const grant of r.capabilities) {
+      const { state, remediation } = classifyCapability(grant);
+      if (state === "deployment-required" && !opts.simulate) {
+        throw new CompileError(
+          `browser-wasm target: route "${r.id}" declares capability "${grant}", ` +
+            `which is deployment-required — it cannot run in a browser. ` +
+            `Remediation: ${remediation} (${sanitizeSourceLocation(r.sourceFile)})`,
+        );
+      }
+      if (state === "forbidden") {
+        throw new CompileError(
+          `browser-wasm target: route "${r.id}" declares capability "${grant}", ` +
+            `which does not exist and is never simulated — unknown or reserved ` +
+            `classifications fail closed (${sanitizeSourceLocation(r.sourceFile)})`,
+        );
+      }
+    }
   }
+  void CAPABILITY_PORTABILITY_REGISTRY;
 
   const browserDir = join(opts.outDir, "browser");
   mkdirSync(browserDir, { recursive: true });
@@ -173,6 +203,11 @@ export function buildBrowserWasmArtifacts(
   // --- browser-manifest.json (deterministic: sorted, hashed, no paths) ---
   const packBytes = readFileSync(join(nativeOutDir, "app.qpack"));
   const packSha256 = createHash("sha256").update(packBytes).digest("hex");
+  const simulatedGrants = opts.simulate
+    ? [...new Set(app.routes.flatMap((r) => r.capabilities))].filter(
+        (g) => classifyCapability(g).state === "deployment-required",
+      )
+    : [];
   const manifest = {
     formatVersion: 1,
     target: BROWSER_TARGET,
@@ -181,6 +216,7 @@ export function buildBrowserWasmArtifacts(
     kernelAbiVersion: EMITTED_KERNEL_ABI_VERSION,
     appId: app.appId,
     packSha256,
+    ...(simulatedGrants.length > 0 ? { simulatedCapabilities: simulatedGrants.sort() } : {}),
     handlers: routeRows
       .map((r) => ({ handlerKey: r.id, statuses: r.statuses, source: r.sourceFile }))
       .sort((a, b) => (a.handlerKey < b.handlerKey ? -1 : 1)),

@@ -1,0 +1,58 @@
+{
+ "timer": {
+  "state": "browser-and-native",
+  "remediation": "available on both targets"
+ },
+ "console": {
+  "state": "browser-and-native",
+  "remediation": "available on both targets"
+ },
+ "crypto": {
+  "state": "browser-and-native",
+  "remediation": "pinned subset on browser (SHA-2 digests + random); full native set on native"
+ },
+ "url": {
+  "state": "browser-and-native",
+  "remediation": "available on both targets"
+ },
+ "text": {
+  "state": "browser-and-native",
+  "remediation": "available on both targets"
+ },
+ "abort": {
+  "state": "browser-and-native",
+  "remediation": "available on both targets"
+ },
+ "kv": {
+  "state": "browser",
+  "remediation": "browser-local preview data; not durable or multi-user"
+ },
+ "postgres": {
+  "state": "deployment-required",
+  "remediation": "deploy behind the native Velqu runtime with a linked Postgres pool; the browser target refuses this capability"
+ },
+ "payments": {
+  "state": "forbidden",
+  "remediation": "no Velqu payments capability exists; integrate via your own server"
+ },
+ "email": {
+  "state": "forbidden",
+  "remediation": "no Velqu email capability exists; integrate via your own server"
+ },
+ "webhooks": {
+  "state": "forbidden",
+  "remediation": "no Velqu webhooks capability exists; integrate via your own server"
+ },
+ "cron": {
+  "state": "forbidden",
+  "remediation": "no Velqu cron capability exists; use external scheduling against a deployed native service"
+ },
+ "queues": {
+  "state": "forbidden",
+  "remediation": "no Velqu durable-queue capability exists; defer is bounded in-memory best-effort, never a durable queue"
+ },
+ "__unknown__": {
+  "state": "forbidden",
+  "remediation": "unknown capability \"totally-unknown\" — unknown classifications fail closed (no handle, no simulation, no grant)"
+ }
+}

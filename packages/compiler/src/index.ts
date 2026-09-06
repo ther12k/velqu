@@ -7,6 +7,7 @@ import { bundleApp, buildPack, contractDts, openapiFor, diffContracts } from "./
 import { compileIntrinsicRequirement } from "./intrinsic-requirements";
 import { reductionImpacts } from "./reduction-impact";
 import { evaluateAppStrategies, selectRouteStrategies } from "./strategy";
+import { classifyCapability } from "./capability-portability";
 import { PINNED_TOOLCHAIN, assertPinnedToolchain } from "./toolchain";
 export {
   verifyPublishedManifest,
@@ -25,6 +26,15 @@ export {
   type BrowserWasmBuildOptions,
   type BrowserWasmBuildResult,
 } from "./browser";
+export {
+  CAPABILITY_PORTABILITY_REGISTRY,
+  classifyCapability,
+  portabilityReport,
+  type CapabilityPortability,
+  type CapabilityPortabilityEntry,
+  type CapabilityPortabilityEntryReport,
+  type CapabilityPortabilityReport,
+} from "./capability-portability";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
 export { PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "./toolchain";
 export {
@@ -199,6 +209,14 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   const capabilityManifest = {
     declared: [...new Set(app.routes.flatMap((r) => r.capabilities))],
     perRoute: Object.fromEntries(app.routes.map((r) => [r.id, r.capabilities])),
+    // BWASM-C-005: portability states recorded in the build artifacts —
+    // the same classification the browser target enforces at build time.
+    portability: Object.fromEntries(
+      [...new Set(app.routes.flatMap((r) => r.capabilities))].map((g) => {
+        const { state, remediation } = classifyCapability(g);
+        return [g, { state, remediation }];
+      }),
+    ),
     nativeOps: { timer: "cancellable delay (ms) → Promise<number>" },
     // M27-003-B: compiled application requirement — smallest context
     // profile whose kept builtins cover everything the bundle touches.

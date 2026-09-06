@@ -229,6 +229,10 @@ async function main() {
           if (report.declaredCapabilityAdapters.length > 0) {
             console.log(`  capability adapters: ${report.declaredCapabilityAdapters.map((a) => `${a.id}@${a.version}`).join(", ")}`);
           }
+          const states = Object.entries(report.portabilityStates ?? {});
+          if (states.length > 0) {
+            console.log(`  portability: ${states.map(([id, p]) => `${id}=${p.state}`).join(", ")}`);
+          }
           for (const p of report.problems) {
             console.log(`    ✗ ${p.artifact}: ${p.reason} — ${p.detail}`);
           }
