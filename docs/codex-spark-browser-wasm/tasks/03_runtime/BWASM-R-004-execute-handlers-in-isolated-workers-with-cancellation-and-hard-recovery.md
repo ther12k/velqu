@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -125,4 +125,14 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-004 (#1245)
+- Candidate commit: see PR; report `docs/reports/bwasm-r-004-worker-execution.md`
+- WorkerHost: validated message protocol v1, host-enforced deadlines w/ kill-and-replace (host usable after any crash), session-scoped results (cross-project theft blocked), bounded logs (64 lines/invocation) + 1 MiB result cap (structured errors), stack redaction in the Worker bootstrap, AbortSignal before+mid-dispatch.
+- Isolation honesty in bootstrap source AND report: Worker isolation is NOT by itself a hostile-code sandbox.
+- Tests: 13 new (infinite loop+recovery, stale/foreign drops, abort races, log flood, oversized, crash/restart) — package 49/49; typecheck clean; browser bundle builds.
+- Real-browser CSP smoke = Q-002. R-005 wires this host into capability-bridge/Treaty execution.
+- Follow-ups: R-005 (#1246), R-006 (#1247).
 ```

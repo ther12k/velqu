@@ -42,6 +42,19 @@ export {
 } from "./handler-bundle";
 
 export {
+  WorkerHost,
+  WorkerProtocolError,
+  WORKER_PROTOCOL_VERSION,
+  workerBootstrapSource,
+  MAX_LOG_LINES_PER_INVOCATION,
+  MAX_RESULT_BYTES,
+  type WorkerLike,
+  type WorkerFactory,
+  type WorkerToHostMessage,
+  type HostToWorkerMessage,
+} from "./worker-host";
+
+export {
   dispatchFetchRequest,
   DispatcherError,
   UNSUPPORTED_SEMANTICS,
