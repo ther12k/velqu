@@ -28,6 +28,20 @@ import {
 } from "./dispatcher";
 
 export {
+  defineBrowserHandlers,
+  emitHandlerBundleMetadata,
+  sanitizeSourceLocation,
+  HANDLER_ABI_VERSION,
+  HandlerBundleError,
+  type BrowserHandlerRegistration,
+  type HandlerBundleMetadata,
+  type HandlerContext,
+  type HandlerResult,
+  type HandlerTable,
+  type PackHandlerExpectation,
+} from "./handler-bundle";
+
+export {
   dispatchFetchRequest,
   DispatcherError,
   UNSUPPORTED_SEMANTICS,

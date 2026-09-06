@@ -1,0 +1,20 @@
+{
+  "handlerAbiVersion": 1,
+  "handlers": [
+    {
+      "handlerKey": "health.live",
+      "statuses": [
+        200
+      ],
+      "source": "src/modules/health/handlers.ts"
+    },
+    {
+      "handlerKey": "hello.get",
+      "statuses": [
+        200,
+        404
+      ],
+      "source": "src/modules/hello/handlers.ts"
+    }
+  ]
+}
