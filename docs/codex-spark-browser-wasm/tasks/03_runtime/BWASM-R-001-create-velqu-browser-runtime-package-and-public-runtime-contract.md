@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -124,4 +124,13 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-001 (#1242)
+- Candidate commit: see PR; report `docs/reports/bwasm-r-001-browser-runtime-package.md`
+- Package: packages/browser-runtime — fetch(Request):Promise<Response> boundary, BrowserRuntime/BrowserRuntimeOptions/BrowserRuntimeError, lifecycle states, kernel ABI mirror (K-005), kernel injected (no wasm loading — B-002 contract).
+- Tests 12/12; typecheck clean; clean-consumer fixture BUNDLED for browser (5.4 KB, 0 node/bun leakage) and EXECUTED (CONSUMER-SMOKE-OK).
+- R-002 seam (executeHandler) documented in-source; real-browser lanes = Q-002.
+- Follow-ups: R-002 (#1243) dispatcher + Worker execution, R-003 (#1244) handler-bundle contract.
 ```
