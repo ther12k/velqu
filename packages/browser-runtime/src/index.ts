@@ -55,6 +55,33 @@ export {
 } from "./worker-host";
 
 export {
+  createMemoryKv,
+  createIndexedDbKv,
+  kvHandle,
+  KvError,
+  KvKeyInvalid,
+  KvQuotaExceeded,
+  KvSerializationError,
+  KvMigrationRequired,
+  KvUnavailable,
+  KV_CAPABILITY_ID,
+  KV_CAPABILITY_VERSION,
+  KV_META_KEY,
+  MAX_KV_KEY_BYTES,
+  MAX_KV_VALUE_BYTES,
+  MAX_KV_ENTRIES,
+  type KvCapability,
+  type KvValue,
+  type KvEntry,
+  type KvOptions,
+  type KvMigrationStore,
+  type KvIdbFactory,
+  type KvIdbDatabase,
+  type MemoryKv,
+  type IndexedDbKv,
+} from "./kv";
+
+export {
   createBrowserCapabilityGraph,
   createTimerCapability,
   createCryptoCapability,

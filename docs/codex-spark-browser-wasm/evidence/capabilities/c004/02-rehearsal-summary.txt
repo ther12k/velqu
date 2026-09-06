@@ -1,0 +1,9 @@
+| scenario | result |
+|---|---|
+| k1_roundTrip | PASS |
+| k3_isolation | PASS |
+| k4_quota | PASS |
+| k5_migration | PASS |
+| k5b_failClosed | PASS |
+| k6_exportReset | PASS |
+| k2_reload | PASS |

@@ -1,0 +1,53 @@
+{
+ "console": [
+  "Failed to load resource: the server responded with a status of 404 (File not found)"
+ ],
+ "result": {
+  "k1_roundTrip": {
+   "value": {
+    "hello": "world",
+    "n": 1
+   },
+   "ok": true
+  },
+  "k3_isolation": {
+   "otherList": [],
+   "otherGet": null,
+   "mainUnaffected": true,
+   "ok": true
+  },
+  "k4_quota": {
+   "ok": true,
+   "code": "kv-quota-exceeded"
+  },
+  "k5_migration": {
+   "migrated": "v1-value",
+   "legacyGone": true,
+   "ok": true
+  },
+  "k5b_failClosed": {
+   "ok": true,
+   "from": 2,
+   "to": 3
+  },
+  "k6_export": {
+   "a": 1,
+   "b": 2
+  },
+  "k6_afterReset": [],
+  "PASS": true
+ },
+ "k2_reload": {
+  "valueSurvived": true
+ },
+ "checks": {
+  "k1_roundTrip": true,
+  "k3_isolation": true,
+  "k4_quota": true,
+  "k5_migration": true,
+  "k5b_failClosed": true,
+  "k6_exportReset": true,
+  "k2_reload": true
+ },
+ "REHEARSAL-PASS": true
+}

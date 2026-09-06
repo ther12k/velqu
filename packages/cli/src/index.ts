@@ -92,6 +92,7 @@ async function main() {
             clean: args.has("clean"),
             sourceMap: args.has("source-map"),
             kernelWasmPath: args.get("kernel") ?? undefined,
+            kv: args.has("kv"),
           });
           if (jsonOutput) {
             console.log(
@@ -922,7 +923,7 @@ usage:
   velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50] [--profile serverless]
   velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
   velqu build --target browser-wasm [--project <dir>] [--out <dir>] [--base-path /]
-              [--clean] [--source-map] [--kernel <q_browser_kernel_bg.wasm>]
+              [--clean] [--source-map] [--kernel <q_browser_kernel_bg.wasm>] [--kv]
   velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
   velqu inspect browser [--dist <dir>]   (integrity + inventory; nonzero on tamper)
   velqu preview [--project <dir>] [--dist <dir>] [--port 8090] [--base-path /]
