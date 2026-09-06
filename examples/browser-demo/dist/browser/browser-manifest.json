@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "target": "browser-wasm",
+  "handlerAbiVersion": 1,
+  "kernelAbiVersion": 1,
+  "appId": "app",
+  "packSha256": "11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd",
+  "handlers": [
+    {
+      "handlerKey": "echo.post",
+      "statuses": [
+        200,
+        400
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "hello.get",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    }
+  ]
+}

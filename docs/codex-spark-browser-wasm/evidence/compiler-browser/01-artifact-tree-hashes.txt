@@ -1,0 +1,21 @@
+== artifact tree (examples/browser-demo/dist/browser) ==
+ 
+4096 .
+4096 ..
+1218 app.browser.js
+9333 app.qpack
+471 browser-manifest.json
+449 capability-manifest.json
+1603 contract.json
+1082 schema-manifest.json
+
+== hashes (build 1) ==
+430ac67cb4ff18e092a1e82a4104bb59b29609185232e3e54cf332c2c584cae1  examples/browser-demo/dist/browser/app.browser.js
+11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd  examples/browser-demo/dist/browser/app.qpack
+86fa53f2797af22524febde153a4c29bca0cc2cce927470fb267fa0da1bf9b75  examples/browser-demo/dist/browser/browser-manifest.json
+1ec7da6bea1e467e90569d8caefb7a40ed70cdb3072f71e4a2cbd27e5a4a264a  examples/browser-demo/dist/browser/capability-manifest.json
+be8f2fd060e9947826733256166b66691da5283ededa4c65c911fb1e27e2124e  examples/browser-demo/dist/browser/contract.json
+a0bc84783d077115c40b6f0a9ef6336a41ad49ff6d1eff0cf0a95326b5dc2911  examples/browser-demo/dist/browser/schema-manifest.json
+
+== rebuild (build 2) ==
+REPRODUCIBILITY-OK: identical hashes across two builds

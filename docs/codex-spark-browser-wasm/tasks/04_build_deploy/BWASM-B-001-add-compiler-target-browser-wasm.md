@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -124,4 +124,14 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-B-001 (#1255)
+- Candidate commit: see PR; report `docs/reports/bwasm-b-001-compiler-browser-target.md`; evidence `evidence/compiler-browser/` (tree + hashes, reproducibility OK, diagnostic snapshot).
+- buildBrowserWasmArtifacts: deterministic self-contained browser set (app.browser.js via narrow R-003 API, carried pack byte-identical, ABI-versioned manifest, no wall-clock/paths); native path untouched (read-only consumption, byte-equality pinned).
+- Diagnostics: native-liveness routes rejected with source-located CompileError; diagnostic path emits nothing; sample project examples/browser-demo committed (its health.live-style route is correctly rejected by the target).
+- Reproducibility: two builds → byte-identical hashes across all six files.
+- Tests 23/23 compiler (4 new), package suites green; typecheck clean; verify ALL PASS (two-pass manifest refresh).
+- Follow-ups: B-002 (#1256) content-addressed artifact manifest/loader; B-005 (#1259) CLI workflows.
 ```
