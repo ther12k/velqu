@@ -1,0 +1,65 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "328439b8793ae0d40175e4def159bd50",
+  "routes": {
+    "greet.get": {
+      "method": "GET",
+      "path": "/greet/:name",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "echo.post": {
+      "method": "POST",
+      "path": "/echo",
+      "statuses": [
+        "200",
+        "422"
+      ],
+      "secured": false
+    },
+    "maybe.get": {
+      "method": "GET",
+      "path": "/maybe/yes",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "absent.get": {
+      "method": "GET",
+      "path": "/absent",
+      "statuses": [
+        "200",
+        "404"
+      ],
+      "secured": false
+    },
+    "param.echo": {
+      "method": "GET",
+      "path": "/param/:name",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "query.echo": {
+      "method": "GET",
+      "path": "/query-echo",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "timed.get": {
+      "method": "GET",
+      "path": "/timed",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    }
+  }
+}

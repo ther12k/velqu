@@ -1,0 +1,42 @@
+{
+  "declared": [
+    "timer"
+  ],
+  "perRoute": {
+    "greet.get": [],
+    "echo.post": [],
+    "maybe.get": [],
+    "absent.get": [],
+    "param.echo": [],
+    "query.echo": [],
+    "timed.get": [
+      "timer"
+    ]
+  },
+  "portability": {
+    "timer": {
+      "state": "browser-and-native",
+      "remediation": "available on both targets"
+    }
+  },
+  "nativeOps": {
+    "timer": "cancellable delay (ms) → Promise<number>"
+  },
+  "intrinsicRequirement": {
+    "requirement": "minimal",
+    "used": {
+      "dateOrPerformance": [],
+      "webOnlyBuiltins": []
+    }
+  },
+  "reductionImpact": [
+    {
+      "profile": "web",
+      "missing": []
+    },
+    {
+      "profile": "minimal",
+      "missing": []
+    }
+  ]
+}

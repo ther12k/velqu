@@ -133,12 +133,12 @@ impl KernelProblem {
         p
     }
     fn validation(errors: Vec<FieldError>) -> Self {
-        let mut p = Self::registry(problem_ids::VALIDATION, 400, "Validation Failed");
+        let mut p = Self::registry(problem_ids::VALIDATION, 422, "Validation failed");
         p.errors = errors;
         p
     }
     fn body(detail: impl Into<String>) -> Self {
-        Self::registry(problem_ids::BODY, 400, "Unsupported body").with_detail(detail)
+        Self::registry(problem_ids::BODY, 415, "Unsupported body").with_detail(detail)
     }
     fn limit(detail: impl Into<String>) -> Self {
         Self::registry(problem_ids::LIMIT, 413, "Payload too large").with_detail(detail)
@@ -531,13 +531,15 @@ impl BrowserKernel {
                 detail,
                 errors,
             } => {
+                // Frozen registry parity with q-runtime/src/problems.rs
+                // (BWASM-Q-001 differential found the drift).
                 let (type_uri, title, status) = match problem_id.as_str() {
-                    "validation" => ("validation", "Validation Failed", 400u16),
+                    "validation" => ("validation", "Validation failed", 422u16),
                     "not-found" => ("not-found", "Not Found", 404),
                     "method" => ("method", "Method Not Allowed", 405),
                     "body" => ("body", "Unsupported body", 415),
                     "limit" => ("limit", "Payload too large", 413),
-                    "timeout" => ("timeout", "Timeout", 504),
+                    "timeout" => ("timeout", "Handler deadline exceeded", 504),
                     "overload" => ("overload", "Overloaded", 503),
                     _ => ("internal", "Internal", 500),
                 };

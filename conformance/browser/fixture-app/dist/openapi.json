@@ -1,0 +1,336 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "app",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/greet/{name}": {
+      "get": {
+        "operationId": "greet.get",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/greet.get.resp200"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "loud",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/echo": {
+      "post": {
+        "operationId": "echo.post",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/echo.post.resp200"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/echo.post.resp422"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/echo.post.body"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/maybe/yes": {
+      "get": {
+        "operationId": "maybe.get",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/maybe.get.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/absent": {
+      "get": {
+        "operationId": "absent.get",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/absent.get.resp200"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "problem: not-found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "instance"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "https://velqu.dev/problems/not-found"
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "enum": [
+                        "Not Found"
+                      ]
+                    },
+                    "status": {
+                      "type": "integer",
+                      "enum": [
+                        404
+                      ]
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/param/{name}": {
+      "get": {
+        "operationId": "param.echo",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/param.echo.resp200"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/query-echo": {
+      "get": {
+        "operationId": "query.echo",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/query.echo.resp200"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "loud",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/timed": {
+      "get": {
+        "operationId": "timed.get",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/timed.get.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "greet.get.resp200": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "echo.post.resp200": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "echo.post.resp422": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "echo.post.body": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "maybe.get.resp200": {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "found"
+        ],
+        "additionalProperties": false
+      },
+      "absent.get.resp200": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "param.echo.resp200": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "query.echo.resp200": {
+        "type": "object",
+        "properties": {
+          "loud": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loud"
+        ],
+        "additionalProperties": false
+      },
+      "timed.get.resp200": {
+        "type": "object",
+        "properties": {
+          "waited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "waited"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

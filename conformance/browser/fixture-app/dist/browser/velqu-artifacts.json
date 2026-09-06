@@ -1,0 +1,90 @@
+{
+  "formatVersion": 1,
+  "target": "browser-wasm",
+  "handlerAbiVersion": 1,
+  "kernelAbiVersion": 1,
+  "capabilities": [
+    {
+      "id": "runtime:timers",
+      "version": 1
+    },
+    {
+      "id": "runtime:crypto",
+      "version": 1
+    },
+    {
+      "id": "runtime:console",
+      "version": 1
+    },
+    {
+      "id": "runtime:fetch",
+      "version": 1
+    },
+    {
+      "id": "runtime:abort",
+      "version": 1
+    },
+    {
+      "id": "runtime:text",
+      "version": 1
+    },
+    {
+      "id": "runtime:url",
+      "version": 1
+    }
+  ],
+  "appId": "app",
+  "packSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+  "artifacts": {
+    "pack": {
+      "role": "pack",
+      "url": "app.qpack",
+      "sha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+      "bytes": 18645,
+      "mediaType": "application/x-velqu-qpack"
+    },
+    "kernelWasm": {
+      "role": "kernelWasm",
+      "url": "kernel.wasm",
+      "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
+      "bytes": 1731509,
+      "mediaType": "application/wasm"
+    },
+    "handlerBundle": {
+      "role": "handlerBundle",
+      "url": "app.bundle.js",
+      "sha256": "bad2caf53b5dee7dbc1e2ee93686d8e15eb7a123d4bbb50368e40e4f21f7cf6f",
+      "bytes": 48284,
+      "mediaType": "text/javascript"
+    },
+    "manifest": {
+      "role": "manifest",
+      "url": "browser-manifest.json",
+      "sha256": "bf92963eb2c0a5b689018527d8a124d678176ab2e3dc44c9a0043020f6e1e300",
+      "bytes": 1095,
+      "mediaType": "application/json"
+    },
+    "contract": {
+      "role": "contract",
+      "url": "contract.json",
+      "sha256": "901949697019318acab6d4adb051f328db1f6e9ad4d644d30c81a009176771dc",
+      "bytes": 4066,
+      "mediaType": "application/json"
+    },
+    "schemas": {
+      "role": "schemas",
+      "url": "schema-manifest.json",
+      "sha256": "b7fc5ab435a09e4d1f2716b0605d0054650031e01349b5fdf61c67f0a14880e1",
+      "bytes": 2384,
+      "mediaType": "application/json"
+    },
+    "capabilities": {
+      "role": "capabilities",
+      "url": "capability-manifest.json",
+      "sha256": "21ff8bb5e4373329ff74e174b10cf27ececbb4ac585aae31508b3752199d1480",
+      "bytes": 722,
+      "mediaType": "application/json"
+    }
+  },
+  "buildId": "8e9f2a1934aa5025a83d6a1fce06b4b87bac19fa41a1e0168a961fff1cce7694"
+}

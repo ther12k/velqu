@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "target": "browser-wasm",
+  "importPolicyVersion": 1,
+  "handlerAbiVersion": 1,
+  "kernelAbiVersion": 1,
+  "appId": "app",
+  "packSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+  "handlers": [
+    {
+      "handlerKey": "absent.get",
+      "statuses": [
+        200,
+        404
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "echo.post",
+      "statuses": [
+        200,
+        422
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "greet.get",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "maybe.get",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "param.echo",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "query.echo",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    },
+    {
+      "handlerKey": "timed.get",
+      "statuses": [
+        200
+      ],
+      "source": "src/app.ts"
+    }
+  ]
+}

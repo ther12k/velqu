@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "328439b8793ae0d40175e4def159bd50",
+  "artifacts": {
+    "contract.json": {
+      "path": "contract.json",
+      "sha256": "901949697019318acab6d4adb051f328db1f6e9ad4d644d30c81a009176771dc",
+      "bytes": 4066
+    },
+    "contract.d.ts": {
+      "path": "contract.d.ts",
+      "sha256": "6853f11b7558e33d36f0ae6b350b349c2c750bef737275c2030ff46e392edeed",
+      "bytes": 1651
+    },
+    "contract.meta.json": {
+      "path": "contract.meta.json",
+      "sha256": "f3c472b0e1f0efc01c231ecb7c5554bab5cf56a1dd64ba90daf543de9d737cfc",
+      "bytes": 1142
+    },
+    "openapi.json": {
+      "path": "openapi.json",
+      "sha256": "581813c4b8dc06365347b9c1e8165608a15a464b79bbdad5a9211fbcef75514e",
+      "bytes": 7709
+    }
+  }
+}

@@ -1,0 +1,394 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "routes": [
+    {
+      "id": "greet.get",
+      "method": "GET",
+      "path": "/greet/:name",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "echo.post",
+      "method": "POST",
+      "path": "/echo",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "maybe.get",
+      "method": "GET",
+      "path": "/maybe/yes",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "absent.get",
+      "method": "GET",
+      "path": "/absent",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "param.echo",
+      "method": "GET",
+      "path": "/param/:name",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "query.echo",
+      "method": "GET",
+      "path": "/query-echo",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    },
+    {
+      "id": "timed.get",
+      "method": "GET",
+      "path": "/timed",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [
+        "timer"
+      ],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+    }
+  ],
+  "schemas": {
+    "schemaIrVersion": 1,
+    "schemas": {
+      "sch:greet.get.query": {
+        "kind": "object",
+        "properties": {
+          "loud": {
+            "kind": "optional",
+            "inner": {
+              "kind": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "sch:greet.get.200": {
+        "kind": "object",
+        "properties": {
+          "message": {
+            "kind": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "sch:echo.post.body": {
+        "kind": "object",
+        "properties": {
+          "text": {
+            "kind": "string"
+          },
+          "count": {
+            "kind": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ]
+      },
+      "sch:echo.post.200": {
+        "kind": "object",
+        "properties": {
+          "text": {
+            "kind": "string"
+          },
+          "count": {
+            "kind": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ]
+      },
+      "sch:echo.post.422": {
+        "kind": "object",
+        "properties": {},
+        "required": []
+      },
+      "sch:maybe.get.200": {
+        "kind": "object",
+        "properties": {
+          "found": {
+            "kind": "boolean"
+          }
+        },
+        "required": [
+          "found"
+        ]
+      },
+      "sch:absent.get.200": {
+        "kind": "object",
+        "properties": {},
+        "required": []
+      },
+      "sch:param.echo.params": {
+        "kind": "object",
+        "properties": {
+          "name": {
+            "kind": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "sch:param.echo.200": {
+        "kind": "object",
+        "properties": {
+          "name": {
+            "kind": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "sch:query.echo.query": {
+        "kind": "object",
+        "properties": {
+          "loud": {
+            "kind": "optional",
+            "inner": {
+              "kind": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "sch:query.echo.200": {
+        "kind": "object",
+        "properties": {
+          "loud": {
+            "kind": "string"
+          }
+        },
+        "required": [
+          "loud"
+        ]
+      },
+      "sch:timed.get.200": {
+        "kind": "object",
+        "properties": {
+          "waited": {
+            "kind": "boolean"
+          }
+        },
+        "required": [
+          "waited"
+        ]
+      }
+    }
+  },
+  "capabilities": {
+    "declared": [
+      "timer"
+    ],
+    "perRoute": {
+      "greet.get": [],
+      "echo.post": [],
+      "maybe.get": [],
+      "absent.get": [],
+      "param.echo": [],
+      "query.echo": [],
+      "timed.get": [
+        "timer"
+      ]
+    },
+    "portability": {
+      "timer": {
+        "state": "browser-and-native",
+        "remediation": "available on both targets"
+      }
+    },
+    "nativeOps": {
+      "timer": "cancellable delay (ms) → Promise<number>"
+    },
+    "intrinsicRequirement": {
+      "requirement": "minimal",
+      "used": {
+        "dateOrPerformance": [],
+        "webOnlyBuiltins": []
+      }
+    },
+    "reductionImpact": [
+      {
+        "profile": "web",
+        "missing": []
+      },
+      {
+        "profile": "minimal",
+        "missing": []
+      }
+    ]
+  },
+  "intrinsicRequirement": {
+    "requirement": "minimal",
+    "used": {
+      "dateOrPerformance": [],
+      "webOnlyBuiltins": []
+    }
+  },
+  "strategies": {
+    "validation": "native",
+    "responses": "native",
+    "fallbacks": [],
+    "decisions": [
+      {
+        "route": "greet.get",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "echo.post",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "maybe.get",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "absent.get",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "param.echo",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "query.echo",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "timed.get",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      }
+    ],
+    "evidenceSummary": {
+      "source": "M25-002-A/B/C codec benchmarks (run m25-002-c-1787293512)",
+      "referenceHost": "13th Gen Intel Core i5-13420H, Linux, quickjs-ng 0.15.1",
+      "smallObjectP50Us": {
+        "native": 21.3,
+        "quickjs": 30.1
+      },
+      "largeObject64kP50Us": {
+        "native": 45.5,
+        "quickjs": 277.8
+      },
+      "array1000P50Us": {
+        "native": 3004.1,
+        "quickjs": 2635.4
+      }
+    },
+    "notes": [
+      "validation: native default for representable Schema IR v2 (M25-002 evidence: 20–40% lower latency on small/nested shapes, ~6x lower on 16–64 KB payloads)",
+      "responses: native serialization default (ADR-0015, M25-002-C: zero bridge crossings, no JS stringify jitter)",
+      "fallback: explicit per-route fallback with visible reason and estimated overhead (SCHEMA-005, ADR-0009)"
+    ]
+  },
+  "nativeStages": [],
+  "integrity": {
+    "algorithm": "sha256",
+    "bundleSha256": "122523ec75f80c79ca29be56daf91af5a53905498de8365989f83e6616abb10d",
+    "routesSha256": "cd24bbf135d3e2196fe9fbf225ca109be23dd3362d31ebbf823c6fcd19fbc26d"
+  },
+  "versions": {
+    "name": "quickjs-ng",
+    "version": "0.15.1",
+    "binding": "rquickjs-0.12.2",
+    "rquickjs": "0.12.2",
+    "buildHash": "dcdbfe8a8cde33a842176eb5378e4338f44d48a9f9c99280533bf0afffae1e52"
+  }
+}
