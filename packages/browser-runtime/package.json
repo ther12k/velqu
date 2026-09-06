@@ -1,0 +1,13 @@
+{
+  "name": "@velqu/browser-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "browser": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "Velqu Browser-WASM runtime: fetch(Request) -> Promise<Response> over the Rust/WASM kernel (ADR-0037). Browser-only: no Bun.*, node:*, native addons, q-http, or native runtime dependencies."
+}
