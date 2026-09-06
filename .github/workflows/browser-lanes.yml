@@ -1,0 +1,83 @@
+name: browser-lanes
+
+# BWASM-Q-002 — real-browser evidence lanes.
+#
+# REQUIRED lane: Chromium (the D-004 qualification lane with maintained
+# evidence). Experimental lanes (firefox/webkit) run with
+# continue-on-error: they can NEVER satisfy a release gate (step 3 of
+# BWASM-Q-002); they exist to surface drift early.
+#
+# NOTE (standing): the repository's GitHub Actions runners have been
+# stalling/failing with zero executed steps since ~#714 (see the
+# standing disclosure on every packet PR). This workflow is the
+# committed lane definition; until CI executes again, the acceptance
+# evidence is the local green runs recorded under
+# docs/codex-spark-browser-wasm/evidence/browser-lanes/.
+
+on:
+  pull_request:
+  schedule:
+    # Weekly full-matrix run (step 5: scheduled coverage beyond the PR
+    # matrix, which is intentionally Chromium-only).
+    - cron: "0 6 * * 1"
+
+jobs:
+  browser-lanes:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            required: true
+          - browser: firefox
+            required: false # experimental lane (allowed failure)
+          - browser: webkit
+            required: false # experimental lane (allowed failure)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Build native runtime (release)
+        run: |
+          export RUSTFLAGS="--remap-path-prefix=$(pwd)=/velqu-src"
+          cargo build --release -p velqu-runtime
+          cargo build -p q-bytecode-tool
+
+      - name: Real-browser E2E smoke lanes
+        id: e2e
+        continue-on-error: ${{ !matrix.required }}
+        run: |
+          python3 scripts/browser-e2e-rehearsal.py \
+            --browser ${{ matrix.browser }} \
+            --out "evidence/browser-lanes/run-${{ matrix.browser }}.json"
+
+      - name: Upload failure diagnostics
+        if: failure() || steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-lane-${{ matrix.browser }}
+          path: |
+            evidence/browser-lanes/
+            screenshots/
+
+      - name: Gate (required lanes only)
+        if: matrix.required && steps.e2e.outcome == 'failure'
+        run: |
+          echo "REQUIRED browser lane failed: ${{ matrix.browser }}"
+          exit 1

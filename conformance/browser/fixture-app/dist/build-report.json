@@ -17,7 +17,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "echo.post",
@@ -34,7 +34,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "maybe.get",
@@ -51,7 +51,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "absent.get",
@@ -68,7 +68,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "param.echo",
@@ -85,7 +85,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "query.echo",
@@ -102,7 +102,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     },
     {
       "id": "timed.get",
@@ -121,7 +121,7 @@
       "validationCodec": "direct-decoder",
       "responseCodec": "direct-encoder",
       "bridge": "single-prevalidated",
-      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-001/conformance/browser/fixture-app/src/app.ts"
+      "sourceFile": "/home/ther12k/Workspace/Learning/velqu-worktrees/bwasm-q-002/conformance/browser/fixture-app/src/app.ts"
     }
   ],
   "schemas": {

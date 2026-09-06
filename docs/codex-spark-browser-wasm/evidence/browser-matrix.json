@@ -1,0 +1,65 @@
+{
+  "formatVersion": 1,
+  "matrix": "browser-wasm supported-browser lanes (BWASM-Q-002; D-004/ADR-0039 lane table)",
+  "policy": {
+    "required": "a required lane is BLOCKING for release gates; its last green run must be recent (same release candidate)",
+    "experimental": "allowed-failure lanes surface drift early; they can NEVER satisfy a release gate",
+    "unverified": "a browser absent from this matrix is unverified/unsupported — no implicit claims",
+    "ownership": "BWASM program maintains this matrix; changes to lane classifications require an owner decision (ADR amendment per D-004/ADR-0039)",
+    "cadence": "required lanes run on every PR and weekly (scheduled); experimental lanes run on the weekly schedule and release candidates"
+  },
+  "lanes": [
+    {
+      "id": "chromium-desktop-linux",
+      "browser": "Chromium (Chrome for Testing)",
+      "os": "Linux x86_64 (Ubuntu 24.04)",
+      "classification": "tested — REQUIRED lane",
+      "runner": "scripts/browser-e2e-rehearsal.py --browser chromium",
+      "lastEvidence": {
+        "kind": "local green run (CI runners stalled since ~#714 — standing disclosure)",
+        "browserVersion": "151.0.7922.34",
+        "commit": "see evidence/browser-lanes/chromium.json",
+        "result": "REHEARSAL-PASS (E1-E6)"
+      }
+    },
+    {
+      "id": "firefox-desktop-linux",
+      "browser": "Firefox (last 2 evergreen majors)",
+      "os": "Linux x86_64",
+      "classification": "experimental — allowed-failure lane",
+      "runner": "scripts/browser-e2e-rehearsal.py --browser firefox",
+      "lastEvidence": {
+        "kind": "none — lane defined, browser binary not yet provisioned in this environment",
+        "status": "untested"
+      }
+    },
+    {
+      "id": "webkit-desktop-linux",
+      "browser": "WebKit (Safari driver)",
+      "os": "Linux x86_64",
+      "classification": "experimental — allowed-failure lane",
+      "runner": "scripts/browser-e2e-rehearsal.py --browser webkit",
+      "lastEvidence": {
+        "kind": "none — lane defined, browser binary not yet provisioned in this environment",
+        "status": "untested"
+      }
+    },
+    {
+      "id": "chrome-android",
+      "browser": "Chrome Android (last 2 majors)",
+      "classification": "experimental / untested — desktop results do not establish mobile support",
+      "runner": null
+    },
+    {
+      "id": "safari-ios",
+      "browser": "Safari iOS (last 2 majors)",
+      "classification": "experimental / untested — device qualification required",
+      "runner": null
+    }
+  ],
+  "featureBaseline": {
+    "required": ["WebAssembly (instantiation)", "Web Workers (module)", "ES2022", "structuredClone", "Fetch"],
+    "conditional": ["Cache Storage (offline/upgrade lanes)", "IndexedDB (kv capability)"],
+    "absence": "missing core execution features prevent startup with an actionable diagnostic; missing conditional features fail closed for the declared capability (never silently disabled)"
+  }
+}

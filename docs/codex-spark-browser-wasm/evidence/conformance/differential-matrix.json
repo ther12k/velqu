@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
  "suite": "bwasm-q-001-differential",
- "sourceCommit": "2eaac28be33861041b1e367072bf647d99b86372",
+ "sourceCommit": "8aee413c139129c6e56ca23ebcd6bd8758a4039c",
  "nativeBinarySha256": "c52385af2d560538ec7285c445c433eb6429c53b3eb5d6b12c505f6864d855f4",
  "kernelWasmSha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
  "nativePackSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
