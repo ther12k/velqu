@@ -41,6 +41,7 @@ import {
   loadArtifacts,
   workerBootstrapSource,
   createBrowserCapabilityGraph,
+  createIndexedDbKv,
   ringBufferSink,
 } from "@velqu/browser-runtime";
 import {
@@ -232,6 +233,13 @@ export interface ComposeOptions {
    * reach. DEFAULT-DENY: omitted/empty denies every request.
    */
   readonly fetchAllowlist?: ReadonlyArray<string>;
+  /**
+   * C-004: install the namespaced IndexedDB KV persistence capability
+   * (runtime:kv v1) and declare it in the artifact manifest. Namespace:
+   * `<appId>:kv`. Unavailable IndexedDB fails closed (KVUnavailable);
+   * the opt-in memory fallback is a separate, explicit choice.
+   */
+  readonly kv?: boolean;
 }
 
 export interface ProbeRequest {
@@ -266,7 +274,7 @@ function normalizeBasePath(raw: string | undefined): string {
 }
 
 /** Generated page bootstrap (bundled into page.js). */
-function pageEntrySource(basePath: string, appId: string, probe: ProbeRequest | null, fetchAllowlist: ReadonlyArray<string>): string {
+function pageEntrySource(basePath: string, appId: string, probe: ProbeRequest | null, fetchAllowlist: ReadonlyArray<string>, kv: boolean): string {
   const probeLines = probe
     ? [
         "  // B-006 self-probe (build-time option): executes one declared route",
@@ -293,6 +301,7 @@ import {
   loadArtifactsWithFallback,
   createBrowserRuntime,
   createBrowserCapabilityGraph,
+  createIndexedDbKv,
   ringBufferSink,
   WorkerHost,
   bootstrapServiceWorker,
@@ -312,7 +321,13 @@ try {
     fetchPolicy: { allowedOrigins: ${JSON.stringify(fetchAllowlist)} },
   });
   const capabilityLog = capabilities.graph.console;
-
+${kv ? `
+  // BWASM-C-004: namespaced IndexedDB KV persistence (runtime:kv v1).
+  // Namespace: ${JSON.stringify(appId + ":kv")} — project-isolated.
+  // Fail closed when IndexedDB is unavailable (private mode etc.);
+  // this is preview-local data, never production-durable.
+  const kv = createIndexedDbKv({ namespace: ${JSON.stringify(appId + ":kv")} });
+` : ""}
   setStatus("loading verified artifacts…");
   const loaded = await loadArtifactsWithFallback({
     fetch: (url) => fetch(url),
@@ -641,7 +656,7 @@ export async function composeBrowserDeployment(opts: ComposeOptions): Promise<Co
   // (entries never import each other), so the deployed names land
   // directly: page.js, worker.js, service-worker.js, app.bundle.js.
   const appId = app.appId;
-  writeFileSync(join(browserDir, "page.js"), pageEntrySource(basePath, appId, opts.probe ?? null, opts.fetchAllowlist ?? []));
+  writeFileSync(join(browserDir, "page.js"), pageEntrySource(basePath, appId, opts.probe ?? null, opts.fetchAllowlist ?? [], opts.kv ?? false));
   writeFileSync(join(browserDir, "worker.js"), workerEntrySource());
   writeFileSync(
     join(browserDir, "app.bundle.js"),
@@ -692,12 +707,16 @@ export async function composeBrowserDeployment(opts: ComposeOptions): Promise<Co
     consoleSink: ringBufferSink(16),
     fetchPolicy: { allowedOrigins: opts.fetchAllowlist ?? [] }, // default deny
   });
+  const capabilityDescriptors = [
+    ...baselineGraph.descriptors.map(({ id, version }) => ({ id, version })),
+    ...(opts.kv ? [{ id: "runtime:kv", version: 1 }] : []),
+  ];
   const { manifest, manifestJson } = await emitArtifactManifest({
     appId: browserManifest.appId as string,
     handlerAbiVersion: browserManifest.handlerAbiVersion as number,
     kernelAbiVersion: browserManifest.kernelAbiVersion as number,
     packSha256: browserManifest.packSha256 as string,
-    capabilities: baselineGraph.descriptors.map(({ id, version }) => ({ id, version })),
+    capabilities: capabilityDescriptors,
     // Partial role set is the loader contract (per-manifest role maps);
     // the emitter type overstates completeness — see B-002 loader keys().
     artifacts: artifacts as Record<ArtifactRole, Uint8Array>,

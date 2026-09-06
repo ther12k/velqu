@@ -299,6 +299,23 @@ describe("B-005 inspect (integrity + inventory)", () => {
     expect(report.deploymentRequirements.join("\n")).toContain("runtime:timers@1");
   });
 
+  it("declares runtime:kv in the manifest when --kv is set", async () => {
+    await composeBrowserDeployment({
+      project: join(demoDir, "src", "app.ts"),
+      kv: true,
+    });
+    const manifest = JSON.parse(readFileSync(join(browserDir, "velqu-artifacts.json"), "utf8")) as {
+      capabilities: { id: string; version: number }[];
+    };
+    const kv = manifest.capabilities.find((c) => c.id === "runtime:kv");
+    expect(kv).toEqual({ id: "runtime:kv", version: 1 });
+    // the generated page installs the IndexedDB adapter
+    const page = readFileSync(join(browserDir, "page.js"), "utf8");
+    expect(page).toContain("createIndexedDbKv");
+    // restore the default (no kv) deployment
+    await composeBrowserDeployment({ project: join(demoDir, "src", "app.ts") });
+  });
+
   it("surfaces deployment requirements honestly", async () => {
     const report = await inspectBrowserDeployment(browserDir);
     const text = report.deploymentRequirements.join("\n");

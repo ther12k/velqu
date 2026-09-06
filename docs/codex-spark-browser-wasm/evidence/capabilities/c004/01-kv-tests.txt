@@ -1,0 +1,38 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/browser-runtime/test/kv.test.ts:
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > set/get round-trips structured values [0.58ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > returns null for missing keys and deletes cleanly [0.08ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > lists sorted with optional prefix filtering [0.32ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > setMany is atomic: a quota failure leaves no partial writes [0.24ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > clear removes data but the adapter keeps working [0.09ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > exportAll returns the full namespace snapshot [0.09ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > reset empties everything including metadata state [0.05ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > gc is a no-op within budget and never touches live data [0.13ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > rejects invalid keys and non-cloneable values with structured errors [0.15ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > enforces per-value and entry-count quotas with structured errors [0.09ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: memory > values are isolated copies (no live-reference aliasing) [0.05ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > set/get round-trips structured values [0.89ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > returns null for missing keys and deletes cleanly [0.26ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > lists sorted with optional prefix filtering [0.29ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > setMany is atomic: a quota failure leaves no partial writes [0.28ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > clear removes data but the adapter keeps working [0.31ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > exportAll returns the full namespace snapshot [0.28ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > reset empties everything including metadata state [0.15ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > gc is a no-op within budget and never touches live data [0.27ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > rejects invalid keys and non-cloneable values with structured errors [0.05ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > enforces per-value and entry-count quotas with structured errors [0.10ms]
+(pass) C-004 shared KV contract (memory + indexeddb) > backend: indexeddb > values are isolated copies (no live-reference aliasing) [0.06ms]
+(pass) C-004 indexeddb migration + availability + isolation > version mismatch without a migration fails closed and preserves data [0.25ms]
+(pass) C-004 indexeddb migration + availability + isolation > declared migrations run and the version advances [0.35ms]
+(pass) C-004 indexeddb migration + availability + isolation > unavailable IndexedDB fails closed by default; memory fallback is explicit and flagged [0.10ms]
+(pass) C-004 indexeddb migration + availability + isolation > gc evicts oldest-written entries after a quota tightening (explicit control) [16.94ms]
+(pass) C-004 indexeddb migration + availability + isolation > one project cannot enumerate or read another project's keys [0.40ms]
+(pass) C-004 indexeddb migration + availability + isolation > namespace names are part of the store identity (no prefix collisions) [0.19ms]
+(pass) C-004 kv handle + introspection > exposes the op-table handle under runtime:kv v1 [0.30ms]
+(pass) C-004 kv handle + introspection > describe reports namespace, backend, and effective limits [0.03ms]
+
+ 30 pass
+ 0 fail
+ 67 expect() calls
+Ran 30 tests across 1 file. [49.00ms]

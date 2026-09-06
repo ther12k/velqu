@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -53,12 +53,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Memory and IndexedDB adapters pass one shared contract suite.
-- [ ] One project cannot enumerate or read another project's keys.
-- [ ] Quota, serialization, migration, and blocked-database failures are structured.
-- [ ] Upgrading an application does not silently erase data outside declared migration policy.
-- [ ] Private/incognito or unavailable IndexedDB conditions have a documented fallback/error.
-- [ ] No preview data is represented as production-durable or multi-user.
+- [x] Memory and IndexedDB adapters pass one shared contract suite.
+- [x] One project cannot enumerate or read another project's keys.
+- [x] Quota, serialization, migration, and blocked-database failures are structured.
+- [x] Upgrading an application does not silently erase data outside declared migration policy.
+- [x] Private/incognito or unavailable IndexedDB conditions have a documented fallback/error.
+- [x] No preview data is represented as production-durable or multi-user.
 
 ## Targeted tests and commands
 
@@ -74,10 +74,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] KV API specification.
-- [ ] Browser traces.
-- [ ] Migration fixtures.
-- [ ] Isolation and quota results.
+- [x] KV API specification.
+- [x] Browser traces.
+- [x] Migration fixtures.
+- [x] Isolation and quota results.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -124,3 +124,41 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). `runtime:kv` v1 ships in `@velqu/browser-runtime`:
+one versioned async KV contract (get/set/delete/list/setMany/clear/
+exportAll/reset/gc/describe) with TWO interchangeable adapters — volatile
+memory and namespaced IndexedDB (one object store per namespace
+`kv:<appId>:<name>`; store isolation is the project boundary). Quotas
+(1 MiB/value, 10k entries, tunable), serialization, migration
+(`KvMigrationRequired` fails closed with from/to versions; declared
+hooks advance the version), and blocked/unavailable conditions are all
+structured typed errors. Unavailable IndexedDB defaults to fail-closed
+(`KvUnavailable`); `onUnavailable: "memory"` is an explicit, flagged
+ephemeral fallback. Export/reset/gc are explicit controls.
+
+**Real-browser evidence** (Chromium 151.0.7922.34, genuine IndexedDB,
+committed rerunnable `scripts/browser-kv-rehearsal.py`): all seven
+checks pass — round trip, reload persistence, namespace isolation
+INCLUDING version-bump coexistence, quota error, v1→v2 migration,
+fail-closed mismatch, export/reset. The rehearsal FOUND a real defect
+(a new namespace's version bump self-closed existing connections, killing
+concurrent namespaces) — fixed with transparent reopen-once and pinned.
+
+Tests: 30 new KV tests (shared contract suite over both backends with a
+spec-shaped IDB fake + IDB-only migration/isolation/availability blocks)
++ 1 compose test; browser-runtime + CLI suites 187/187; tsc clean.
+Evidence: `evidence/capabilities/c004/{kv-browser-rehearsal.json,
+01-kv-tests.txt,02-rehearsal-summary.txt}`. Report:
+`docs/reports/bwasm-c-004-indexeddb-kv.md`.
+
+Honest notes: Bun lacks indexedDB — the fake covers the unit lane and the
+committed rehearsal covers the genuine browser lane (real-browser CI
+lanes remain Q-002); adapter-atomic setMany, but no SQL-style/cross-
+namespace transactions (out of scope; C-003 stays owner-gated); this is
+browser-local preview data — never claimed production-durable or
+multi-user.
