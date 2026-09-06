@@ -1,0 +1,18 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/compiler/src/import-policy.test.ts:
+(pass) B-003 import policy — forbidden matrix > direct node: imports are caught [1128.60ms]
+(pass) B-003 import policy — forbidden matrix > transitive forbidden imports through relative helpers are caught, with the import chain [657.98ms]
+(pass) B-003 import policy — forbidden matrix > aliased re-exports cannot hide a forbidden import [471.10ms]
+(pass) B-003 import policy — forbidden matrix > bare Node builtins (without node:) are forbidden [509.50ms]
+(pass) B-003 import policy — forbidden matrix > dynamic import with an opaque specifier is forbidden (cannot verify) [615.58ms]
+(pass) B-003 import policy — forbidden matrix > eval and new Function are forbidden dynamic code loading [447.50ms]
+(pass) B-003 import policy — deployment-required class > server-only drivers classify as deployment-required with capability remediation [439.24ms]
+(pass) B-003 import policy — browser-safe positives > @velqu/* and relative schema imports produce no violations [481.69ms]
+(pass) B-003 import policy — browser-safe positives > policy version is explicit [0.06ms]
+
+ 9 pass
+ 0 fail
+ 16 expect() calls
+Ran 9 tests across 1 file. [5.04s]
+EXIT=0

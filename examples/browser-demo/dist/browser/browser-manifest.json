@@ -1,6 +1,7 @@
 {
   "formatVersion": 1,
   "target": "browser-wasm",
+  "importPolicyVersion": 1,
   "handlerAbiVersion": 1,
   "kernelAbiVersion": 1,
   "appId": "app",
