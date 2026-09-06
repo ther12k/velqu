@@ -1,0 +1,30 @@
+== C-005 build/runtime consistency report ==
+
+1. CLASSIFICATION (compiler registry — single source)
+  timer         -> browser-and-native
+  console       -> browser-and-native
+  crypto        -> browser-and-native
+  url           -> browser-and-native
+  text          -> browser-and-native
+  abort         -> browser-and-native
+  kv            -> browser
+  postgres      -> deployment-required
+  payments      -> forbidden
+  email         -> forbidden
+  webhooks      -> forbidden
+  cron          -> forbidden
+  queues        -> forbidden
+  unknown-thing -> forbidden
+
+2. BUILD TIME (browser-wasm target refuses deployment-required/forbidden)
+  CompileError (fail closed, nothing emitted):
+  browser-wasm target: route "users.list" declares capability "postgres", which is deployment-required — it cannot run in a browser. Remediation: deploy behind the native Velqu runtime with a linked Postgres pool; the brow
+  browser/ dir exists: false
+
+3. RUNTIME (policy gate refuses before kernel auth or handle call)
+  (pinned by c005-policy.test.ts: install refusal + R-005 order preserved;
+   kernelAuthorizeCalls = 0, handle.calls = 0 on refusal)
+
+4. INSPECT (machine-readable requirements — same classification)
+  inspect schemaVersion: 1 | status: ok | deploymentRequirements: 4 entries
+  portabilityStates keys: (demo declares no grants — empty)

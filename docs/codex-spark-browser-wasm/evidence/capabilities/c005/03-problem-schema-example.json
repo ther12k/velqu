@@ -1,0 +1,10 @@
+{
+ "problemId": "deployment-required",
+ "type": "https://velqu.dev/problems/deployment-required",
+ "title": "Capability requires native deployment",
+ "status": 501,
+ "capabilityId": "runtime:postgres",
+ "routeId": "users.list",
+ "reason": "declared capability is deployment-required on the browser target",
+ "remediation": "deploy behind the native Velqu runtime with a linked Postgres pool"
+}

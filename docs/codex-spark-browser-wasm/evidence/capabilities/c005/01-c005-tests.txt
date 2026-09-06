@@ -1,0 +1,26 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/browser-runtime/test/c005-policy.test.ts:
+(pass) C-005 runtime policy gate (fail closed before side effects) > install refuses deployment-required and forbidden ids [0.35ms]
+(pass) C-005 runtime policy gate (fail closed before side effects) > install refuses policy-refused ids first; no kernel auth, no side effects [0.06ms]
+(pass) C-005 runtime policy gate (fail closed before side effects) > without a policy, R-005 order applies unchanged (kernel auth → call) [0.19ms]
+(pass) C-005 runtime policy gate (fail closed before side effects) > no policy: behavior unchanged (R-005 order preserved) [0.06ms]
+(pass) C-005 deployment-required problem shape > is stable, RFC-9457-compatible, and secret-free [0.11ms]
+(pass) C-005 deployment-required problem shape > round-trips through a Response body (Treaty decode path) [0.17ms]
+
+packages/compiler/src/capability-portability.test.ts:
+(pass) C-005 portability classification (goldens, fail closed) > classifies every registered capability [0.08ms]
+(pass) C-005 portability classification (goldens, fail closed) > UNKNOWN names fail closed as forbidden [0.04ms]
+(pass) C-005 portability classification (goldens, fail closed) > registry entries carry safe remediation (no secret-looking values) [0.10ms]
+(pass) C-005 portability report (machine-readable requirements) > flags deployment-required on the browser target with routes and remediation [0.28ms]
+(pass) C-005 portability report (machine-readable requirements) > native target does not flag deployment-required (that is its job); forbidden always flags [0.06ms]
+(pass) C-005 portability report (machine-readable requirements) > unknown grants surface as forbidden in the report [0.02ms]
+(pass) C-005 build-time refusal (browser-wasm target) > a postgres-declaring route fails the browser build before any artifact [791.40ms]
+(pass) C-005 build-time refusal (browser-wasm target) > an explicit simulation profile records the state (never a mock implementation) [1385.07ms]
+(pass) C-005 build-time refusal (browser-wasm target) > forbidden capability names fail closed even with simulate [554.71ms]
+(pass) C-005 build-time refusal (browser-wasm target) > the native build records portability states in capability-manifest.json [384.38ms]
+
+ 16 pass
+ 0 fail
+ 74 expect() calls
+Ran 16 tests across 2 files. [3.30s]

@@ -169,6 +169,8 @@ export {
 export {
   CapabilityRegistry,
   CapabilityError,
+  deploymentRequiredProblem,
+  type CapabilityPolicy,
   capabilityViewForRoute,
   treatyFetchFromRuntime,
   treatyDispatchFromRuntime,
