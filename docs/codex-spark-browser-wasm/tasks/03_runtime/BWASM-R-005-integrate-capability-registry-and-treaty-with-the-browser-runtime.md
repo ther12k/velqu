@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -123,4 +123,14 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-005 (#1246)
+- Candidate commit: see PR; report `docs/reports/bwasm-r-005-capability-treaty.md`
+- CapabilityRegistry + capabilityViewForRoute: view = exactly the compiled declaration; authorization ORDER regression-tested (declaration check → kernel inventory → handle lookup; zero side effects before authorization); machine-readable rejections (not-declared / not-in-inventory / version-mismatch).
+- Treaty: treatyFetchFromRuntime (Request/Response mode) + treatyDispatchFromRuntime (direct mode) — BOTH backed by the same runtime dispatch (no semantic bypass); route ids, status narrowing, canonical problems identical to native.
+- Tests 10 new (package 59/59); typecheck clean; verify ALL PASS.
+- Capability call implementations (timer/crypto/etc.) = C-001.
+- Follow-ups: R-006 (#1247) R-phase evidence.
 ```
