@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -122,4 +122,13 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-B-002 (#1256)
+- Candidate commit: see PR; report `docs/reports/bwasm-b-002-artifact-manifest-loader.md`
+- Manifest v1: canonical serialization, buildId = sha256(canonical bytes), per-role url/sha256/bytes/mediaType, both ABI versions, top-level packSha256. Loader: version → target → buildId → missing/size/digest → cross-build binding; nothing activates unverified.
+- Browser-pure: WebCrypto hashing (node:crypto/fs removed — caught by the R-001 purity scan, fixed).
+- Tests 11 new (package 70/70): golden canonical bytes, tamper/truncate/missing/cross-build/unsupported-version/swapped-manifest, base paths.
+- Follow-ups: B-003 (#1257) import policy, B-004 (#1258) SW adapter + offline activation using this loader.
 ```
