@@ -1,0 +1,41 @@
+{"level":"info","event":"ready","appId":"proof","routes":24,"handlers":26,"addr":"127.0.0.1:8377","mode":"shared","engine":"quickjs-ng/0.15.1","runtimeAbi":1,"contextProfile":"full","serviceProfile":"serverless","startupWorkers":1,"config":{"host":"127.0.0.1","hostSource":"default","port":8377,"portSource":"cli","maxBodyBytes":1048576,"maxBodyBytesSource":"default","maxQueue":256,"maxQueueSource":"default","log":"off","logSource":"cli","logSample":0,"logSampleSource":"default","activeProfile":null,"proxyMode":"direct","proxyModeSource":"cli"},"contractHash":"78928e22ef401879a7f64be45958e035","startupMs":13.02854,"stages":[{"stage":"pack.load","ms":5.794014},{"stage":"router.build","ms":0.02213},{"stage":"config.resolve","ms":0.054883},{"stage":"engine.spawn","ms":0.10259},{"stage":"bundle.load","ms":6.671974},{"stage":"listen","ms":0.052658}],"bundleEvalMs":2.276352}
+{"level":"info","event":"drain.begin","pending":0}
+{"level":"info","event":"shutdown.complete","stats":{"invocations":3,"policy_calls":0,"handler_calls":3,"immediate_results":1,"promise_results":2,"promise_watches":2,"job_queue_drains":2,"settlement_scans":2,"timer_ops_started":0,"timer_ops_completed":0,"postgres_ops_started":0,"postgres_ops_completed":0,"pending_ops":0,"native_tasks_started":0,"native_tasks_alive":0,"native_tasks_completed":0,"native_tasks_aborted":0,"scheduler_boundary_violations":0,"queue_poisoned":false,"poison_events":0,"late_completions_dropped":0,"cancelled_invocations":0,"timeouts":0,"engine_failures":0,"contract_violations":0,"numeric_dispatches":3,"legacy_map_dispatches":0,"heap_used":339234,"defers_admitted":0,"defers_rejected":0,"defer_drains":0,"defers_drained":0,"defer_drains_interrupted":0,"defers_dropped_at_shutdown":0},"stageMetrics":{"route":10,"queue":3,"decode":0,"bridge":3,"js":3,"encode":3,"write":10,"slab_live":0,"queue_pending":0,"body_bytes":0},"invocations":{"pending":0,"registered":3,"settled":3},"drain":{"refused":0,"completed":10,"aborted":0},"loadShed":{"all_workers_full":0,"class_ceiling":0,"draining":0,"global_admission_full":0,"long_running_slots":0,"tracking_full":0,"worker_queue_full":0},"fetchPool":{"initialized":false,"drained":true}}
+{"level":"info","event":"ops.worker.status","status":{"queue":{"pending":0,"slabLive":0,"invocationsPending":0},"worker":{"quarantined":false,"queuePoisoned":false,"poisonEvents":0},"memory":{"heapUsedBytes":339234},"tasks":{"nativeStarted":0,"nativeAlive":0,"nativeCompleted":0,"nativeAborted":0},"slots":{"live":0,"capacity":256},"drain":{"draining":true,"refused":0},"loadShed":{"all_workers_full":0,"class_ceiling":0,"draining":0,"global_admission_full":0,"long_running_slots":0,"tracking_full":0,"worker_queue_full":0},"pools":{"fetch":{"initialized":false,"shutdown":true,"active":0,"max_active":128,"rejections":0},"postgres":{"linked":false}}}}
+browser corpus done: 9 entries
+== native ==
+GET /health/live -> ROUTE
+HEAD /health/live -> ROUTE
+POST /health/live -> PROBLEM(405) "problemId":"method"
+GET /health/nope -> PROBLEM(404) "problemId":"not-found"
+GET /hello/beta -> ROUTE
+GET /items -> ROUTE
+OPTIONS /items -> PROBLEM(405) "problemId":"method"
+GET /items/ -> ROUTE
+GET /nope/nope -> PROBLEM(404) "problemId":"not-found"
+== browser (dispatcher + real kernel) ==
+GET /health/live -> ROUTE
+HEAD /health/live -> ROUTE
+POST /health/live -> PROBLEM(405) "problemId":"method"
+GET /health/nope -> PROBLEM(404) "problemId":"not-found"
+GET /hello/beta -> ROUTE
+GET /items -> ROUTE
+OPTIONS /items -> PROBLEM(405) "problemId":"method"
+GET /items/ -> ROUTE
+GET /nope/nope -> PROBLEM(404) "problemId":"not-found"
+NATIVE-BROWSER-DIFF-OK: statuses and problem ids identical across 9 corpus entries
+8434c8575f330c8ae666cf7a57afef5c49fd3d02d8f5f3216c0b7eb9d302e5de  glue/r002-glue/q_browser_kernel.js
+db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de  glue/r002-glue/q_browser_kernel_bg.wasm
+
+# Corpus: 9 entries (routes, HEAD, wrong method OPTIONS/POST, unknown
+# paths, trailing slash) — plan-level outcomes (ROUTE vs
+# PROBLEM(status,id)) IDENTICAL across native runtime and browser
+# dispatcher + real kernel.
+#
+# Expected difference documented (not in corpus): /health/ready is a
+# native HOST-LEVEL socket probe (not an artifact route; artifact
+# readiness route is /ops/readiness) — browser kernel correctly 404s.
+# Handler OUTPUTS (bodies of matched routes) are out of scope: browser
+# handler execution is BWASM-R-003/R-004; the kernel's response-schema
+# enforcement was observed live (stub bodies on schema'd routes
+# correctly produce contract-violation problems).
