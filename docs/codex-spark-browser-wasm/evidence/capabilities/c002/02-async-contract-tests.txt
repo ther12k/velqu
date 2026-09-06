@@ -1,0 +1,32 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/capability-postgres/src/pack-wiring.test.ts:
+(pass) postgres grant pack wiring (BETA-004-A) > a postgres-granting route declares the grant end-to-end through the CLI build [1867.80ms]
+(pass) postgres grant pack wiring (BETA-004-A) > a route that never touches postgres declares no grant (zero-cost default) [1798.46ms]
+
+packages/capability-postgres/src/index.test.ts:
+(pass) postgres capability identity (BETA-004-A) > identity pins match the Rust ABI model exactly [0.03ms]
+(pass) zero-cost posture > import constructs no native bindings and no pool state [0.09ms]
+(pass) zero-cost posture > BETA-004-F: no-ORM surface freeze — the entire API is one parameterized method [0.20ms]
+(pass) fail-closed without the native binding > sql throws the typed unavailable error, never a silent fallback [0.26ms]
+(pass) fail-closed without the native binding > binding present but non-function still fails closed [0.10ms]
+(pass) parameterized-only API shape > statement text is required [0.10ms]
+(pass) parameterized-only API shape > deadline above the ceiling is a RangeError before any native call [0.10ms]
+(pass) parameterized-only API shape > with the binding linked, sql passes text, copied params, and deadline (async contract: BWASM-C-002) [0.27ms]
+
+packages/capability-postgres/src/async-contract.test.ts:
+(pass) BWASM-C-002 async sql contract (SDK surface) > returns a Promise that resolves to the native result [0.21ms]
+(pass) BWASM-C-002 async sql contract (SDK surface) > still throws synchronously for invalid arguments (fail-fast preserved) [0.09ms]
+(pass) BWASM-C-002 async sql contract (SDK surface) > classifies deadline rejections as PostgresDeadlineExceeded [0.25ms]
+(pass) BWASM-C-002 async sql contract (SDK surface) > classifies every other rejection as PostgresQueryError with the native reason [0.18ms]
+(pass) BWASM-C-002 async sql contract (SDK surface) > fail closed when the binding is absent (sync throw, unchanged) [0.02ms]
+(pass) BWASM-C-002 migrate-postgres-async codemod > finds and rewrites sync-looking call sites; leaves awaited ones [26.29ms]
+(pass) BWASM-C-002 migrate-postgres-async codemod > exits 0 on a clean project and 1 when sites remain without --write [13.45ms]
+(pass) BWASM-C-002 compile-time async contract > sync-looking property access on the sql result is a type error [2491.11ms]
+(pass) BWASM-C-002 compile-time async contract > awaited use typechecks against the async contract [2494.54ms]
+(pass) BWASM-C-002 compile-time async contract > HandlerCtx.native.postgres.sql is Promise-returning (core contract) [2440.56ms]
+
+ 20 pass
+ 0 fail
+ 72 expect() calls
+Ran 20 tests across 3 files. [11.19s]

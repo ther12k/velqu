@@ -109,14 +109,15 @@ describe("parameterized-only API shape", () => {
     }
   });
 
-  test("with the binding linked, sql passes text, copied params, and deadline", () => {
+  test("with the binding linked, sql passes text, copied params, and deadline (async contract: BWASM-C-002)", async () => {
     let seen: unknown[] = [];
     (globalThis as Record<string, unknown>).__velquPostgresQuery = (...args: unknown[]) => {
       seen = args;
-      return { rows: [{ id: "usr_1" }], affectedRows: 0 };
+      return Promise.resolve({ rows: [{ id: "usr_1" }], affectedRows: 0 });
     };
     try {
-      const res = postgres.sql("SELECT * FROM users WHERE id = $1", ["usr_1"], 2_500);
+      const p = postgres.sql("SELECT * FROM users WHERE id = $1", ["usr_1"], 2_500);
+      const res = await p;
       expect(seen).toEqual(["SELECT * FROM users WHERE id = $1", ["usr_1"], 2_500]);
       expect(res.rows[0]?.id).toBe("usr_1");
     } finally {

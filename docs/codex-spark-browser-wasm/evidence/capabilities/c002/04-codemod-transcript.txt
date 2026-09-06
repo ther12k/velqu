@@ -1,0 +1,16 @@
+== BWASM-C-002 codemod transcript (evidence) ==
+
+$ bun scripts/migrate-postgres-async.mjs /tmp/c002-demo   (report)
+report exit=1 (1 = sync-looking sites found)
+
+$ bun scripts/migrate-postgres-async.mjs /tmp/c002-demo --write
+write exit=0
+
+-- users.ts after:
+export async function listUsers() {
+  const r = await db.sql('SELECT id FROM users');
+  return r.rows;
+}
+
+$ bun scripts/migrate-postgres-async.mjs /tmp/c002-demo   (clean)
+clean exit=0 (0 = no sync-looking sites remain)

@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -53,11 +53,11 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] All official examples use await and compile against the new contract.
-- [ ] Native Postgres behavior and errors remain covered by integration tests.
-- [ ] Generated handler code cannot accidentally serialize an unresolved Promise.
-- [ ] Migration guidance identifies every affected public API.
-- [ ] A beta API snapshot records the async contract.
+- [x] All official examples use await and compile against the new contract.
+- [x] Native Postgres behavior and errors remain covered by integration tests.
+- [x] Generated handler code cannot accidentally serialize an unresolved Promise.
+- [x] Migration guidance identifies every affected public API.
+- [x] A beta API snapshot records the async contract.
 
 ## Targeted tests and commands
 
@@ -73,10 +73,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] API diff.
-- [ ] Migration guide/codemod transcript.
-- [ ] Native integration logs.
-- [ ] Updated contract fixtures.
+- [x] API diff.
+- [x] Migration guide/codemod transcript.
+- [x] Native integration logs.
+- [x] Updated contract fixtures.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -123,3 +123,30 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). The `runtime:postgres` v1 authoring contract is
+locked as Promise-based (`sql(...) -> Promise<SqlResult>` on both
+`ctx.native.postgres` and the SDK), before any browser adapter depends
+on it. The native bridge already settled sql through its op table —
+this change makes the types tell the truth, freezes the async semantics
+(deadline/cancellation/transaction/result/error/row-count table in
+`docs/beta/POSTGRES_ASYNC_MIGRATION.md`), adds mirrored typed error
+classes (`PostgresDeadlineExceeded`, `PostgresQueryError`) in the SDK
+and the runtime prelude, ships a migration codemod
+(`scripts/migrate-postgres-async.mjs`) plus compile-time negative
+fixtures (sync-looking use is a tsc error), and records the beta API
+snapshot (`docs/beta/API_SNAPSHOT.md`).
+
+Tests: capability-postgres 20/20 (10 new), adjacent suites 40/40,
+tsc clean, native engine postgres block 4/4, q-capability-postgres
+green. Evidence: `evidence/capabilities/c002/` (API diff, tests,
+native logs, codemod transcript). Report:
+`docs/reports/bwasm-c-002-async-postgres-contract.md`.
+
+Honest note: runtime behavior unchanged by design (types/tooling/docs
+only); the codemod reports (not rewrites) non-async enclosures; C-003
+(PGlite) stays owner-gated and unbuilt on top of this snapshot.
