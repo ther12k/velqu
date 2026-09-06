@@ -1,0 +1,3 @@
+bundle bytes: 26322
+node/bun leakage: 0 (0=clean)
+bundle-export-scan: entry re-exports present = true

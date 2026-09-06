@@ -5,7 +5,7 @@ Mode: `EVIDENCE` — Package evidence from one exact candidate; do not mix imple
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -128,4 +128,13 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-006 (#1247)
+- Candidate commit: recorded in evidence `00-environment.txt`; report `docs/reports/bwasm-r-006-runtime-evidence.md`; evidence `evidence/runtime-verification/` (environment, suite, real-kernel integration, bundle audit, hashes).
+- R-phase verified at one commit: 59/59 runtime tests; REAL-kernel wasm integration OK (plan→complete via nodejs glue at this commit); bundle audit clean (0 node/bun leakage; all public names present); typecheck clean; verify ALL PASS after full toolchain setup.
+- Honesty: earlier verify failed only on the known missing-debug-fixture class (documented + re-run); one verify invocation from the wrong checkout discarded as invalid (path-carrying log).
+- Semantic differences documented: /health/ready host-probe; UNSUPPORTED_SEMANTICS inventory; Worker isolation honesty.
+- R-PHASE COMPLETE. B/C/Q phase registration is the next owner-gated step per OD-BWASM-001 decision 4. Carried: kernel size budget finding (Q-005).
 ```

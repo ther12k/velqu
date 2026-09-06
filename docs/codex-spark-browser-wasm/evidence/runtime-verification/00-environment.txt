@@ -1,0 +1,6 @@
+commit=d438bdc62a0fda4048a91276f1fdd6e0f1695348
+Linux 7.0.0-30-generic x86_64
+rustc 1.96.0 (ac68faa20 2026-05-25)
+v22.23.2
+1.4.0
+wasm-bindgen 0.2.108
