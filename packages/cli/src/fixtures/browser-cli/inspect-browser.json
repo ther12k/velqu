@@ -5,8 +5,38 @@
   "target": "browser",
   "ok": true,
   "problems": [],
-  "buildId": "4930463b997ad42502d94cf613cdede8f703f83eeef42638d2cfe21f290f35ee",
+  "buildId": "164fc68527218c72ef30d55e5b692e57bb3b377692fa37cff28193176e8190e0",
   "browserDir": "examples/browser-demo/dist/browser",
+  "declaredCapabilityAdapters": [
+    {
+      "id": "runtime:timers",
+      "version": 1
+    },
+    {
+      "id": "runtime:crypto",
+      "version": 1
+    },
+    {
+      "id": "runtime:console",
+      "version": 1
+    },
+    {
+      "id": "runtime:fetch",
+      "version": 1
+    },
+    {
+      "id": "runtime:abort",
+      "version": 1
+    },
+    {
+      "id": "runtime:text",
+      "version": 1
+    },
+    {
+      "id": "runtime:url",
+      "version": 1
+    }
+  ],
   "integrity": {
     "verified": true,
     "checkedArtifacts": 7
@@ -30,6 +60,7 @@
   "deploymentRequirements": [
     "static hosting only — no Velqu application server is implied by this artifact set",
     "deployment-required imports were rejected at build time (BWASM-B-003 import policy)",
+    "capability adapters declared: runtime:timers@1, runtime:crypto@1, runtime:console@1, runtime:fetch@1, runtime:abort@1, runtime:text@1, runtime:url@1",
     "pack references native operations (timer) — the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime"
   ],
   "artifactInventory": [
@@ -41,8 +72,8 @@
     },
     {
       "file": "app.bundle.js",
-      "bytes": 29180,
-      "sha256": "1c007a2a32b1a98d83311e53ae2afe015d1c602fa0a93e6acc3e5b2482632f91",
+      "bytes": 44458,
+      "sha256": "7f0758c19735e32ce71cd3b61922ea7b86b65751dc1ad4c1f38e87a704b5882b",
       "role": "handlerBundle"
     },
     {
@@ -89,8 +120,8 @@
     },
     {
       "file": "page.js",
-      "bytes": 33601,
-      "sha256": "02129012641c03c4a957af5597a7935a35c25b16d29b70df15857418f8b82ebe",
+      "bytes": 49115,
+      "sha256": "bc645c895a618521de1fb18a5632b09344d8a22f3e5492580590bcf38b900a9e",
       "role": "shell"
     },
     {
@@ -101,20 +132,20 @@
     },
     {
       "file": "service-worker.js",
-      "bytes": 7558,
-      "sha256": "837b18d3373981ed6673a88bf9b870fd597fd393e301aacb167e327064e267c4",
+      "bytes": 7713,
+      "sha256": "306cd283add02e1c336eb97dc5c934ee01d363c4c49d31bdc3a723e666101547",
       "role": "shell"
     },
     {
       "file": "velqu-artifacts.json",
-      "bytes": 1918,
-      "sha256": "e9dc27b2bb16011cab622852f8d53168f82514c1db2c1540545e60b8df7a04df",
+      "bytes": 2370,
+      "sha256": "a7efd22482888aea9bd64e329bb9f137b781a3296f2006b3532dda39c68e89d0",
       "role": "artifact-manifest"
     },
     {
       "file": "worker.js",
-      "bytes": 30821,
-      "sha256": "c53c9840473329448c21a3ee8375d8fc8cd4d0c29b483283103e7f0c2c76efa8",
+      "bytes": 46099,
+      "sha256": "416770d3ff962e0202c7e7823d62d0d7474d7aeda2db7f01fb04aa7f9feb7afe",
       "role": "shell"
     }
   ]

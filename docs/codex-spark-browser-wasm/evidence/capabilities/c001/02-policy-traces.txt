@@ -1,0 +1,11 @@
+== BWASM-C-001 network-policy trace ==
+GET    https://api.example.com/v1         -> 200 (ALLOW (allowlisted origin))
+GET    https://other.example.com/v1       -> fetch-policy-denied (deny-origin (default deny))
+GET    http://api.example.com/v1          -> fetch-policy-denied (deny-origin (origin = scheme+host; http origin not allowlisted))
+GET    file:///etc/passwd                 -> fetch-policy-denied (deny-scheme (http/https only, native parity))
+DELETE https://api.example.com/v1         -> fetch-policy-denied (deny-method)
+
+== limit/cancellation samples ==
+timer cancelled: timer-cancelled
+console flood: console-limit-exceeded - record budget exhausted (64 records)
+fetch limit: fetch-limit-exceeded - request body 11B exceeds 10B

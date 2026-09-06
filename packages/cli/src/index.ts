@@ -225,6 +225,9 @@ async function main() {
           console.log(`  buildId: ${report.buildId ?? "(unverified)"}`);
           console.log(`  target: ${report.targetCompatibility.target} (handlerAbi v${report.targetCompatibility.handlerAbiVersion}, kernelAbi v${report.targetCompatibility.kernelAbiVersion})`);
           console.log(`  integrity: ${report.integrity.verified ? `verified (${report.integrity.checkedArtifacts} artifacts)` : "FAILED"}`);
+          if (report.declaredCapabilityAdapters.length > 0) {
+            console.log(`  capability adapters: ${report.declaredCapabilityAdapters.map((a) => `${a.id}@${a.version}`).join(", ")}`);
+          }
           for (const p of report.problems) {
             console.log(`    ✗ ${p.artifact}: ${p.reason} — ${p.detail}`);
           }

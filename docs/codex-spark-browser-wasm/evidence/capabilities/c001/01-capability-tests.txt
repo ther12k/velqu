@@ -1,0 +1,31 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/browser-runtime/test/capabilities.test.ts:
+(pass) C-001 timer (runtime:timers v1) > resolves after the delay with elapsed time [30.69ms]
+(pass) C-001 timer (runtime:timers v1) > rejects delays above the ceiling before scheduling [0.40ms]
+(pass) C-001 timer (runtime:timers v1) > cancellation clears the timer and the work never fires [40.50ms]
+(pass) C-001 timer (runtime:timers v1) > pre-aborted signals reject immediately [0.21ms]
+(pass) C-001 crypto (runtime:crypto v1, pinned subset) > digest matches the shared SHA-256 vector (abc) [0.63ms]
+(pass) C-001 crypto (runtime:crypto v1, pinned subset) > digest supports bytes encoding and the SHA-384/512 family [0.39ms]
+(pass) C-001 crypto (runtime:crypto v1, pinned subset) > rejects unpinned algorithms and ops by name — no silent substitution [0.19ms]
+(pass) C-001 crypto (runtime:crypto v1, pinned subset) > getRandomValues is bounded and returns the requested length [0.15ms]
+(pass) C-001 console (runtime:console v1, bounded + redacted) > redacts auth headers, secret prefixes, and key=value secrets (native parity) [0.73ms]
+(pass) C-001 console (runtime:console v1, bounded + redacted) > forwards structured, truncated records to the sink [32.85ms]
+(pass) C-001 console (runtime:console v1, bounded + redacted) > floods produce structured limit errors, not silent drops [0.49ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > default deny: no allowlist denies everything before any I/O [0.64ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > allowlisted origin passes; method policy is enforced [0.41ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > cross-origin and non-http(s) schemes are denied [0.13ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > credentials are forced to omit and credential headers are stripped [0.16ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > response bodies are bounded with a structured limit and truncation marker [0.17ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > oversized request bodies are rejected before I/O; deadline produces a limit error [30.72ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > redirects are denied by policy (never followed, never escaped) [0.50ms]
+(pass) C-001 fetch (runtime:fetch v1, default deny) > the policy summary is introspectable before execution [0.10ms]
+(pass) C-001 capability graph (introspection + manifest) > exposes frozen descriptors before handler execution [0.57ms]
+(pass) C-001 capability graph (introspection + manifest) > graph entries work end-to-end through the frozen graph [5.93ms]
+(pass) C-001 capability graph (introspection + manifest) > declares the adapters in the artifact manifest (canonical + verifiable) [5.68ms]
+(pass) C-001 capability graph (introspection + manifest) > registry handles route through the call(input) contract [1.91ms]
+
+ 23 pass
+ 0 fail
+ 76 expect() calls
+Ran 23 tests across 1 file. [181.00ms]

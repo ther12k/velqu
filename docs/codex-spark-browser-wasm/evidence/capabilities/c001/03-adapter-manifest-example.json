@@ -1,0 +1,39 @@
+{
+ "capabilities": [
+  {
+   "id": "runtime:timers",
+   "version": 1,
+   "name": "bounded browser timer"
+  },
+  {
+   "id": "runtime:crypto",
+   "version": 1,
+   "name": "pinned WebCrypto subset"
+  },
+  {
+   "id": "runtime:console",
+   "version": 1,
+   "name": "bounded console"
+  },
+  {
+   "id": "runtime:fetch",
+   "version": 1,
+   "name": "restricted outbound fetch"
+  },
+  {
+   "id": "runtime:abort",
+   "version": 1,
+   "name": "abort primitives"
+  },
+  {
+   "id": "runtime:text",
+   "version": 1,
+   "name": "text encoding"
+  },
+  {
+   "id": "runtime:url",
+   "version": 1,
+   "name": "url parsing"
+  }
+ ]
+}
