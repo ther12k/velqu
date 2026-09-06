@@ -1,15 +1,16 @@
 {
   "kernelAbiVersion": 1,
-  "description": "Vendored q-browser-kernel artifacts (K-005/K-006 build) consumed by `velqu build --target browser-wasm` (BWASM-B-005). Hash-pinned: the build fails closed if these bytes change.",
+  "description": "Vendored q-browser-kernel artifacts (K-005 build, refreshed by BWASM-Q-001) consumed by 'velqu build --target browser-wasm' (BWASM-B-005). Hash-pinned: the build fails closed if these bytes change.",
   "provenance": {
     "crate": "q-browser-kernel",
     "builtWith": "rustc 1.96.0 (ac68faa20 2026-05-25), wasm-bindgen 0.2.108 (nodejs-target glue)",
     "verifiedAtCommit": "69187c8bcb7005da940f27ecf9baea6dcb5f2787",
+    "refreshedBy": "BWASM-Q-001 - kernel problem registry aligned with the frozen native registry (validation 422, body 415, timeout title); see docs/reports/bwasm-q-001-differential-conformance.md",
     "verificationEvidence": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt"
   },
   "wasm": {
     "file": "q_browser_kernel_bg.wasm",
-    "sha256": "db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de",
+    "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
     "bytes": 1731509
   },
   "glue": {

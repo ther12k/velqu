@@ -1,0 +1,24 @@
+bun test v1.4.0 (34cbb9a40)
+
+conformance/browser/differential.test.ts:
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture path-param-route — exact-parity [10.54ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture query-validation-fail — exact-parity [3.35ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture body-valid — exact-parity [5.00ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture body-validation-fail — exact-parity [2.36ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture declared-200 — exact-parity [2.64ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture declared-404-handler — native-only [0.73ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture unknown-route-404 — exact-parity [1.07ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture method-not-matched — exact-parity [0.68ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture params-consumed — native-only [0.78ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture query-consumed — native-only [0.64ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > fixture capability-timer — native-only [3.14ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > mutation: a mutated request is detected against the recorded expectation [1.93ms]
+(pass) BWASM-Q-001 native-vs-browser differential conformance > writes the machine-readable matrix with artifact + toolchain hashes [29.83ms]
+(pass) BWASM-Q-001 mutation sensitivity (drift detection) > detects a mutated status [0.10ms]
+(pass) BWASM-Q-001 mutation sensitivity (drift detection) > detects a mutated body [0.22ms]
+(pass) BWASM-Q-001 mutation sensitivity (drift detection) > detects a mutated content type [0.15ms]
+
+ 16 pass
+ 0 fail
+ 25 expect() calls
+Ran 16 tests across 1 file. [1.70s]

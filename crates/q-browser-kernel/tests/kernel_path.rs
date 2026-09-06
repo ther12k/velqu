@@ -205,7 +205,8 @@ fn complete_handler_problem_normalizes_through_registry() {
         out["problem"]["type"],
         "https://velqu.dev/problems/validation"
     );
-    assert_eq!(out["problem"]["status"], 400);
+    // BWASM-Q-001: aligned with the frozen native registry (422)
+    assert_eq!(out["problem"]["status"], 422);
     assert_eq!(out["problem"]["errors"][0]["path"], "name");
 }
 

@@ -1,0 +1,135 @@
+{
+  "schemaIrVersion": 1,
+  "schemas": {
+    "sch:greet.get.query": {
+      "kind": "object",
+      "properties": {
+        "loud": {
+          "kind": "optional",
+          "inner": {
+            "kind": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "sch:greet.get.200": {
+      "kind": "object",
+      "properties": {
+        "message": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "message"
+      ]
+    },
+    "sch:echo.post.body": {
+      "kind": "object",
+      "properties": {
+        "text": {
+          "kind": "string"
+        },
+        "count": {
+          "kind": "integer"
+        }
+      },
+      "required": [
+        "text",
+        "count"
+      ]
+    },
+    "sch:echo.post.200": {
+      "kind": "object",
+      "properties": {
+        "text": {
+          "kind": "string"
+        },
+        "count": {
+          "kind": "integer"
+        }
+      },
+      "required": [
+        "text",
+        "count"
+      ]
+    },
+    "sch:echo.post.422": {
+      "kind": "object",
+      "properties": {},
+      "required": []
+    },
+    "sch:maybe.get.200": {
+      "kind": "object",
+      "properties": {
+        "found": {
+          "kind": "boolean"
+        }
+      },
+      "required": [
+        "found"
+      ]
+    },
+    "sch:absent.get.200": {
+      "kind": "object",
+      "properties": {},
+      "required": []
+    },
+    "sch:param.echo.params": {
+      "kind": "object",
+      "properties": {
+        "name": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "sch:param.echo.200": {
+      "kind": "object",
+      "properties": {
+        "name": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "sch:query.echo.query": {
+      "kind": "object",
+      "properties": {
+        "loud": {
+          "kind": "optional",
+          "inner": {
+            "kind": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "sch:query.echo.200": {
+      "kind": "object",
+      "properties": {
+        "loud": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "loud"
+      ]
+    },
+    "sch:timed.get.200": {
+      "kind": "object",
+      "properties": {
+        "waited": {
+          "kind": "boolean"
+        }
+      },
+      "required": [
+        "waited"
+      ]
+    }
+  }
+}

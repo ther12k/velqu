@@ -1,0 +1,129 @@
+{
+  "formatVersion": 1,
+  "contractHash": "65c158c578bd33e790fce952cb41bec4",
+  "routes": {
+    "greet.get": {
+      "path": "/greet/:name",
+      "method": "GET",
+      "params": null,
+      "query": {
+        "kind": "object",
+        "properties": {
+          "loud": {
+            "kind": "optional",
+            "inner": {
+              "kind": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "message": {
+              "kind": "string"
+            }
+          },
+          "required": [
+            "message"
+          ]
+        }
+      },
+      "security": null
+    },
+    "echo.post": {
+      "path": "/echo",
+      "method": "POST",
+      "params": null,
+      "query": null,
+      "body": {
+        "kind": "object",
+        "properties": {
+          "text": {
+            "kind": "string"
+          },
+          "count": {
+            "kind": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ]
+      },
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "text": {
+              "kind": "string"
+            },
+            "count": {
+              "kind": "integer"
+            }
+          },
+          "required": [
+            "text",
+            "count"
+          ]
+        },
+        "422": {
+          "kind": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "security": null
+    },
+    "maybe.get": {
+      "path": "/maybe/:found",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "found": {
+              "kind": "boolean"
+            }
+          },
+          "required": [
+            "found"
+          ]
+        },
+        "404": {
+          "kind": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "security": null
+    },
+    "timed.get": {
+      "path": "/timed",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "waited": {
+              "kind": "boolean"
+            }
+          },
+          "required": [
+            "waited"
+          ]
+        }
+      },
+      "security": null
+    }
+  }
+}

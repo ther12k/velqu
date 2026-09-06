@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -57,12 +57,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Every public Browser-WASM behavior has at least one conformance fixture.
-- [ ] Route and schema compatibility-critical paths use the Rust/WASM kernel.
-- [ ] Differences are linked to a frozen support-matrix entry and owner decision.
-- [ ] The suite detects intentional mutation of routing, validation, status, or problem semantics.
-- [ ] Results include exact source commit, native binary hash, WASM hash, and browser versions.
-- [ ] No broad snapshot update can approve unrelated drift silently.
+- [x] Every public Browser-WASM behavior has at least one conformance fixture.
+- [x] Route and schema compatibility-critical paths use the Rust/WASM kernel.
+- [x] Differences are linked to a frozen support-matrix entry and owner decision.
+- [x] The suite detects intentional mutation of routing, validation, status, or problem semantics.
+- [x] Results include exact source commit, native binary hash, WASM hash, and browser versions.
+- [x] No broad snapshot update can approve unrelated drift silently.
 
 ## Targeted tests and commands
 
@@ -77,10 +77,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Machine-readable conformance matrix.
-- [ ] Raw native/browser outputs.
-- [ ] Mutation-test report.
-- [ ] Artifact/toolchain hashes.
+- [x] Machine-readable conformance matrix.
+- [x] Raw native/browser outputs.
+- [x] Mutation-test report.
+- [x] Artifact/toolchain hashes.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -127,3 +127,36 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). A single fixture corpus (7 routes, 11 fixtures)
+runs through BOTH lanes against the SAME pack — native Rust runtime over
+HTTP and the Browser-WASM lane (verified artifacts → wasm32 kernel →
+isolated Worker → fetch) — with approved-field canonicalization
+(deep key sort; problem-envelope reduction to status/type/title/errors),
+per-fixture classification (exact-parity / equivalent-by-contract /
+native-only), and drift detection.
+
+**Kernel defect found and fixed**: the wasm kernel's problem registry had
+drifted from the frozen native registry (validation 400/"Validation
+Failed" vs native 422/"Validation failed"; body 400 vs 415). Fixed in
+q-browser-kernel, kernel wasm rebuilt with the pinned toolchain and
+vendored pins updated deliberately (wasm sha256 a5b33a56…, glue
+unchanged). Kernel tests updated; 15/15.
+
+Frozen classification counts pinned in-test: 4 exact-parity,
+3 equivalent-by-contract (problem envelope deltas recorded via
+rawEqual=false), 4 native-only (params/query worker-context consumption,
+ctx.native worker wiring, status() returns — support-matrix entries with
+follow-up directions), 0 drift. Support matrix:
+`docs/specs/browser-support-matrix.md` (owner ratification requested).
+
+Tests: 16 new differential/mutation tests; full suite 676/676 in the
+prescribed netns; verify ALL PASS. Evidence:
+`evidence/conformance/{differential-matrix.json,03-differential-test-log.txt}`
+(source commit, native binary + kernel wasm + pack sha256, buildId,
+toolchain versions). Report:
+`docs/reports/bwasm-q-001-differential-conformance.md`.
