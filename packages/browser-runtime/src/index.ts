@@ -55,6 +55,17 @@ export {
 } from "./worker-host";
 
 export {
+  CapabilityRegistry,
+  CapabilityError,
+  capabilityViewForRoute,
+  treatyFetchFromRuntime,
+  treatyDispatchFromRuntime,
+  type CapabilityHandle,
+  type CapabilityRejection,
+  type BrowserTreatyRoute,
+} from "./capability-treaty";
+
+export {
   dispatchFetchRequest,
   DispatcherError,
   UNSUPPORTED_SEMANTICS,
