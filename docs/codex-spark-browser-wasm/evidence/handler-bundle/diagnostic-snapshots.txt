@@ -1,0 +1,5 @@
+unknown-abi: [UNKNOWN_ABI_VERSION] [@velqu/browser-runtime:handler-bundle:UNKNOWN_ABI_VERSION] handler bundle declares ABI 7; this runtime implements 1 — rebuild the bundle with a matching @velqu/browser-runtime
+duplicate: [DUPLICATE_HANDLER_KEY] [@velqu/browser-runtime:handler-bundle:DUPLICATE_HANDLER_KEY] handler key "health.live" registered more than once
+missing: [MISSING_HANDLER] [@velqu/browser-runtime:handler-bundle:MISSING_HANDLER] bundle is missing 1 pack-declared handler(s): hello.get
+undeclared-route: [INVALID_REGISTRATION] [@velqu/browser-runtime:handler-bundle:INVALID_REGISTRATION] bundle registers handler(s) the pack does not declare: rogue.x (undeclared routes cannot be registered silently)
+undeclared-status: [UNDECLARED_STATUS] [@velqu/browser-runtime:handler-bundle:UNDECLARED_STATUS] handler "health.live" registers status 418; the pack declares only [200]

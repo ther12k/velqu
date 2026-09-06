@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -122,4 +122,12 @@ Acceptance criteria:
 Known limitations:
 Residual risks:
 Follow-up issue links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-R-003 (#1244)
+- Candidate commit: see PR; spec `docs/specs/browser-handler-abi.md`; report `docs/reports/bwasm-r-003-handler-bundle-contract.md`; evidence `evidence/handler-bundle/` (golden fixture, sha256 249f36b0…, diagnostic snapshots ×5).
+- defineBrowserHandlers narrow registration (no ambient globals); fail-closed validation (ABI/duplicates/missing/undeclared routes/undeclared statuses) BEFORE execution; HandlerContext = kernel-plan data only; deterministic byte-stable metadata emission; sanitized source locations.
+- Tests 38/38; typecheck clean; verify ALL PASS.
+- Follow-ups: B-001 compiler emission from source; R-004 (#1245) Worker execution + deadline.
 ```
