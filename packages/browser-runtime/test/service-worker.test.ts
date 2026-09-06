@@ -269,3 +269,180 @@ describe("B-004 bootstrap fallback + update decision", () => {
     expect(updateDecision("aaa", "aaa")).toBe("no-change");
   });
 });
+
+// ---------------------------------------------------------------------------
+// BWASM-B-006 — lifecycle: verified prefetch, retention, last-known-good
+// ---------------------------------------------------------------------------
+
+import {
+  precacheVerified,
+  cachesToKeep,
+  loadArtifactsWithFallback,
+  SW_SHELL_FILES,
+} from "../src/service-worker";
+
+function memoryCache() {
+  const store = new Map<string, Response>();
+  return {
+    store,
+    cache: {
+      async match(url: string) {
+        return store.get(url);
+      },
+      async put(url: string, response: Response) {
+        store.set(url, response);
+      },
+    },
+  };
+}
+
+describe("B-006 precacheVerified (digest-checked prefetch)", () => {
+  it("caches an artifact whose digest matches the manifest entry", async () => {
+    const manifest = await makeManifest();
+    const pack = manifest.artifacts.pack;
+    const { cache, store } = memoryCache();
+    const bytes = enc('{"formatVersion":1,"app":"demo"}');
+    await precacheVerified(`https://x.example/${pack.url}`, pack.sha256, {
+      fetch: async () => new Response(bytes, { status: 200 }),
+      cache,
+    });
+    expect(store.has(`https://x.example/${pack.url}`)).toBeTrue();
+  });
+
+  it("THROWS on digest mismatch (corrupt/mixed artifact can never activate)", async () => {
+    const manifest = await makeManifest();
+    const pack = manifest.artifacts.pack;
+    const { cache, store } = memoryCache();
+    const foreign = enc('{"formatVersion":1,"app":"FOREIGN-BUILD"}');
+    await expect(
+      precacheVerified(`https://x.example/${pack.url}`, pack.sha256, {
+        fetch: async () => new Response(foreign, { status: 200 }),
+        cache,
+      }),
+    ).rejects.toThrow(/digest mismatch/);
+    expect(store.size).toBe(0); // nothing cached on the failure path
+  });
+
+  it("THROWS on non-OK responses (interrupted update fails the install)", async () => {
+    const { cache, store } = memoryCache();
+    await expect(
+      precacheVerified("https://x.example/kernel.wasm", null, {
+        fetch: async () => new Response("gateway timeout", { status: 504 }),
+        cache,
+      }),
+    ).rejects.toThrow(/HTTP 504/);
+    expect(store.size).toBe(0);
+  });
+
+  it("caches shell files (null digest) without a verification contract", async () => {
+    const { cache, store } = memoryCache();
+    await precacheVerified("https://x.example/index.html", null, {
+      fetch: async () => new Response("<html></html>", { status: 200 }),
+      cache,
+    });
+    expect(store.size).toBe(1);
+  });
+});
+
+describe("B-006 cachesToKeep (bounded retention)", () => {
+  const appId = "demo";
+  it("keeps the active cache and exactly one previous; drops the rest", () => {
+    const active = cacheNameFor(appId, "b-active");
+    const { keep, drop } = cachesToKeep(appId, "b-active", [
+      cacheNameFor(appId, "aaa"),
+      active,
+      cacheNameFor(appId, "bbb"),
+      cacheNameFor(appId, "ccc"),
+      "other-plugin-cache",
+    ]);
+    expect(keep).toEqual([active, cacheNameFor(appId, "ccc")]);
+    expect(drop.sort()).toEqual([cacheNameFor(appId, "aaa"), cacheNameFor(appId, "bbb")]);
+  });
+
+  it("never drops caches of other apps or non-velqu caches", () => {
+    const { drop } = cachesToKeep(appId, "b2", [
+      cacheNameFor(appId, "b2"),
+      cacheNameFor("other", "b1"),
+      "workbox-precache",
+    ]);
+    expect(drop).toEqual([]);
+  });
+
+  it("SW_SHELL_FILES covers the generated deployment shell", () => {
+    for (const f of ["index.html", "page.js", "worker.js", "kernel.js", "velqu-artifacts.json"]) {
+      expect(SW_SHELL_FILES).toContain(f);
+    }
+  });
+});
+
+describe("B-006 loadArtifactsWithFallback (last-known-good boot)", () => {
+  function makeHarness(manifest: BrowserArtifactManifest, artifactBytes: Map<string, Uint8Array>) {
+    const base = "https://x.example/";
+    const cacheName = cacheNameFor(manifest.appId, manifest.buildId);
+    const cacheStore = new Map<string, Response>();
+    for (const [name, bytes] of artifactBytes) {
+      cacheStore.set(base + name, new Response(bytes as unknown as BodyInit));
+    }
+    cacheStore.set(base + "velqu-artifacts.json", new Response(JSON.stringify(manifest)));
+    return {
+      env: {
+        fetch: async (url: string) => {
+          throw new Error(`offline: ${url}`); // network always down
+        },
+        caches: {
+          keys: async () => [cacheName],
+          open: async (name: string) =>
+            name === cacheName
+              ? {
+                  match: async (url: string) => cacheStore.get(url),
+                }
+              : undefined,
+        },
+        manifestUrl: base + "velqu-artifacts.json",
+        baseUrl: base,
+        appId: manifest.appId,
+      },
+      networkFetchOk: async () => {
+        throw new Error("offline");
+      },
+    };
+  }
+
+  it("boots a fully verified cached build when the network fails", async () => {
+    const manifest = await makeManifest();
+    const bytes = new Map<string, Uint8Array>([
+      ["app.qpack", enc('{"formatVersion":1,"app":"demo"}')],
+      ["kernel.wasm", enc("wasm")],
+      ["app.browser.js", enc("export {};")],
+      ["browser-manifest.json", enc("{}")],
+      ["contract.json", enc("{}")],
+      ["schema-manifest.json", enc("{}")],
+      ["capability-manifest.json", enc("{}")],
+      ["app.browser.map.json", enc("{}")],
+    ]);
+    // cache stores the REAL bytes; loader must verify them end-to-end
+    bytes.set("app.qpack", enc('{"formatVersion":1,"app":"demo"}'));
+    const { env } = makeHarness(manifest, bytes);
+    // patch cache store to hold the true pack bytes (digest must match)
+    const loaded = await loadArtifactsWithFallback(env);
+    expect(loaded.source).toBe("cache");
+    expect(loaded.buildId).toBe(manifest.buildId);
+    expect(loaded.bytes.pack).toBeDefined();
+  });
+
+  it("never boots a corrupt cached build (falls through to the error)", async () => {
+    const manifest = await makeManifest();
+    const bytes = new Map<string, Uint8Array>([
+      ["app.qpack", enc('{"formatVersion":1,"app":"TAMPERED"}')], // digest mismatch
+      ["kernel.wasm", enc("wasm")],
+      ["app.browser.js", enc("export {};")],
+      ["browser-manifest.json", enc("{}")],
+      ["contract.json", enc("{}")],
+      ["schema-manifest.json", enc("{}")],
+      ["capability-manifest.json", enc("{}")],
+      ["app.browser.map.json", enc("{}")],
+    ]);
+    const { env } = makeHarness(manifest, bytes);
+    await expect(loadArtifactsWithFallback(env)).rejects.toThrow(/offline/);
+  });
+});

@@ -62,12 +62,17 @@ export {
   handleFetchEvent,
   bootstrapServiceWorker,
   updateDecision,
+  precacheVerified,
+  cachesToKeep,
+  loadArtifactsWithFallback,
+  SW_SHELL_FILES,
   PASSTHROUGH_PATH_PREFIXES,
   type FetchEventLike,
   type WorkerEnv,
   type RequestClass,
   type CachePlanEntry,
   type BootstrapOutcome,
+  type FallbackLoadedArtifacts,
 } from "./service-worker";
 
 export {

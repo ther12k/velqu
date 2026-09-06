@@ -28,7 +28,7 @@
  * rollback = redeploy the prior build.
  */
 
-import type { BrowserArtifactManifest } from "./artifact-loader";
+import { loadArtifacts, sha256Hex, type BrowserArtifactManifest } from "./artifact-loader";
 
 // ---------------------------------------------------------------------------
 // Scope guard + classification (pure)
@@ -109,6 +109,85 @@ function resolveAgainst(baseUrl: string, url: string): string {
 /** Cache Storage name: per appId+buildId (content-addressed). */
 export function cacheNameFor(appId: string, buildId: string): string {
   return `velqu:${appId}:${buildId}`;
+}
+
+// ---------------------------------------------------------------------------
+// B-006: verified prefetch, shell caching, retention, last-known-good
+// ---------------------------------------------------------------------------
+
+/**
+ * App-shell files the generated Service Worker must cache for offline
+ * navigation (BWASM-B-006). These sit outside the B-002 manifest's frozen
+ * role enum, so they carry no per-file digest contract — the runtime's
+ * integrity boundary stays on the manifest roles; shell files are cached
+ * for availability only.
+ */
+export const SW_SHELL_FILES: ReadonlyArray<string> = [
+  "index.html",
+  "page.js",
+  "worker.js",
+  "kernel.js",
+  "velqu-artifacts.json",
+];
+
+/**
+ * Fetch one URL and cache it, verifying its sha256 when the manifest
+ * declares one. A failed fetch, non-OK response, or digest mismatch
+ * THROWS — a B-006 SW install that throws never activates, so a partial
+ * or corrupt update can never displace the last known-good build.
+ */
+export async function precacheVerified(
+  url: string,
+  expectedSha256: string | null,
+  env: {
+    fetch: (url: string) => Promise<Response>;
+    cache: { put(url: string, response: Response): Promise<void> };
+  },
+): Promise<void> {
+  const response = await env.fetch(url);
+  if (!response.ok) {
+    throw new Error(`precache failed: ${url} → HTTP ${response.status}`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (expectedSha256 !== null) {
+    const digest = await sha256Hex(bytes);
+    if (digest !== expectedSha256) {
+      throw new Error(
+        `precache digest mismatch: ${url} (expected ${expectedSha256.slice(0, 12)}…, got ${digest.slice(0, 12)}…)`,
+      );
+    }
+  }
+  await env.cache.put(
+    url,
+    new Response(bytes, {
+      status: 200,
+      headers: { "content-type": response.headers.get("content-type") ?? "application/octet-stream" },
+    }),
+  );
+}
+
+/**
+ * Cache retention policy (B-006): keep the active build's cache plus at
+ * most ONE previous build cache (deterministic choice — buildIds are
+ * content hashes with no ordering, so the retained previous build is the
+ * lexicographically greatest other cache). Active clients hold their
+ * artifacts in memory (per-build cache isolation already prevents mixed
+ * state); retention bounds growth and keeps one-step rollback servable
+ * from cache.
+ */
+export function cachesToKeep(
+  appId: string,
+  activeBuildId: string,
+  existingCacheNames: ReadonlyArray<string>,
+): { keep: ReadonlyArray<string>; drop: ReadonlyArray<string> } {
+  const prefix = `velqu:${appId}:`;
+  const active = cacheNameFor(appId, activeBuildId);
+  const others = existingCacheNames
+    .filter((n) => n.startsWith(prefix) && n !== active)
+    .sort();
+  const keep = [active, ...others.slice(-1)];
+  const drop = existingCacheNames.filter((n) => n.startsWith(prefix) && !keep.includes(n));
+  return { keep, drop };
 }
 
 // ---------------------------------------------------------------------------
@@ -258,4 +337,83 @@ export function updateDecision(
   deployedBuildId: string,
 ): "apply-on-next-reload" | "no-change" {
   return deployedBuildId !== activeBuildId ? "apply-on-next-reload" : "no-change";
+}
+
+// ---------------------------------------------------------------------------
+// B-006: page-boot loader with last-known-good fallback
+// ---------------------------------------------------------------------------
+
+/** What {@link loadArtifactsWithFallback} booted from. */
+export interface FallbackLoadedArtifacts {
+  readonly source: "network" | "cache";
+  readonly buildId: string;
+  readonly manifest: BrowserArtifactManifest;
+  readonly bytes: Readonly<Record<import("./artifact-loader").ArtifactRole, Uint8Array>>;
+}
+
+/**
+ * Page-boot artifact loading with the B-006 availability policy:
+ *
+ * 1. Try the deployed manifest over the network and verify it with the
+ *    B-002 loader (fresh build when the origin is healthy).
+ * 2. On ANY failure — offline, interrupted transfer, corrupt manifest,
+ *    digest mismatch, mixed set — fall back to the cached builds and
+ *    boot the first one that fully verifies (candidates tried in
+ *    reverse-lexicographic cache order; buildIds are content hashes, so
+ *    the order is deterministic but not chronological — this is a
+ *    documented, bounded policy, not a claim of "newest").
+ *
+ * Never returns a partially verified or mixed set: every candidate goes
+ * through {@link loadArtifacts} end-to-end. Throws the network failure
+ * when no cached build verifies (first deployment, or all caches stale).
+ */
+export async function loadArtifactsWithFallback(
+  env: {
+    readonly fetch: (url: string) => Promise<Response>;
+    readonly caches: {
+      keys(): Promise<ReadonlyArray<string>>;
+      open(name: string): Promise<{ match(url: string): Promise<Response | undefined> } | undefined>;
+    };
+    readonly manifestUrl: string;
+    readonly baseUrl: string;
+    readonly appId: string;
+  },
+): Promise<FallbackLoadedArtifacts> {
+  let networkError: unknown;
+  try {
+    const response = await env.fetch(env.manifestUrl);
+    if (!response.ok) {
+      throw new Error(`manifest fetch → HTTP ${response.status}`);
+    }
+    const loaded = await loadArtifacts(await response.text(), async (url) =>
+      new Uint8Array(await (await env.fetch(resolveAgainst(env.baseUrl, url))).arrayBuffer()),
+    );
+    return { source: "network", ...loaded };
+  } catch (cause) {
+    networkError = cause;
+  }
+  const prefix = `velqu:${env.appId}:`;
+  const candidates = (await env.caches.keys())
+    .filter((n) => n.startsWith(prefix))
+    .sort()
+    .reverse();
+  for (const name of candidates) {
+    const cache = await env.caches.open(name);
+    if (!cache) continue;
+    const manifestResponse = await cache.match(env.manifestUrl);
+    if (!manifestResponse) continue;
+    try {
+      const loaded = await loadArtifacts(await manifestResponse.text(), async (url) => {
+        const hit = await cache.match(resolveAgainst(env.baseUrl, url));
+        if (!hit) throw new Error(`cache miss: ${url}`);
+        return new Uint8Array(await hit.arrayBuffer());
+      });
+      return { source: "cache", ...loaded };
+    } catch {
+      // This cached build is incomplete/corrupt — try the next candidate.
+    }
+  }
+  throw networkError instanceof Error
+    ? networkError
+    : new Error("no verified cached build available (last-known-good fallback exhausted)");
 }
