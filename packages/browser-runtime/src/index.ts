@@ -55,6 +55,23 @@ export {
 } from "./worker-host";
 
 export {
+  emitArtifactManifest,
+  loadArtifacts,
+  sha256Hex,
+  canonicalManifestJson,
+  buildIdOf,
+  resolveArtifactUrl,
+  ArtifactManifestError,
+  ARTIFACT_MANIFEST_VERSION,
+  MEDIA_TYPES,
+  type ArtifactEntry,
+  type ArtifactRole,
+  type BrowserArtifactManifest,
+  type LoadedArtifacts,
+  type ArtifactReader,
+} from "./artifact-loader";
+
+export {
   CapabilityRegistry,
   CapabilityError,
   capabilityViewForRoute,
