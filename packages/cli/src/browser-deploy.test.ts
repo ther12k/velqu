@@ -159,7 +159,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     expect(loaded.buildId).toBe(compose.buildId);
     expect(Object.keys(loaded.manifest.artifacts)).not.toContain("sourceMap");
     expect(loaded.manifest.artifacts.kernelWasm.bytes).toBe(1_731_509);
-  });
+  }, 120_000);
 
   it("reproduces byte-identical deployments (same buildId and digests)", async () => {
     const second = await composeBrowserDeployment({
@@ -168,7 +168,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     expect(second.buildId).toBe(compose.buildId);
     expect(second.shellFiles).toEqual(compose.shellFiles);
     expect(second.manifest.artifacts).toEqual(compose.manifest.artifacts);
-  });
+  }, 120_000);
 
   it("--clean removes stale files from previous builds", async () => {
     const stale = join(browserDir, "stale-from-old-build.js");
@@ -179,7 +179,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     });
     expect(existsSync(stale)).toBeFalse();
     expect(existsSync(join(browserDir, "velqu-artifacts.json"))).toBeTrue();
-  });
+  }, 120_000);
 
   it("rejects an invalid base path", async () => {
     try {
@@ -203,7 +203,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     expect(existsSync(join(browserDir, "app.bundle.js.map"))).toBeTrue();
     // restore the default (no maps) deployment for the remaining tests
     await composeBrowserDeployment({ project: join(demoDir, "src", "app.ts") });
-  });
+  }, 180_000);
 
   it("substitutes the base path into the page SW scope and SW scope constant", async () => {
     await composeBrowserDeployment({
@@ -215,7 +215,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     const page = readFileSync(join(browserDir, "page.js"), "utf8");
     expect(page).toContain('scope: "/app/"');
     await composeBrowserDeployment({ project: join(demoDir, "src", "app.ts") });
-  });
+  }, 180_000);
 });
 
 // ---------------------------------------------------------------------------

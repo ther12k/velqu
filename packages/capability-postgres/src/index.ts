@@ -59,6 +59,36 @@ export interface SqlResult {
   affectedRows: number;
 }
 
+/**
+ * BWASM-C-002: the statement did not settle within its deadline. The
+ * native side cancelled the round trip and released the connection back
+ * to the pool before this rejection reaches the handler.
+ */
+export class PostgresDeadlineExceeded extends Error {
+  readonly deadlineMs: number | null;
+  constructor(nativeReason: string) {
+    super(`postgres.sql deadline exceeded: ${nativeReason}`);
+    this.name = "PostgresDeadlineExceeded";
+    const m = /within (\d+)ms/.exec(nativeReason);
+    this.deadlineMs = m ? Number(m[1]) : null;
+  }
+}
+
+/**
+ * BWASM-C-002: the statement failed for a non-deadline reason (backend
+ * error, bound violation, param mismatch, value-conversion limit). The
+ * native reason text is preserved verbatim — it is the stable diagnostic
+ * surface; callers must not parse it beyond the deadline classifier.
+ */
+export class PostgresQueryError extends Error {
+  readonly nativeReason: string;
+  constructor(nativeReason: string) {
+    super(`postgres.sql failed: ${nativeReason}`);
+    this.name = "PostgresQueryError";
+    this.nativeReason = nativeReason;
+  }
+}
+
 function requireNativeBinding(operation: string): (...args: unknown[]) => unknown {
   const binding = (globalThis as Record<string, unknown>)[`__velquPostgres${operation}`];
   if (typeof binding !== "function") {
@@ -83,14 +113,40 @@ export const postgres = {
    * parameters (`$1, $2, ...`); `params` values bind in order.
    * `deadlineMs` is bounded by MAX_POSTGRES_DEADLINE_MS and cancels
    * the round trip, releasing the connection back to the pool.
+   *
+   * BWASM-C-002 (async contract, locked before browser adapters depend
+   * on it): ALWAYS returns a Promise. Argument validation stays
+   * synchronous (TypeError/RangeError thrown from the call). Rejections
+   * are typed: {@link PostgresDeadlineExceeded} when the statement did
+   * not settle within its deadline (the native side cancelled the round
+   * trip and released the connection), {@link PostgresQueryError} for
+   * every other failure (native reason preserved verbatim).
+   *
+   * v1 semantics (frozen — see docs/beta/POSTGRES_ASYNC_MIGRATION.md):
+   * single-statement autocommit per call; no transaction pinning; rows
+   * carry only the bounded JSON-compatible value set; `affectedRows`
+   * counts DML changes and is 0 for SELECT-shaped results.
    */
-  sql(text: string, params: readonly SqlParam[] = [], deadlineMs = 5_000): SqlResult {
+  sql(text: string, params: readonly SqlParam[] = [], deadlineMs = 5_000): Promise<SqlResult> {
     if (typeof text !== "string" || text.length === 0) {
       throw new TypeError("postgres.sql: statement text is required");
     }
     if (typeof deadlineMs !== "number" || deadlineMs <= 0 || deadlineMs > MAX_POSTGRES_DEADLINE_MS) {
       throw new RangeError(`postgres.sql: deadline must be 1..${MAX_POSTGRES_DEADLINE_MS}ms`);
     }
-    return requireNativeBinding("Query")(text, [...params], deadlineMs) as SqlResult;
+    // Fail-closed binding check stays SYNCHRONOUS: an unlinked capability
+    // throws PostgresCapabilityUnavailable from the call itself (never a
+    // rejected promise a caller might swallow in a non-awaited chain).
+    const query = requireNativeBinding("Query");
+    return Promise.resolve()
+      .then(() => query(text, [...params], deadlineMs))
+      .then((result) => result as SqlResult)
+      .catch((cause: unknown) => {
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        if (/did not settle within \d+ms/.test(reason)) {
+          throw new PostgresDeadlineExceeded(reason);
+        }
+        throw new PostgresQueryError(reason);
+      });
   },
 };

@@ -677,6 +677,15 @@ const __velquNativeCapabilities = Object.freeze({
   }),
   // BETA-004-D: fail closed when the host did not link runtime:postgres —
   // a typed rejection, never a mock, never a JS reimplementation.
+  // BWASM-C-002: sql ALWAYS returns a Promise; rejections classify as
+  // PostgresDeadlineExceeded (deadline hit; the round trip was cancelled
+  // and the connection released) or PostgresQueryError (everything else,
+  // native reason preserved verbatim) — mirroring @velqu/capability-postgres.
+  // NOTE: the prelude must stay REGEX-LITERAL-FREE — the minimal context
+  // profile ships no regular-expression intrinsics, and quickjs compiles
+  // regex literals when the enclosing function is created at prelude
+  // eval (a literal here kills every minimal-profile startup; pinned by
+  // the engine profile tests). Deadline detection parses with indexOf.
   postgres: Object.freeze({
     sql: function (text, params, deadlineMs) {
       if (typeof globalThis.__velquPostgresQuery !== "function") {
@@ -693,7 +702,24 @@ const __velquNativeCapabilities = Object.freeze({
           deadlineMs === undefined ? 5000 : deadlineMs
         );
         globalThis.__velquOps[opId] = { resolve: resolve, reject: reject };
-      }).then(function (rowsJson) { return JSON.parse(rowsJson); });
+      })
+        .then(function (rowsJson) { return JSON.parse(rowsJson); })
+        .catch(function (cause) {
+          var reason = cause && cause.message ? cause.message : String(cause);
+          var marker = "did not settle within ";
+          var at = reason.indexOf(marker);
+          if (at !== -1) {
+            var ms = parseInt(reason.slice(at + marker.length), 10);
+            var deadlineErr = new Error("postgres.sql deadline exceeded: " + reason);
+            deadlineErr.name = "PostgresDeadlineExceeded";
+            deadlineErr.deadlineMs = ms;
+            throw deadlineErr;
+          }
+          var queryErr = new Error("postgres.sql failed: " + reason);
+          queryErr.name = "PostgresQueryError";
+          queryErr.nativeReason = reason;
+          throw queryErr;
+        });
     },
   })
 });
@@ -928,3 +954,36 @@ pub const NO_DYNAMIC_CODE_LOCKDOWN: &str = r#"
   globalThis.__velquNoDynamicCode = true;
 })();
 "#;
+
+#[cfg(test)]
+mod bwasm_c002_tests {
+    use super::PRELUDE;
+
+    /// BWASM-C-002 regression guard: the prelude must stay regex-literal
+    /// free. The minimal context profile ships no RegExp intrinsic, and
+    /// quickjs compiles a regex literal when the enclosing function is
+    /// created during prelude eval — one literal kills every
+    /// minimal-profile startup with "engine worker died during load"
+    /// (found via runtime_conformance full_profile part 3). Behavioral
+    /// coverage lives in the profile tests; this static check names the
+    /// constraint at the source.
+    #[test]
+    fn prelude_contains_no_regex_literals_or_regexp_use() {
+        assert!(
+            !PRELUDE.contains("RegExp"),
+            "prelude must not reference RegExp"
+        );
+        assert!(
+            !PRELUDE.contains(".test("),
+            "prelude must not use regex .test("
+        );
+        assert!(
+            !PRELUDE.contains(".exec("),
+            "prelude must not use regex .exec("
+        );
+        assert!(
+            !PRELUDE.contains("matchAll"),
+            "prelude must not use matchAll"
+        );
+    }
+}

@@ -90,13 +90,41 @@ export interface TimerCapability {
  * string-concatenation API. Present in the type only; the native
  * binding exists solely when the pack grants postgres and the runtime
  * provides the capability (fail closed otherwise).
+ *
+ * BWASM-C-002 (async contract, locked before browser capability
+ * adapters depend on it): `sql` ALWAYS returns a Promise — the native
+ * bridge settles capability work on its op table, never inline. A
+ * handler that uses the result must `await` it; the TypeScript contract
+ * makes sync-looking property access a compile-time error, and the
+ * migration codemod (`scripts/migrate-postgres-async.mjs`) rewrites
+ * previously-sync call sites.
  */
+export type PostgresSqlParam = string | number | boolean | null;
+
+/** One validated query result row (plain JSON-compatible object). */
+export type PostgresSqlRow = Record<string, PostgresSqlParam>;
+
+export interface PostgresSqlResult {
+  /** Result rows as plain JSON-compatible objects (SELECT-shaped queries). */
+  rows: PostgresSqlRow[];
+  /** Rows affected for DML; 0 for SELECT-shaped results. */
+  affectedRows: number;
+}
+
 export interface PostgresCapability {
+  /**
+   * Run one parameterized statement under the call's deadline
+   * (1..120_000 ms; expiry cancels the round trip, releases the
+   * connection, and rejects with a typed deadline error). v1 semantics:
+   * single-statement autocommit per call (no transaction pinning —
+   * see docs/beta/POSTGRES_ASYNC_MIGRATION.md); rows carry only the
+   * bounded JSON-compatible value set.
+   */
   sql(
     text: string,
-    params?: readonly (string | number | boolean | null)[],
+    params?: readonly PostgresSqlParam[],
     deadlineMs?: number,
-  ): { rows: Array<Record<string, string | number | boolean | null>>; affectedRows: number };
+  ): Promise<PostgresSqlResult>;
 }
 
 export interface HandlerCtx<P, Q, B, Sess> {

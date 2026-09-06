@@ -25,5 +25,5 @@
 - contract.meta.json: 413 B
 - openapi.json: 2702 B
 - build-report.json: 4937 B
-- app.qpack.sources.json: 31970 B
+- app.qpack.sources.json: 33218 B
 - published-manifest.json: 783 B
