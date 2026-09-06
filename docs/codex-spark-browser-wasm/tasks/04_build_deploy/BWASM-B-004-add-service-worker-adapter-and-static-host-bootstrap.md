@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -124,5 +124,14 @@ Browser/OS/toolchain:
 Acceptance criteria:
 Known limitations:
 Residual risks:
-Follow-up issue links:
+Follow-up event links:
+
+## Result (2026-09-06)
+
+- Issue: BWASM-B-004 (#1258)
+- Candidate commit: see PR; report `docs/reports/bwasm-b-004-service-worker-adapter.md`
+- service-worker.ts: scope guard (same-origin + prefix; escapes/cross-origin/ed‌itor-auth passthrough), request classification (navigation/api/asset/passthrough; forms=api; redirects status-as-is), content-addressed cache plan (B-002 manifest; velqu:appId:buildId naming), fetch-event core (assets cache-first w/ typed 504 offline problem; navigation 503 offline marker; api failures surface — never a hang), bootstrap w/ structured injected-fetch fallback, pure update decision (apply-on-next-reload).
+- Tests 20 new (package 89/89); typecheck clean; verify ALL PASS.
+- Real-browser lanes = Q-002; static deployment recording + external cleanroom = Q-007; preview serving = B-005.
+- Follow-ups: B-005 (#1259), B-006 (#1260).
 ```
