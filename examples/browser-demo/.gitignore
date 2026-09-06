@@ -1,0 +1,17 @@
+# BWASM-B-005 deployment outputs are reproducible via
+#   bun packages/cli/src/index.ts build --target browser-wasm --project examples/browser-demo
+# and are intentionally not committed: the set embeds the 1.7 MB kernel
+# wasm (already stored under packages/browser-runtime/kernel/ and the
+# K-006 evidence directory). Digests are pinned by tests and recorded in
+# docs/reports/bwasm-b-005-cli-browser-workflows.md.
+dist/browser/app.bundle.js
+dist/browser/app.bundle.js.map
+dist/browser/index.html
+dist/browser/kernel.js
+dist/browser/kernel.wasm
+dist/browser/page.js
+dist/browser/service-worker.js
+dist/browser/velqu-artifacts.json
+dist/browser/worker.js
+dist/browser/_entries/
+dist/browser-export/

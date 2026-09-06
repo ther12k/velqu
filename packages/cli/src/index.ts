@@ -15,6 +15,15 @@ import {
 import { assessPackMigrate } from "./pack-migrate";
 import { inspectCapabilities } from "./capability-inspect";
 import { inspectPack } from "./pack-inspect";
+import {
+  BrowserDeployError,
+  BROWSER_DEPLOY_JSON_SCHEMA_VERSION,
+  PREVIEW_DIAGNOSTICS_PATH,
+  composeBrowserDeployment,
+  exportDeployment,
+  inspectBrowserDeployment,
+  startPreviewServer,
+} from "./browser-deploy";
 import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
 import {
@@ -63,6 +72,69 @@ async function main() {
 
   switch (cmd) {
     case "build": {
+      const target = args.get("target");
+      if (target !== undefined && target !== "native" && target !== "browser-wasm") {
+        if (jsonOutput) {
+          console.log(JSON.stringify({ status: "error", command: "build", error: `unsupported --target '${target}' (native | browser-wasm)` }, null, 2));
+        } else {
+          console.error(`unsupported --target '${target}' (native | browser-wasm)`);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+      if (target === "browser-wasm") {
+        // BWASM-B-005: native build → B-001 browser set → kernel →
+        // bundles → shell → B-002 content-addressed manifest.
+        try {
+          const r = await composeBrowserDeployment({
+            project,
+            outDir: args.get("out") ?? undefined,
+            basePath: args.get("base-path") ?? undefined,
+            clean: args.has("clean"),
+            sourceMap: args.has("source-map"),
+            kernelWasmPath: args.get("kernel") ?? undefined,
+          });
+          if (jsonOutput) {
+            console.log(
+              JSON.stringify(
+                {
+                  schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION,
+                  status: "ok",
+                  command: "build",
+                  target: "browser-wasm",
+                  project,
+                  outDir: r.browserDir,
+                  buildId: r.buildId,
+                  appId: r.manifest.appId,
+                  routes: r.routes,
+                  artifacts: r.manifest.artifacts,
+                  kernel: r.kernel,
+                  shellFiles: r.shellFiles,
+                },
+                null,
+                2,
+              ),
+            );
+          } else {
+            console.log(`velqu build [browser-wasm]: ${r.routes} routes → ${r.browserDir}`);
+            console.log(`  buildId: ${r.buildId}`);
+            for (const [role, entry] of Object.entries(r.manifest.artifacts)) {
+              console.log(`  ${role.padEnd(14)} ${entry.url.padEnd(24)} ${entry.bytes}B  ${entry.sha256.slice(0, 12)}…`);
+            }
+            console.log(`  kernel: ABI v${r.kernel.kernelAbiVersion}, ${r.kernel.wasmBytes}B (${r.kernel.wasmSha256.slice(0, 12)}…)`);
+          }
+        } catch (e) {
+          const diag = e instanceof BrowserDeployError || e instanceof CompileError
+            ? { message: (e as Error).message, hint: undefined }
+            : formatActionableError(e, "build-error");
+          if (jsonOutput) {
+            console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: "error", command: "build", target: "browser-wasm", error: diag.message, hint: diag.hint }, null, 2));
+          } else {
+            console.error(diag.message);
+          }
+          process.exit(ExitCode.GENERAL_ERROR);
+        }
+        break;
+      }
       const profileInput = args.get("profile");
       const resolvedProfile = resolveServiceProfile(profileInput);
       if (!resolvedProfile.ok) {
@@ -129,6 +201,46 @@ async function main() {
     }
     case "inspect": {
       const what = rest.find((a) => !a.startsWith("--"));
+
+      if (what === "browser") {
+        // BWASM-B-005: integrity (tampered/mixed sets) + inventory for a
+        // browser-wasm deployment. Exits nonzero on integrity failure.
+        const dist = args.get("dist") ?? browserDistFor(project);
+        let report;
+        try {
+          report = await inspectBrowserDeployment(dist);
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          if (jsonOutput) {
+            console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: "error", command: "inspect", target: "browser", dist, error: message }, null, 2));
+          } else {
+            console.error(message);
+          }
+          process.exit(ExitCode.GENERAL_ERROR);
+        }
+        if (jsonOutput) {
+          console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: report.ok ? "ok" : "error", command: "inspect", target: "browser", ...report }, null, 2));
+        } else {
+          console.log(`browser deployment: ${dist}`);
+          console.log(`  buildId: ${report.buildId ?? "(unverified)"}`);
+          console.log(`  target: ${report.targetCompatibility.target} (handlerAbi v${report.targetCompatibility.handlerAbiVersion}, kernelAbi v${report.targetCompatibility.kernelAbiVersion})`);
+          console.log(`  integrity: ${report.integrity.verified ? `verified (${report.integrity.checkedArtifacts} artifacts)` : "FAILED"}`);
+          for (const p of report.problems) {
+            console.log(`    ✗ ${p.artifact}: ${p.reason} — ${p.detail}`);
+          }
+          for (const f of report.artifactInventory) {
+            console.log(`  ${f.role.padEnd(14)} ${f.file.padEnd(26)} ${f.bytes}B  ${f.sha256.slice(0, 12)}…`);
+          }
+          console.log("  capabilities:");
+          console.log(`    declared: [${report.capabilities.declared.join(", ")}]`);
+          const nativeOps = Object.keys(report.capabilities.nativeOps);
+          console.log(`    nativeOps: [${nativeOps.join(", ")}]`);
+          console.log("  deployment requirements:");
+          for (const req of report.deploymentRequirements) console.log(`    - ${req}`);
+        }
+        if (!report.ok) process.exit(ExitCode.GENERAL_ERROR);
+        break;
+      }
 
       if (what === "diagnostics") {
         try {
@@ -352,7 +464,68 @@ async function main() {
             ),
           );
         } else {
-          console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics>");
+            console.error("usage: velqu inspect <routes|route <id>|capabilities|fallbacks|diagnostics|browser>");
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+      break;
+    }
+    case "preview": {
+      // BWASM-B-005: development preview — static generated bytes plus
+      // diagnostics ONLY. Not a production runtime; not required in one.
+      const dist = args.get("dist") ?? browserDistFor(project);
+      const port = args.has("port") ? parseInt(args.get("port")!, 10) : 8090;
+      const basePath = args.get("base-path") ?? "/";
+      let server;
+      try {
+        server = await startPreviewServer({ browserDir: dist, port, basePath });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (jsonOutput) {
+          console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: "error", command: "preview", dist, error: message }, null, 2));
+        } else {
+          console.error(message);
+        }
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+      const report = {
+        schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION,
+        status: "ok",
+        command: "preview",
+        dist,
+        port: server.port,
+        baseUrl: server.baseUrl + "/",
+        diagnosticsPath: server.baseUrl + PREVIEW_DIAGNOSTICS_PATH,
+        production: false,
+        note: "static generated bytes plus development diagnostics only — no application server",
+      };
+      console.log(JSON.stringify(report, null, 2));
+      console.error(`velqu preview: serving ${dist} at ${server.baseUrl}/ (diagnostics: ${server.baseUrl}${PREVIEW_DIAGNOSTICS_PATH}) — Ctrl+C to stop`);
+      await new Promise(() => {}); // serve until interrupted
+      break;
+    }
+    case "export": {
+      // BWASM-B-005: verified clean deployment copy (fails closed on
+      // tampered or mixed artifact sets).
+      const dist = args.get("dist") ?? browserDistFor(project);
+      const outDir = args.get("out") ?? `${dist}-export`;
+      try {
+        const r = await exportDeployment(dist, outDir);
+        if (jsonOutput) {
+          console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: "ok", command: "export", source: r.sourceDir, outDir: r.outDir, buildId: r.buildId, files: r.files, totalBytes: r.totalBytes }, null, 2));
+        } else {
+          console.log(`velqu export: ${r.files.length} files (${r.totalBytes}B) → ${r.outDir}`);
+          console.log(`  buildId: ${r.buildId}`);
+          for (const f of r.files) {
+            console.log(`  ${f.file.padEnd(26)} ${f.bytes}B  ${f.sha256.slice(0, 12)}…`);
+          }
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (jsonOutput) {
+          console.log(JSON.stringify({ schemaVersion: BROWSER_DEPLOY_JSON_SCHEMA_VERSION, status: "error", command: "export", dist, error: message }, null, 2));
+        } else {
+          console.error(message);
         }
         process.exit(ExitCode.GENERAL_ERROR);
       }
@@ -745,7 +918,12 @@ usage:
   velqu init [dir] [--name <app-name>] [--profile <serverless|service:N>] [--with-fetch]
   velqu dev [--project <dir|entry>] [--port 3000] [--debounce-ms 50] [--profile serverless]
   velqu build [--project <dir|entry>] [--profile serverless] [--out <dir>]
+  velqu build --target browser-wasm [--project <dir>] [--out <dir>] [--base-path /]
+              [--clean] [--source-map] [--kernel <q_browser_kernel_bg.wasm>]
   velqu inspect routes|route <id>|capabilities|fallbacks|diagnostics [--dist <dir>]
+  velqu inspect browser [--dist <dir>]   (integrity + inventory; nonzero on tamper)
+  velqu preview [--project <dir>] [--dist <dir>] [--port 8090] [--base-path /]
+  velqu export [--project <dir>] [--dist <dir>] [--out <dir>]
   velqu contract diff --against <contract.lock.json>
   velqu test [filter]
   velqu check [--project <dir|entry>]
@@ -783,6 +961,11 @@ function distFor(project: string): string {
     if (st.isDirectory()) return join(project, "dist");
   } catch {}
   return join(dirname(project), "..", "dist");
+}
+
+function browserDistFor(project: string): string {
+  // browser-wasm deployments land in <native-dist>/browser (B-001)
+  return join(distFor(project), "browser");
 }
 
 await main();

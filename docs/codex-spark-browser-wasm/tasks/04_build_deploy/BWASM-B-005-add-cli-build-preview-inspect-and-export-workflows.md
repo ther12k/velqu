@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -56,11 +56,11 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] A clean sample follows one documented command sequence to build and preview.
-- [ ] Inspect detects tampered or mixed artifact sets.
-- [ ] JSON output is schema-versioned and fixture-tested.
-- [ ] CLI exits nonzero for unsupported imports/capabilities or failed integrity checks.
-- [ ] Preview mode is not required in production and does not hide external server dependencies.
+- [x] A clean sample follows one documented command sequence to build and preview.
+- [x] Inspect detects tampered or mixed artifact sets.
+- [x] JSON output is schema-versioned and fixture-tested.
+- [x] CLI exits nonzero for unsupported imports/capabilities or failed integrity checks.
+- [x] Preview mode is not required in production and does not hide external server dependencies.
 
 ## Targeted tests and commands
 
@@ -76,10 +76,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] CLI transcript.
-- [ ] Generated artifact inventory.
-- [ ] JSON output fixtures.
-- [ ] Clean-consumer log.
+- [x] CLI transcript.
+- [x] Generated artifact inventory.
+- [x] JSON output fixtures.
+- [x] Clean-consumer log.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -126,3 +126,26 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). Implemented `velqu build --target browser-wasm`,
+`velqu inspect browser`, `velqu preview`, and `velqu export` with
+schema-versioned JSON (`schemaVersion: 1`) on every command.
+
+- Kernel artifacts vendored + hash-pinned (`packages/browser-runtime/kernel/`,
+  fails closed on `KERNEL_PIN_MISMATCH`); browser glue is a deterministic
+  fail-closed transform of the pinned wasm-bindgen 0.2.108 glue.
+- Deployment set: B-001 artifacts + kernel + page/worker/service-worker/handler
+  bundles + `index.html` + B-002 content-addressed `velqu-artifacts.json`
+  (buildId `ffdb03d1…` at this source state; two-build byte-identity tested).
+- 34 new tests incl. a clean-consumer static deployment smoke (real HTTP +
+  real WebAssembly + real module Worker; 200 and RFC 9457 404 lanes).
+- Fixtures: `packages/cli/src/fixtures/browser-cli/`. Evidence:
+  `docs/codex-spark-browser-wasm/evidence/cli-browser/`.
+- Report: `docs/reports/bwasm-b-005-cli-browser-workflows.md`.
+- Honest boundary: smoke runs under Bun, not a browser engine; real-browser
+  activation/upgrade/rollback is B-006, supported-browser evidence is Q-002.
+  Shell files are presence-checked, not manifest-bound (frozen B-002 roles).
