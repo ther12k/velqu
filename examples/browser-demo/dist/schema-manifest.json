@@ -1,0 +1,63 @@
+{
+  "schemaIrVersion": 1,
+  "schemas": {
+    "sch:hello.get.params": {
+      "kind": "object",
+      "properties": {
+        "name": {
+          "kind": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "sch:hello.get.200": {
+      "kind": "object",
+      "properties": {
+        "message": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "message"
+      ]
+    },
+    "sch:echo.post.body": {
+      "kind": "object",
+      "properties": {
+        "text": {
+          "kind": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "text"
+      ]
+    },
+    "sch:echo.post.200": {
+      "kind": "object",
+      "properties": {
+        "echoed": {
+          "kind": "string"
+        }
+      },
+      "required": [
+        "echoed"
+      ]
+    },
+    "sch:echo.post.400": {
+      "kind": "object",
+      "properties": {
+        "missing": {
+          "kind": "boolean"
+        }
+      },
+      "required": [
+        "missing"
+      ]
+    }
+  }
+}

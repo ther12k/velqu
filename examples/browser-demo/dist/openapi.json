@@ -1,0 +1,126 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "app",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/hello/{name}": {
+      "get": {
+        "operationId": "hello.get",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/hello.get.resp200"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/echo": {
+      "post": {
+        "operationId": "echo.post",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/echo.post.resp200"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/echo.post.resp400"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/echo.post.body"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "hello.get.resp200": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "echo.post.resp200": {
+        "type": "object",
+        "properties": {
+          "echoed": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "echoed"
+        ],
+        "additionalProperties": false
+      },
+      "echo.post.resp400": {
+        "type": "object",
+        "properties": {
+          "missing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "missing"
+        ],
+        "additionalProperties": false
+      },
+      "echo.post.body": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

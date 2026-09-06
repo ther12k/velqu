@@ -1,0 +1,27 @@
+{
+  "declared": [],
+  "perRoute": {
+    "hello.get": [],
+    "echo.post": []
+  },
+  "nativeOps": {
+    "timer": "cancellable delay (ms) → Promise<number>"
+  },
+  "intrinsicRequirement": {
+    "requirement": "minimal",
+    "used": {
+      "dateOrPerformance": [],
+      "webOnlyBuiltins": []
+    }
+  },
+  "reductionImpact": [
+    {
+      "profile": "web",
+      "missing": []
+    },
+    {
+      "profile": "minimal",
+      "missing": []
+    }
+  ]
+}

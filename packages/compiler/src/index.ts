@@ -17,6 +17,14 @@ export {
 } from "./published";
 
 export { CompileError, extractApp, type ExtractedApp, type RouteInfo, type PolicyInfo } from "./extract";
+export {
+  buildBrowserWasmArtifacts,
+  BROWSER_TARGET,
+  EMITTED_HANDLER_ABI_VERSION,
+  EMITTED_KERNEL_ABI_VERSION,
+  type BrowserWasmBuildOptions,
+  type BrowserWasmBuildResult,
+} from "./browser";
 export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
 export { PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "./toolchain";
 export {

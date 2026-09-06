@@ -1,0 +1,83 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "b26439f208395252f7dd7af593aac691",
+  "routes": {
+    "hello.get": {
+      "path": "/hello/:name",
+      "method": "GET",
+      "params": {
+        "kind": "object",
+        "properties": {
+          "name": {
+            "kind": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "message": {
+              "kind": "string"
+            }
+          },
+          "required": [
+            "message"
+          ]
+        }
+      },
+      "security": null
+    },
+    "echo.post": {
+      "path": "/echo",
+      "method": "POST",
+      "params": null,
+      "query": null,
+      "body": {
+        "kind": "object",
+        "properties": {
+          "text": {
+            "kind": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "echoed": {
+              "kind": "string"
+            }
+          },
+          "required": [
+            "echoed"
+          ]
+        },
+        "400": {
+          "kind": "object",
+          "properties": {
+            "missing": {
+              "kind": "boolean"
+            }
+          },
+          "required": [
+            "missing"
+          ]
+        }
+      },
+      "security": null
+    }
+  }
+}

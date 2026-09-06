@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "b26439f208395252f7dd7af593aac691",
+  "routes": {
+    "hello.get": {
+      "method": "GET",
+      "path": "/hello/:name",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "echo.post": {
+      "method": "POST",
+      "path": "/echo",
+      "statuses": [
+        "200",
+        "400"
+      ],
+      "secured": false
+    }
+  }
+}

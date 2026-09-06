@@ -1,0 +1,36 @@
+[
+  {
+    "id": "hello.get",
+    "method": "GET",
+    "path": "/hello/:name",
+    "moduleId": "src",
+    "policy": null,
+    "capabilities": [],
+    "nativeStage": "engine",
+    "validationStrategy": "native",
+    "validationFallbackReason": null,
+    "responseStrategy": "native",
+    "responseFallbackReason": null,
+    "validationCodec": "direct-decoder",
+    "responseCodec": "direct-encoder",
+    "bridge": "single-prevalidated",
+    "sourceFile": "examples/browser-demo/src/app.ts"
+  },
+  {
+    "id": "echo.post",
+    "method": "POST",
+    "path": "/echo",
+    "moduleId": "src",
+    "policy": null,
+    "capabilities": [],
+    "nativeStage": "engine",
+    "validationStrategy": "native",
+    "validationFallbackReason": null,
+    "responseStrategy": "native",
+    "responseFallbackReason": null,
+    "validationCodec": "direct-decoder",
+    "responseCodec": "direct-encoder",
+    "bridge": "single-prevalidated",
+    "sourceFile": "examples/browser-demo/src/app.ts"
+  }
+]

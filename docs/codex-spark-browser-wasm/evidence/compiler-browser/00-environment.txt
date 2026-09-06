@@ -1,0 +1,4 @@
+commit=dca6ed1ea64d2cf9501b9b9426927b201f702efc
+rustc 1.96.0 (ac68faa20 2026-05-25)
+1.4.0
+Version 5.9.3
