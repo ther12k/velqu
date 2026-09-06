@@ -55,6 +55,22 @@ export {
 } from "./worker-host";
 
 export {
+  isScopedRequest,
+  classifyRequest,
+  buildCachePlan,
+  cacheNameFor,
+  handleFetchEvent,
+  bootstrapServiceWorker,
+  updateDecision,
+  PASSTHROUGH_PATH_PREFIXES,
+  type FetchEventLike,
+  type WorkerEnv,
+  type RequestClass,
+  type CachePlanEntry,
+  type BootstrapOutcome,
+} from "./service-worker";
+
+export {
   emitArtifactManifest,
   loadArtifacts,
   sha256Hex,
