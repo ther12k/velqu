@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -55,12 +55,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] No request executes against a mixed N/N+1 artifact set.
-- [ ] Interrupted or corrupt updates leave the last known-good build usable where policy permits.
-- [ ] Rollback restores a fully coherent build.
-- [ ] Multiple tabs converge according to the documented activation policy.
-- [ ] Cache cleanup does not remove artifacts still required by an active client.
-- [ ] All discovered defects are fixed or linked as blockers with reproductions.
+- [x] No request executes against a mixed N/N+1 artifact set.
+- [x] Interrupted or corrupt updates leave the last known-good build usable where policy permits.
+- [x] Rollback restores a fully coherent build.
+- [x] Multiple tabs converge according to the documented activation policy.
+- [x] Cache cleanup does not remove artifacts still required by an active client.
+- [x] All discovered defects are fixed or linked as blockers with reproductions.
 
 ## Targeted tests and commands
 
@@ -76,10 +76,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Upgrade/rollback report.
-- [ ] Browser traces.
-- [ ] Artifact/cache inventories before and after each scenario.
-- [ ] Known-residual-risk register.
+- [x] Upgrade/rollback report.
+- [x] Browser traces.
+- [x] Artifact/cache inventories before and after each scenario.
+- [x] Known-residual-risk register.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -126,3 +126,43 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+---
+
+## Result
+
+**PASS** (2026-09-06). VERIFY_OR_FIX closure in a real browser (headless
+Chromium 151.0.7922.34 via Playwright; committed rerunnable script
+`scripts/browser-wasm-lifecycle-rehearsal.py`).
+
+**Defects found by verification and fixed here (5 + 3 minor, with
+reproductions in the report):** offline reload broken (shell never
+cached + no navigation fallback); SW bytes byte-identical across
+deploys so the browser update check never fired; install without digest
+verification could half-succeed; offline re-fetch of a navigate-mode
+Request never rejects in Chromium (fallback never ran); restarted-SW
+state loss. Fixes: verified install (`precacheVerified`, fail-closed),
+self-identifying SW (deployment sha256 embedded), shell caching +
+scope-root navigation fallback, constructed-Request re-fetch,
+`ensureReady()` rehydration on every lifecycle path, bounded retention
+(`cachesToKeep`: active + ≤1 previous), user-consented apply
+(`VELQU_APPLY_UPDATE` → skipWaiting), `loadArtifactsWithFallback`
+(last-known-good boot through the B-002 loader).
+
+**Scenarios proven (twice, REHEARSAL-PASS):** cold install; offline
+navigation with the host down; live upgrade N→N+1 (coherent boot on
+swap from cache; applied N+1 from network after consent; browser
+update-check throttle ≤24h documented with `registration.update()`
+mitigation); multi-tab convergence; corrupt/mixed update refused with
+last-known-good retained; rollback to a coherent N; base-path `/app/`
+cold + offline. Evidence:
+`evidence/browser-lifecycle/{00-scenario-summary,lifecycle-log.txt,
+lifecycle-report.json}`. Unit tests for the new runtime helpers;
+browser-runtime + CLI suites 132/132.
+
+- Report: `docs/reports/bwasm-b-006-cache-upgrade-rollback-verification.md`
+  (includes the residual-risk register: retention vs. very old clients,
+  update-check throttle, single-Chromium lane until Q-002, shell files
+  availability-cached outside the digest contract).
+- Honest boundary: one Chromium build was exercised; the supported-
+  browser matrix and CI lanes remain BWASM-Q-002 per OD-BWASM-001.

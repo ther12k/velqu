@@ -4,12 +4,12 @@
   "command": "export",
   "source": "examples/browser-demo/dist/browser",
   "outDir": "examples/browser-demo/dist/browser-export",
-  "buildId": "ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa",
+  "buildId": "4930463b997ad42502d94cf613cdede8f703f83eeef42638d2cfe21f290f35ee",
   "files": [
     {
       "file": "app.bundle.js",
-      "bytes": 30514,
-      "sha256": "36a936de406c7b82831da1672fd5d345785774f6c2fb567577e1aceda35cfb48"
+      "bytes": 29180,
+      "sha256": "1c007a2a32b1a98d83311e53ae2afe015d1c602fa0a93e6acc3e5b2482632f91"
     },
     {
       "file": "app.qpack",
@@ -48,8 +48,8 @@
     },
     {
       "file": "page.js",
-      "bytes": 34869,
-      "sha256": "02b37406b23b26d45d54cfacc28173494e8a12f8dfa3fffd50b44adb3316cc9d"
+      "bytes": 33601,
+      "sha256": "02129012641c03c4a957af5597a7935a35c25b16d29b70df15857418f8b82ebe"
     },
     {
       "file": "schema-manifest.json",
@@ -58,19 +58,19 @@
     },
     {
       "file": "service-worker.js",
-      "bytes": 27034,
-      "sha256": "255cc3daddfb764556dff81c855b20683589365fca8941d156a92a72ba186b96"
+      "bytes": 7558,
+      "sha256": "837b18d3373981ed6673a88bf9b870fd597fd393e301aacb167e327064e267c4"
     },
     {
       "file": "velqu-artifacts.json",
       "bytes": 1918,
-      "sha256": "b9373919149b27ba5f131e75b4d31141edb176a83ef26479d7783fd43b1d7e1f"
+      "sha256": "e9dc27b2bb16011cab622852f8d53168f82514c1db2c1540545e60b8df7a04df"
     },
     {
       "file": "worker.js",
-      "bytes": 32155,
-      "sha256": "f0196ea93b3e8d44589aa2bf04786d86f0a6c743bff9ed65a5c58cf934f5d989"
+      "bytes": 30821,
+      "sha256": "c53c9840473329448c21a3ee8375d8fc8cd4d0c29b483283103e7f0c2c76efa8"
     }
   ],
-  "totalBytes": 1880982
+  "totalBytes": 1857570
 }
