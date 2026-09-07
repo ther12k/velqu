@@ -14,6 +14,16 @@ export type TreatyFetch = (input: RequestInfo | URL, init?: RequestInit) => Prom
 export interface RouteInfo {
   readonly path: string;
   readonly method: string;
+  /**
+   * Whether the route accepts a request body. When present this is
+   * AUTHORITATIVE for POST/PUT/PATCH argument interpretation:
+   * `body: false` routes are called `(opts?)`, `body: true` routes are
+   * called `(body, opts?)`. When absent (legacy route tables), a lone
+   * first argument whose keys are all `query`/`headers`/`signal` is
+   * treated as options and anything else as the body; declare the flag
+   * to remove that ambiguity for body schemas shaped like options.
+   */
+  readonly body?: boolean;
 }
 
 // ---------------------------------------------------------------- direct dispatch (unit-local mode)
@@ -298,11 +308,19 @@ function makeProxy(
           const pathPart = info.path.replace(/^\//, "");
           const routeUrl = `${base}/${pathPart}`;
           return (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
-            const opts =
-              methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE"
-                ? ((bodyOrOpts ?? {}) as RequestOptions)
-                : { ...(maybeOpts ?? {}), body: bodyOrOpts };
-            return request(doFetch, dispatch, id, routeUrl, pathPart, methodUpper, opts);
+            if (methodUpper === "GET" || methodUpper === "HEAD" || methodUpper === "DELETE") {
+              return request(
+                doFetch,
+                dispatch,
+                id,
+                routeUrl,
+                pathPart,
+                methodUpper,
+                (bodyOrOpts ?? {}) as RequestOptions,
+              );
+            }
+            const { body, opts } = resolveWriteArgs(id, info, bodyOrOpts, maybeOpts);
+            return request(doFetch, dispatch, id, routeUrl, pathPart, methodUpper, { ...opts, body });
           };
         }
         if (["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].includes(methodUpper)) {
@@ -347,11 +365,15 @@ function makeProxy(
       const declaredMethod = info.method.toLowerCase();
       const invoke = (method: string, opts: RequestOptions & { body?: unknown }) =>
         request(doFetch, dispatch, id, routeUrl, path, method, opts);
+      const write = (httpMethod: string) => (bodyOrOpts?: unknown, maybeOpts?: RequestOptions) => {
+        const { body, opts } = resolveWriteArgs(id, info, bodyOrOpts, maybeOpts);
+        return invoke(httpMethod, { ...opts, body });
+      };
       const methodMap: Record<string, Function> = {
         get: (opts?: RequestOptions) => invoke("GET", opts ?? {}),
-        post: (body?: unknown, opts?: RequestOptions) => invoke("POST", { ...opts, body }),
-        put: (body?: unknown, opts?: RequestOptions) => invoke("PUT", { ...opts, body }),
-        patch: (body?: unknown, opts?: RequestOptions) => invoke("PATCH", { ...opts, body }),
+        post: write("POST"),
+        put: write("PUT"),
+        patch: write("PATCH"),
         delete: (opts?: RequestOptions) => invoke("DELETE", opts ?? {}),
         head: (opts?: RequestOptions) => invoke("HEAD", opts ?? {}),
       };
@@ -408,28 +430,31 @@ async function request<Resp extends Record<number, unknown>>(
     text = outcome.bodyText;
   } else {
     const qs = opts.query ? `?${new URLSearchParams(stripUndefined(opts.query))}` : "";
+    // `undefined` means "no body"; an explicit null is the JSON body "null".
+    const hasBody = opts.body !== undefined;
     let res: Response;
     try {
       res = await doFetch(url + qs, {
         method,
         headers: {
-          ...(opts.body !== undefined && opts.body !== null ? { "content-type": "application/json" } : {}),
+          ...(hasBody ? { "content-type": "application/json" } : {}),
           ...(opts.headers ?? {}),
         },
-        body: opts.body !== undefined && opts.body !== null ? JSON.stringify(opts.body) : undefined,
+        body: hasBody ? JSON.stringify(opts.body) : undefined,
         signal: opts.signal,
       });
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        return { data: null, error: { status: 0, kind: "abort" } } as const;
-      }
-      return {
-        data: null,
-        error: { status: 0, kind: "network", message: e instanceof Error ? e.message : "network failure" },
-      } as const;
+      return transportError<Resp>(e);
     }
     status = res.status;
-    text = await res.text();
+    // The body read is part of the transport: a failure after headers
+    // (reset, mid-stream cancel, abort) is a structured result, never a
+    // raw rejection.
+    try {
+      text = await res.text();
+    } catch (e) {
+      return transportError<Resp>(e);
+    }
   }
   let parsed: unknown = undefined;
   try {
@@ -450,4 +475,56 @@ function stripUndefined(q: Record<string, unknown>): Record<string, string> {
     if (v !== undefined) out[k] = String(v);
   }
   return out;
+}
+
+function transportError<Resp extends Record<number, unknown>>(e: unknown): TreatyResult<Resp> {
+  if (isAbortError(e)) {
+    return { data: null, error: { status: 0, kind: "abort" } } as TreatyResult<Resp>;
+  }
+  return {
+    data: null,
+    error: { status: 0, kind: "network", message: e instanceof Error ? e.message : "network failure" },
+  } as TreatyResult<Resp>;
+}
+
+function isAbortError(e: unknown): boolean {
+  if (e instanceof Error) return e.name === "AbortError";
+  // Some runtimes reject with a DOMException, which is not an Error.
+  return typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError";
+}
+
+/** Resolves the ambiguous POST/PUT/PATCH first argument (the bodyless-
+ * write bug: `post(opts)` must not ship the options as body). */
+function resolveWriteArgs(
+  routeId: string,
+  info: RouteInfo,
+  bodyOrOpts: unknown,
+  maybeOpts: RequestOptions | undefined,
+): { body: unknown; opts: RequestOptions } {
+  if (info.body === false) {
+    if (maybeOpts !== undefined) {
+      throw new Error(
+        `treaty: route "${routeId}" declares no body — call it with a single options argument`,
+      );
+    }
+    return { body: undefined, opts: (bodyOrOpts as RequestOptions | undefined) ?? {} };
+  }
+  if (info.body === true) {
+    return { body: bodyOrOpts, opts: maybeOpts ?? {} };
+  }
+  // Legacy route table without body metadata: two arguments always mean
+  // (body, opts); a lone options-shaped object means options.
+  if (maybeOpts !== undefined) {
+    return { body: bodyOrOpts, opts: maybeOpts };
+  }
+  if (isRequestOptionsShape(bodyOrOpts)) {
+    return { body: undefined, opts: bodyOrOpts as RequestOptions };
+  }
+  return { body: bodyOrOpts, opts: {} };
+}
+
+function isRequestOptionsShape(v: unknown): boolean {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  return keys.length > 0 && keys.every((k) => k === "query" || k === "headers" || k === "signal");
 }
