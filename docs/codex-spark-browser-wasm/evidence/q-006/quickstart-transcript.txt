@@ -1,0 +1,329 @@
+$ bun packages/cli/src/index.ts build --target browser-wasm --project /tmp/q006-transcript-npa751kr/app --json
+{
+  "schemaVersion": 1,
+  "status": "ok",
+  "command": "build",
+  "target": "browser-wasm",
+  "project": "/tmp/q006-transcript-npa751kr/app",
+  "outDir": "/tmp/q006-transcript-npa751kr/app/dist/browser",
+  "buildId": "868ec963d58d0ac47da63e779c632a5064754d6d2e4c9cc09ca9fc44cc0852fd",
+  "appId": "app",
+  "routes": 1,
+  "artifacts": {
+    "pack": {
+      "role": "pack",
+      "url": "app.qpack",
+      "sha256": "2918db42b676e44dc663a165f5bfa3f0532895ae46d7d22dd203b6d4f168f3ce",
+      "bytes": 6763,
+      "mediaType": "application/x-velqu-qpack"
+    },
+    "kernelWasm": {
+      "role": "kernelWasm",
+      "url": "kernel.wasm",
+      "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
+      "bytes": 1731509,
+      "mediaType": "application/wasm"
+    },
+    "handlerBundle": {
+      "role": "handlerBundle",
+      "url": "app.bundle.js",
+      "sha256": "ab6ae93dd9aab200b99bc1417546ff5d43c3fa8fca79a8c4755485116a919a49",
+      "bytes": 52508,
+      "mediaType": "text/javascript"
+    },
+    "manifest": {
+      "role": "manifest",
+      "url": "browser-manifest.json",
+      "sha256": "3921ee331cfabf6273baabdcb4a5224ceb3e854ef26ed071d572375f091dc619",
+      "bytes": 370,
+      "mediaType": "application/json"
+    },
+    "contract": {
+      "role": "contract",
+      "url": "contract.json",
+      "sha256": "3be2372dccb539cf227938473a13cbcda5d3d7dd0465d0256372a54966ec6d87",
+      "bytes": 531,
+      "mediaType": "application/json"
+    },
+    "schemas": {
+      "role": "schemas",
+      "url": "schema-manifest.json",
+      "sha256": "b07c326ea1b76962713454817dd4884dcc773aa477d43b1841827817ccc6ab1e",
+      "bytes": 238,
+      "mediaType": "application/json"
+    },
+    "capabilities": {
+      "role": "capabilities",
+      "url": "capability-manifest.json",
+      "sha256": "ec6af7b8c498b98034165abb3170bb05fbd4ebfbc454d1395b485ac13272958a",
+      "bytes": 449,
+      "mediaType": "application/json"
+    }
+  },
+  "kernel": {
+    "kernelAbiVersion": 1,
+    "wasmSha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
+    "wasmBytes": 1731509,
+    "provenance": {
+      "crate": "q-browser-kernel",
+      "builtWith": "rustc 1.96.0 (ac68faa20 2026-05-25), wasm-bindgen 0.2.108 (nodejs-target glue)",
+      "verifiedAtCommit": "69187c8bcb7005da940f27ecf9baea6dcb5f2787",
+      "refreshedBy": "BWASM-Q-001 - kernel problem registry aligned with the frozen native registry (validation 422, body 415, timeout title); see docs/reports/bwasm-q-001-differential-conformance.md",
+      "verificationEvidence": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt"
+    }
+  },
+  "shellFiles": {
+    "index.html": {
+      "bytes": 978,
+      "sha256": "7b961fec1cb3c43e95eec8620933fee4b50e75a0a6e5d605c8a32d127cf8fa74"
+    },
+    "page.js": {
+      "bytes": 57921,
+      "sha256": "6ed3fee188717982b68738467d4f187123808aff19ca2aa8219f53ece9980f75"
+    },
+    "worker.js": {
+      "bytes": 54252,
+      "sha256": "0fbad52fd8db6817198e9ad61918f979dfb24939b7ca8da52f99216f805dd26c"
+    },
+    "service-worker.js": {
+      "bytes": 11047,
+      "sha256": "c43338574ca74d54e741520910a6c1ba4f0ff767c3eca83330aaa83fdf9d1149"
+    },
+    "kernel.js": {
+      "bytes": 9039,
+      "sha256": "dba80f5d7aba55b2a484bc5967c0a8e17e18d76fc1b13235fcf69640a60accb4"
+    }
+  }
+}
+
+$ bun packages/cli/src/index.ts inspect browser --project /tmp/q006-transcript-npa751kr/app --json
+{
+  "schemaVersion": 1,
+  "status": "ok",
+  "command": "inspect",
+  "target": "browser",
+  "ok": true,
+  "problems": [],
+  "buildId": "868ec963d58d0ac47da63e779c632a5064754d6d2e4c9cc09ca9fc44cc0852fd",
+  "browserDir": "/tmp/q006-transcript-npa751kr/app/dist/browser",
+  "declaredCapabilityAdapters": [
+    {
+      "id": "runtime:timers",
+      "version": 1
+    },
+    {
+      "id": "runtime:crypto",
+      "version": 1
+    },
+    {
+      "id": "runtime:console",
+      "version": 1
+    },
+    {
+      "id": "runtime:fetch",
+      "version": 1
+    },
+    {
+      "id": "runtime:abort",
+      "version": 1
+    },
+    {
+      "id": "runtime:text",
+      "version": 1
+    },
+    {
+      "id": "runtime:url",
+      "version": 1
+    }
+  ],
+  "portabilityStates": {},
+  "integrity": {
+    "verified": true,
+    "checkedArtifacts": 7
+  },
+  "targetCompatibility": {
+    "target": "browser-wasm",
+    "handlerAbiVersion": 1,
+    "kernelAbiVersion": 1,
+    "cliSupports": true
+  },
+  "capabilities": {
+    "declared": [],
+    "perRoute": {
+      "hello.get": []
+    },
+    "nativeOps": {
+      "timer": "cancellable delay (ms) → Promise<number>"
+    }
+  },
+  "deploymentRequirements": [
+    "static hosting only — no Velqu application server is implied by this artifact set",
+    "deployment-required imports were rejected at build time (BWASM-B-003 import policy)",
+    "capability adapters declared: runtime:timers@1, runtime:crypto@1, runtime:console@1, runtime:fetch@1, runtime:abort@1, runtime:text@1, runtime:url@1",
+    "pack references native operations (timer) — the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime"
+  ],
+  "artifactInventory": [
+    {
+      "file": "app.browser.js",
+      "bytes": 800,
+      "sha256": "1cbcd0925797ee4208c22fbef1794c6400bde872d88a914734cee808352938f6",
+      "role": "build-input"
+    },
+    {
+      "file": "app.bundle.js",
+      "bytes": 52508,
+      "sha256": "ab6ae93dd9aab200b99bc1417546ff5d43c3fa8fca79a8c4755485116a919a49",
+      "role": "handlerBundle"
+    },
+    {
+      "file": "app.qpack",
+      "bytes": 6763,
+      "sha256": "2918db42b676e44dc663a165f5bfa3f0532895ae46d7d22dd203b6d4f168f3ce",
+      "role": "pack"
+    },
+    {
+      "file": "browser-manifest.json",
+      "bytes": 370,
+      "sha256": "3921ee331cfabf6273baabdcb4a5224ceb3e854ef26ed071d572375f091dc619",
+      "role": "manifest"
+    },
+    {
+      "file": "capability-manifest.json",
+      "bytes": 449,
+      "sha256": "ec6af7b8c498b98034165abb3170bb05fbd4ebfbc454d1395b485ac13272958a",
+      "role": "capabilities"
+    },
+    {
+      "file": "contract.json",
+      "bytes": 531,
+      "sha256": "3be2372dccb539cf227938473a13cbcda5d3d7dd0465d0256372a54966ec6d87",
+      "role": "contract"
+    },
+    {
+      "file": "index.html",
+      "bytes": 978,
+      "sha256": "7b961fec1cb3c43e95eec8620933fee4b50e75a0a6e5d605c8a32d127cf8fa74",
+      "role": "shell"
+    },
+    {
+      "file": "kernel.js",
+      "bytes": 9039,
+      "sha256": "dba80f5d7aba55b2a484bc5967c0a8e17e18d76fc1b13235fcf69640a60accb4",
+      "role": "shell"
+    },
+    {
+      "file": "kernel.wasm",
+      "bytes": 1731509,
+      "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
+      "role": "kernelWasm"
+    },
+    {
+      "file": "page.js",
+      "bytes": 57921,
+      "sha256": "6ed3fee188717982b68738467d4f187123808aff19ca2aa8219f53ece9980f75",
+      "role": "shell"
+    },
+    {
+      "file": "schema-manifest.json",
+      "bytes": 238,
+      "sha256": "b07c326ea1b76962713454817dd4884dcc773aa477d43b1841827817ccc6ab1e",
+      "role": "schemas"
+    },
+    {
+      "file": "service-worker.js",
+      "bytes": 11047,
+      "sha256": "c43338574ca74d54e741520910a6c1ba4f0ff767c3eca83330aaa83fdf9d1149",
+      "role": "shell"
+    },
+    {
+      "file": "velqu-artifacts.json",
+      "bytes": 2368,
+      "sha256": "c65b547c377edf6731117002120b18997801765db792380f72ef224eded0dd99",
+      "role": "artifact-manifest"
+    },
+    {
+      "file": "worker.js",
+      "bytes": 54252,
+      "sha256": "0fbad52fd8db6817198e9ad61918f979dfb24939b7ca8da52f99216f805dd26c",
+      "role": "shell"
+    }
+  ]
+}
+
+$ bun packages/cli/src/index.ts export --project /tmp/q006-transcript-npa751kr/app --out /tmp/q006-transcript-npa751kr/static-export --json
+{
+  "schemaVersion": 1,
+  "status": "ok",
+  "command": "export",
+  "source": "/tmp/q006-transcript-npa751kr/app/dist/browser",
+  "outDir": "/tmp/q006-transcript-npa751kr/static-export",
+  "buildId": "868ec963d58d0ac47da63e779c632a5064754d6d2e4c9cc09ca9fc44cc0852fd",
+  "files": [
+    {
+      "file": "app.bundle.js",
+      "bytes": 52508,
+      "sha256": "ab6ae93dd9aab200b99bc1417546ff5d43c3fa8fca79a8c4755485116a919a49"
+    },
+    {
+      "file": "app.qpack",
+      "bytes": 6763,
+      "sha256": "2918db42b676e44dc663a165f5bfa3f0532895ae46d7d22dd203b6d4f168f3ce"
+    },
+    {
+      "file": "browser-manifest.json",
+      "bytes": 370,
+      "sha256": "3921ee331cfabf6273baabdcb4a5224ceb3e854ef26ed071d572375f091dc619"
+    },
+    {
+      "file": "capability-manifest.json",
+      "bytes": 449,
+      "sha256": "ec6af7b8c498b98034165abb3170bb05fbd4ebfbc454d1395b485ac13272958a"
+    },
+    {
+      "file": "contract.json",
+      "bytes": 531,
+      "sha256": "3be2372dccb539cf227938473a13cbcda5d3d7dd0465d0256372a54966ec6d87"
+    },
+    {
+      "file": "index.html",
+      "bytes": 978,
+      "sha256": "7b961fec1cb3c43e95eec8620933fee4b50e75a0a6e5d605c8a32d127cf8fa74"
+    },
+    {
+      "file": "kernel.js",
+      "bytes": 9039,
+      "sha256": "dba80f5d7aba55b2a484bc5967c0a8e17e18d76fc1b13235fcf69640a60accb4"
+    },
+    {
+      "file": "kernel.wasm",
+      "bytes": 1731509,
+      "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5"
+    },
+    {
+      "file": "page.js",
+      "bytes": 57921,
+      "sha256": "6ed3fee188717982b68738467d4f187123808aff19ca2aa8219f53ece9980f75"
+    },
+    {
+      "file": "schema-manifest.json",
+      "bytes": 238,
+      "sha256": "b07c326ea1b76962713454817dd4884dcc773aa477d43b1841827817ccc6ab1e"
+    },
+    {
+      "file": "service-worker.js",
+      "bytes": 11047,
+      "sha256": "c43338574ca74d54e741520910a6c1ba4f0ff767c3eca83330aaa83fdf9d1149"
+    },
+    {
+      "file": "velqu-artifacts.json",
+      "bytes": 2368,
+      "sha256": "c65b547c377edf6731117002120b18997801765db792380f72ef224eded0dd99"
+    },
+    {
+      "file": "worker.js",
+      "bytes": 54252,
+      "sha256": "0fbad52fd8db6817198e9ad61918f979dfb24939b7ca8da52f99216f805dd26c"
+    }
+  ],
+  "totalBytes": 1927973
+}
