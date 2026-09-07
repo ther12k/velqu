@@ -29,6 +29,11 @@
  */
 
 import { loadArtifacts, sha256Hex, type BrowserArtifactManifest } from "./artifact-loader";
+import {
+  DIAGNOSTIC_CODES,
+  extractOrGenerateCorrelationId,
+  type DiagnosticStream,
+} from "./diagnostics";
 
 // ---------------------------------------------------------------------------
 // Scope guard + classification (pure)
@@ -221,6 +226,8 @@ export interface WorkerEnv {
     put(url: string, response: Response): Promise<void>;
   };
   readonly baseUrl: string;
+  /** Bounded developer diagnostic stream (BWASM-Q-004). */
+  readonly diagnostics?: DiagnosticStream;
 }
 
 function problemResponse(problem: {
@@ -254,6 +261,7 @@ export async function handleFetchEvent(event: FetchEventLike, env: WorkerEnv): P
   if (!isScopedRequest(env.scope, request.url, env.locationOrigin)) {
     return; // passthrough: SW does not respondWith
   }
+  const correlationId = extractOrGenerateCorrelationId(request.headers);
   const url = new URL(request.url);
   const cls = classifyRequest(
     request.method,
@@ -268,7 +276,23 @@ export async function handleFetchEvent(event: FetchEventLike, env: WorkerEnv): P
         // Assets: cache-first (content-addressed; cache hit implies the
         // verified hash was checked at install).
         const cached = await env.cache.match(url.href);
-        if (cached) return cached;
+        if (cached) {
+          env.diagnostics?.record({
+            stage: "cache",
+            code: DIAGNOSTIC_CODES.CACHE_HIT,
+            level: "debug",
+            correlationId,
+            detail: `cache hit: ${url.pathname}`,
+          });
+          return cached;
+        }
+        env.diagnostics?.record({
+          stage: "cache",
+          code: DIAGNOSTIC_CODES.CACHE_MISS,
+          level: "warn",
+          correlationId,
+          detail: `cache miss: ${url.pathname}`,
+        });
         return problemResponse({
           status: 504,
           title: "Asset unavailable offline",
@@ -315,9 +339,16 @@ export type BootstrapOutcome =
 export async function bootstrapServiceWorker(options: {
   scriptUrl: string;
   scope: string;
+  diagnostics?: DiagnosticStream;
 }): Promise<BootstrapOutcome> {
   const nav = globalThis as { navigator?: { serviceWorker?: { register(url: string, opts: { scope: string }): Promise<unknown> } } };
   if (!nav.navigator?.serviceWorker) {
+    options.diagnostics?.record({
+      stage: "cache",
+      code: DIAGNOSTIC_CODES.SW_REGISTERED,
+      level: "warn",
+      detail: "ServiceWorker unavailable; using injected-fetch fallback",
+    });
     return {
       kind: "injected-fetch-fallback",
       reason:
@@ -328,8 +359,20 @@ export async function bootstrapServiceWorker(options: {
     const registration = await nav.navigator.serviceWorker.register(options.scriptUrl, {
       scope: options.scope,
     });
+    options.diagnostics?.record({
+      stage: "cache",
+      code: DIAGNOSTIC_CODES.SW_REGISTERED,
+      level: "info",
+      detail: `registered ServiceWorker under scope ${options.scope}`,
+    });
     return { kind: "service-worker", scope: options.scope, registration };
   } catch (cause) {
+    options.diagnostics?.record({
+      stage: "fail",
+      code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+      level: "error",
+      detail: `ServiceWorker registration failed: ${String(cause)}`,
+    });
     return {
       kind: "injected-fetch-fallback",
       reason: `ServiceWorker registration failed: ${String(cause)}`,

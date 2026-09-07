@@ -1,13 +1,76 @@
 // packages/browser-runtime/src/dispatcher.ts
 var DEFAULT_MAX_BODY_BYTES = 1 << 20;
 var MAX_MULTIPART_HEADER_BYTES = 8 << 10;
+
+// packages/browser-runtime/src/capabilities.ts
+var MAX_FETCH_REQUEST_BODY_BYTES = 16 * 1024 * 1024;
+var MAX_FETCH_RESPONSE_BODY_BYTES = 16 * 1024 * 1024;
+
+// packages/browser-runtime/src/diagnostics.ts
+var DIAGNOSTIC_CODES = {
+  LOAD_MANIFEST_OK: "DIAG_LOAD_MANIFEST_OK",
+  LOAD_MANIFEST_FAIL: "DIAG_LOAD_MANIFEST_FAIL",
+  VERIFY_INTEGRITY_OK: "DIAG_VERIFY_INTEGRITY_OK",
+  VERIFY_INTEGRITY_FAIL: "DIAG_VERIFY_INTEGRITY_FAIL",
+  COMPAT_KERNEL_ABI_OK: "DIAG_COMPAT_KERNEL_ABI_OK",
+  COMPAT_KERNEL_ABI_MISMATCH: "DIAG_COMPAT_KERNEL_ABI_MISMATCH",
+  COMPAT_HANDLER_ABI_MISMATCH: "DIAG_COMPAT_HANDLER_ABI_MISMATCH",
+  LIFECYCLE_INSTANTIATING: "DIAG_LIFECYCLE_INSTANTIATING",
+  LIFECYCLE_READY: "DIAG_LIFECYCLE_READY",
+  LIFECYCLE_DISPOSED: "DIAG_LIFECYCLE_DISPOSED",
+  ROUTE_MATCHED: "DIAG_ROUTE_MATCHED",
+  ROUTE_NOT_FOUND: "DIAG_ROUTE_NOT_FOUND",
+  ROUTE_METHOD_NOT_ALLOWED: "DIAG_ROUTE_METHOD_NOT_ALLOWED",
+  VALIDATE_PASSED: "DIAG_VALIDATE_PASSED",
+  VALIDATE_FAILED: "DIAG_VALIDATE_FAILED",
+  CAPABILITY_INVOKED: "DIAG_CAPABILITY_INVOKED",
+  CAPABILITY_DENIED: "DIAG_CAPABILITY_DENIED",
+  CAPABILITY_DEPLOYMENT_REQUIRED: "DIAG_CAPABILITY_DEPLOYMENT_REQUIRED",
+  INVOKE_START: "DIAG_INVOKE_START",
+  INVOKE_SUCCESS: "DIAG_INVOKE_SUCCESS",
+  INVOKE_TIMEOUT: "DIAG_INVOKE_TIMEOUT",
+  INVOKE_CANCEL: "DIAG_INVOKE_CANCEL",
+  INVOKE_FAILED: "DIAG_INVOKE_FAILED",
+  PERSIST_ACCESS: "DIAG_PERSIST_ACCESS",
+  PERSIST_ERROR: "DIAG_PERSIST_ERROR",
+  PERSIST_QUOTA_EXCEEDED: "DIAG_PERSIST_QUOTA_EXCEEDED",
+  PERSIST_MIGRATION_REQUIRED: "DIAG_PERSIST_MIGRATION_REQUIRED",
+  CACHE_HIT: "DIAG_CACHE_HIT",
+  CACHE_MISS: "DIAG_CACHE_MISS",
+  CACHE_STORED: "DIAG_CACHE_STORED",
+  SW_REGISTERED: "DIAG_SW_REGISTERED",
+  SW_UPDATE_AVAILABLE: "DIAG_SW_UPDATE_AVAILABLE",
+  SW_UPDATE_APPLIED: "DIAG_SW_UPDATE_APPLIED",
+  FAIL_INTERNAL: "DIAG_FAIL_INTERNAL",
+  FAIL_REDACTED: "DIAG_FAIL_REDACTED"
+};
+var correlationCounter = 0;
+function generateCorrelationId(prefix = "cr") {
+  const ts = Date.now().toString(36);
+  const count = (++correlationCounter).toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${prefix}_${ts}_${count}_${rand}`;
+}
+function extractOrGenerateCorrelationId(headers) {
+  if (headers) {
+    if (typeof headers.get === "function") {
+      const h = headers;
+      const found = h.get("x-correlation-id") || h.get("x-request-id");
+      if (found)
+        return found;
+    } else {
+      const rec = headers;
+      const found = rec["x-correlation-id"] || rec["x-request-id"] || rec["X-Correlation-Id"] || rec["X-Request-Id"];
+      if (found)
+        return found;
+    }
+  }
+  return generateCorrelationId();
+}
 // packages/browser-runtime/src/worker-host.ts
 var MAX_RESULT_BYTES = 1 << 20;
 // packages/browser-runtime/src/kv.ts
 var MAX_KV_VALUE_BYTES = 1024 * 1024;
-// packages/browser-runtime/src/capabilities.ts
-var MAX_FETCH_REQUEST_BODY_BYTES = 16 * 1024 * 1024;
-var MAX_FETCH_RESPONSE_BODY_BYTES = 16 * 1024 * 1024;
 // packages/browser-runtime/src/artifact-loader.ts
 async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -113,13 +176,29 @@ async function handleFetchEvent(event, env) {
   if (!isScopedRequest(env.scope, request.url, env.locationOrigin)) {
     return;
   }
+  const correlationId = extractOrGenerateCorrelationId(request.headers);
   const url = new URL(request.url);
   const cls = classifyRequest(request.method, url.pathname, request.headers.get("accept"), request.mode, env.scope);
   event.respondWith((async () => {
     if (cls === "asset") {
       const cached = await env.cache.match(url.href);
-      if (cached)
+      if (cached) {
+        env.diagnostics?.record({
+          stage: "cache",
+          code: DIAGNOSTIC_CODES.CACHE_HIT,
+          level: "debug",
+          correlationId,
+          detail: `cache hit: ${url.pathname}`
+        });
         return cached;
+      }
+      env.diagnostics?.record({
+        stage: "cache",
+        code: DIAGNOSTIC_CODES.CACHE_MISS,
+        level: "warn",
+        correlationId,
+        detail: `cache miss: ${url.pathname}`
+      });
       return problemResponse({
         status: 504,
         title: "Asset unavailable offline",
@@ -144,7 +223,7 @@ async function handleFetchEvent(event, env) {
   })());
 }
 // conformance/browser/fixture-app/dist/browser/service-worker.js
-var DEPLOYMENT_SHA256 = "6c305b1e57a754e4b90c00004e4ae7fa065696ef64d2d628b853225b97ea2ad0";
+var DEPLOYMENT_SHA256 = "d30189a3414150a89c4ef4b40cd2df79af802f177aa1c3b5451da7a2dac349ae";
 var APP_ID = "app";
 var SCOPE = "/";
 var BASE_URL = self.registration.scope;

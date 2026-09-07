@@ -199,247 +199,6 @@ async function materialize(response, isHead) {
   return new Response(null, { status: response.status, headers });
 }
 
-// packages/browser-runtime/src/handler-bundle.ts
-var HANDLER_ABI_VERSION = 1;
-
-class HandlerBundleError extends Error {
-  code;
-  constructor(code, message) {
-    super(`[@velqu/browser-runtime:handler-bundle:${code}] ${message}`);
-    this.name = "HandlerBundleError";
-    this.code = code;
-  }
-}
-function defineBrowserHandlers(registrations, expectation) {
-  const bundleAbi = expectation.handlerAbiVersion ?? HANDLER_ABI_VERSION;
-  if (bundleAbi !== HANDLER_ABI_VERSION) {
-    throw new HandlerBundleError("UNKNOWN_ABI_VERSION", `handler bundle declares ABI ${bundleAbi}; this runtime implements ${HANDLER_ABI_VERSION} — rebuild the bundle with a matching @velqu/browser-runtime`);
-  }
-  const required = [...expectation.requiredHandlerKeys].sort();
-  const byKey = new Map;
-  for (const reg of registrations) {
-    if (typeof reg.handlerKey !== "string" || reg.handlerKey.length === 0 || typeof reg.invoke !== "function") {
-      throw new HandlerBundleError("INVALID_REGISTRATION", `registration ${JSON.stringify(reg.handlerKey)} is not well-formed (need handlerKey + invoke)`);
-    }
-    if (byKey.has(reg.handlerKey)) {
-      throw new HandlerBundleError("DUPLICATE_HANDLER_KEY", `handler key ${JSON.stringify(reg.handlerKey)} registered more than once`);
-    }
-    byKey.set(reg.handlerKey, reg);
-  }
-  const missing = required.filter((key) => !byKey.has(key));
-  if (missing.length > 0) {
-    throw new HandlerBundleError("MISSING_HANDLER", `bundle is missing ${missing.length} pack-declared handler(s): ${missing.join(", ")}`);
-  }
-  const extra = [...byKey.keys()].filter((key) => !required.includes(key));
-  if (extra.length > 0) {
-    throw new HandlerBundleError("INVALID_REGISTRATION", `bundle registers handler(s) the pack does not declare: ${extra.join(", ")} (undeclared routes cannot be registered silently)`);
-  }
-  for (const [key, reg] of byKey) {
-    const declared = expectation.declaredStatuses[key] ?? [];
-    for (const status of reg.statuses) {
-      if (!declared.includes(status)) {
-        throw new HandlerBundleError("UNDECLARED_STATUS", `handler ${JSON.stringify(key)} registers status ${status}; the pack declares only [${declared.join(", ")}]`);
-      }
-    }
-  }
-  const table = new Map([...byKey.entries()].map(([key, reg]) => [key, reg.invoke]));
-  return {
-    abiVersion: HANDLER_ABI_VERSION,
-    keys: required,
-    async invoke(handlerKey, ctx) {
-      const invoke = table.get(handlerKey);
-      if (!invoke) {
-        throw new HandlerBundleError("MISSING_HANDLER", `handler ${JSON.stringify(handlerKey)} is not registered`);
-      }
-      return invoke(ctx);
-    }
-  };
-}
-// packages/browser-runtime/src/worker-host.ts
-var WORKER_PROTOCOL_VERSION = 1;
-var MAX_LOG_LINES_PER_INVOCATION = 64;
-var MAX_RESULT_BYTES = 1 << 20;
-
-class WorkerProtocolError extends Error {
-  code;
-  constructor(code, message) {
-    super(`[@velqu/browser-runtime:worker:${code}] ${message}`);
-    this.name = "WorkerProtocolError";
-    this.code = code;
-  }
-}
-
-class WorkerHost {
-  worker;
-  sessionId;
-  factory;
-  pending = new Map;
-  nextInvocationId = 1;
-  terminated = false;
-  staleMessagesDropped = 0;
-  hardRecoveries = 0;
-  constructor(sessionId, factory) {
-    this.sessionId = sessionId;
-    this.factory = factory;
-    this.worker = this.spawn();
-  }
-  spawn() {
-    const worker = this.factory();
-    worker.addEventListener("message", (event) => this.onMessage(event.data));
-    return worker;
-  }
-  get isTerminated() {
-    return this.terminated;
-  }
-  execute(plan, signal) {
-    if (this.terminated) {
-      this.terminated = false;
-      this.worker = this.spawn();
-    }
-    const invocationId = this.nextInvocationId++;
-    return new Promise((resolve, reject) => {
-      const pending = {
-        invocationId,
-        plan,
-        resolve,
-        reject,
-        timer: null,
-        logLines: 0
-      };
-      this.pending.set(invocationId, pending);
-      const abort = () => {
-        if (!this.pending.has(invocationId))
-          return;
-        this.pending.delete(invocationId);
-        this.worker.postMessage({
-          v: WORKER_PROTOCOL_VERSION,
-          type: "cancel",
-          sessionId: this.sessionId,
-          invocationId
-        });
-        reject(new DOMException("The operation was aborted.", "AbortError"));
-      };
-      if (signal?.aborted) {
-        abort();
-        return;
-      }
-      signal?.addEventListener("abort", abort, { once: true });
-      pending.timer = setTimeout(() => {
-        if (!this.pending.has(invocationId))
-          return;
-        this.pending.delete(invocationId);
-        this.hardTerminate(`deadline ${plan.deadlineMs}ms exceeded`);
-        reject(new DOMException("The operation was aborted.", "AbortError"));
-      }, plan.deadlineMs);
-      let message;
-      try {
-        message = JSON.stringify({
-          v: WORKER_PROTOCOL_VERSION,
-          type: "invoke",
-          sessionId: this.sessionId,
-          invocationId,
-          plan
-        });
-      } catch (cause) {
-        this.pending.delete(invocationId);
-        reject(new WorkerProtocolError("UNCLONEABLE_PAYLOAD", String(cause)));
-        return;
-      }
-      if (message.length > MAX_RESULT_BYTES) {
-        this.pending.delete(invocationId);
-        reject(new WorkerProtocolError("OVERSIZED_PAYLOAD", "invoke message exceeds 1 MiB"));
-        return;
-      }
-      this.worker.postMessage(JSON.parse(message));
-    });
-  }
-  hardTerminate(reason) {
-    this.hardRecoveries += 1;
-    this.worker.terminate();
-    this.terminated = true;
-    for (const pending of this.pending.values()) {
-      if (pending.timer)
-        clearTimeout(pending.timer);
-      pending.reject(new WorkerProtocolError("FATAL", `worker terminated: ${reason}`));
-    }
-    this.pending.clear();
-  }
-  dispose() {
-    this.hardTerminate("disposed");
-  }
-  onMessage(data) {
-    if (typeof data !== "object" || data === null)
-      return;
-    const msg = data;
-    if (msg.v !== WORKER_PROTOCOL_VERSION)
-      return;
-    if (msg.type !== "result" && msg.type !== "log" && msg.type !== "fatal") {
-      return;
-    }
-    if (typeof msg.sessionId !== "string" || msg.type !== "fatal" && typeof msg.invocationId !== "number" || msg.type === "result" && (typeof msg.result !== "object" || msg.result === null) || msg.type === "log" && !Array.isArray(msg.lines)) {
-      this.staleMessagesDropped += 1;
-      return;
-    }
-    switch (msg.type) {
-      case "result": {
-        if (msg.sessionId !== this.sessionId) {
-          this.staleMessagesDropped += 1;
-          return;
-        }
-        const invocationId = msg.invocationId;
-        const pending = this.pending.get(invocationId);
-        if (!pending) {
-          this.staleMessagesDropped += 1;
-          return;
-        }
-        this.pending.delete(invocationId);
-        if (pending.timer)
-          clearTimeout(pending.timer);
-        const result = msg.result;
-        if (this.oversized(result)) {
-          pending.reject(new WorkerProtocolError("OVERSIZED_PAYLOAD", "result exceeds 1 MiB"));
-          return;
-        }
-        pending.resolve(result);
-        return;
-      }
-      case "log": {
-        if (msg.sessionId !== this.sessionId) {
-          this.staleMessagesDropped += 1;
-          return;
-        }
-        const invocationId = msg.invocationId;
-        const pending = this.pending.get(invocationId);
-        if (!pending) {
-          this.staleMessagesDropped += 1;
-          return;
-        }
-        pending.logLines += msg.lines.length;
-        if (pending.logLines > MAX_LOG_LINES_PER_INVOCATION) {
-          this.hardTerminate(`log volume exceeded ${MAX_LOG_LINES_PER_INVOCATION} lines`);
-        }
-        return;
-      }
-      case "fatal": {
-        if (msg.sessionId !== this.sessionId)
-          return;
-        this.hardTerminate(typeof msg.detail === "string" ? msg.detail : "worker reported fatal");
-        return;
-      }
-      default:
-        return;
-    }
-  }
-  oversized(result) {
-    try {
-      return JSON.stringify(result).length > MAX_RESULT_BYTES;
-    } catch {
-      return true;
-    }
-  }
-}
-// packages/browser-runtime/src/kv.ts
-var MAX_KV_VALUE_BYTES = 1024 * 1024;
 // packages/browser-runtime/src/capabilities.ts
 var BROWSER_TIMERS_ID = "runtime:timers";
 var BROWSER_CRYPTO_ID = "runtime:crypto";
@@ -873,6 +632,366 @@ function createBrowserCapabilityGraph(options) {
     describe: () => descriptors.map((d) => `${d.id}@${d.version} (${d.name})`).join("; ")
   };
 }
+
+// packages/browser-runtime/src/handler-bundle.ts
+var HANDLER_ABI_VERSION = 1;
+
+class HandlerBundleError extends Error {
+  code;
+  constructor(code, message) {
+    super(`[@velqu/browser-runtime:handler-bundle:${code}] ${message}`);
+    this.name = "HandlerBundleError";
+    this.code = code;
+  }
+}
+function defineBrowserHandlers(registrations, expectation) {
+  const bundleAbi = expectation.handlerAbiVersion ?? HANDLER_ABI_VERSION;
+  if (bundleAbi !== HANDLER_ABI_VERSION) {
+    throw new HandlerBundleError("UNKNOWN_ABI_VERSION", `handler bundle declares ABI ${bundleAbi}; this runtime implements ${HANDLER_ABI_VERSION} — rebuild the bundle with a matching @velqu/browser-runtime`);
+  }
+  const required = [...expectation.requiredHandlerKeys].sort();
+  const byKey = new Map;
+  for (const reg of registrations) {
+    if (typeof reg.handlerKey !== "string" || reg.handlerKey.length === 0 || typeof reg.invoke !== "function") {
+      throw new HandlerBundleError("INVALID_REGISTRATION", `registration ${JSON.stringify(reg.handlerKey)} is not well-formed (need handlerKey + invoke)`);
+    }
+    if (byKey.has(reg.handlerKey)) {
+      throw new HandlerBundleError("DUPLICATE_HANDLER_KEY", `handler key ${JSON.stringify(reg.handlerKey)} registered more than once`);
+    }
+    byKey.set(reg.handlerKey, reg);
+  }
+  const missing = required.filter((key) => !byKey.has(key));
+  if (missing.length > 0) {
+    throw new HandlerBundleError("MISSING_HANDLER", `bundle is missing ${missing.length} pack-declared handler(s): ${missing.join(", ")}`);
+  }
+  const extra = [...byKey.keys()].filter((key) => !required.includes(key));
+  if (extra.length > 0) {
+    throw new HandlerBundleError("INVALID_REGISTRATION", `bundle registers handler(s) the pack does not declare: ${extra.join(", ")} (undeclared routes cannot be registered silently)`);
+  }
+  for (const [key, reg] of byKey) {
+    const declared = expectation.declaredStatuses[key] ?? [];
+    for (const status of reg.statuses) {
+      if (!declared.includes(status)) {
+        throw new HandlerBundleError("UNDECLARED_STATUS", `handler ${JSON.stringify(key)} registers status ${status}; the pack declares only [${declared.join(", ")}]`);
+      }
+    }
+  }
+  const table = new Map([...byKey.entries()].map(([key, reg]) => [key, reg.invoke]));
+  return {
+    abiVersion: HANDLER_ABI_VERSION,
+    keys: required,
+    async invoke(handlerKey, ctx) {
+      const invoke = table.get(handlerKey);
+      if (!invoke) {
+        throw new HandlerBundleError("MISSING_HANDLER", `handler ${JSON.stringify(handlerKey)} is not registered`);
+      }
+      return invoke(ctx);
+    }
+  };
+}
+
+// packages/browser-runtime/src/diagnostics.ts
+var DIAGNOSTIC_CODES = {
+  LOAD_MANIFEST_OK: "DIAG_LOAD_MANIFEST_OK",
+  LOAD_MANIFEST_FAIL: "DIAG_LOAD_MANIFEST_FAIL",
+  VERIFY_INTEGRITY_OK: "DIAG_VERIFY_INTEGRITY_OK",
+  VERIFY_INTEGRITY_FAIL: "DIAG_VERIFY_INTEGRITY_FAIL",
+  COMPAT_KERNEL_ABI_OK: "DIAG_COMPAT_KERNEL_ABI_OK",
+  COMPAT_KERNEL_ABI_MISMATCH: "DIAG_COMPAT_KERNEL_ABI_MISMATCH",
+  COMPAT_HANDLER_ABI_MISMATCH: "DIAG_COMPAT_HANDLER_ABI_MISMATCH",
+  LIFECYCLE_INSTANTIATING: "DIAG_LIFECYCLE_INSTANTIATING",
+  LIFECYCLE_READY: "DIAG_LIFECYCLE_READY",
+  LIFECYCLE_DISPOSED: "DIAG_LIFECYCLE_DISPOSED",
+  ROUTE_MATCHED: "DIAG_ROUTE_MATCHED",
+  ROUTE_NOT_FOUND: "DIAG_ROUTE_NOT_FOUND",
+  ROUTE_METHOD_NOT_ALLOWED: "DIAG_ROUTE_METHOD_NOT_ALLOWED",
+  VALIDATE_PASSED: "DIAG_VALIDATE_PASSED",
+  VALIDATE_FAILED: "DIAG_VALIDATE_FAILED",
+  CAPABILITY_INVOKED: "DIAG_CAPABILITY_INVOKED",
+  CAPABILITY_DENIED: "DIAG_CAPABILITY_DENIED",
+  CAPABILITY_DEPLOYMENT_REQUIRED: "DIAG_CAPABILITY_DEPLOYMENT_REQUIRED",
+  INVOKE_START: "DIAG_INVOKE_START",
+  INVOKE_SUCCESS: "DIAG_INVOKE_SUCCESS",
+  INVOKE_TIMEOUT: "DIAG_INVOKE_TIMEOUT",
+  INVOKE_CANCEL: "DIAG_INVOKE_CANCEL",
+  INVOKE_FAILED: "DIAG_INVOKE_FAILED",
+  PERSIST_ACCESS: "DIAG_PERSIST_ACCESS",
+  PERSIST_ERROR: "DIAG_PERSIST_ERROR",
+  PERSIST_QUOTA_EXCEEDED: "DIAG_PERSIST_QUOTA_EXCEEDED",
+  PERSIST_MIGRATION_REQUIRED: "DIAG_PERSIST_MIGRATION_REQUIRED",
+  CACHE_HIT: "DIAG_CACHE_HIT",
+  CACHE_MISS: "DIAG_CACHE_MISS",
+  CACHE_STORED: "DIAG_CACHE_STORED",
+  SW_REGISTERED: "DIAG_SW_REGISTERED",
+  SW_UPDATE_AVAILABLE: "DIAG_SW_UPDATE_AVAILABLE",
+  SW_UPDATE_APPLIED: "DIAG_SW_UPDATE_APPLIED",
+  FAIL_INTERNAL: "DIAG_FAIL_INTERNAL",
+  FAIL_REDACTED: "DIAG_FAIL_REDACTED"
+};
+var correlationCounter = 0;
+function generateCorrelationId(prefix = "cr") {
+  const ts = Date.now().toString(36);
+  const count = (++correlationCounter).toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${prefix}_${ts}_${count}_${rand}`;
+}
+function extractOrGenerateCorrelationId(headers) {
+  if (headers) {
+    if (typeof headers.get === "function") {
+      const h = headers;
+      const found = h.get("x-correlation-id") || h.get("x-request-id");
+      if (found)
+        return found;
+    } else {
+      const rec = headers;
+      const found = rec["x-correlation-id"] || rec["x-request-id"] || rec["X-Correlation-Id"] || rec["X-Request-Id"];
+      if (found)
+        return found;
+    }
+  }
+  return generateCorrelationId();
+}
+// packages/browser-runtime/src/worker-host.ts
+var WORKER_PROTOCOL_VERSION = 1;
+var MAX_LOG_LINES_PER_INVOCATION = 64;
+var MAX_RESULT_BYTES = 1 << 20;
+
+class WorkerProtocolError extends Error {
+  code;
+  constructor(code, message) {
+    super(`[@velqu/browser-runtime:worker:${code}] ${message}`);
+    this.name = "WorkerProtocolError";
+    this.code = code;
+  }
+}
+
+class WorkerHost {
+  worker;
+  sessionId;
+  factory;
+  diagnostics;
+  pending = new Map;
+  nextInvocationId = 1;
+  terminated = false;
+  staleMessagesDropped = 0;
+  hardRecoveries = 0;
+  constructor(sessionId, factory, options) {
+    this.sessionId = sessionId;
+    this.factory = factory;
+    this.diagnostics = options?.diagnostics;
+    this.worker = this.spawn();
+  }
+  spawn() {
+    const worker = this.factory();
+    worker.addEventListener("message", (event) => this.onMessage(event.data));
+    return worker;
+  }
+  get isTerminated() {
+    return this.terminated;
+  }
+  execute(plan, signal, correlationId) {
+    if (this.terminated) {
+      this.terminated = false;
+      this.worker = this.spawn();
+    }
+    const invocationId = this.nextInvocationId++;
+    this.diagnostics?.record({
+      stage: "invoke",
+      code: DIAGNOSTIC_CODES.INVOKE_START,
+      level: "debug",
+      correlationId,
+      routeId: plan.routeId,
+      detail: `invoking handler ${plan.handlerKey}`
+    });
+    return new Promise((resolve, reject) => {
+      const pending = {
+        invocationId,
+        correlationId,
+        plan,
+        resolve,
+        reject,
+        timer: null,
+        logLines: 0
+      };
+      this.pending.set(invocationId, pending);
+      const abort = () => {
+        if (!this.pending.has(invocationId))
+          return;
+        this.pending.delete(invocationId);
+        this.diagnostics?.record({
+          stage: "cancel",
+          code: DIAGNOSTIC_CODES.INVOKE_CANCEL,
+          level: "info",
+          correlationId,
+          routeId: plan.routeId,
+          detail: "invoke aborted by signal"
+        });
+        this.worker.postMessage({
+          v: WORKER_PROTOCOL_VERSION,
+          type: "cancel",
+          sessionId: this.sessionId,
+          invocationId,
+          correlationId
+        });
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      };
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      signal?.addEventListener("abort", abort, { once: true });
+      pending.timer = setTimeout(() => {
+        if (!this.pending.has(invocationId))
+          return;
+        this.pending.delete(invocationId);
+        this.diagnostics?.record({
+          stage: "invoke",
+          code: DIAGNOSTIC_CODES.INVOKE_TIMEOUT,
+          level: "error",
+          correlationId,
+          routeId: plan.routeId,
+          detail: `deadline ${plan.deadlineMs}ms exceeded`
+        });
+        this.hardTerminate(`deadline ${plan.deadlineMs}ms exceeded`);
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      }, plan.deadlineMs);
+      let message;
+      try {
+        message = JSON.stringify({
+          v: WORKER_PROTOCOL_VERSION,
+          type: "invoke",
+          sessionId: this.sessionId,
+          invocationId,
+          correlationId,
+          plan
+        });
+      } catch (cause) {
+        this.pending.delete(invocationId);
+        reject(new WorkerProtocolError("UNCLONEABLE_PAYLOAD", String(cause)));
+        return;
+      }
+      if (message.length > MAX_RESULT_BYTES) {
+        this.pending.delete(invocationId);
+        reject(new WorkerProtocolError("OVERSIZED_PAYLOAD", "invoke message exceeds 1 MiB"));
+        return;
+      }
+      this.worker.postMessage(JSON.parse(message));
+    });
+  }
+  hardTerminate(reason) {
+    this.hardRecoveries += 1;
+    this.worker.terminate();
+    this.terminated = true;
+    for (const pending of this.pending.values()) {
+      if (pending.timer)
+        clearTimeout(pending.timer);
+      pending.reject(new WorkerProtocolError("FATAL", `worker terminated: ${reason}`));
+    }
+    this.pending.clear();
+  }
+  dispose() {
+    this.hardTerminate("disposed");
+  }
+  onMessage(data) {
+    if (typeof data !== "object" || data === null)
+      return;
+    const msg = data;
+    if (msg.v !== WORKER_PROTOCOL_VERSION)
+      return;
+    if (msg.type !== "result" && msg.type !== "log" && msg.type !== "fatal") {
+      return;
+    }
+    if (typeof msg.sessionId !== "string" || msg.type !== "fatal" && typeof msg.invocationId !== "number" || msg.type === "result" && (typeof msg.result !== "object" || msg.result === null) || msg.type === "log" && !Array.isArray(msg.lines)) {
+      this.staleMessagesDropped += 1;
+      return;
+    }
+    switch (msg.type) {
+      case "result": {
+        if (msg.sessionId !== this.sessionId) {
+          this.staleMessagesDropped += 1;
+          return;
+        }
+        const invocationId = msg.invocationId;
+        const pending = this.pending.get(invocationId);
+        if (!pending) {
+          this.staleMessagesDropped += 1;
+          return;
+        }
+        this.pending.delete(invocationId);
+        if (pending.timer)
+          clearTimeout(pending.timer);
+        const result = msg.result;
+        if (this.oversized(result)) {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_FAILED,
+            level: "error",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: "result exceeds 1 MiB"
+          });
+          pending.reject(new WorkerProtocolError("OVERSIZED_PAYLOAD", "result exceeds 1 MiB"));
+          return;
+        }
+        if (result.kind === "response") {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_SUCCESS,
+            level: "debug",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: `status ${result.status}`
+          });
+        } else {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_FAILED,
+            level: "warn",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: `problem ${result.problemId}`
+          });
+        }
+        pending.resolve(result);
+        return;
+      }
+      case "log": {
+        if (msg.sessionId !== this.sessionId) {
+          this.staleMessagesDropped += 1;
+          return;
+        }
+        const invocationId = msg.invocationId;
+        const pending = this.pending.get(invocationId);
+        if (!pending) {
+          this.staleMessagesDropped += 1;
+          return;
+        }
+        pending.logLines += msg.lines.length;
+        if (pending.logLines > MAX_LOG_LINES_PER_INVOCATION) {
+          this.hardTerminate(`log volume exceeded ${MAX_LOG_LINES_PER_INVOCATION} lines`);
+        }
+        return;
+      }
+      case "fatal": {
+        if (msg.sessionId !== this.sessionId)
+          return;
+        this.hardTerminate(typeof msg.detail === "string" ? msg.detail : "worker reported fatal");
+        return;
+      }
+      default:
+        return;
+    }
+  }
+  oversized(result) {
+    try {
+      return JSON.stringify(result).length > MAX_RESULT_BYTES;
+    } catch {
+      return true;
+    }
+  }
+}
+// packages/browser-runtime/src/kv.ts
+var MAX_KV_VALUE_BYTES = 1024 * 1024;
 // packages/browser-runtime/src/artifact-loader.ts
 var ARTIFACT_MANIFEST_VERSION = 1;
 class ArtifactManifestError extends Error {
@@ -964,6 +1083,12 @@ function resolveAgainst(baseUrl, url) {
 async function bootstrapServiceWorker(options) {
   const nav = globalThis;
   if (!nav.navigator?.serviceWorker) {
+    options.diagnostics?.record({
+      stage: "cache",
+      code: DIAGNOSTIC_CODES.SW_REGISTERED,
+      level: "warn",
+      detail: "ServiceWorker unavailable; using injected-fetch fallback"
+    });
     return {
       kind: "injected-fetch-fallback",
       reason: "ServiceWorker is unavailable in this environment — use the injected-fetch fallback (runtime.fetch directly in the page); see UNSUPPORTED_SEMANTICS"
@@ -973,8 +1098,20 @@ async function bootstrapServiceWorker(options) {
     const registration = await nav.navigator.serviceWorker.register(options.scriptUrl, {
       scope: options.scope
     });
+    options.diagnostics?.record({
+      stage: "cache",
+      code: DIAGNOSTIC_CODES.SW_REGISTERED,
+      level: "info",
+      detail: `registered ServiceWorker under scope ${options.scope}`
+    });
     return { kind: "service-worker", scope: options.scope, registration };
   } catch (cause) {
+    options.diagnostics?.record({
+      stage: "fail",
+      code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+      level: "error",
+      detail: `ServiceWorker registration failed: ${String(cause)}`
+    });
     return {
       kind: "injected-fetch-fallback",
       reason: `ServiceWorker registration failed: ${String(cause)}`
@@ -1043,15 +1180,34 @@ function isProblem(x) {
   return typeof x === "object" && x !== null && x.kind === "problem" && typeof x.problem === "object";
 }
 function createBrowserRuntime(options) {
+  const diag = options.diagnostics;
   const expectedAbi = options.expectedAbiVersion ?? 1;
   const kernelAbi = options.kernel.kernel_abi_version();
   if (kernelAbi !== expectedAbi) {
+    diag?.record({
+      stage: "instantiate",
+      code: DIAGNOSTIC_CODES.COMPAT_KERNEL_ABI_MISMATCH,
+      level: "error",
+      detail: `kernel reports ABI ${kernelAbi}, runtime contract expects ${expectedAbi}`
+    });
     throw new BrowserRuntimeError("KERNEL_ABI_MISMATCH", `kernel reports ABI ${kernelAbi}, runtime contract expects ${expectedAbi}`);
   }
+  diag?.record({
+    stage: "instantiate",
+    code: DIAGNOSTIC_CODES.LIFECYCLE_INSTANTIATING,
+    level: "info",
+    detail: "initializing runtime kernel"
+  });
   let instance;
   try {
     instance = new options.kernel(options.packBytes);
   } catch (cause) {
+    diag?.record({
+      stage: "verify",
+      code: DIAGNOSTIC_CODES.VERIFY_INTEGRITY_FAIL,
+      level: "error",
+      detail: "kernel rejected the artifact"
+    });
     let problem;
     if (cause instanceof Error) {
       try {
@@ -1067,9 +1223,21 @@ function createBrowserRuntime(options) {
       cause
     });
   }
+  diag?.record({
+    stage: "instantiate",
+    code: DIAGNOSTIC_CODES.LIFECYCLE_READY,
+    level: "info",
+    detail: `kernel ready (ABI ${kernelAbi})`
+  });
   let state = "ready";
   const requireReady = () => {
     if (state === "disposed") {
+      diag?.record({
+        stage: "fail",
+        code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+        level: "error",
+        detail: "fetch on a disposed runtime"
+      });
       throw new BrowserRuntimeError("RUNTIME_DISPOSED", "fetch on a disposed runtime");
     }
   };
@@ -1078,32 +1246,111 @@ function createBrowserRuntime(options) {
       return state;
     },
     abiVersion: kernelAbi,
-    fetch(request) {
+    diagnostics: diag,
+    async fetch(request) {
       requireReady();
-      return dispatchFetchRequest(instance, kernelAbi, request, {
-        maxBodyBytes: options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
-        signal: options.signal ?? null,
-        ...options.executeHandler ? { executeHandler: options.executeHandler } : {}
-      }).catch((cause) => {
+      const correlationId = extractOrGenerateCorrelationId(request.headers);
+      diag?.record({
+        stage: "route",
+        code: DIAGNOSTIC_CODES.ROUTE_MATCHED,
+        level: "debug",
+        correlationId,
+        detail: `${request.method} ${request.url}`
+      });
+      try {
+        const res = await dispatchFetchRequest(instance, kernelAbi, request, {
+          maxBodyBytes: options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
+          signal: options.signal ?? null,
+          ...options.executeHandler ? { executeHandler: options.executeHandler } : {}
+        });
+        if (res.status === 404) {
+          diag?.record({
+            stage: "route",
+            code: DIAGNOSTIC_CODES.ROUTE_NOT_FOUND,
+            level: "warn",
+            correlationId,
+            detail: `route not found: ${request.url}`
+          });
+        } else if (res.status === 405) {
+          diag?.record({
+            stage: "route",
+            code: DIAGNOSTIC_CODES.ROUTE_METHOD_NOT_ALLOWED,
+            level: "warn",
+            correlationId,
+            detail: `method ${request.method} not allowed on ${request.url}`
+          });
+        } else if (res.status === 422) {
+          diag?.record({
+            stage: "validate",
+            code: DIAGNOSTIC_CODES.VALIDATE_FAILED,
+            level: "warn",
+            correlationId,
+            detail: "schema validation failed"
+          });
+        }
+        return res;
+      } catch (cause) {
+        if (cause instanceof DOMException && cause.name === "AbortError") {
+          diag?.record({
+            stage: "cancel",
+            code: DIAGNOSTIC_CODES.INVOKE_CANCEL,
+            level: "info",
+            correlationId,
+            detail: "operation aborted"
+          });
+          throw cause;
+        }
+        diag?.record({
+          stage: "fail",
+          code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+          level: "error",
+          correlationId,
+          detail: cause instanceof Error ? cause.message : String(cause)
+        });
         if (cause instanceof BrowserRuntimeError)
           throw cause;
         if (cause instanceof DispatcherError) {
           const code = cause.rejection.kind === "protocol" ? "KERNEL_PROTOCOL" : cause.rejection.kind === "unsupported" ? "REQUEST_INVALID" : "REQUEST_INVALID";
           throw new BrowserRuntimeError(code, cause.message, { cause });
         }
-        if (cause instanceof DOMException && cause.name === "AbortError")
-          throw cause;
         throw new BrowserRuntimeError("KERNEL_PROTOCOL", String(cause), { cause });
-      });
+      }
     },
     authorizeCapability(name) {
       requireReady();
+      diag?.record({
+        stage: "capability",
+        code: DIAGNOSTIC_CODES.CAPABILITY_INVOKED,
+        level: "debug",
+        detail: `authorizing capability: ${name}`
+      });
       const raw = instance.authorize_capability(name);
       const parsed = parseKernelMessage(raw, "capability authorization");
-      if (isProblem(parsed))
+      if (isProblem(parsed)) {
+        diag?.record({
+          stage: "capability",
+          code: parsed.problem.problemId === "deployment_required" ? DIAGNOSTIC_CODES.CAPABILITY_DEPLOYMENT_REQUIRED : DIAGNOSTIC_CODES.CAPABILITY_DENIED,
+          level: "warn",
+          detail: `capability ${name} rejected: ${parsed.problem.title}`
+        });
         return parsed.problem;
+      }
       if (typeof parsed.authorized !== "boolean") {
+        diag?.record({
+          stage: "fail",
+          code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+          level: "error",
+          detail: `capability authorization returned neither a decision nor a problem for ${name}`
+        });
         throw new BrowserRuntimeError("KERNEL_PROTOCOL", "capability authorization returned neither a decision nor a problem");
+      }
+      if (!parsed.authorized) {
+        diag?.record({
+          stage: "capability",
+          code: DIAGNOSTIC_CODES.CAPABILITY_DENIED,
+          level: "warn",
+          detail: `capability ${name} not authorized`
+        });
       }
       return { authorized: parsed.authorized };
     },
@@ -1112,6 +1359,12 @@ function createBrowserRuntime(options) {
         return;
       state = "disposed";
       instance.dispose();
+      diag?.record({
+        stage: "instantiate",
+        code: DIAGNOSTIC_CODES.LIFECYCLE_DISPOSED,
+        level: "info",
+        detail: "runtime disposed"
+      });
     }
   };
 }
@@ -1406,10 +1659,11 @@ self.onmessage = (event) => {
   if (msg.type === "invoke") {
     if (msg.sessionId !== self.VELQU_SESSION_ID)
       return;
-    Promise.resolve().then(() => handlers2.invoke(msg.plan.handlerKey, toContext(msg.plan))).then((result) => post({ type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId, result }), (err) => post({
+    Promise.resolve().then(() => handlers2.invoke(msg.plan.handlerKey, toContext(msg.plan))).then((result) => post({ type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId, correlationId: msg.correlationId, result }), (err) => post({
       type: "result",
       sessionId: msg.sessionId,
       invocationId: msg.invocationId,
+      correlationId: msg.correlationId,
       result: { kind: "problem", problemId: "internal", detail: redact(String(err && err.stack || err)) }
     }));
   }

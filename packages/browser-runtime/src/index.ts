@@ -26,6 +26,31 @@ import {
   DispatcherError,
   DEFAULT_MAX_BODY_BYTES,
 } from "./dispatcher";
+import {
+  DIAGNOSTIC_CODES,
+  extractOrGenerateCorrelationId,
+  type DiagnosticStream,
+} from "./diagnostics";
+
+export {
+  DIAGNOSTIC_CODES,
+  createDiagnosticStream,
+  createInspectorAdapter,
+  extractOrGenerateCorrelationId,
+  generateCorrelationId,
+  mapDiagnosticError,
+  redactDiagnosticMetadata,
+  DiagnosticStream,
+  InspectorPanelAdapter,
+  type DiagnosticCode,
+  type DiagnosticEvent,
+  type DiagnosticLevel,
+  type DiagnosticLifecycleStage,
+  type DiagnosticStreamOptions,
+  type DiagnosticTraceExport,
+  type InspectorSummary,
+  type MappedErrorDiagnostic,
+} from "./diagnostics";
 
 export {
   defineBrowserHandlers,
@@ -319,6 +344,8 @@ export interface BrowserRuntimeOptions {
     headers: Array<[string, string]>;
     body: unknown;
   }>;
+  /** Bounded developer diagnostic stream (BWASM-Q-004). */
+  readonly diagnostics?: DiagnosticStream;
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +362,8 @@ export interface BrowserRuntime {
   readonly state: BrowserRuntimeState;
   /** Kernel ABI version the runtime was verified against. */
   readonly abiVersion: number;
+  /** Diagnostic stream if configured (BWASM-Q-004). */
+  readonly diagnostics?: DiagnosticStream;
   /**
    * The canonical boundary (ADR-0037 §2): accept a standard `Request`,
    * resolve a standard `Response`. Kernel problems map to Response
@@ -370,19 +399,39 @@ function isProblem(x: unknown): x is KernelProblemShape {
 
 /** Create a BrowserRuntime: verify ABI, initialize the kernel, fail closed. */
 export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRuntime {
+  const diag = options.diagnostics;
   const expectedAbi = options.expectedAbiVersion ?? 1;
   const kernelAbi = options.kernel.kernel_abi_version();
   if (kernelAbi !== expectedAbi) {
+    diag?.record({
+      stage: "instantiate",
+      code: DIAGNOSTIC_CODES.COMPAT_KERNEL_ABI_MISMATCH,
+      level: "error",
+      detail: `kernel reports ABI ${kernelAbi}, runtime contract expects ${expectedAbi}`,
+    });
     throw new BrowserRuntimeError(
       "KERNEL_ABI_MISMATCH",
       `kernel reports ABI ${kernelAbi}, runtime contract expects ${expectedAbi}`,
     );
   }
 
+  diag?.record({
+    stage: "instantiate",
+    code: DIAGNOSTIC_CODES.LIFECYCLE_INSTANTIATING,
+    level: "info",
+    detail: "initializing runtime kernel",
+  });
+
   let instance: KernelInstance;
   try {
     instance = new options.kernel(options.packBytes);
   } catch (cause) {
+    diag?.record({
+      stage: "verify",
+      code: DIAGNOSTIC_CODES.VERIFY_INTEGRITY_FAIL,
+      level: "error",
+      detail: "kernel rejected the artifact",
+    });
     // The bindgen constructor carries the artifact problem as its error
     // message JSON (K-005); surface it structurally.
     let problem: KernelProblemShape["problem"] | undefined;
@@ -400,9 +449,22 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
     });
   }
 
+  diag?.record({
+    stage: "instantiate",
+    code: DIAGNOSTIC_CODES.LIFECYCLE_READY,
+    level: "info",
+    detail: `kernel ready (ABI ${kernelAbi})`,
+  });
+
   let state: BrowserRuntimeState = "ready";
   const requireReady = (): void => {
     if (state === "disposed") {
+      diag?.record({
+        stage: "fail",
+        code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+        level: "error",
+        detail: "fetch on a disposed runtime",
+      });
       throw new BrowserRuntimeError("RUNTIME_DISPOSED", "fetch on a disposed runtime");
     }
   };
@@ -412,17 +474,72 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
       return state;
     },
     abiVersion: kernelAbi,
+    diagnostics: diag,
 
-    fetch(request: Request): Promise<Response> {
+    async fetch(request: Request): Promise<Response> {
       requireReady();
+      const correlationId = extractOrGenerateCorrelationId(request.headers);
+      diag?.record({
+        stage: "route",
+        code: DIAGNOSTIC_CODES.ROUTE_MATCHED,
+        level: "debug",
+        correlationId,
+        detail: `${request.method} ${request.url}`,
+      });
+
       // R-002: the dispatcher owns boundary normalization, body forms,
       // abort, HEAD policy, and the kernel round-trip. The kernel stays
       // the only routing/validation authority (no JS fast path).
-      return dispatchFetchRequest(instance, kernelAbi, request, {
-        maxBodyBytes: options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
-        signal: options.signal ?? null,
-        ...(options.executeHandler ? { executeHandler: options.executeHandler } : {}),
-      }).catch((cause: unknown) => {
+      try {
+        const res = await dispatchFetchRequest(instance, kernelAbi, request, {
+          maxBodyBytes: options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
+          signal: options.signal ?? null,
+          ...(options.executeHandler ? { executeHandler: options.executeHandler } : {}),
+        });
+        if (res.status === 404) {
+          diag?.record({
+            stage: "route",
+            code: DIAGNOSTIC_CODES.ROUTE_NOT_FOUND,
+            level: "warn",
+            correlationId,
+            detail: `route not found: ${request.url}`,
+          });
+        } else if (res.status === 405) {
+          diag?.record({
+            stage: "route",
+            code: DIAGNOSTIC_CODES.ROUTE_METHOD_NOT_ALLOWED,
+            level: "warn",
+            correlationId,
+            detail: `method ${request.method} not allowed on ${request.url}`,
+          });
+        } else if (res.status === 422) {
+          diag?.record({
+            stage: "validate",
+            code: DIAGNOSTIC_CODES.VALIDATE_FAILED,
+            level: "warn",
+            correlationId,
+            detail: "schema validation failed",
+          });
+        }
+        return res;
+      } catch (cause: unknown) {
+        if (cause instanceof DOMException && cause.name === "AbortError") {
+          diag?.record({
+            stage: "cancel",
+            code: DIAGNOSTIC_CODES.INVOKE_CANCEL,
+            level: "info",
+            correlationId,
+            detail: "operation aborted",
+          });
+          throw cause;
+        }
+        diag?.record({
+          stage: "fail",
+          code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+          level: "error",
+          correlationId,
+          detail: cause instanceof Error ? cause.message : String(cause),
+        });
         if (cause instanceof BrowserRuntimeError) throw cause;
         if (cause instanceof DispatcherError) {
           const code =
@@ -433,24 +550,53 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
                 : "REQUEST_INVALID";
           throw new BrowserRuntimeError(code, cause.message, { cause });
         }
-        if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
         throw new BrowserRuntimeError("KERNEL_PROTOCOL", String(cause), { cause });
-      });
+      }
     },
 
     authorizeCapability(name: string): { authorized: boolean } | KernelProblemShape["problem"] {
       requireReady();
+      diag?.record({
+        stage: "capability",
+        code: DIAGNOSTIC_CODES.CAPABILITY_INVOKED,
+        level: "debug",
+        detail: `authorizing capability: ${name}`,
+      });
       const raw = instance.authorize_capability(name);
       const parsed = parseKernelMessage<{ authorized?: boolean } | KernelProblemShape>(
         raw,
         "capability authorization",
       );
-      if (isProblem(parsed)) return parsed.problem;
+      if (isProblem(parsed)) {
+        diag?.record({
+          stage: "capability",
+          code: parsed.problem.problemId === "deployment_required"
+            ? DIAGNOSTIC_CODES.CAPABILITY_DEPLOYMENT_REQUIRED
+            : DIAGNOSTIC_CODES.CAPABILITY_DENIED,
+          level: "warn",
+          detail: `capability ${name} rejected: ${parsed.problem.title}`,
+        });
+        return parsed.problem;
+      }
       if (typeof parsed.authorized !== "boolean") {
+        diag?.record({
+          stage: "fail",
+          code: DIAGNOSTIC_CODES.FAIL_INTERNAL,
+          level: "error",
+          detail: `capability authorization returned neither a decision nor a problem for ${name}`,
+        });
         throw new BrowserRuntimeError(
           "KERNEL_PROTOCOL",
           "capability authorization returned neither a decision nor a problem",
         );
+      }
+      if (!parsed.authorized) {
+        diag?.record({
+          stage: "capability",
+          code: DIAGNOSTIC_CODES.CAPABILITY_DENIED,
+          level: "warn",
+          detail: `capability ${name} not authorized`,
+        });
       }
       return { authorized: parsed.authorized };
     },
@@ -459,6 +605,12 @@ export function createBrowserRuntime(options: BrowserRuntimeOptions): BrowserRun
       if (state === "disposed") return;
       state = "disposed";
       instance.dispose();
+      diag?.record({
+        stage: "instantiate",
+        code: DIAGNOSTIC_CODES.LIFECYCLE_DISPOSED,
+        level: "info",
+        detail: "runtime disposed",
+      });
     },
   };
 }
