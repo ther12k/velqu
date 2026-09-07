@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "manifest": "bwasm-q-005-environment-manifest",
+  "date": "2026-09-07",
+  "device_tier": "desktop-reference",
+  "browser": {
+    "engine": "Chromium",
+    "version": "134.0.6998.35",
+    "channel": "headless-shell",
+    "executable": "~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome"
+  },
+  "os": {
+    "system": "Linux",
+    "release": "7.0.0-28-generic",
+    "arch": "x86_64"
+  },
+  "toolchain": {
+    "bun": "1.4.0",
+    "rustc": "1.85.0-nightly",
+    "wasm_bindgen": "0.2.108"
+  },
+  "compression_tools": {
+    "brotli": "python-brotli (quality 11)",
+    "gzip": "zlib (level 9)"
+  },
+  "network_profile": "loopback / ephemeral localhost",
+  "governance": {
+    "ratified_budgets_reference": "docs/codex-spark-browser-wasm/evidence/budgets.json",
+    "ratification_decision": "docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md"
+  }
+}

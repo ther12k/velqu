@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -57,12 +57,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Core projects do not download optional SQL or parity-engine assets.
-- [ ] Every blocking metric has a command, raw sample set, percentile/statistic definition, environment, and threshold.
-- [ ] CI or candidate verification detects material size/startup regressions.
-- [ ] No unbounded memory growth remains in the defined soak scenario.
-- [ ] Results are not represented as native-runtime throughput benchmarks.
-- [ ] Budget exceptions require an owner decision and before/after evidence.
+- [x] Core projects do not download optional SQL or parity-engine assets.
+- [x] Every blocking metric has a command, raw sample set, percentile/statistic definition, environment, and threshold.
+- [x] CI or candidate verification detects material size/startup regressions.
+- [x] No unbounded memory growth remains in the defined soak scenario.
+- [x] Results are not represented as native-runtime throughput benchmarks.
+- [x] Budget exceptions require an owner decision and before/after evidence.
 
 ## Targeted tests and commands
 
@@ -78,11 +78,11 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Raw samples and statistics.
-- [ ] Environment/device/browser manifest.
-- [ ] Artifact size inventory.
-- [ ] Regression-gate output.
-- [ ] Accepted budget-change decisions.
+- [x] Raw samples and statistics.
+- [x] Environment/device/browser manifest.
+- [x] Artifact size inventory.
+- [x] Regression-gate output.
+- [x] Accepted budget-change decisions.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -115,17 +115,46 @@ Stop and hand off when **all** acceptance criteria are demonstrated, the require
 
 ## Handoff format
 
+## Result
+
 ```text
-Issue:
-Candidate commit:
+Issue: BWASM-Q-005 (#1280)
+Candidate commit: pending commit on bwasm-q-005
 Files changed:
+  packages/browser-runtime/test/budgets.test.ts
+  scripts/browser-budgets-rehearsal.py
+  docs/codex-spark-browser-wasm/evidence/q-005/rehearsal-report.json
+  docs/codex-spark-browser-wasm/evidence/q-005/environment-manifest.json
+  docs/codex-spark-browser-wasm/evidence/q-005/artifact-size-inventory.md
+  docs/codex-spark-browser-wasm/evidence/q-005/budget-report.md
+  docs/codex-spark-browser-wasm/evidence/q-005/budget-disposition.md
+  docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-005-set-and-enforce-wasm-size-startup-latency-and-leak-budgets.md
 Commands run:
+  bun test packages/browser-runtime/test/budgets.test.ts
+  python3 scripts/browser-budgets-rehearsal.py --browser chromium --out docs/codex-spark-browser-wasm/evidence/q-005/rehearsal-report.json
+  bun run typecheck
+  cargo build -p q-bytecode-tool
+  bun packages/cli/src/index.ts build --project examples/proof
+  RUSTFLAGS="--remap-path-prefix=$(pwd)=/velqu-src" cargo build --release -p velqu-runtime
+  unshare -rn bash -c 'ip link set lo up; ./scripts/verify'
 Targeted tests:
-Full verification:
+  - packages/browser-runtime/test/budgets.test.ts: 5 pass / 0 fail
+  - scripts/browser-budgets-rehearsal.py: 8 checks all PASS
+Full verification: ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
 Artifacts and SHA-256:
-Browser/OS/toolchain:
+  - q_browser_kernel_bg.wasm: a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5 (400,229 B brotli-11 <= 512,000 B budget)
+  - total initial transfer: 453,771 B brotli-11 <= 1,048,576 B budget
+Browser/OS/toolchain: Chromium 134.0.6998.35, Linux x86_64, Bun 1.4.0
 Acceptance criteria:
+  - Core projects do not download optional SQL or parity-engine assets: PASS (0 forbidden requests)
+  - Blocking metrics with raw samples, percentiles, environments, thresholds: PASS
+  - Size/startup regression detection: PASS
+  - Memory growth bounded in soak scenario (+556 KiB across 100 mixed cycles): PASS
+  - No native-throughput equivalence claims: PASS (browser-local latency overhead documented)
+  - Process for intentional budget changes documented: PASS
 Known limitations:
+  - Gzip-9 interim proxy (572,337 B) exceeds 500 KiB, but ratified standard Brotli-11 is 400,229 B (resolved carried finding)
 Residual risks:
-Follow-up issue links:
+  - High-concurrency browser environments and low-memory mobile devices remain experimental
+Follow-up issue links: BWASM-Q-006 (#1281), BWASM-Q-007 (#1282), BWASM-Q-008 (#1283)
 ```
