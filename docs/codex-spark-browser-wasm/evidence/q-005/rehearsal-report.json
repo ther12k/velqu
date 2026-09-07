@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "suite": "bwasm-q-005-budgets",
+  "date": "2026-09-07",
+  "environment": {
+    "browser": "chromium",
+    "browser_path": "/home/ther12k/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome",
+    "os": "Linux",
+    "arch": "x86_64",
+    "node_toolchain": "bun/1.4.0"
+  },
+  "buildId": "64d4d2fc1c4ef265a4c656fd9037c6b1f411a3038e2caec500a1e3483cda4fec",
+  "budgets": {
+    "base_wasm_kernel_size": {
+      "target_max_bytes": 512000,
+      "actual_brotli_bytes": 400229,
+      "actual_gzip9_bytes": 572337,
+      "pass": true
+    },
+    "total_initial_transfer_size": {
+      "target_max_bytes": 1048576,
+      "actual_brotli_bytes": 453771,
+      "pass": true
+    },
+    "cold_start": {
+      "target_max_ms": 2000,
+      "actual_in_page_ms": 1938.4,
+      "wall_time_ms": 1938.14,
+      "pass": true
+    },
+    "warm_start": {
+      "target_max_ms": 500,
+      "actual_ms": 127.66,
+      "pass": true
+    },
+    "kernel_latency_p50": {
+      "target_p50_ms": 5.0,
+      "actual_p50_ms": 0.3,
+      "pass": true
+    },
+    "kernel_latency_p99": {
+      "target_p99_ms": 15.0,
+      "actual_p99_ms": 1.4,
+      "pass": true
+    },
+    "memory_repeated_lifecycle": {
+      "heap_before_bytes": 8858992,
+      "heap_after_bytes": 9415066,
+      "heap_delta_bytes": 556074,
+      "operations_completed": 100,
+      "pass": true
+    },
+    "no_optional_assets_downloaded": {
+      "forbidden_requests": [],
+      "pass": true
+    }
+  },
+  "size_inventory": {
+    "files": {
+      "app.browser.js": {
+        "raw_bytes": 1208,
+        "brotli11_bytes": 433,
+        "gzip9_bytes": 486
+      },
+      "app.bundle.js": {
+        "raw_bytes": 66373,
+        "brotli11_bytes": 14040,
+        "gzip9_bytes": 16163
+      },
+      "app.qpack": {
+        "raw_bytes": 8603,
+        "brotli11_bytes": 2394,
+        "gzip9_bytes": 2766
+      },
+      "browser-manifest.json": {
+        "raw_bytes": 486,
+        "brotli11_bytes": 216,
+        "gzip9_bytes": 248
+      },
+      "capability-manifest.json": {
+        "raw_bytes": 470,
+        "brotli11_bytes": 218,
+        "gzip9_bytes": 256
+      },
+      "contract.json": {
+        "raw_bytes": 1108,
+        "brotli11_bytes": 269,
+        "gzip9_bytes": 319
+      },
+      "index.html": {
+        "raw_bytes": 978,
+        "brotli11_bytes": 417,
+        "gzip9_bytes": 568
+      },
+      "kernel.js": {
+        "raw_bytes": 9039,
+        "brotli11_bytes": 2006,
+        "gzip9_bytes": 2265
+      },
+      "kernel.wasm": {
+        "raw_bytes": 1731509,
+        "brotli11_bytes": 400229,
+        "gzip9_bytes": 572337
+      },
+      "page.js": {
+        "raw_bytes": 71404,
+        "brotli11_bytes": 15006,
+        "gzip9_bytes": 17225
+      },
+      "schema-manifest.json": {
+        "raw_bytes": 609,
+        "brotli11_bytes": 151,
+        "gzip9_bytes": 172
+      },
+      "service-worker.js": {
+        "raw_bytes": 11042,
+        "brotli11_bytes": 3189,
+        "gzip9_bytes": 3652
+      },
+      "velqu-artifacts.json": {
+        "raw_bytes": 2427,
+        "brotli11_bytes": 695,
+        "gzip9_bytes": 786
+      },
+      "worker.js": {
+        "raw_bytes": 68112,
+        "brotli11_bytes": 14508,
+        "gzip9_bytes": 16665
+      }
+    },
+    "total": {
+      "raw_bytes": 1973368,
+      "brotli11_bytes": 453771,
+      "gzip9_bytes": 633908
+    }
+  },
+  "latency_samples_summary": {
+    "n": 100,
+    "min_ms": 0,
+    "mean_ms": 0.367,
+    "p50_ms": 0.3,
+    "p90_ms": 0.8,
+    "p95_ms": 1,
+    "p99_ms": 1.4,
+    "max_ms": 1.4
+  },
+  "raw_latency_samples": [
+    1.3999999910593033,
+    1.300000011920929,
+    1.199999988079071,
+    1.4000000059604645,
+    1.2999999970197678,
+    0.5,
+    0.4000000059604645,
+    0.5,
+    0.7000000029802322,
+    0.8999999910593033,
+    0.9000000059604645,
+    0.5999999940395355,
+    0.7999999970197678,
+    0.5,
+    0.6000000089406967,
+    0.5,
+    0.3999999910593033,
+    0.4000000059604645,
+    0.4000000059604645,
+    0.29999999701976776,
+    0.3999999910593033,
+    0.20000000298023224,
+    0.4000000059604645,
+    0.7999999970197678,
+    0.5,
+    0.5,
+    0.30000001192092896,
+    0.19999998807907104,
+    0.20000000298023224,
+    0.20000000298023224,
+    0.29999999701976776,
+    0.10000000894069672,
+    0.09999999403953552,
+    0.20000000298023224,
+    0,
+    0,
+    0.20000000298023224,
+    0,
+    0.19999998807907104,
+    0,
+    0.10000000894069672,
+    0,
+    0.20000000298023224,
+    0,
+    0.09999999403953552,
+    0,
+    0.20000000298023224,
+    0.09999999403953552,
+    1,
+    0.10000000894069672,
+    0.19999998807907104,
+    0,
+    0.20000000298023224,
+    0.20000000298023224,
+    0.4000000059604645,
+    0.8999999910593033,
+    0.7999999970197678,
+    0.7000000029802322,
+    0.29999999701976776,
+    0.30000001192092896,
+    0.19999998807907104,
+    0.30000001192092896,
+    0.29999999701976776,
+    0.29999999701976776,
+    0.29999999701976776,
+    0.29999999701976776,
+    0.20000000298023224,
+    0.10000000894069672,
+    0.19999998807907104,
+    0.20000000298023224,
+    0.10000000894069672,
+    0.09999999403953552,
+    0.20000000298023224,
+    0.09999999403953552,
+    0.20000000298023224,
+    0.09999999403953552,
+    0.20000000298023224,
+    0.5,
+    0.6000000089406967,
+    0.29999999701976776,
+    0.3999999910593033,
+    0.6000000089406967,
+    0.5999999940395355,
+    0.5,
+    0.4000000059604645,
+    0.29999999701976776,
+    0.29999999701976776,
+    0.29999999701976776,
+    0.30000001192092896,
+    0.29999999701976776,
+    0.09999999403953552,
+    0.10000000894069672,
+    0.19999998807907104,
+    0.10000000894069672,
+    0.20000000298023224,
+    0.19999998807907104,
+    0.4000000059604645,
+    0.29999999701976776,
+    0.3999999910593033,
+    0.29999999701976776
+  ],
+  "status": "PASS"
+}
