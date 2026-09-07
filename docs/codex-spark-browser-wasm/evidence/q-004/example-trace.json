@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": 1725710400000,
+  "correlationId": "cr_m1a2b3_1_xyz890",
+  "totalEvents": 7,
+  "events": [
+    {
+      "id": "ev_1",
+      "timestamp": 1725710400000,
+      "stage": "load",
+      "code": "DIAG_LOAD_MANIFEST_OK",
+      "level": "info",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "detail": "loaded manifest for app proof"
+    },
+    {
+      "id": "ev_2",
+      "timestamp": 1725710400010,
+      "stage": "verify",
+      "code": "DIAG_VERIFY_INTEGRITY_OK",
+      "level": "info",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "detail": "all 5 artifact digests verified against manifest"
+    },
+    {
+      "id": "ev_3",
+      "timestamp": 1725710400025,
+      "stage": "instantiate",
+      "code": "DIAG_LIFECYCLE_READY",
+      "level": "info",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "detail": "kernel ready (ABI 1)"
+    },
+    {
+      "id": "ev_4",
+      "timestamp": 1725710400050,
+      "stage": "route",
+      "code": "DIAG_ROUTE_MATCHED",
+      "level": "debug",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "routeId": 1,
+      "detail": "GET /hello/world"
+    },
+    {
+      "id": "ev_5",
+      "timestamp": 1725710400055,
+      "stage": "validate",
+      "code": "DIAG_VALIDATE_PASSED",
+      "level": "debug",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "routeId": 1,
+      "detail": "params schema matched"
+    },
+    {
+      "id": "ev_6",
+      "timestamp": 1725710400060,
+      "stage": "invoke",
+      "code": "DIAG_INVOKE_START",
+      "level": "debug",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "routeId": 1,
+      "detail": "invoking handler hello.get"
+    },
+    {
+      "id": "ev_7",
+      "timestamp": 1725710400075,
+      "stage": "invoke",
+      "code": "DIAG_INVOKE_SUCCESS",
+      "level": "debug",
+      "correlationId": "cr_m1a2b3_1_xyz890",
+      "routeId": 1,
+      "detail": "status 200"
+    }
+  ],
+  "summary": {
+    "byStage": {
+      "load": 1,
+      "verify": 1,
+      "instantiate": 1,
+      "route": 1,
+      "validate": 1,
+      "invoke": 2
+    },
+    "byLevel": {
+      "info": 3,
+      "debug": 4
+    },
+    "failures": 0
+  }
+}

@@ -73,7 +73,7 @@
     },
     {
       "file": "app.bundle.js",
-      "bytes": 44534,
+      "bytes": 53206,
       "sha256": "303176279b9d12ecf3dcc91d6b39e7e5380e5c63da2e328c38a53ad3bc9c72df",
       "role": "handlerBundle"
     },
@@ -121,7 +121,7 @@
     },
     {
       "file": "page.js",
-      "bytes": 49191,
+      "bytes": 57863,
       "sha256": "564db7cf07e3d7a6ebb9133cfdb1f1d5dbdc5fe30ee50bfb13135621c0ce1104",
       "role": "shell"
     },
@@ -133,7 +133,7 @@
     },
     {
       "file": "service-worker.js",
-      "bytes": 8034,
+      "bytes": 11018,
       "sha256": "0639b222af93f33719d6786ddb29ee9529ed11df4e123fed451c5d8bf579d61c",
       "role": "shell"
     },
@@ -145,7 +145,7 @@
     },
     {
       "file": "worker.js",
-      "bytes": 46175,
+      "bytes": 54921,
       "sha256": "34342da3f31af9dd01d9b943c8d07db759846e309e507a7d5c465c2e423abc06",
       "role": "shell"
     }

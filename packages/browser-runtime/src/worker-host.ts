@@ -21,6 +21,10 @@
  */
 
 import type { HandlerContext, HandlerResult, KernelInvokePlan } from "./index";
+import {
+  DIAGNOSTIC_CODES,
+  type DiagnosticStream,
+} from "./diagnostics";
 
 type WorkerToHostResultMessage = Extract<
   WorkerToHostMessage,
@@ -51,6 +55,7 @@ export type WorkerToHostMessage =
     readonly type: "result";
     readonly sessionId: string;
     readonly invocationId: number;
+    readonly correlationId?: string;
     readonly result: HandlerResult;
   }
   | {
@@ -58,6 +63,7 @@ export type WorkerToHostMessage =
     readonly type: "log";
     readonly sessionId: string;
     readonly invocationId: number;
+    readonly correlationId?: string;
     readonly lines: ReadonlyArray<string>;
   }
   | {
@@ -73,6 +79,7 @@ export type HostToWorkerMessage =
     readonly type: "invoke";
     readonly sessionId: string;
     readonly invocationId: number;
+    readonly correlationId?: string;
     readonly plan: KernelInvokePlan;
   }
   | {
@@ -80,6 +87,7 @@ export type HostToWorkerMessage =
     readonly type: "cancel";
     readonly sessionId: string;
     readonly invocationId: number;
+    readonly correlationId?: string;
   };
 
 /** The minimal Worker-like surface the supervisor needs (injectable). */
@@ -114,6 +122,7 @@ export interface WorkerHostOptions {
 
 interface PendingInvocation {
   readonly invocationId: number;
+  readonly correlationId?: string;
   readonly plan: KernelInvokePlan;
   readonly resolve: (result: HandlerResult) => void;
   readonly reject: (err: Error) => void;
@@ -129,6 +138,7 @@ export class WorkerHost {
   private worker: WorkerLike;
   private readonly sessionId: string;
   private readonly factory: WorkerFactory;
+  private readonly diagnostics?: DiagnosticStream;
   private pending = new Map<number, PendingInvocation>();
   private nextInvocationId = 1;
   private terminated = false;
@@ -136,9 +146,14 @@ export class WorkerHost {
   public staleMessagesDropped = 0;
   public hardRecoveries = 0;
 
-  constructor(sessionId: string, factory: WorkerFactory) {
+  constructor(
+    sessionId: string,
+    factory: WorkerFactory,
+    options?: { diagnostics?: DiagnosticStream },
+  ) {
     this.sessionId = sessionId;
     this.factory = factory;
+    this.diagnostics = options?.diagnostics;
     this.worker = this.spawn();
   }
 
@@ -161,6 +176,7 @@ export class WorkerHost {
   execute(
     plan: KernelInvokePlan,
     signal?: AbortSignal | null,
+    correlationId?: string,
   ): Promise<HandlerResult> {
     if (this.terminated) {
       // Kill-and-replace keeps the host usable: spawn a fresh worker.
@@ -168,9 +184,19 @@ export class WorkerHost {
       this.worker = this.spawn();
     }
     const invocationId = this.nextInvocationId++;
+    this.diagnostics?.record({
+      stage: "invoke",
+      code: DIAGNOSTIC_CODES.INVOKE_START,
+      level: "debug",
+      correlationId,
+      routeId: plan.routeId,
+      detail: `invoking handler ${plan.handlerKey}`,
+    });
+
     return new Promise<HandlerResult>((resolve, reject) => {
       const pending: PendingInvocation = {
         invocationId,
+        correlationId,
         plan,
         resolve,
         reject,
@@ -182,11 +208,20 @@ export class WorkerHost {
       const abort = (): void => {
         if (!this.pending.has(invocationId)) return;
         this.pending.delete(invocationId);
+        this.diagnostics?.record({
+          stage: "cancel",
+          code: DIAGNOSTIC_CODES.INVOKE_CANCEL,
+          level: "info",
+          correlationId,
+          routeId: plan.routeId,
+          detail: "invoke aborted by signal",
+        });
         this.worker.postMessage({
           v: WORKER_PROTOCOL_VERSION,
           type: "cancel",
           sessionId: this.sessionId,
           invocationId,
+          correlationId,
         });
         reject(new DOMException("The operation was aborted.", "AbortError"));
       };
@@ -201,6 +236,14 @@ export class WorkerHost {
       pending.timer = setTimeout(() => {
         if (!this.pending.has(invocationId)) return;
         this.pending.delete(invocationId);
+        this.diagnostics?.record({
+          stage: "invoke",
+          code: DIAGNOSTIC_CODES.INVOKE_TIMEOUT,
+          level: "error",
+          correlationId,
+          routeId: plan.routeId,
+          detail: `deadline ${plan.deadlineMs}ms exceeded`,
+        });
         this.hardTerminate(`deadline ${plan.deadlineMs}ms exceeded`);
         reject(new DOMException("The operation was aborted.", "AbortError"));
       }, plan.deadlineMs);
@@ -212,6 +255,7 @@ export class WorkerHost {
           type: "invoke",
           sessionId: this.sessionId,
           invocationId,
+          correlationId,
           plan,
         });
       } catch (cause) {
@@ -283,10 +327,37 @@ export class WorkerHost {
         if (pending.timer) clearTimeout(pending.timer);
         const result = msg.result as WorkerToHostResultMessage["result"];
         if (this.oversized(result)) {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_FAILED,
+            level: "error",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: "result exceeds 1 MiB",
+          });
           pending.reject(
             new WorkerProtocolError("OVERSIZED_PAYLOAD", "result exceeds 1 MiB"),
           );
           return;
+        }
+        if (result.kind === "response") {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_SUCCESS,
+            level: "debug",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: `status ${result.status}`,
+          });
+        } else {
+          this.diagnostics?.record({
+            stage: "invoke",
+            code: DIAGNOSTIC_CODES.INVOKE_FAILED,
+            level: "warn",
+            correlationId: pending.correlationId,
+            routeId: pending.plan.routeId,
+            detail: `problem ${result.problemId}`,
+          });
         }
         pending.resolve(result);
         return;
@@ -346,9 +417,9 @@ self.onmessage = (event) => {
     Promise.resolve()
       .then(() => handlers.invoke(msg.plan.handlerKey, toContext(msg.plan)))
       .then(
-        (result) => post({ type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId, result }),
+        (result) => post({ type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId, correlationId: msg.correlationId, result }),
         (err) => post({
-          type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId,
+          type: "result", sessionId: msg.sessionId, invocationId: msg.invocationId, correlationId: msg.correlationId,
           result: { kind: "problem", problemId: "internal", detail: redact(String(err && err.stack || err)) },
         }),
       );
