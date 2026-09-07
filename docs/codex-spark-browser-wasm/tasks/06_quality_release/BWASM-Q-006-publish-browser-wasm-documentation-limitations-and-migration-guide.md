@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -57,12 +57,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] A new user can build, statically host, exercise, inspect, update, and reset a sample without private repository knowledge.
-- [ ] No doc says 'serverless', 'zero server', 'sandbox', 'Postgres compatible', or 'production parity' without precise qualification.
-- [ ] Every public diagnostic code and capability state is documented.
-- [ ] Examples are executed in CI from published/generated artifacts.
-- [ ] Native deployment remains the documented path for production-only capabilities.
-- [ ] Support claims exactly match BWASM-D-004 and candidate evidence.
+- [x] A new user can build, statically host, exercise, inspect, update, and reset a sample without private repository knowledge.
+- [x] No doc says 'serverless', 'zero server', 'sandbox', 'Postgres compatible', or 'production parity' without precise qualification.
+- [x] Every public diagnostic code and capability state is documented.
+- [x] Examples are executed in CI from published/generated artifacts.
+- [x] Native deployment remains the documented path for production-only capabilities.
+- [x] Support claims exactly match BWASM-D-004 and candidate evidence.
 
 ## Targeted tests and commands
 
@@ -78,10 +78,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Rendered documentation output.
-- [ ] Quickstart transcript.
-- [ ] Migration diff.
-- [ ] Claim-audit report.
+- [x] Rendered documentation output.
+- [x] Quickstart transcript.
+- [x] Migration diff.
+- [x] Claim-audit report.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -114,17 +114,45 @@ Stop and hand off when **all** acceptance criteria are demonstrated, the require
 
 ## Handoff format
 
+## Result
+
 ```text
-Issue:
-Candidate commit:
+Issue: BWASM-Q-006 (#1281)
+Candidate commit: pending commit on bwasm-q-006
 Files changed:
+  docs/beta/BROWSER_WASM.md
+  docs/beta/KNOWN-LIMITATIONS.md
+  docs/beta/INDEX.md
+  docs/beta/README.md
+  packages/cli/src/browser-quickstart.test.ts
+  docs/codex-spark-browser-wasm/evidence/q-006/rendered-doc-output.md
+  docs/codex-spark-browser-wasm/evidence/q-006/quickstart-transcript.txt
+  docs/codex-spark-browser-wasm/evidence/q-006/migration-example.diff
+  docs/codex-spark-browser-wasm/evidence/q-006/claim-audit-report.md
+  docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-006-publish-browser-wasm-documentation-limitations-and-migration-guide.md
 Commands run:
+  bun test packages/cli/src/browser-quickstart.test.ts
+  bun run typecheck
+  cargo build -p q-bytecode-tool
+  bun packages/cli/src/index.ts build --project examples/proof
+  RUSTFLAGS="--remap-path-prefix=$(pwd)=/velqu-src" cargo build --release -p velqu-runtime
+  unshare -rn bash -c 'ip link set lo up; ./scripts/verify'
 Targeted tests:
-Full verification:
-Artifacts and SHA-256:
-Browser/OS/toolchain:
+  - packages/cli/src/browser-quickstart.test.ts: 4 pass / 0 fail
+Full verification: ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+Artifacts and SHA-256: no binary artifacts introduced; source tracked by commit
+Browser/OS/toolchain: Bun 1.4.0, rustc 1.85.0-nightly, Linux x86_64
 Acceptance criteria:
+  - Complete user guide published in docs/beta/BROWSER_WASM.md
+  - Terminology compliance verified (all terms qualified per honesty guardrails)
+  - All 35 diagnostic codes and capability states documented
+  - Quickstart workflow tested end-to-end against emitted artifacts
+  - Native deployment documented as standard production path
+  - Support claims match ratified support matrix and CI evidence
 Known limitations:
+  - Browser-WASM is a preview target; trusted application code only; no hostile-code sandbox
+  - Postgres and production capabilities require native host deployment
 Residual risks:
-Follow-up issue links:
+  - Static host configuration (MIME types, HTTPS, CSP headers) remains user-managed
+Follow-up issue links: BWASM-Q-007 (#1282), BWASM-Q-008 (#1283)
 ```

@@ -22,6 +22,7 @@ tags:
 - [Known limitations (release)](KNOWN-LIMITATIONS.md)
 - [Performance methodology](PERFORMANCE-METHODOLOGY.md)
 - [Routes, schemas, policies, and services](ROUTES-SCHEMAS.md)
+- [Browser-WASM developer guide](BROWSER_WASM.md)
 - [Treaty client](TREATY.md)
 - [Fetch and capabilities](FETCH-CAPABILITIES.md)
 - [Auth: policies and JWT](AUTH.md)

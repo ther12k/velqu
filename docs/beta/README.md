@@ -59,6 +59,7 @@ The target is **`0.1.0-beta.1`**:
 15. [Milestone plans](milestones/00_M23R2_GATE_CLOSE.md)
 16. [Evidence standard](governance/EVIDENCE_STANDARD.md)
 17. [Final review packet template](governance/FINAL_REVIEW_PACKET_TEMPLATE.md)
+18. [Browser-WASM developer guide](BROWSER_WASM.md)
 
 ## Milestone path
 

@@ -1,0 +1,42 @@
+diff --git a/src/app.ts b/src/app.ts
+index 1029384..5647382 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,22 +1,24 @@
+ import { route } from "@velqu/core";
+ import { s } from "@velqu/schema";
++import { createIndexedDbKv } from "@velqu/browser-runtime";
+
+-// Prior synchronous Postgres call (pre-C-002)
+-export const getItems = route({
+-  id: "items.get",
+-  method: "GET",
+-  path: "/items",
+-  response: { 200: s.array(s.object({ id: s.string(), name: s.string() })) },
+-  handle: ({ native }) => {
+-    // SYNC: blocked browser freeze
+-    const rows = native.postgres.sql`SELECT id, name FROM items`;
+-    return rows;
+-  },
+-});
+-
+-// Modern async contract with preview persistence fallback (post-C-002/C-005)
++// Target-portable route with async DB in production and local KV in browser preview
+ export const getItems = route({
+   id: "items.get",
+   method: "GET",
+   path: "/items",
+   response: { 200: s.array(s.object({ id: s.string(), name: s.string() })) },
+-  handle: async ({ native }) => {
++  handle: async (ctx) => {
++    // 1. In browser preview: use local namespaced persistence (no SQL server required)
++    if (typeof window !== "undefined") {
++      const kv = createIndexedDbKv({ namespace: "items:cache" });
++      const cached = await kv.get("list");
++      return (cached as any[]) ?? [];
++    }
++    // 2. In native production: execute asynchronous PostgreSQL query
++    const rows = await ctx.native.postgres.sql`SELECT id, name FROM items`;
++    return rows;
++  },
+ });

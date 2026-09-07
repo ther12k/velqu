@@ -62,6 +62,24 @@ is evidenced. This is a public beta: non-SLA, no production-readiness claim.
     self-verifying locally; publishing remains an owner action
     (`docs/beta/governance/RELEASE_AUTHORITY.md`).
 
+## Browser-WASM preview target
+
+19. **Browser-WASM is a preview and client-side target**, not an equivalent
+    host for production-scale native workloads.
+20. **Trusted application code only.** Same-origin Workers and WebAssembly
+    are not hostile-code sandboxes. Malicious multi-tenant isolation requires
+    origin-level separation (distinct subdomains) and sandboxed iframes.
+21. **PostgreSQL requires native deployment.** Routes requiring `runtime:postgres`
+    fail closed at build time; in-browser execution returns a stable 501
+    `deployment-required` problem shape.
+22. **QuickJS-WASM is optional and owner-gated.** The MVP runs handlers in a
+    standard browser Worker; engine-in-WASM is not active by default.
+23. **Browser support claims follow maintained CI evidence.** Only Chromium
+    desktop is tested with blocking CI lanes; Firefox, Safari/WebKit, and
+    mobile browsers remain experimental or untested.
+24. **Local persistence is best-effort.** IndexedDB and Cache Storage are
+    subject to browser eviction and do not represent durable multi-user storage.
+
 ## Evidence posture
 
 18. **CI verify workflows stall** with zero executed steps at PR creation
