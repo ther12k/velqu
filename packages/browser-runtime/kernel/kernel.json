@@ -4,14 +4,14 @@
   "provenance": {
     "crate": "q-browser-kernel",
     "builtWith": "rustc 1.96.0 (ac68faa20 2026-05-25), wasm-bindgen 0.2.108 (nodejs-target glue)",
-    "verifiedAtCommit": "69187c8bcb7005da940f27ecf9baea6dcb5f2787",
-    "refreshedBy": "BWASM-Q-001 - kernel problem registry aligned with the frozen native registry (validation 422, body 415, timeout title); see docs/reports/bwasm-q-001-differential-conformance.md",
+    "verifiedAtCommit": "worktree bwasm-q-007 (grant-name authorization + plan.capabilities, D5)",
+    "refreshedBy": "BWASM-Q-007 - kernel plan/authorize accepts grant names (timer/postgres) when the linked module id (runtime:timers/runtime:postgres) is inventoried; see docs/codex-spark-browser-wasm/evidence/q-007/",
     "verificationEvidence": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt"
   },
   "wasm": {
     "file": "q_browser_kernel_bg.wasm",
-    "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
-    "bytes": 1731509
+    "sha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
+    "bytes": 1732433
   },
   "glue": {
     "file": "q_browser_kernel.nodejs-glue.js",

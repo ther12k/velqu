@@ -409,6 +409,12 @@ export function workerBootstrapSource(): string {
 // Velqu browser handler Worker (BWASM-R-004) — protocol v${WORKER_PROTOCOL_VERSION}
 // Isolation honesty: a same-origin Worker is NOT a hostile-code sandbox.
 let handlers = null; // HandlerTable from defineBrowserHandlers
+// BWASM-Q-007 (D5): the page registers its C-001 capability graph before
+// the first invoke; handlers reach declared capabilities through
+// ctx.native.<grant> exactly as the native runtime's prelude exposes
+// them (grant names: timer, console, crypto, fetch, abort, text, url).
+let nativeCapabilities = null;
+self.velquRegisterNativeCapabilities = (caps) => { nativeCapabilities = caps; };
 self.onmessage = (event) => {
   const msg = event.data;
   if (!msg || msg.v !== ${WORKER_PROTOCOL_VERSION}) return;
@@ -432,7 +438,23 @@ function toContext(plan) {
     params: plan.params ?? null, query: plan.query ?? null,
     headers: plan.headers ?? null, body: plan.body ?? null,
     bodyText: plan.bodyText ?? null, deadlineMs: plan.deadlineMs,
+    // Only grants the route actually declares are exposed — no ambient
+    // authority (ADR-0038 §5). The capability objects themselves are the
+    // page-registered, policy-bounded implementations.
+    native: planCapabilities(plan.capabilities ?? []),
   };
+}
+function planCapabilities(declared) {
+  if (!nativeCapabilities || !declared || declared.length === 0) return {};
+  const view = {};
+  for (const grant of declared) {
+    if (grant === "timer" && nativeCapabilities.timers) {
+      view.timer = { delay: (ms, signal) => nativeCapabilities.timers.delay(ms, signal) };
+    } else if (nativeCapabilities[grant] !== undefined) {
+      view[grant] = nativeCapabilities[grant];
+    }
+  }
+  return Object.freeze(view);
 }
 function redact(stack) {
   // Strip host-absolute path fragments (ADR-0038 §5 redaction).

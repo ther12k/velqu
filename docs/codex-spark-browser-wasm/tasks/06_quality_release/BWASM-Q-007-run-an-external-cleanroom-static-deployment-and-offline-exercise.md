@@ -5,7 +5,7 @@ Mode: `EVIDENCE` — Package evidence from one exact candidate; do not mix imple
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -115,17 +115,59 @@ Stop and hand off when **all** acceptance criteria are demonstrated, the require
 
 ## Handoff format
 
+## Result
+
 ```text
-Issue:
-Candidate commit:
+Issue: BWASM-Q-007 (#1282)
+Candidate commit: pending commit on bwasm-q-007 (source baseline: 2ae4800)
 Files changed:
+  crates/q-browser-kernel/src/lib.rs                      (D5 layer 1: grant-name authorization; plan.capabilities)
+  crates/q-browser-kernel/tests/kernel_path.rs            (D5 regression test)
+  packages/compiler/src/browser.ts                        (D4: __ok/__problem/__velquRaw status mapping)
+  packages/browser-runtime/src/worker-host.ts             (D5 layer 2: ctx.native for declared grants)
+  packages/browser-runtime/src/index.ts                   (KernelInvokePlan.capabilities)
+  packages/browser-runtime/src/service-worker.ts          (D7: asset cache-miss network fallback)
+  packages/cli/src/browser-deploy.ts                      (worker-side capability graph construction)
+  packages/browser-runtime/kernel/*                       (vendored kernel refresh, re-pinned)
+  packages/cli/src/fixtures/browser-cli/*.json            (byte-count fixtures)
+  packages/cli/src/browser-deploy.test.ts                 (kernel size pin)
+  conformance/browser/fixture-app/dist/browser/velqu-artifacts.json (kernel digest/buildId)
+  docs/codex-spark-browser-wasm/evidence/q-007/*          (participant report, defect log/disposition,
+                                                           fix verification + transcripts, artifact hashes)
 Commands run:
+  (cleanroom, independent agent, rounds 1-4) fresh app from artifact tarballs only;
+  build --target browser-wasm --kv --base-path /app/; static host on 127.0.0.1;
+  real-Chromium Playwright journeys (first load, route execution, validation failures,
+  offline reload, persistence, custom page); canonical scripts/browser-e2e-rehearsal.py
+  (7 checks PASS post-fix, incl. E4 offline navigation and E6 update-on-reload);
+  cargo test -p q-browser-kernel --features bindgen; bun test packages/browser-runtime
+  packages/cli conformance/browser; bun x tsc -b; canonical scripts/verify (netns).
 Targeted tests:
-Full verification:
-Artifacts and SHA-256:
-Browser/OS/toolchain:
+  - kernel_path: 16 pass (incl. new plan_accepts_grant_name_when_linked_module_id_is_inventoried)
+  - browser-runtime + cli + differential: 233+36+16 pass, 0 fail
+  - canonical e2e rehearsal: E1-E6 all PASS
+Full verification: ALL PASS (scripts/verify in network namespace)
+Artifacts and SHA-256: docs/codex-spark-browser-wasm/evidence/q-007/artifact-hashes.txt
+  (kernel wasm b0485be7…1732433B; per-tarball hashes; baseline commit 2ae4800)
+Browser/OS/toolchain: Chromium 151 (chrome-for-testing), Linux x86_64, Bun 1.4.0
 Acceptance criteria:
+  - App works from candidate artifacts only: PASS (rounds 1-4 apps built from tarballs + docs; no repo access)
+  - No Velqu application server after static deployment: PASS (python/bun static file servers only)
+  - Browser-local vs native behavior distinguished: PASS (Postgres route refused at build time;
+    deployment-required problem shape documented; evaluator report)
+  - Local data persists per documented policy, project-isolated: PASS (IndexedDB kv:items-crud;
+    survived reload + full server restart; namespaced stores verified via raw IDB dump)
+  - Deployment-required behavior explicit and machine-readable: PASS (build-time refusal + 501 shape)
+  - Blocking defects fixed and re-proven: PASS (D4 re-proven rounds 2-4; D5 re-proven round 4;
+    D7 online/restart legs re-proven rounds 2-4; D1/D2/D3/D6/D8/D9 dispositioned in
+    defect-disposition.md — none blocking; follow-up #1292 registered for the round-4 finding)
 Known limitations:
+  - beta distribution is source-based (npm publication Owner-gated): cleanroom install used
+    manual tarball extraction, as documented in INSTALL.md
+  - offline navigation fallback serves the DEFAULT cached shell; a custom page outside the
+    manifest navigates from network (documented behavior; data recorded in round-4 report)
 Residual risks:
-Follow-up issue links:
+  - evaluator coverage is one browser (Chromium); lanes for other engines are Q-002 experimental
+  - silent-broken-bundle trap for non-exported route bindings tracked as #1292
+Follow-up issue links: #1292 (export guard); D6 remainder (developer smoke page)
 ```

@@ -1,0 +1,235 @@
+# Transcript — Velqu Browser-WASM re-verification (D4, D5, D7), 2026-09-07
+
+## 1. Fresh app setup (registry tarballs, TS pin)
+
+mkdir -p /tmp/velqu-cleanroom/reverify-app/node_modules/@velqu
+cd /tmp/velqu-cleanroom/reverify-app
+for p in core schema browser-runtime compiler contract cli; do
+  mkdir -p node_modules/@velqu/$p && tar -xzf /tmp/velqu-cleanroom/registry/velqu-$p.tgz -C node_modules/@velqu/$p
+done
+ls node_modules/@velqu/browser-runtime/kernel/
+# -> kernel.json  q_browser_kernel_bg.wasm  q_browser_kernel.nodejs-glue.js   (D3 fix: kernel shipped)
+ln -sfn /tmp/ts-pin/node_modules/typescript node_modules/typescript
+
+## 2. App source (written files)
+
+- package.json                     {"name":"reverify-app","type":"module","private":true}
+- tsconfig.json                    (strict, bundler resolution, noEmit)
+- src/routes.ts                    orders.create (201), orders.get (404 problem), sys.tick (timer)
+- src/app.ts                       defineApp({ id:"reverify-app", modules:[main] })
+- src/custom-page.ts               custom boot page -> window.velqu, SW scope /app/
+
+Key handler excerpts:
+
+  // D4a
+  handle: async ({ body }) => status(201).value({ id: crypto.randomUUID().slice(0,8), item: body.item })
+  // response: { 201: s.object({ id: s.string(), item: s.string() }) }
+
+  // D4b
+  handle: async ({ params }) => status(404).problem("not-found", { detail: `no order ${params.id}` })
+  // response: { 200: ..., 404: s.object({ detail: s.string() }) }
+
+  // D5
+  handle: async ({ native }) => { const ms = await native.timer.delay(5); return { ms }; }
+  // response: { 200: s.object({ ms: s.number() }) }
+
+## 3. Build + deploy
+
+cd /tmp/velqu-cleanroom/reverify-app
+bun node_modules/@velqu/cli/src/index.ts build --target browser-wasm --project . --kv --base-path /app/
+# velqu build [browser-wasm]: 3 routes -> dist/browser
+#   buildId: 211b593c117eb3e8873355611e3284daeb15ecccb926bf6ef2651537749cbe8d
+#   pack app.qpack 11556B | kernelWasm kernel.wasm 1732019B | handlerBundle app.bundle.js 70534B
+#   kernel: ABI v1
+cat dist/browser/capability-manifest.json
+# {"declared":["timer"], "perRoute":{"orders.create":[],"orders.get":[],"sys.tick":["timer"]},
+#  "portability":{"timer":{"state":"browser-and-native", ...}}, ...}
+
+mkdir -p /tmp/velqu-cleanroom/reverify-site/app
+cp dist/browser/* /tmp/velqu-cleanroom/reverify-site/app/
+# custom.html written by hand (NOT in build manifest): loads /app/custom.js
+bun build src/custom-page.ts --target browser --outfile /tmp/velqu-cleanroom/reverify-site/app/custom.js
+#   custom.js  54.94 KB  (entry point)
+
+## 4. Browser verification
+
+Server: bun /tmp/velqu-cleanroom/reverify-static-server.ts  (port 8223, serves /tmp/velqu-cleanroom/reverify-site under /app/, MIME incl. application/wasm)
+Driver: python3 /tmp/velqu-cleanroom/reverify.py (Playwright sync API, Chromium
+~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome, headless, --no-sandbox)
+
+$ cd /tmp/velqu-cleanroom && python3 reverify.py
+{
+  "P1_online_custom": {
+    "http": 200,
+    "boot": "ready \u2014 custom page \u00b7 build 211b593c117e (network) \u00b7 sw: service-worker",
+    "source": "network",
+    "sw": "service-worker"
+  },
+  "D4a_POST_orders": {
+    "status": 201,
+    "body": { "id": "215b2973", "item": "widget" }
+  },
+  "D4b_GET_orders_missing": {
+    "status": 404,
+    "body": {
+      "problemId": "not-found",
+      "type": "https://velqu.dev/problems/not-found",
+      "title": "Not Found",
+      "status": 404,
+      "detail": "no order nope"
+    }
+  },
+  "D5_GET_sys_tick": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "TypeError: Cannot read properties of undefined (reading 'timer')\n    at Object.handle (http:worker.js:1924:29)\n    at invoke (http:worker.js:2008:33)\n    at Object.invoke (http:worker.js:688:14)\n    at http:worker.js:2059:44"
+    }
+  },
+  "D7_server_stopped_probe": "down (URLError)",
+  "D7_offline_reload_custom": {
+    "http": 200,
+    "boot": "ready \u2014 build 211b593c117e (cache) \u00b7 worker ready \u00b7 sw: service-worker",
+    "source": "cache",
+    "sw": "service-worker"
+  },
+  "D7_restarted_reload_custom": {
+    "http": 200,
+    "boot": "ready \u2014 custom page \u00b7 build 211b593c117e (network) \u00b7 sw: service-worker",
+    "source": "network",
+    "sw": "service-worker"
+  },
+  "D7_post_cycle_D4a": {
+    "status": 201,
+    "body": { "id": "dd718e65", "item": "post-cycle" }
+  },
+  "D7_post_cycle_D5": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "TypeError: Cannot read properties of undefined (reading 'timer')\n    at Object.handle (http:worker.js:1924:29)\n    at invoke (http:worker.js:2008:33)\n    at Object.invoke (http:worker.js:688:14)\n    at http:worker.js:2059:44"
+    }
+  },
+  "console_errors": [
+    "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[error] Failed to load resource: net::ERR_FAILED"
+  ]
+}
+( console_errors are the expected network failures while the static server was stopped )
+
+## 5. D5 root-cause inspection
+
+grep -n 'toContext' node_modules/@velqu/browser-runtime/src/worker-host.ts
+# 418:  .then(() => handlers.invoke(msg.plan.handlerKey, toContext(msg.plan)))
+# 429: function toContext(plan) {
+sed -n '429,436p' node_modules/@velqu/browser-runtime/src/worker-host.ts
+# function toContext(plan) {
+#   return {
+#     routeId: plan.routeId, handlerKey: plan.handlerKey,
+#     params: plan.params ?? null, query: plan.query ?? null,
+#     headers: plan.headers ?? null, body: plan.body ?? null,
+#     bodyText: plan.bodyText ?? null, deadlineMs: plan.deadlineMs,
+#   };
+# }
+# -> no `native` key is ever attached; timer impl exists host-side
+#    (createTimerCapability, src/capabilities.ts:325ff, wired at capabilities.ts:694)
+#    but never reaches the worker handler context.
+
+# ============================================================
+# Round 3 (final kernel) — 2026-09-07
+# ============================================================
+cd /tmp/velqu-cleanroom/reverify-app
+for p in core schema browser-runtime compiler contract cli; do
+  rm -rf node_modules/@velqu/$p && mkdir -p node_modules/@velqu/$p &&
+  tar -xzf /tmp/velqu-cleanroom/registry/velqu-$p.tgz -C node_modules/@velqu/$p
+done
+# browser-runtime kernel/ still shipped (kernel.json, q_browser_kernel_bg.wasm, glue)
+grep -n velquRegisterNativeCapabilities node_modules/@velqu/browser-runtime/src/worker-host.ts
+# 417: self.velquRegisterNativeCapabilities = (caps) => { nativeCapabilities = caps; };
+
+bun node_modules/@velqu/cli/src/index.ts build --target browser-wasm --project . --kv --base-path /app/ --probe-path /health
+# 3 routes -> dist/browser, buildId b81551d2781a..., kernel ABI v1 1732433B b0485be753c9...
+rm -rf /tmp/velqu-cleanroom/reverify-site/app && mkdir -p /tmp/velqu-cleanroom/reverify-site/app
+cp dist/browser/* /tmp/velqu-cleanroom/reverify-site/app/
+# custom.html re-created (hand-served, not in manifest)
+# src/custom-page.ts updated to mirror new generated page: worker.velquRegisterNativeCapabilities?.(capabilities.graph)
+bun build src/custom-page.ts --target browser --outfile /tmp/velqu-cleanroom/reverify-site/app/custom.js
+# (first run WITHOUT the registration line crashed at the offline leg before capturing output;
+#  second run adds it — registration call confirmed present in custom.js: grep -c -> 1)
+
+cd /tmp/velqu-cleanroom && python3 reverify.py
+# P1_online_custom:  http 200, "ready — custom page · build b81551d2781a (network) · sw: service-worker"
+# D4a_POST_orders:   201 {"id":"8dd4be85","item":"widget"}                          -> PASS
+# D4b_GET_orders:    404 {"problemId":"not-found",...,"detail":"no order nope"}      -> PASS
+# D5_GET_sys_tick:   500 {"problemId":"internal",
+#      "detail":"TypeError: Cannot read properties of undefined (reading 'delay')
+#                at Object.handle (worker.js:1924:35) ... at worker.js:2063:44"}      -> FAIL
+# D7_server_stopped: down (URLError)
+# D7_offline_reload: nav_error "Page.goto: net::ERR_CONNECTION_REFUSED at .../custom.html" -> REGRESSION
+# D7_restarted:      http 200, "ready — custom page · build b81551d2781a (network)"   -> ok
+# D7_post_cycle_D4a: 201 {"id":"9ae7a46b","item":"post-cycle"}
+# D7_post_cycle_D5:  500 (same 'delay' TypeError)
+
+# Root-cause inspection (Round 3):
+sed -n '440,459p' node_modules/@velqu/browser-runtime/src/worker-host.ts
+#   native: planCapabilities(plan.capabilities ?? [])
+#   planCapabilities: if (grant === "timer" && nativeCapabilities.timers) view.timer = {delay:...}
+#                     else if (nativeCapabilities[grant] !== undefined) view[grant] = ...
+grep -n 'graph: Object.freeze' -A 18 node_modules/@velqu/browser-runtime/src/capabilities.ts
+#   graph: { timers: timer.timers, ... }   (page graph keyed plural)
+strings dist/browser/app.qpack | grep -oiE '[a-z:]*(timer)[a-z:]*' | sort | uniq -c
+#   1 runtime:timers / 3 timer
+# Observed: native defined, native.timer undefined => plan grant name does not hit
+# the "timer" special case (lands in generic branch, e.g. "timers"/"runtime:timers").
+velqu build [browser-wasm]: 3 routes → dist/browser
+  buildId: d154d2658b9e1905a6a886e6c602b345fb5cadb81977c5abaf7d8569d6152367
+  pack           app.qpack                12014B  dedbd86d11db…
+  kernelWasm     kernel.wasm              1732433B  b0485be753c9…
+  handlerBundle  app.bundle.js            70906B  e1f63d571c34…
+  manifest       browser-manifest.json    622B  5eb73c08d2af…
+  contract       contract.json            2194B  dd8733bca63e…
+  schemas        schema-manifest.json     1228B  fcd3a8e3e260…
+  capabilities   capability-manifest.json 639B  5aff691a0812…
+  kernel: ABI v1, 1732433B (b0485be753c9…)
+velqu build [browser-wasm]: 3 routes → dist/browser
+  buildId: 0a34654043e181a3b0d30a1e99278abed50e27cd92d1d3ba2a0c4c3b7eeac27c
+  pack           app.qpack                12015B  4f1ae8d6bb9c…
+  kernelWasm     kernel.wasm              1732433B  b0485be753c9…
+  handlerBundle  app.bundle.js            70907B  3ec797468ab1…
+  manifest       browser-manifest.json    622B  495b4f72198e…
+  contract       contract.json            2194B  dd8733bca63e…
+  schemas        schema-manifest.json     1228B  fcd3a8e3e260…
+  capabilities   capability-manifest.json 639B  5aff691a0812…
+  kernel: ABI v1, 1732433B (b0485be753c9…)
+
+===== ROUND 4 (final) =====
+date: 2026-09-08
+# setup
+mkdir -p r4-app/node_modules/@velqu && cd r4-app
+for p in core schema browser-runtime compiler contract cli; do mkdir -p node_modules/@velqu/$p && tar -xzf ../registry/velqu-$p.tgz -C node_modules/@velqu/$p; done
+mkdir -p node_modules/typescript && ln -sfn $(readlink -f /tmp/ts-pin/node_modules/typescript)/* node_modules/typescript/   # TS 5.9.3
+echo '{"name":"r4-app","type":"module","private":true}' > package.json
+# build (attempt 1 — routes NOT exported)
+bun node_modules/@velqu/cli/src/index.ts build --target browser-wasm --project . --kv --base-path /app/ --probe-path /sys/tick --probe-method GET
+#   buildId d154d2658b9e…; ALL routes 500 "reading 'handle'" (see finding) → export route consts, rebuild
+bun node_modules/@velqu/cli/src/index.ts build --target browser-wasm --project . --kv --base-path /app/ --probe-path /sys/tick --probe-method GET
+#   buildId 0a34654043e1…, pack 12014B, kernel 1732433B b0485be753c9…
+bun build --target browser --format esm src/my-page.ts --outfile dist/browser/my-page.js
+# serve
+mkdir -p /tmp/velqu-cleanroom/r4-site && ln -sfn /tmp/velqu-cleanroom/r4-app/dist/browser /tmp/velqu-cleanroom/r4-site/app
+(cd /tmp/velqu-cleanroom/r4-site && python3 -m http.server 8907 &)
+# verify (Chromium via Playwright, executable_path=chromium-1234, --no-sandbox)
+python3 r4-verify.py 8907
+#   BOOT: ready — r4 custom page · build 0a34654043e1 (network) · sw: service-worker
+#   D5 GET /sys/tick    -> 200 {"ms":5}
+#   D4a POST /orders    -> 201 {"id":"78fe7140","item":"widget"}
+#   D4b GET /orders/nope-> 404 {"problemId":"not-found",...,"detail":"no order nope"}
+python3 r4-offline.py   # kills server at ~12s, restarts on r4-restart.ready
+#   ONLINE tick -> 200 {"ms":6}; OFFLINE reload -> net::ERR_INTERNET_DISCONNECTED
+#   RESTART reload -> ready (network); POST /orders -> 201 {"id":"d10b98ea","item":"post-cycle"}

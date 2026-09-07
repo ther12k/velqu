@@ -203,6 +203,10 @@ pub struct PlanInvoke {
     pub allowed_statuses: Vec<u16>,
     pub default_status: u16,
     pub deadline_ms: u64,
+    /// Capability GRANT names the route declares — the Worker exposes
+    /// exactly these through `ctx.native` (BWASM-Q-007 defect D5).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -374,8 +378,22 @@ impl BrowserKernel {
 
         // Capability authorization (ADR-0037 §5): every capability the
         // route declares must be carried by the artifact inventory.
+        // Route declarations use GRANT names ("timer"); the pack's
+        // capability inventory carries LINKED MODULE ids ("runtime:timers")
+        // — the same grant→module mapping the compiler's resolver applies
+        // when it builds the inventory (BWASM-Q-007 defect D5: comparing
+        // the raw grant against module ids made every timer route 501).
         for cap in &route.capabilities {
-            if !self.inventory.iter().any(|(id, _)| id == cap) {
+            let carried = self.inventory.iter().any(|(id, _)| id == cap)
+                || match cap.as_str() {
+                    "timer" => self.inventory.iter().any(|(id, _)| id == "runtime:timers"),
+                    "postgres" => self
+                        .inventory
+                        .iter()
+                        .any(|(id, _)| id == "runtime:postgres"),
+                    _ => false,
+                };
+            if !carried {
                 return plan_problem(KernelProblem::capability(cap));
             }
         }
@@ -457,6 +475,7 @@ impl BrowserKernel {
             allowed_statuses,
             default_status,
             deadline_ms: route.deadline_ms,
+            capabilities: route.capabilities.clone(),
         };
         serde_json::to_string(&out)
             .unwrap_or_else(|_| plan_problem(KernelProblem::internal("plan serialization failed")))
@@ -566,8 +585,20 @@ impl BrowserKernel {
 
     /// Capability authorization query for the runtime bridge (used
     /// before forwarding a declared capability call from the Worker).
+    /// Accepts either the GRANT name ("timer") or the LINKED MODULE id
+    /// ("runtime:timers") — the same dual naming plan-time authorization
+    /// accepts (BWASM-Q-007 defect D5).
     pub fn authorize_capability(&self, name: &str) -> String {
-        if self.inventory.iter().any(|(id, _)| id == name) {
+        let carried = self.inventory.iter().any(|(id, _)| id == name)
+            || match name {
+                "timer" => self.inventory.iter().any(|(id, _)| id == "runtime:timers"),
+                "postgres" => self
+                    .inventory
+                    .iter()
+                    .any(|(id, _)| id == "runtime:postgres"),
+                _ => false,
+            };
+        if carried {
             serde_json::to_string(&json!({"authorized": true, "capability": name}))
                 .unwrap_or_else(|_| plan_problem(KernelProblem::internal("serialize failed")))
         } else {

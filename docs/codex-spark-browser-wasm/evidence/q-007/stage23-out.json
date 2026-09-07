@@ -1,0 +1,235 @@
+{
+  "W_default_status": "ready \u2014 build b9a00aa2816c (network) \u00b7 worker ready \u00b7 sw: service-worker",
+  "W_custom_status": "ready \u2014 custom page \u00b7 build b9a00aa2816c (network) \u00b7 sw: service-worker",
+  "W_create_alpha": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "response schema violation for declared status 201",
+      "errors": [
+        {
+          "path": "__ok",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "status",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "value",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "id",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "name",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "qty",
+          "code": "required",
+          "message": "missing required field"
+        }
+      ]
+    }
+  },
+  "W_create_beta": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "response schema violation for declared status 201",
+      "errors": [
+        {
+          "path": "__ok",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "status",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "value",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "id",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "name",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "qty",
+          "code": "required",
+          "message": "missing required field"
+        }
+      ]
+    }
+  },
+  "W_list_after_create": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "9b2b8c90",
+          "name": "alpha",
+          "qty": 2
+        },
+        {
+          "id": "d81ba3a6",
+          "name": "beta",
+          "qty": 1
+        }
+      ]
+    }
+  },
+  "ids": [
+    "9b2b8c90",
+    "d81ba3a6"
+  ],
+  "C_server_stopped_http": "000",
+  "C_offline_default_status": "ready \u2014 build b9a00aa2816c (cache) \u00b7 worker ready \u00b7 sw: service-worker",
+  "C_offline_info": {
+    "buildId": "b9a00aa2816c5b5d6b3ff32c9b089006734cdc5d7252ea26d5fe3d254f0afcb4",
+    "source": "cache",
+    "appId": "consumer-app",
+    "handlerAbiVersion": 1,
+    "kernelAbiVersion": 1,
+    "serviceWorker": "service-worker",
+    "capabilities": [
+      {
+        "id": "runtime:timers",
+        "version": 1,
+        "name": "bounded browser timer"
+      },
+      {
+        "id": "runtime:crypto",
+        "version": 1,
+        "name": "pinned WebCrypto subset"
+      },
+      {
+        "id": "runtime:console",
+        "version": 1,
+        "name": "bounded console"
+      },
+      {
+        "id": "runtime:fetch",
+        "version": 1,
+        "name": "restricted outbound fetch"
+      },
+      {
+        "id": "runtime:abort",
+        "version": 1,
+        "name": "abort primitives"
+      },
+      {
+        "id": "runtime:text",
+        "version": 1,
+        "name": "text encoding"
+      },
+      {
+        "id": "runtime:url",
+        "version": 1,
+        "name": "url parsing"
+      }
+    ],
+    "probe": {
+      "method": "GET",
+      "path": "/items",
+      "status": 200,
+      "body": "{\"items\":[{\"id\":\"9b2b8c90\",\"name\":\"alpha\",\"qty\":2},{\"id\":\"d81ba3a6\",\"name\":\"beta\",\"qty\":1}]}"
+    }
+  },
+  "D_custom_status": "BOOT-TIMEOUT status=booting\u2026",
+  "D_runtime_exposed": false,
+  "D_default_status": "ready \u2014 build b9a00aa2816c (network) \u00b7 worker ready \u00b7 sw: service-worker",
+  "D_default_info": {
+    "buildId": "b9a00aa2816c5b5d6b3ff32c9b089006734cdc5d7252ea26d5fe3d254f0afcb4",
+    "source": "network",
+    "appId": "consumer-app",
+    "handlerAbiVersion": 1,
+    "kernelAbiVersion": 1,
+    "serviceWorker": "service-worker",
+    "capabilities": [
+      {
+        "id": "runtime:timers",
+        "version": 1,
+        "name": "bounded browser timer"
+      },
+      {
+        "id": "runtime:crypto",
+        "version": 1,
+        "name": "pinned WebCrypto subset"
+      },
+      {
+        "id": "runtime:console",
+        "version": 1,
+        "name": "bounded console"
+      },
+      {
+        "id": "runtime:fetch",
+        "version": 1,
+        "name": "restricted outbound fetch"
+      },
+      {
+        "id": "runtime:abort",
+        "version": 1,
+        "name": "abort primitives"
+      },
+      {
+        "id": "runtime:text",
+        "version": 1,
+        "name": "text encoding"
+      },
+      {
+        "id": "runtime:url",
+        "version": 1,
+        "name": "url parsing"
+      }
+    ],
+    "probe": {
+      "method": "GET",
+      "path": "/items",
+      "status": 200,
+      "body": "{\"items\":[{\"id\":\"9b2b8c90\",\"name\":\"alpha\",\"qty\":2},{\"id\":\"d81ba3a6\",\"name\":\"beta\",\"qty\":1}]}"
+    }
+  },
+  "D_raw_idb": {
+    "names": [
+      "velqu:kv"
+    ],
+    "stores": [
+      "kv:items-crud"
+    ],
+    "kv:items-crud": [
+      "\u0000velqu:meta",
+      "item:9b2b8c90",
+      "item:d81ba3a6"
+    ]
+  },
+  "target_id": "9b2b8c90",
+  "console_errors": [
+    "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[error] Failed to load resource: net::ERR_FAILED",
+    "[error] Failed to load resource: the server responded with a status of 504 ()"
+  ]
+}
