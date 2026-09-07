@@ -58,7 +58,7 @@
     },
     {
       "file": "service-worker.js",
-      "bytes": 7789,
+      "bytes": 8034,
       "sha256": "0639b222af93f33719d6786ddb29ee9529ed11df4e123fed451c5d8bf579d61c"
     },
     {
@@ -72,5 +72,5 @@
       "sha256": "34342da3f31af9dd01d9b943c8d07db759846e309e507a7d5c465c2e423abc06"
     }
   ],
-  "totalBytes": 1904572
+  "totalBytes": 1904817
 }

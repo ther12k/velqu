@@ -106,6 +106,11 @@ describe("B-004 scope guard (pure)", () => {
   it("scope escape (outside scope prefix) is NOT intercepted", () => {
     expect(isScopedRequest("/app/", "https://app.example/other/x", "https://app.example")).toBeFalse();
   });
+  it("scope matching uses a path-segment boundary, not a string prefix", () => {
+    expect(isScopedRequest("/app/", "https://app.example/app/x", "https://app.example")).toBeTrue();
+    expect(isScopedRequest("/app/", "https://app.example/app2/x", "https://app.example")).toBeFalse();
+    expect(isScopedRequest("/app/", "https://app.example/app", "https://app.example")).toBeTrue();
+  });
   it("cross-origin requests are NOT intercepted (unrelated origins stay untouched)", () => {
     expect(isScopedRequest("/app/", "https://editor.example/app/x", "https://app.example")).toBeFalse();
   });
@@ -131,6 +136,11 @@ describe("B-004 request classification (support matrix)", () => {
     for (const prefix of PASSTHROUGH_PATH_PREFIXES) {
       expect(classifyRequest("GET", `${prefix}/x`, "text/html", "navigate")).toBe("passthrough");
     }
+  });
+  it("base-path deployment keeps editor paths passthrough", () => {
+    expect(classifyRequest("GET", "/app/__velqu_editor__/probe", "text/html", "navigate", "/app/")).toBe("passthrough");
+    expect(classifyRequest("GET", "/app/auth/session", "application/json", "cors", "/app/")).toBe("passthrough");
+    expect(classifyRequest("GET", "/app/greetings", "application/json", "cors", "/app/")).toBe("api");
   });
   it("forms: POST with form content-type classifies as api (support matrix)", () => {
     expect(classifyRequest("POST", "/app/form", "application/x-www-form-urlencoded", "cors")).toBe("api");
