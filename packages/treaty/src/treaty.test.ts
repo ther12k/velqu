@@ -229,6 +229,128 @@ describe("treaty (Eden-style typing & runtime)", () => {
   afterAll(() => unitServer.stop(true));
 });
 
+// ---------------------------------------------------------------- write-argument and transport regressions
+
+describe("treaty write-argument and transport regressions", () => {
+  type Captured = { url: string; method: string; headers: Record<string, string>; body?: string; signalPassed: boolean };
+  const captured: Captured[] = [];
+  const captureFetch = (async (url: any, init: any) => {
+    captured.push({
+      url,
+      method: init.method,
+      headers: init.headers ?? {},
+      body: init.body,
+      signalPassed: init.signal !== undefined,
+    });
+    return new Response("{}");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as unknown as typeof fetch;
+
+  const recordingApi = treaty({
+    baseUrl: "http://rec.test",
+    contract: {
+      "auth.logout": { path: "/logout", method: "POST" },
+      "notes.create": { path: "/notes", method: "POST" },
+      "flags.mark": { path: "/flag", method: "PUT", body: false },
+      "mirror.echo": { path: "/mirror", method: "POST", body: true },
+      "items.update": { path: "/items/:id", method: "PATCH" },
+    },
+    fetchImpl: captureFetch,
+  });
+
+  test("bodyless POST called with options sends no body and applies headers/signal", async () => {
+    const controller = new AbortController();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = await (recordingApi as any).auth.logout.post({ headers: { authorization: "Bearer t" }, signal: controller.signal });
+    expect(r.error).toBeNull();
+    const call = captured.at(-1)!;
+    expect(call.body).toBeUndefined();
+    expect(call.headers["content-type"]).toBeUndefined();
+    expect(call.headers.authorization).toBe("Bearer t");
+    expect(call.signalPassed).toBe(true);
+  });
+
+  test("bodyless PATCH via parameterized path resolves options, not body", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).items.update({ id: "7" }).patch({ headers: { "x-flag": "1" } });
+    const call = captured.at(-1)!;
+    expect(call.url).toBe("http://rec.test/items/7");
+    expect(call.body).toBeUndefined();
+    expect(call.headers["x-flag"]).toBe("1");
+  });
+
+  test("explicit body:false metadata treats first arg as options and rejects a second arg", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).flags.mark.put({ headers: { "x-a": "1" } });
+    const call = captured.at(-1)!;
+    expect(call.body).toBeUndefined();
+    expect(call.headers["x-a"]).toBe("1");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => (recordingApi as any).flags.mark.put({}, { headers: {} })).toThrow("declares no body");
+  });
+
+  test("explicit body:true metadata sends an options-shaped object as the body", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).mirror.echo.post({ headers: "literal-body-field" });
+    const call = captured.at(-1)!;
+    expect(call.body).toBe(JSON.stringify({ headers: "literal-body-field" }));
+    expect(call.headers["content-type"]).toBe("application/json");
+  });
+
+  test("legacy table: body-shaped first arg still sent as body; two-arg form keeps headers", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).notes.create.post({ title: "x" });
+    expect(captured.at(-1)!.body).toBe(JSON.stringify({ title: "x" }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).notes.create.post({ title: "y" }, { headers: { "x-b": "2" } });
+    const call = captured.at(-1)!;
+    expect(call.body).toBe(JSON.stringify({ title: "y" }));
+    expect(call.headers["x-b"]).toBe("2");
+  });
+
+  test("explicit null body is serialized as JSON null with content-type", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (recordingApi as any).notes.create.post(null);
+    const call = captured.at(-1)!;
+    expect(call.body).toBe("null");
+    expect(call.headers["content-type"]).toBe("application/json");
+  });
+
+  test("response body stream failure after headers returns a structured network error", async () => {
+    const broken = treaty({
+      baseUrl: "http://broken.test",
+      contract: { "notes.create": { path: "/notes", method: "POST" } },
+      fetchImpl: (async () =>
+        new Response(new ReadableStream({ start(c) { c.error(new Error("stream disconnected")); } }))) as unknown as typeof fetch,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = await (broken as any).notes.create.post({ title: "x" });
+    expect(r.data).toBeNull();
+    if (r.error && r.error.status === 0 && r.error.kind === "network") {
+      expect(r.error.message).toBe("stream disconnected");
+    } else {
+      throw new Error("expected network error result");
+    }
+  });
+
+  test("abort-shaped failure during body read maps to kind abort", async () => {
+    const aborted = treaty({
+      baseUrl: "http://abort.test",
+      contract: { "notes.create": { path: "/notes", method: "POST" } },
+      fetchImpl: (async () => {
+        const e = new Error("The operation was aborted");
+        e.name = "AbortError";
+        return new Response(new ReadableStream({ start(c) { c.error(e); } }));
+      }) as unknown as typeof fetch,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = await (aborted as any).notes.create.post({ title: "x" });
+    expect(r.data).toBeNull();
+    if (r.error && r.error.status === 0) expect(r.error.kind).toBe("abort");
+    else throw new Error("expected abort result");
+  });
+});
+
 // ---------------------------------------------------------------- compile-time-only proofs
 
 describe("type spike (compile-time)", () => {
