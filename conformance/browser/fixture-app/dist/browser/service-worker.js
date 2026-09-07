@@ -27,16 +27,19 @@ function isScopedRequest(scope, requestUrl, locationOrigin) {
     if (url.origin !== locationOrigin)
       return false;
     const scopePath = scope.replace(/\/+$/, "");
-    if (scopePath !== "" && !url.pathname.startsWith(scopePath))
+    if (scopePath !== "" && url.pathname !== scopePath && !url.pathname.startsWith(`${scopePath}/`)) {
       return false;
+    }
     return true;
   } catch {
     return false;
   }
 }
-function classifyRequest(method, pathname, acceptHeader, requestMode) {
+function classifyRequest(method, pathname, acceptHeader, requestMode, scope = "") {
+  const scopePath = scope.replace(/\/+$/, "");
+  const relativePath = scopePath !== "" && pathname.startsWith(`${scopePath}/`) ? pathname.slice(scopePath.length) : pathname;
   for (const prefix of PASSTHROUGH_PATH_PREFIXES) {
-    if (pathname.startsWith(prefix))
+    if (relativePath.startsWith(prefix))
       return "passthrough";
   }
   if (requestMode === "navigate")
@@ -111,7 +114,7 @@ async function handleFetchEvent(event, env) {
     return;
   }
   const url = new URL(request.url);
-  const cls = classifyRequest(request.method, url.pathname, request.headers.get("accept"), request.mode);
+  const cls = classifyRequest(request.method, url.pathname, request.headers.get("accept"), request.mode, env.scope);
   event.respondWith((async () => {
     if (cls === "asset") {
       const cached = await env.cache.match(url.href);

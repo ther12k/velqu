@@ -53,7 +53,11 @@ export function isScopedRequest(scope: string, requestUrl: string, locationOrigi
     const url = new URL(requestUrl);
     if (url.origin !== locationOrigin) return false; // unrelated origin
     const scopePath = scope.replace(/\/+$/, "");
-    if (scopePath !== "" && !url.pathname.startsWith(scopePath)) return false; // scope escape
+    // A scope is a path segment boundary, not a string prefix: `/app/`
+    // must not control `/app2/`.
+    if (scopePath !== "" && url.pathname !== scopePath && !url.pathname.startsWith(`${scopePath}/`)) {
+      return false; // scope escape
+    }
     return true;
   } catch {
     return false; // unparseable URL: never intercept
@@ -66,9 +70,14 @@ export function classifyRequest(
   pathname: string,
   acceptHeader: string | null,
   requestMode: string,
+  scope = "",
 ): RequestClass {
+  const scopePath = scope.replace(/\/+$/, "");
+  const relativePath = scopePath !== "" && pathname.startsWith(`${scopePath}/`)
+    ? pathname.slice(scopePath.length)
+    : pathname;
   for (const prefix of PASSTHROUGH_PATH_PREFIXES) {
-    if (pathname.startsWith(prefix)) return "passthrough";
+    if (relativePath.startsWith(prefix)) return "passthrough";
   }
   if (requestMode === "navigate") return "navigation";
   if (acceptHeader?.includes("text/html")) return "navigation";
@@ -251,6 +260,7 @@ export async function handleFetchEvent(event: FetchEventLike, env: WorkerEnv): P
     url.pathname,
     request.headers.get("accept"),
     request.mode,
+    env.scope,
   );
   event.respondWith(
     (async () => {

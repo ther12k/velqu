@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -114,17 +114,19 @@ Stop and hand off when **all** acceptance criteria are demonstrated, the require
 
 ## Handoff format
 
+## Result
+
 ```text
-Issue:
-Candidate commit:
-Files changed:
-Commands run:
-Targeted tests:
-Full verification:
-Artifacts and SHA-256:
-Browser/OS/toolchain:
-Acceptance criteria:
-Known limitations:
-Residual risks:
-Follow-up issue links:
+Issue: BWASM-Q-003 (#1278)
+Candidate commit: pending commit on bwasm-q-003
+Files changed: service-worker scope/classification boundary; browser-runtime security regression tests; threat-model verification evidence
+Commands run: targeted browser-runtime tests; bun run typecheck; unshare -rn bash -c 'ip link set lo up; ./scripts/verify'
+Targeted tests: 64 pass, 0 fail across service-worker, worker-host, and capability suites
+Full verification: pending final run
+Artifacts and SHA-256: no new binary artifacts; source/evidence hashes recorded by git commit
+Browser/OS/toolchain: Bun 1.4.0; Linux x86_64; Chromium evidence inherited from Q-002; no hostile-code sandbox claim
+Acceptance criteria: source-level origin/scope, passthrough, Worker protocol, capability, storage, and residual-risk controls verified; no hostile-sandbox claim
+Known limitations: CSP/Permissions Policy/iframe headers remain deployment-owned; same-origin Worker/WASM is trusted-code isolation, not hostile-code sandboxing
+Residual risks: compromised static host, browser/extension compromise, and production header misconfiguration remain outside packet
+Follow-up issue links: Q-004 (#1279), Q-005 (#1280), Q-006 (#1281)
 ```
