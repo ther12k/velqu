@@ -274,7 +274,13 @@ export async function handleFetchEvent(event: FetchEventLike, env: WorkerEnv): P
     (async () => {
       if (cls === "asset") {
         // Assets: cache-first (content-addressed; cache hit implies the
-        // verified hash was checked at install).
+        // verified hash was checked at install). A cache MISS must NOT
+        // fail closed while the network may be healthy: the SW only ever
+        // caches verified build artifacts, so any page, image, or
+        // stylesheet deployed BESIDE the app (outside the manifest)
+        // would 504 forever after the first offline visit (BWASM-Q-007
+        // defect D7). Fall through to the network; the 504 offline
+        // problem is reserved for when the network itself is unreachable.
         const cached = await env.cache.match(url.href);
         if (cached) {
           env.diagnostics?.record({
@@ -289,15 +295,19 @@ export async function handleFetchEvent(event: FetchEventLike, env: WorkerEnv): P
         env.diagnostics?.record({
           stage: "cache",
           code: DIAGNOSTIC_CODES.CACHE_MISS,
-          level: "warn",
+          level: "debug",
           correlationId,
-          detail: `cache miss: ${url.pathname}`,
+          detail: `cache miss (network fallback): ${url.pathname}`,
         });
-        return problemResponse({
-          status: 504,
-          title: "Asset unavailable offline",
-          detail: `${url.pathname} is not in the verified build cache`,
-        });
+        try {
+          return await fetch(request);
+        } catch {
+          return problemResponse({
+            status: 504,
+            title: "Asset unavailable offline",
+            detail: `${url.pathname} is not in the verified build cache and the network is unreachable`,
+          });
+        }
       }
       // navigation + api: the runtime owns routing/validation — serve
       // through the kernel-backed fetch. Offline kernel artifacts are

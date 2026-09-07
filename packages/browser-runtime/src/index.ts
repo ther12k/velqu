@@ -262,6 +262,8 @@ export interface KernelInvokePlan {
   readonly allowedStatuses: ReadonlyArray<number>;
   readonly defaultStatus: number;
   readonly deadlineMs: number;
+  /** Capability GRANT names the route declares (BWASM-Q-007 D5). */
+  readonly capabilities?: ReadonlyArray<string>;
 }
 
 export interface KernelProblemShape {

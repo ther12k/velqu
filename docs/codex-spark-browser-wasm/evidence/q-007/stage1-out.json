@@ -1,0 +1,201 @@
+{
+  "A_default_status": "ready \u2014 build b9a00aa2816c (network) \u00b7 worker ready \u00b7 sw: service-worker",
+  "A_default_info": "{\n  \"buildId\": \"b9a00aa2816c5b5d6b3ff32c9b089006734cdc5d7252ea26d5fe3d254f0afcb4\",\n  \"source\": \"network\",\n  \"appId\": \"consumer-app\",\n  \"handlerAbiVersion\": 1,\n  \"kernelAbiVersion\": 1,\n  \"serviceWorker\": \"service-worker\",\n  \"capabilities\": [\n    {\n      \"id\": \"runtime:timers\",\n      \"version\": 1,\n      \"name\": \"bounded browser timer\"\n    },\n    {\n      \"id\": \"runtime:crypto\",\n      \"version\": 1,\n      \"name\": \"pinned WebCrypto subset\"\n    },\n    {\n      \"id\": \"runtime:console\",\n      \"version\": 1,\n      \"name\": \"bounded console\"\n    },\n    {\n      \"id\": \"runtime:fetch\",\n      \"version\": 1,\n      \"name\": \"restricted outbound fetch\"\n    },\n    {\n      \"id\": \"runtime:abort\",\n      \"version\": 1,\n      \"name\": \"abort primitives\"\n    },\n    {\n      \"id\": \"runtime:text\",\n      \"version\": 1,\n      \"name\": \"text encoding\"\n    },\n    {\n      \"id\": \"runtime:url\",\n      \"version\": 1,\n      \"name\": \"url parsing\"\n    }\n  ],\n  \"probe\": {\n    \"method\": \"GET\",\n    \"path\": \"/items\",\n    \"status\": 200,\n    \"body\": \"{\\\"items\\\":[]}\"\n  }\n}",
+  "B_custom_status": "ready \u2014 custom page \u00b7 build b9a00aa2816c (network) \u00b7 sw: service-worker",
+  "B_runtime_exposed": true,
+  "B_create_valid": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "response schema violation for declared status 201",
+      "errors": [
+        {
+          "path": "__ok",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "status",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "value",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "id",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "name",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "qty",
+          "code": "required",
+          "message": "missing required field"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "B_create_invalid_short_name": {
+    "status": 422,
+    "body": {
+      "problemId": "validation",
+      "type": "https://velqu.dev/problems/validation",
+      "title": "Validation failed",
+      "status": 422,
+      "errors": [
+        {
+          "path": "name",
+          "code": "minLength",
+          "message": "must be at least 2 characters"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "B_list_bad_query_limit0": {
+    "status": 422,
+    "body": {
+      "problemId": "validation",
+      "type": "https://velqu.dev/problems/validation",
+      "title": "Validation failed",
+      "status": 422,
+      "errors": [
+        {
+          "path": "limit",
+          "code": "minimum",
+          "message": "must be at least 1"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "B_list_ok": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "2c7afeb9",
+          "name": "alpha",
+          "qty": 2
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "B_tick_timer": {
+    "status": 501,
+    "body": {
+      "problemId": "capability",
+      "type": "https://velqu.dev/problems/capability",
+      "title": "Capability unavailable",
+      "status": 501,
+      "detail": "route declares capability \"timer\" which the artifact inventory does not carry (deployment-required; ADR-0037)"
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "item_id": null,
+  "B_get_missing": {
+    "status": 500,
+    "body": {
+      "problemId": "internal",
+      "type": "https://velqu.dev/problems/internal",
+      "title": "Internal",
+      "status": 500,
+      "detail": "response schema violation for declared status 200",
+      "errors": [
+        {
+          "path": "__problem",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "problem",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "status",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "detail",
+          "code": "additional",
+          "message": "unknown field"
+        },
+        {
+          "path": "id",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "name",
+          "code": "required",
+          "message": "missing required field"
+        },
+        {
+          "path": "qty",
+          "code": "required",
+          "message": "missing required field"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "B_unknown_route": {
+    "status": 404,
+    "body": {
+      "problemId": "not-found",
+      "type": "https://velqu.dev/problems/not-found",
+      "title": "Not Found",
+      "status": 404
+    },
+    "headers": {
+      "content-type": "application/problem+json"
+    }
+  },
+  "B_method_not_allowed": {
+    "status": 405,
+    "body": {
+      "problemId": "method",
+      "type": "https://velqu.dev/problems/method",
+      "title": "Method Not Allowed",
+      "status": 405,
+      "allow": [
+        "GET",
+        "HEAD",
+        "POST"
+      ]
+    },
+    "headers": {
+      "allow": "GET, HEAD, POST",
+      "content-type": "application/problem+json"
+    }
+  },
+  "console_errors": [
+    "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}

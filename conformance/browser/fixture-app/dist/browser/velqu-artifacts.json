@@ -46,15 +46,15 @@
     "kernelWasm": {
       "role": "kernelWasm",
       "url": "kernel.wasm",
-      "sha256": "a5b33a56ae0e65b08d88308b9423165f0d572c2852d20c7169746d05c79b08e5",
-      "bytes": 1731509,
+      "sha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
+      "bytes": 1732433,
       "mediaType": "application/wasm"
     },
     "handlerBundle": {
       "role": "handlerBundle",
       "url": "app.bundle.js",
-      "sha256": "2830cc71d580fdf8a881a3d82674e46a3c9b69ce1146728ba01ed5ddaead5bf0",
-      "bytes": 56956,
+      "sha256": "46e804d485785e76d6531cf5bfc3f4c3c74124648c9de6f8adf420c370930099",
+      "bytes": 63088,
       "mediaType": "text/javascript"
     },
     "manifest": {
@@ -86,5 +86,5 @@
       "mediaType": "application/json"
     }
   },
-  "buildId": "7d3036ab113ab3ce5e84b6c23d591dd24a1b47c71fd1e9c0252b3b9658454aab"
+  "buildId": "2c6696a749a6695c4ba2910125f4e98eba31f57f8b6477029b16c860b31c0ac6"
 }

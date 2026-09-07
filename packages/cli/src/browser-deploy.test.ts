@@ -158,7 +158,7 @@ describe("B-005 compose (browser-wasm build pipeline)", () => {
     );
     expect(loaded.buildId).toBe(compose.buildId);
     expect(Object.keys(loaded.manifest.artifacts)).not.toContain("sourceMap");
-    expect(loaded.manifest.artifacts.kernelWasm.bytes).toBe(1_731_509);
+    expect(loaded.manifest.artifacts.kernelWasm.bytes).toBe(1_732_433);
   }, 120_000);
 
   it("reproduces byte-identical deployments (same buildId and digests)", async () => {
@@ -411,7 +411,7 @@ describe("B-005 preview (development static server)", () => {
     const wasm = await fetch(`${server.baseUrl}/kernel.wasm`);
     expect(wasm.status).toBe(200);
     expect(wasm.headers.get("content-type")).toBe("application/wasm");
-    expect((await wasm.arrayBuffer()).byteLength).toBe(1_731_509);
+    expect((await wasm.arrayBuffer()).byteLength).toBe(1_732_433);
     const manifest = await fetch(`${server.baseUrl}/velqu-artifacts.json`);
     expect(manifest.headers.get("content-type")).toContain("application/json");
     const artifacts = (await manifest.json()) as { buildId: string };

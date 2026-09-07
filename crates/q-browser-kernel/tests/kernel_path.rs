@@ -263,3 +263,42 @@ fn authorize_capability_query_fail_closed_without_inventory() {
     let granted: Value = serde_json::from_str(&ok.authorize_capability("runtime:text")).unwrap();
     assert_eq!(granted["authorized"], true);
 }
+
+/// BWASM-Q-007 (D5): route declarations use GRANT names ("timer") while
+/// the pack inventory carries LINKED MODULE ids ("runtime:timers"). The
+/// kernel must accept the grant→module mapping — a timer route in a
+/// deployment declaring runtime:timers@1 must plan OK, not 501.
+#[test]
+fn plan_accepts_grant_name_when_linked_module_id_is_inventoried() {
+    use sha2::{Digest, Sha256};
+    let mut pack = q_pack::minimal_pack_public();
+    pack.routes[0].capabilities = vec!["timer".into()];
+    let inv = q_capabilities::CapabilityInventory::from_pairs(&[("runtime:timers".to_string(), 1)])
+        .unwrap();
+    pack.capability_inventory = Some(
+        inv.entries()
+            .iter()
+            .map(|e| CapabilityInventoryEntryWire {
+                id: e.id.to_string(),
+                version: e.version.0,
+            })
+            .collect(),
+    );
+    pack.capability_inventory_sha256 = Some(inv.sha256_hex());
+    pack.integrity.bundle_sha256 = hex(&Sha256::digest(pack.bundle.as_bytes()));
+    pack.integrity.routes_sha256 = hex(&Sha256::digest(pack.routes_canonical_json().as_bytes()));
+    let k = BrowserKernel::init(&serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let out = plan(&k, "GET", "/health/live");
+    assert_eq!(
+        out["kind"], "invoke",
+        "grant name must authorize via linked module id: {out}"
+    );
+
+    // The same dual naming applies to the bridge query.
+    let granted: Value = serde_json::from_str(&k.authorize_capability("timer")).unwrap();
+    assert_eq!(granted["authorized"], true);
+    // An unrelated grant still fails closed.
+    let denied: Value = serde_json::from_str(&k.authorize_capability("postgres")).unwrap();
+    assert_eq!(denied["problem"]["problemId"], "capability");
+}

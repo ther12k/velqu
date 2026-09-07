@@ -1566,6 +1566,31 @@ var registrations = [
       const result = await greet.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1577,6 +1602,31 @@ var registrations = [
       const result = await echo.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1588,6 +1638,31 @@ var registrations = [
       const result = await maybe.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1599,6 +1674,31 @@ var registrations = [
       const result = await absent.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1610,6 +1710,31 @@ var registrations = [
       const result = await paramEcho.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1621,6 +1746,31 @@ var registrations = [
       const result = await queryEcho.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   },
@@ -1632,6 +1782,31 @@ var registrations = [
       const result = await timed.handle(ctx);
       if (result && typeof result === "object" && "kind" in result)
         return result;
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...result.detail !== undefined ? { detail: result.detail } : {},
+          ...result.errors !== undefined ? { errors: result.errors } : {}
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {}
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     }
   }
@@ -1652,6 +1827,10 @@ var handlers = defineBrowserHandlers(registrations, {
 
 // conformance/browser/fixture-app/dist/browser/worker.js
 var handlers2 = null;
+var nativeCapabilities = null;
+self.velquRegisterNativeCapabilities = (caps) => {
+  nativeCapabilities = caps;
+};
 self.onmessage = (event) => {
   const msg = event.data;
   if (!msg || msg.v !== 1)
@@ -1680,8 +1859,22 @@ function toContext(plan) {
     headers: plan.headers ?? null,
     body: plan.body ?? null,
     bodyText: plan.bodyText ?? null,
-    deadlineMs: plan.deadlineMs
+    deadlineMs: plan.deadlineMs,
+    native: planCapabilities(plan.capabilities ?? [])
   };
+}
+function planCapabilities(declared) {
+  if (!nativeCapabilities || !declared || declared.length === 0)
+    return {};
+  const view = {};
+  for (const grant of declared) {
+    if (grant === "timer" && nativeCapabilities.timers) {
+      view.timer = { delay: (ms, signal) => nativeCapabilities.timers.delay(ms, signal) };
+    } else if (nativeCapabilities[grant] !== undefined) {
+      view[grant] = nativeCapabilities[grant];
+    }
+  }
+  return Object.freeze(view);
 }
 function redact(stack) {
   return String(stack).replace(/(?:\/|\\)[^\s()]*[/\\]/g, "");
@@ -1691,6 +1884,11 @@ self.velquRegisterHandlers = (table, sessionId) => {
   self.VELQU_SESSION_ID = sessionId;
   post({ type: "ready", sessionId, handlerKeys: table.keys });
 };
+var capabilityGraph = createBrowserCapabilityGraph({
+  consoleSink: ringBufferSink(128),
+  fetchPolicy: { allowedOrigins: [] }
+});
+self.velquRegisterNativeCapabilities?.(capabilityGraph.graph);
 var bootstrapOnMessage = self.onmessage;
 self.onmessage = (event) => {
   const msg = event.data;

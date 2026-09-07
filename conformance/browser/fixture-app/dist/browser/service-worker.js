@@ -195,15 +195,19 @@ async function handleFetchEvent(event, env) {
       env.diagnostics?.record({
         stage: "cache",
         code: DIAGNOSTIC_CODES.CACHE_MISS,
-        level: "warn",
+        level: "debug",
         correlationId,
-        detail: `cache miss: ${url.pathname}`
+        detail: `cache miss (network fallback): ${url.pathname}`
       });
-      return problemResponse({
-        status: 504,
-        title: "Asset unavailable offline",
-        detail: `${url.pathname} is not in the verified build cache`
-      });
+      try {
+        return await fetch(request);
+      } catch {
+        return problemResponse({
+          status: 504,
+          title: "Asset unavailable offline",
+          detail: `${url.pathname} is not in the verified build cache and the network is unreachable`
+        });
+      }
     }
     try {
       return await env.runtimeFetch(request);
@@ -223,7 +227,7 @@ async function handleFetchEvent(event, env) {
   })());
 }
 // conformance/browser/fixture-app/dist/browser/service-worker.js
-var DEPLOYMENT_SHA256 = "d30189a3414150a89c4ef4b40cd2df79af802f177aa1c3b5451da7a2dac349ae";
+var DEPLOYMENT_SHA256 = "e84274f68e2b14f24889de706f266302a2fc4ed0999c5f8b36847ecf77872ee9";
 var APP_ID = "app";
 var SCOPE = "/";
 var BASE_URL = self.registration.scope;

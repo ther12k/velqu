@@ -11,6 +11,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.greet).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -21,6 +51,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.echo).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -31,6 +91,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.maybe).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -41,6 +131,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.absent).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -51,6 +171,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.paramEcho).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -61,6 +211,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.queryEcho).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
@@ -71,6 +251,36 @@ const registrations = [
     invoke: async (ctx) => {
       const result = await (m0.timed).handle(ctx);
       if (result && typeof result === "object" && "kind" in result) return result;
+      // BWASM-Q-007 (D4): the @velqu/core result protocol crosses
+      // status(...).value(...) / status(...).problem(...) / .raw(...)
+      // as {__ok, status, value} / {__problem, ...} / {__velquRaw, ...}.
+      // These map to their DECLARED statuses; wrapping them into the
+      // default-status body made every non-default return a 500.
+      if (result && typeof result === "object" && "__velquRaw" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: Object.entries(result.headers ?? {}),
+          body: result.body,
+        };
+      }
+      if (result && typeof result === "object" && "__problem" in result) {
+        return {
+          kind: "problem",
+          problemId: result.problem,
+          status: result.status,
+          ...(result.detail !== undefined ? { detail: result.detail } : {}),
+          ...(result.errors !== undefined ? { errors: result.errors } : {}),
+        };
+      }
+      if (result && typeof result === "object" && "__ok" in result) {
+        return {
+          kind: "response",
+          status: result.status,
+          headers: [["content-type", "application/json"]],
+          body: result.value ?? {},
+        };
+      }
       return { kind: "response", status: 200, headers: [["content-type", "application/json"]], body: result ?? {} };
     },
   },
