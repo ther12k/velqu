@@ -1,255 +1,255 @@
 {
- "schemaVersion": 1,
- "suite": "bwasm-q-001-differential",
- "sourceCommit": "9c658943f8b087c06e4f44ba70b685391a21e685",
- "nativeBinarySha256": "c52385af2d560538ec7285c445c433eb6429c53b3eb5d6b12c505f6864d855f4",
- "kernelWasmSha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
- "nativePackSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
- "browserBuildId": "2c6696a749a6695c4ba2910125f4e98eba31f57f8b6477029b16c860b31c0ac6",
- "bunVersion": "1.4.0",
- "fixtures": [
-  {
-   "fixture": "path-param-route",
-   "classification": "exact-parity",
-   "drift": [],
-   "native": {
-    "status": 200,
-    "body": {
-     "message": "Hello from conformance"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 200,
-    "body": {
-     "message": "Hello from conformance"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "query-validation-fail",
-   "classification": "exact-parity",
-   "drift": [],
-   "native": {
-    "status": 200,
-    "body": {
-     "message": "Hello from conformance"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 200,
-    "body": {
-     "message": "Hello from conformance"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "body-valid",
-   "classification": "exact-parity",
-   "drift": [],
-   "native": {
-    "status": 200,
-    "body": {
-     "count": 3,
-     "text": "hi"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 200,
-    "body": {
-     "count": 3,
-     "text": "hi"
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "body-validation-fail",
-   "classification": "equivalent-by-contract",
-   "drift": [],
-   "native": {
-    "status": 422,
-    "body": {
-     "type": "https://velqu.dev/problems/validation",
-     "title": "Validation failed",
-     "status": 422,
-     "errors": [
-      {
-       "code": "type",
-       "message": "expected integer",
-       "path": "count"
+  "schemaVersion": 1,
+  "suite": "bwasm-q-001-differential",
+  "sourceCommit": "8aee413c139129c6e56ca23ebcd6bd8758a4039c",
+  "nativeBinarySha256": "c52385af2d560538ec7285c445c433eb6429c53b3eb5d6b12c505f6864d855f4",
+  "kernelWasmSha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
+  "nativePackSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+  "browserBuildId": "2c6696a749a6695c4ba2910125f4e98eba31f57f8b6477029b16c860b31c0ac6",
+  "bunVersion": "1.4.0",
+  "fixtures": [
+    {
+      "fixture": "path-param-route",
+      "classification": "exact-parity",
+      "drift": [],
+      "native": {
+        "status": 200,
+        "body": {
+          "message": "Hello from conformance"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
       },
-      {
-       "code": "type",
-       "message": "expected string",
-       "path": "text"
+      "browser": {
+        "status": 200,
+        "body": {
+          "message": "Hello from conformance"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
       }
-     ]
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 422,
-    "body": {
-     "type": "https://velqu.dev/problems/validation",
-     "title": "Validation failed",
-     "status": 422,
-     "errors": [
-      {
-       "code": "type",
-       "message": "expected integer",
-       "path": "count"
+    {
+      "fixture": "query-validation-fail",
+      "classification": "exact-parity",
+      "drift": [],
+      "native": {
+        "status": 200,
+        "body": {
+          "message": "Hello from conformance"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
       },
-      {
-       "code": "type",
-       "message": "expected string",
-       "path": "text"
+      "browser": {
+        "status": 200,
+        "body": {
+          "message": "Hello from conformance"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
       }
-     ]
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "declared-200",
-   "classification": "exact-parity",
-   "drift": [],
-   "native": {
-    "status": 200,
-    "body": {
-     "found": true
+    {
+      "fixture": "body-valid",
+      "classification": "exact-parity",
+      "drift": [],
+      "native": {
+        "status": 200,
+        "body": {
+          "count": 3,
+          "text": "hi"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": {
+        "status": 200,
+        "body": {
+          "count": 3,
+          "text": "hi"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      }
     },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 200,
-    "body": {
-     "found": true
+    {
+      "fixture": "body-validation-fail",
+      "classification": "equivalent-by-contract",
+      "drift": [],
+      "native": {
+        "status": 422,
+        "body": {
+          "type": "https://velqu.dev/problems/validation",
+          "title": "Validation failed",
+          "status": 422,
+          "errors": [
+            {
+              "code": "type",
+              "message": "expected integer",
+              "path": "count"
+            },
+            {
+              "code": "type",
+              "message": "expected string",
+              "path": "text"
+            }
+          ]
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      },
+      "browser": {
+        "status": 422,
+        "body": {
+          "type": "https://velqu.dev/problems/validation",
+          "title": "Validation failed",
+          "status": 422,
+          "errors": [
+            {
+              "code": "type",
+              "message": "expected integer",
+              "path": "count"
+            },
+            {
+              "code": "type",
+              "message": "expected string",
+              "path": "text"
+            }
+          ]
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      }
     },
-    "contentType": "application/json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "declared-404-handler",
-   "classification": "native-only",
-   "nativeOnlyReason": "handler status() returns are not supported by the browser MVP bundle wrapper (declared-default status only) — support-matrix entry; follow-up: extend the emitted handler contract",
-   "native": {
-    "status": 404,
-    "body": {},
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": "not-executed",
-   "drift": []
-  },
-  {
-   "fixture": "unknown-route-404",
-   "classification": "equivalent-by-contract",
-   "drift": [],
-   "native": {
-    "status": 404,
-    "body": {
-     "type": "https://velqu.dev/problems/not-found",
-     "title": "Not Found",
-     "status": 404
+    {
+      "fixture": "declared-200",
+      "classification": "exact-parity",
+      "drift": [],
+      "native": {
+        "status": 200,
+        "body": {
+          "found": true
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": {
+        "status": 200,
+        "body": {
+          "found": true
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      }
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 404,
-    "body": {
-     "type": "https://velqu.dev/problems/not-found",
-     "title": "Not Found",
-     "status": 404
+    {
+      "fixture": "declared-404-handler",
+      "classification": "native-only",
+      "nativeOnlyReason": "handler status() returns are not supported by the browser MVP bundle wrapper (declared-default status only) \u2014 support-matrix entry; follow-up: extend the emitted handler contract",
+      "native": {
+        "status": 404,
+        "body": {},
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": "not-executed",
+      "drift": []
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "method-not-matched",
-   "classification": "equivalent-by-contract",
-   "drift": [],
-   "native": {
-    "status": 405,
-    "body": {
-     "type": "https://velqu.dev/problems/method",
-     "title": "Method Not Allowed",
-     "status": 405
+    {
+      "fixture": "unknown-route-404",
+      "classification": "equivalent-by-contract",
+      "drift": [],
+      "native": {
+        "status": 404,
+        "body": {
+          "type": "https://velqu.dev/problems/not-found",
+          "title": "Not Found",
+          "status": 404
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      },
+      "browser": {
+        "status": 404,
+        "body": {
+          "type": "https://velqu.dev/problems/not-found",
+          "title": "Not Found",
+          "status": 404
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      }
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   },
-   "browser": {
-    "status": 405,
-    "body": {
-     "type": "https://velqu.dev/problems/method",
-     "title": "Method Not Allowed",
-     "status": 405
+    {
+      "fixture": "method-not-matched",
+      "classification": "equivalent-by-contract",
+      "drift": [],
+      "native": {
+        "status": 405,
+        "body": {
+          "type": "https://velqu.dev/problems/method",
+          "title": "Method Not Allowed",
+          "status": 405
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      },
+      "browser": {
+        "status": 405,
+        "body": {
+          "type": "https://velqu.dev/problems/method",
+          "title": "Method Not Allowed",
+          "status": 405
+        },
+        "contentType": "application/problem+json",
+        "rawEqual": true
+      }
     },
-    "contentType": "application/problem+json",
-    "rawEqual": true
-   }
-  },
-  {
-   "fixture": "params-consumed",
-   "classification": "native-only",
-   "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work — support-matrix entry, not normalized away",
-   "native": {
-    "status": 200,
-    "body": {
-     "name": "conformance"
+    {
+      "fixture": "params-consumed",
+      "classification": "native-only",
+      "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work \u2014 support-matrix entry, not normalized away",
+      "native": {
+        "status": 200,
+        "body": {
+          "name": "conformance"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": "not-executed",
+      "drift": []
     },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": "not-executed",
-   "drift": []
-  },
-  {
-   "fixture": "query-consumed",
-   "classification": "native-only",
-   "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work — support-matrix entry, not normalized away",
-   "native": {
-    "status": 200,
-    "body": {
-     "loud": "1"
+    {
+      "fixture": "query-consumed",
+      "classification": "native-only",
+      "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work \u2014 support-matrix entry, not normalized away",
+      "native": {
+        "status": 200,
+        "body": {
+          "loud": "1"
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": "not-executed",
+      "drift": []
     },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": "not-executed",
-   "drift": []
-  },
-  {
-   "fixture": "capability-timer",
-   "classification": "native-only",
-   "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work — support-matrix entry, not normalized away",
-   "native": {
-    "status": 200,
-    "body": {
-     "waited": true
-    },
-    "contentType": "application/json",
-    "rawEqual": true
-   },
-   "browser": "not-executed",
-   "drift": []
-  }
- ]
+    {
+      "fixture": "capability-timer",
+      "classification": "native-only",
+      "nativeOnlyReason": "browser MVP handler context exposes raw kernel fields (query as pairs, no params) and ctx.native wiring is future work \u2014 support-matrix entry, not normalized away",
+      "native": {
+        "status": 200,
+        "body": {
+          "waited": true
+        },
+        "contentType": "application/json",
+        "rawEqual": true
+      },
+      "browser": "not-executed",
+      "drift": []
+    }
+  ]
 }
