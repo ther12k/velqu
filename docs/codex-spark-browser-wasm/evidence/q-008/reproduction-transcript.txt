@@ -1,0 +1,55 @@
+# BWASM-Q-008 reproduction transcript
+candidate commit: 9c658943f8b087c06e4f44ba70b685391a21e685
+date: 2026-09-08T00:02:02Z
+
+## 0. Verify prerequisites (documented gate ordering)
+$ bun install --frozen-lockfile && cargo build -p q-bytecode-tool && bun packages/cli/src/index.ts build --project examples/proof
+Checked 23 installs across 18 packages (no changes) [7.00ms]
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.26s
+velqu build [serverless]: 24 routes → examples/proof/dist in 707ms
+  app.qpack  72116B
+
+## 1. Packet generation (inventory + checksums + SBOM + candidate index)
+$ ./scripts/browser-wasm-candidate-packet.sh
+candidate commit: 9c658943f8b087c06e4f44ba70b685391a21e685 (dirty files: 5)
+SBOM: 14 components
+candidate index: 11 claims, 6 open risks, GO (no unresolved P0)
+packet written to docs/codex-spark-browser-wasm/evidence/q-008/
+total 44
+drwxrwxr-x  2 ther12k ther12k 4096 Sep  8 06:52 .
+drwxrwxr-x 21 ther12k ther12k 4096 Sep  8 06:49 ..
+-rw-rw-r--  1 ther12k ther12k  684 Sep  8 07:02 candidate-identity.json
+-rw-rw-r--  1 ther12k ther12k 4957 Sep  8 07:02 candidate-index.json
+-rw-rw-r--  1 ther12k ther12k 4729 Sep  8 06:51 candidate-index.test.ts
+-rw-rw-r--  1 ther12k ther12k  934 Sep  8 07:02 checksums.sha256
+-rw-rw-r--  1 ther12k ther12k  810 Sep  8 07:02 reproduction-transcript.txt
+-rw-rw-r--  1 ther12k ther12k 4914 Sep  8 07:02 sbom-browser-wasm.cdx.json
+
+## 2. Validator (evidence links + exact SHAs + gate integrity)
+$ bun test docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.test.ts
+
+ 8 pass
+ 0 fail
+ 65 expect() calls
+Ran 8 tests across 1 file. [101.00ms]
+
+## 3. Canonical full verification (includes independent-build reproducibility)
+$ unshare -rn bash -c "ip link set lo up; ./scripts/verify"
+}
+
+== Summary ==
+verify: ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+
+## 4. Packet outputs
+total 44
+drwxrwxr-x  2 ther12k ther12k 4096 Sep  8 06:52 .
+drwxrwxr-x 21 ther12k ther12k 4096 Sep  8 06:49 ..
+-rw-rw-r--  1 ther12k ther12k  684 Sep  8 07:02 candidate-identity.json
+-rw-rw-r--  1 ther12k ther12k 4957 Sep  8 07:02 candidate-index.json
+-rw-rw-r--  1 ther12k ther12k 4729 Sep  8 06:51 candidate-index.test.ts
+-rw-rw-r--  1 ther12k ther12k  934 Sep  8 07:02 checksums.sha256
+-rw-rw-r--  1 ther12k ther12k 1881 Sep  8 07:03 reproduction-transcript.txt
+-rw-rw-r--  1 ther12k ther12k 4914 Sep  8 07:02 sbom-browser-wasm.cdx.json
+0c842b62d4d49aaa9ccb21bfdb10bcec8bc2b29490c6567519429a28cd87dcaa  docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.json
+ecf3391112b36ca2ab5683d7d7de4ae9d53ec4a572c7f8aa326dd8476bba8b7d  docs/codex-spark-browser-wasm/evidence/q-008/sbom-browser-wasm.cdx.json
+7cb76f640e597309c0d82b92d1288be21dfeba57f6fb52e7f0f33581bfc23675  docs/codex-spark-browser-wasm/evidence/q-008/checksums.sha256

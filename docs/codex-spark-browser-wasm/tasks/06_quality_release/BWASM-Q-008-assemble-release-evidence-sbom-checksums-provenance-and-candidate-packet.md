@@ -5,7 +5,7 @@ Mode: `EVIDENCE` — Package evidence from one exact candidate; do not mix imple
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -117,17 +117,48 @@ Stop and hand off when **all** acceptance criteria are demonstrated, the require
 
 ## Handoff format
 
+## Result
+
 ```text
-Issue:
-Candidate commit:
+Issue: BWASM-Q-008 (#1283)
+Candidate commit: 9c658943f8b087c06e4f44ba70b685391a21e685 (master tip at assembly;
+  packet generated pre-merge and bound to that commit via sha256 evidence links)
 Files changed:
+  scripts/browser-wasm-candidate-packet.sh                  (packet assembler: identity, checksums, SBOM, index)
+  docs/codex-spark-browser-wasm/evidence/q-008/candidate-identity.json     (commit + lockfiles + toolchain + kernel pin)
+  docs/codex-spark-browser-wasm/evidence/q-008/checksums.sha256            (distributed-file inventory + SHA-256)
+  docs/codex-spark-browser-wasm/evidence/q-008/sbom-browser-wasm.cdx.json  (CycloneDX 1.5, 14 components, license posture)
+  docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.json        (11 claims -> evidence map, 6 open risks, GO)
+  docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.test.ts     (validator: 8 checks — links, SHAs, gate integrity)
+  docs/codex-spark-browser-wasm/evidence/q-008/reproduction-transcript.txt (exact commands + results from candidate bytes)
+  docs/codex-spark-browser-wasm/tasks/06_quality_release/BWASM-Q-008-...md (this record)
 Commands run:
+  ./scripts/browser-wasm-candidate-packet.sh
+  bun test docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.test.ts
+  unshare -rn bash -c 'ip link set lo up; ./scripts/verify'
 Targeted tests:
-Full verification:
-Artifacts and SHA-256:
-Browser/OS/toolchain:
+  - candidate-index validator: 8 pass / 0 fail (evidence existence, exact SHA match,
+    stale-commit guard, checksum coverage, GO/P0 gate integrity, SBOM shape, identity, risk dispositions)
+  - canonical scripts/verify (in transcript): ALL PASS incl. independent-build
+    reproducibility (13 artifacts byte-identical across builders)
+Full verification: ALL PASS (M0–M2 + M2.2.1 + M2.3 + M23R2-GATE-CLOSE verified)
+Artifacts and SHA-256: see checksums.sha256 + reproduction-transcript.txt §4
+  (candidate-index.json 0c842b62…, sbom ecf33911…, checksums 7cb76f64…;
+   vendored kernel b0485be7… 1,732,433B)
+Browser/OS/toolchain: Bun 1.4.0, rustc 1.96.0, wasm-bindgen 0.2.108, TypeScript 5.9.3, Linux x86_64
 Acceptance criteria:
+  - Every release claim maps to evidence from the exact candidate: PASS (11 mapped claims, hash-bound)
+  - Distributed files in inventory + checksums + SBOM: PASS (8 files, CycloneDX 1.5, license posture NOASSERTION-Owner-gated)
+  - Rebuild/verify reproduces accepted artifacts: PASS (independent-build reproducibility inside verify;
+    exact commands in reproduction-transcript.txt)
+  - No evidence references a different commit or altered bytes: PASS (validator enforces sha256 + commit guards)
+  - P0 blockers => NO-GO automatically: PASS (gate-integrity test; unresolvedP0 empty, status GO)
+  - Independent gate reviewer can decide without private context: PASS (index + risks + transcripts committed)
 Known limitations:
-Residual risks:
-Follow-up issue links:
+  - Packet generated from a worktree pre-merge; squash-merge changes the commit id —
+    the index records the exact assembly commit 9c658943… and the PR links it to the merge
+  - Provenance attestations are structural (commit + lockfile + artifact hashes); no Sigstore/sigstore-style
+    signing infrastructure exists in this environment — recorded as open risk OR-3-class packaging posture
+Residual risks: 6 open risks registered in candidate-index.json, each with a written disposition
+Follow-up issue links: #1292 (export guard); EPIC gate #1179 (owner gate review)
 ```
