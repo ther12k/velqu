@@ -12,7 +12,7 @@
     {
       "claim": "Native-vs-browser differential conformance: 4 exact-parity, 3 equivalent-by-contract, 4 native-only, 0 drift",
       "path": "docs/codex-spark-browser-wasm/evidence/conformance/differential-matrix.json",
-      "sha256": "39ba002c3f82c9414633ec772d857c1e01873396998709325fa5d8718802ae12"
+      "sha256": "e7e552ba0b53e23a6e44bfca7652b23219ca9d2bf3b8e9cdb44d299f95138fea"
     },
     {
       "claim": "Chromium required lane: emitted-artifact E2E journeys E1-E6 pass (Q-002)",
