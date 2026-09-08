@@ -32,6 +32,14 @@ export interface RouteInfo {
   moduleId: string;
   /** variable name holding the route() result (bundle adapter reference) */
   bindingName: string;
+  /**
+   * Whether the binding is reachable through its source module's export
+   * surface: an `export` modifier on the declaration, a same-module
+   * `export { name }` re-export, or `export default` (#1292). The browser
+   * target references handler bindings via namespace imports and fails the
+   * build on non-exported ones; the native target is unaffected.
+   */
+  exported: boolean;
   sourceFile: string;
   policyId: string | null;
   paramsIr: Record<string, unknown> | null;
@@ -83,6 +91,12 @@ const isCallTo = (node: ts.Node, names: string[]): node is ts.CallExpression =>
   ts.isCallExpression(node) &&
   !!node.expression.getText &&
   names.includes(node.expression.getText().replace(/^.*\./, ""));
+
+/** Whether a statement-level declaration carries the `export` modifier. */
+function hasExportModifier(node: ts.Node): boolean {
+  const mods = (node as { modifiers?: readonly ts.Modifier[] }).modifiers;
+  return !!mods?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+}
 
 function literalValue(node: ts.Node, file: string): unknown {
   if (ts.isStringLiteralLike(node)) return node.text;
@@ -398,7 +412,13 @@ function detectCapabilities(fnNode: ts.Node): string[] {
 
 // ---------------------------------------------------------------- route extraction
 
-function routeFromCall(call: ts.CallExpression, file: string, moduleId: string, bindingName: string): RouteInfo {
+function routeFromCall(
+  call: ts.CallExpression,
+  file: string,
+  moduleId: string,
+  bindingName: string,
+  exported: boolean,
+): RouteInfo {
   const arg = call.arguments[0];
   if (!arg || !ts.isObjectLiteralExpression(arg)) {
     throw new CompileError("route() expects an object literal", nodeLoc(call, file));
@@ -495,6 +515,7 @@ function routeFromCall(call: ts.CallExpression, file: string, moduleId: string, 
     path,
     moduleId,
     bindingName,
+    exported,
     sourceFile: file,
     policyId,
     paramsIr,
@@ -548,6 +569,8 @@ export function extractApp(entryFile: string): ExtractedApp {
   const routes: RouteInfo[] = [];
   const policies: PolicyInfo[] = [];
   const modules: string[] = [];
+  // #1292: local names re-exported after their declaration (`export { tick }`)
+  const reExportedBindings = new Map<string, Set<string>>();
   let appId = "app";
   const checker = program.getTypeChecker();
 
@@ -559,7 +582,7 @@ export function extractApp(entryFile: string): ExtractedApp {
         if (!init || !ts.isIdentifier(decl.name)) continue;
         if (isCallTo(init, ["route"])) {
           const moduleId = sf.fileName.split("/").slice(-2, -1)[0] ?? "app";
-          routes.push(routeFromCall(init, sf.fileName, moduleId, decl.name.text));
+          routes.push(routeFromCall(init, sf.fileName, moduleId, decl.name.text, hasExportModifier(n)));
         } else if (isCallTo(init, ["definePolicy"])) {
           const arg = init.arguments[0];
           const idProp = arg && ts.isObjectLiteralExpression(arg)
@@ -598,9 +621,19 @@ export function extractApp(entryFile: string): ExtractedApp {
     // default export route({...}) — e.g. `export default route({...})`
     if (ts.isExportAssignment(n) && ts.isCallExpression(n.expression) && isCallTo(n.expression, ["route"])) {
       const moduleId = sf.fileName.split("/").slice(-2, -1)[0] ?? "app";
-      routes.push(routeFromCall(n.expression, sf.fileName, moduleId, `__default_${sf.fileName.replace(/\W/g, "_")}`));
+      routes.push(routeFromCall(n.expression, sf.fileName, moduleId, `__default_${sf.fileName.replace(/\W/g, "_")}`, true));
       const r = routes[routes.length - 1];
       r.bindingName = "__default_export";
+    }
+    // export { tick } / export { tick as tickRoute } — the local binding
+    // (propertyName when present, else the specifier name) joins the
+    // module's export surface regardless of declaration order.
+    if (ts.isExportDeclaration(n) && n.exportClause && ts.isNamedExports(n.exportClause)) {
+      let names = reExportedBindings.get(sf.fileName);
+      if (!names) reExportedBindings.set(sf.fileName, (names = new Set()));
+      for (const el of n.exportClause.elements) {
+        names.add((el.propertyName ?? el.name).text);
+      }
     }
     n.forEachChild((c) => visit(c, sf));
   };
@@ -608,6 +641,14 @@ export function extractApp(entryFile: string): ExtractedApp {
   for (const sf of program.getSourceFiles()) {
     if (sf.fileName.includes("node_modules") || !sf.fileName.endsWith(".ts")) continue;
     visit(sf, sf);
+  }
+
+  // #1292: fold same-module re-exports into the per-route export flag
+  // (the export declaration may appear after the route declaration).
+  for (const r of routes) {
+    if (!r.exported && reExportedBindings.get(r.sourceFile)?.has(r.bindingName)) {
+      r.exported = true;
+    }
   }
 
   if (routes.length === 0) {

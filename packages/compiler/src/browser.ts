@@ -19,6 +19,9 @@
  * Build-time diagnostics (fail before any browser run, acceptance 4):
  * - native-liveness routes (RUN-009) are native-only surfaces —
  *   rejected with a source-located CompileError (ADR-0037 §1).
+ * - route bindings that are not exported from their source module are
+ *   rejected (#1292): the emitted bundle imports handlers by name, so a
+ *   non-exported const would silently become `undefined` downstream.
  * - workspace paths are sanitized out of emitted metadata (acceptance 5).
  */
 
@@ -109,6 +112,19 @@ export function buildBrowserWasmArtifacts(
         `browser-wasm target: route "${r.id}" uses native liveness (RUN-009), ` +
           `which the browser kernel does not provide — remove it or split it ` +
           `into a native-only service (${sanitizeSourceLocation(r.sourceFile)})`,
+      );
+    }
+    // #1292: the emitted bundle references each handler binding through a
+    // namespace import of its source module. A non-exported binding folds
+    // to `undefined` at consumer-bundle time and every invocation of the
+    // route fails — fail the build with a source-located diagnostic instead.
+    if (!r.exported) {
+      throw new CompileError(
+        `browser-wasm target: route "${r.id}" is bound to "${r.bindingName}", ` +
+          `which is not exported from its source module — the emitted handler ` +
+          `bundle imports it by name and would receive \`undefined\` at runtime. ` +
+          `Add 'export' to the declaration (or re-export it: export { ${r.bindingName} }) ` +
+          `(${sanitizeSourceLocation(r.sourceFile)})`,
       );
     }
     // BWASM-C-005: fail at build time when capability usage is statically

@@ -138,3 +138,128 @@ describe("B-001 build-time diagnostics", () => {
     expect(existsSync(join(dir, "browser"))).toBeFalse();
   });
 });
+
+/**
+ * #1292 — non-exported route bindings must fail the browser build.
+ * The emitted app.browser.js references each handler through a namespace
+ * import of its source module; a non-exported const folds to `undefined`
+ * in the consumer's bundler and every invocation 500s at runtime.
+ */
+describe("#1292 non-exported handler binding guard", () => {
+  function writeProject(
+    dir: string,
+    routeDecl: string,
+    tail: string[] = [],
+  ): string {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(
+      join(dir, "src", "app.ts"),
+      [
+        `import { route } from "@velqu/core";`,
+        `import { s } from "@velqu/schema";`,
+        ``,
+        routeDecl,
+        ...tail,
+        ``,
+      ].join("\n"),
+    );
+    return join(dir, "src", "app.ts");
+  }
+
+  const tickDecl = [
+    `const tick = route({`,
+    `  id: "sys.tick",`,
+    `  method: "GET",`,
+    `  path: "/sys/tick",`,
+    `  response: { 200: s.object({ ms: s.integer() }) },`,
+    `  handle: (ctx) => ({ ms: 0 }), // ctx param → not native-liveness`,
+    `});`,
+  ].join("\n");
+
+  it("fails the build when the route const is not exported (source-located)", () => {
+    const dir = join(root, ".tmp-1292-guard");
+    cleanup.push(dir);
+    const entry = writeProject(dir, tickDecl, [`export const app = { routes: [tick] };`]);
+    const app = extractApp(entry);
+    const route = app.routes.find((r) => r.id === "sys.tick");
+    expect(route?.exported).toBeFalse(); // fixture sanity
+    // Stub native dir: the diagnostic must fire before any artifact read.
+    mkdirSync(join(dir, "dist"), { recursive: true });
+    try {
+      buildBrowserWasmArtifacts({ project: entry, outDir: dir }, app, join(dir, "dist"));
+      throw new Error("unreachable");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CompileError);
+      expect((e as CompileError).message).toContain("browser-wasm target");
+      expect((e as CompileError).message).toContain('"sys.tick"');
+      expect((e as CompileError).message).toContain('"tick"');
+      expect((e as CompileError).message).toContain("not exported");
+      expect((e as CompileError).message).toContain("src/app.ts"); // source-located
+    }
+    // No browser directory was created on the diagnostic path.
+    expect(existsSync(join(dir, "browser"))).toBeFalse();
+  });
+
+  it("a same-module `export { tick }` re-export satisfies the guard and emits", () => {
+    const dir = join(root, ".tmp-1292-reexport");
+    cleanup.push(dir);
+    const entry = writeProject(dir, tickDecl, [
+      `export const app = { routes: [tick] };`,
+      `export { tick };`,
+    ]);
+    const app = extractApp(entry);
+    const route = app.routes.find((r) => r.id === "sys.tick");
+    expect(route?.exported).toBeTrue(); // re-export joins the export surface
+    // Stub native artifacts: the B-001 emission hashes/copies bytes only.
+    const nativeOut = join(dir, "dist");
+    mkdirSync(nativeOut, { recursive: true });
+    writeFileSync(join(nativeOut, "app.qpack"), "stub-pack");
+    for (const name of ["schema-manifest.json", "capability-manifest.json", "contract.json"]) {
+      writeFileSync(join(nativeOut, name), "{}\n");
+    }
+    const result = buildBrowserWasmArtifacts({ project: entry, outDir: dir }, app, nativeOut);
+    expect(result.routes).toBe(1);
+    const js = readFileSync(join(result.outDir, "app.browser.js"), "utf8");
+    expect(js).toContain(".tick)"); // namespace access reaches the binding
+  });
+
+  it("default-export and `export const` routes are extracted as exported", () => {
+    const dir = join(root, ".tmp-1292-forms");
+    cleanup.push(dir);
+    const entry = writeProject(
+      dir,
+      [
+        `export default route({`,
+        `  id: "root.get",`,
+        `  method: "GET",`,
+        `  path: "/",`,
+        `  response: { 200: s.object({ ok: s.boolean() }) },`,
+        `  handle: (ctx) => ({ ok: true }),`,
+        `});`,
+      ].join("\n"),
+      [
+        `export const listed = route({`,
+        `  id: "listed.get",`,
+        `  method: "GET",`,
+        `  path: "/listed",`,
+        `  response: { 200: s.object({ ok: s.boolean() }) },`,
+        `  handle: (ctx) => ({ ok: true }),`,
+        `});`,
+        `const hidden = route({`,
+        `  id: "hidden.get",`,
+        `  method: "GET",`,
+        `  path: "/hidden",`,
+        `  response: { 200: s.object({ ok: s.boolean() }) },`,
+        `  handle: (ctx) => ({ ok: true }),`,
+        `});`,
+        `export const app = { routes: [hidden] };`,
+      ],
+    );
+    const app = extractApp(entry);
+    const byId = new Map(app.routes.map((r) => [r.id, r]));
+    expect(byId.get("root.get")?.exported).toBeTrue(); // export default
+    expect(byId.get("listed.get")?.exported).toBeTrue(); // export const
+    expect(byId.get("hidden.get")?.exported).toBeFalse(); // plain const
+  });
+});
