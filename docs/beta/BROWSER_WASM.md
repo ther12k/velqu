@@ -43,6 +43,16 @@ Velqu Browser-WASM implements a **hybrid architecture** that brings Velqu's cont
 - [Bun](https://bun.sh) v1.4.0+
 - A Velqu project with routes declared via `@velqu/core` and `@velqu/schema`
 
+### Authoring Requirement: Export Route Bindings
+
+Every route declaration must be reachable through its source module's export
+surface: declare routes as `export const tick = route({...})`, re-export them
+in the same module (`export { tick }`), or use `export default route({...})`.
+The browser build fails closed with a source-located error on non-exported
+route bindings — the generated handler bundle imports each binding by name
+from its module, and a non-exported const would silently resolve to
+`undefined` at runtime (#1292).
+
 ### Step-by-Step Workflow
 
 ```bash

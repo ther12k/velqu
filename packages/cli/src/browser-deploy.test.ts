@@ -617,6 +617,39 @@ describe("B-005 CLI integration", () => {
     expect(body.totalBytes).toBeGreaterThan(1_700_000);
   });
 
+  it("build --target browser-wasm exits nonzero for non-exported route bindings (#1292)", async () => {
+    const tmp = join(root, ".tmp-1292-cli");
+    rmSync(tmp, { recursive: true, force: true });
+    mkdirSync(join(tmp, "src"), { recursive: true });
+    writeFileSync(
+      join(tmp, "src", "app.ts"),
+      [
+        `import { route } from "@velqu/core";`,
+        `import { s } from "@velqu/schema";`,
+        `const tick = route({`,
+        `  id: "sys.tick",`,
+        `  method: "GET",`,
+        `  path: "/sys/tick",`,
+        `  response: { 200: s.object({ ms: s.integer() }) },`,
+        `  handle: (ctx) => ({ ms: 0 }),`,
+        `});`,
+        `export const app = { routes: [tick] };`,
+        ``,
+      ].join("\n"),
+    );
+    try {
+      const r = await runCli(["build", "--target", "browser-wasm", "--project", tmp]);
+      expect(r.code).toBe(1);
+      expect(r.stderr).toContain("not exported");
+      expect(r.stderr).toContain('"tick"');
+      expect(r.stderr).toContain("sys.tick");
+      // The diagnostic path emits nothing.
+      expect(existsSync(join(tmp, "dist", "browser"))).toBeFalse();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("build --target browser-wasm exits nonzero for unsupported imports (B-003 policy)", async () => {
     const tmp = join(root, ".tmp-b005-policy");
     rmSync(tmp, { recursive: true, force: true });
