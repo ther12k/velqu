@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "packet": "bwasm-q-008-candidate",
+  "assembledAtUtc": "2026-09-08T00:02:04Z",
+  "sourceCommit": "9c658943f8b087c06e4f44ba70b685391a21e685",
+  "worktreeDirtyFiles": 5,
+  "toolchain": {
+    "bun": "1.4.0",
+    "rustc": "1.96.0",
+    "wasmBindgen": "wasm-bindgen 0.2.108",
+    "typescript": "5.9.3"
+  },
+  "lockfiles": {
+    "bunLockSha256": "56abafc26d0bbfff643c9a413c84f4df3f4c29a1f99905bfaf0321c944a30b76",
+    "cargoLockSha256": "1c1b1b4d7eaf3d7c790a3dbae768841fdb31f3c2533d408c931d5d3fb013b486"
+  },
+  "vendoredKernel": {"file": "q_browser_kernel_bg.wasm", "sha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133", "bytes": 1732433}
+}

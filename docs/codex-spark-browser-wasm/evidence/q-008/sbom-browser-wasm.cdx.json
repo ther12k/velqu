@@ -1,0 +1,218 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:velqu-bwasm-9c658943f8b0",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-08T00:02:04Z",
+    "component": {
+      "type": "application",
+      "name": "velqu-browser-wasm-candidate",
+      "version": "9c658943f8b0"
+    },
+    "properties": [
+      {
+        "name": "velqu:sourceCommit",
+        "value": "9c658943f8b087c06e4f44ba70b685391a21e685"
+      },
+      {
+        "name": "velqu:distribution",
+        "value": "browser-wasm"
+      },
+      {
+        "name": "velqu:licensePosture",
+        "value": "NOASSERTION pending Owner license decision (AGENTS.md constraint 13)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-browser-kernel@0.1.0",
+      "name": "q-browser-kernel",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-browser-kernel@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-capabilities@0.1.0",
+      "name": "q-capabilities",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-capabilities@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-pack@0.1.0",
+      "name": "q-pack",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-pack@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-router@0.1.0",
+      "name": "q-router",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-router@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-runtime-model@0.1.0",
+      "name": "q-runtime-model",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-runtime-model@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/q-schema-runtime@0.1.0",
+      "name": "q-schema-runtime",
+      "version": "0.1.0",
+      "purl": "pkg:cargo/q-schema-runtime@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/browser-runtime@0.1.0",
+      "name": "@velqu/browser-runtime",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/browser-runtime@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/cli@0.1.0",
+      "name": "@velqu/cli",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/cli@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/compiler@0.1.0",
+      "name": "@velqu/compiler",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/compiler@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/contract@0.1.0",
+      "name": "@velqu/contract",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/contract@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/core@0.1.0",
+      "name": "@velqu/core",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/core@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/schema@0.1.0",
+      "name": "@velqu/schema",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/schema@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@velqu/treaty@0.1.0",
+      "name": "@velqu/treaty",
+      "version": "0.1.0",
+      "purl": "pkg:npm/%40velqu/treaty@0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "NOASSERTION"
+          }
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "velqu:browser-kernel-wasm",
+      "name": "q_browser_kernel_bg.wasm",
+      "version": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133"
+    }
+  ]
+}
