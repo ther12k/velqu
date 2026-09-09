@@ -38,11 +38,17 @@ Material decisions live in [`docs/okf/decisions/`](docs/okf/decisions/);
 open owner decisions in
 [`docs/open-decisions.md`](docs/open-decisions.md).
 
-The `@velqu/*` packages are publish-ready (`0.1.0-beta.1`, npm org
-created) — actual publication is owner-gated (OD-050,
-[`docs/beta/PUBLISHING.md`](docs/beta/PUBLISHING.md)). Today you build
-from source with the pinned toolchain (Bun 1.4.0, TypeScript 5.9.3,
-stable Rust):
+Published to npm as `@velqu/*@0.1.0-beta.1` under the **`beta`**
+dist-tag (publication decision OD-010;
+[`docs/beta/PUBLISHING.md`](docs/beta/PUBLISHING.md)):
+
+```bash
+bun add @velqu/core@beta @velqu/schema@beta      # authoring surface
+bun add -g @velqu/cli@beta                        # `velqu` CLI (requires Bun)
+```
+
+Building the runtime from source still uses the pinned toolchain
+(Bun 1.4.0, TypeScript 5.9.3, stable Rust):
 
 ```bash
 bun install

@@ -38,3 +38,4 @@ status: active
 
 Each material change to these defaults during implementation will add a new
 ADR under `docs/okf/decisions/` and update this register.
+| OD-010 | npm publication of `@velqu/*` | **DECIDED (2026-09-09)** | Owner created the `velqu` npm org and published all seven packages as `0.1.0-beta.1` under the `beta` dist-tag (`latest` intentionally not set); runbook + packaging invariants in `docs/beta/PUBLISHING.md`; verified post-publish from the registry |

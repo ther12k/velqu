@@ -67,7 +67,7 @@ Revisit trigger:
 
 ## Release decisions
 
-- [ ] **OD-050 — Beta release channel.** Choose version/tag/package publication policy.
+- [x] **OD-050 — Beta release channel.** Choose version/tag/package publication policy. — RESOLVED BY OWNER ACTION (2026-09-09): npm org `velqu`; all seven packages published as `0.1.0-beta.1` under the `beta` dist-tag; `latest` intentionally withheld; record in `docs/open-decisions.md` (OD-010) and runbook in `docs/beta/PUBLISHING.md`.
 - [ ] **OD-051 — Performance budgets.** Freeze core/optional payload, cold/warm startup, first request, steady request, Worker restart, and memory-growth thresholds.
 - [ ] **OD-052 — Evidence ownership.** Assign independent reviewers for kernel/runtime/security/cleanroom/gate packets.
 - [ ] **OD-053 — Residual risk acceptance.** Define who can accept P1 risk, required metadata, and expiry.

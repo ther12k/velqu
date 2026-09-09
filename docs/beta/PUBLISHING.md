@@ -1,11 +1,20 @@
 # Publishing `@velqu/*` to npm — Owner Runbook
 
-**Status: publish-ready, publication owner-gated.** The seven workspace
-packages are packaged, version-pinned to `0.1.0-beta.1`, and verified by
-`packages/publishing/src/publishing.test.ts` (tarball layout, kernel
-assets, workspace-dep replacement). The actual publication is an Owner
-decision — record it under OD-050 (release channel) in
-`docs/open-decisions.md` before the first real publish (AGENTS.md §13).
+**Status: PUBLISHED (2026-09-09).** All seven packages are live on npm
+as `0.1.0-beta.1` under the **`beta`** dist-tag (`latest` intentionally
+unset; moves only by a recorded owner decision). Install with e.g.
+`bun add @velqu/core@beta`. The packaging invariants below (tarball
+layout, kernel assets, workspace-dep replacement) remain enforced by
+`packages/publishing/src/publishing.test.ts`. Decision record:
+`docs/open-decisions.md` OD-010 / BWASM OD-050.
+
+> Publishing incident, for the record: `@velqu/browser-runtime` was
+> uploaded in the owner's first run, but the registry's read path
+> (packument) returned 404 for ~15-20 minutes after the version document
+> was already reachable — plain registry propagation lag, not a phantom
+> publish. During that window a republish attempt correctly failed with
+> "cannot publish over previously published versions". No action was
+> needed; the package became visible on its own.
 
 ## One-time setup
 
