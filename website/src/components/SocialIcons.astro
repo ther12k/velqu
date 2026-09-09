@@ -1,0 +1,42 @@
+---
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+
+// Header-right navigation: the primary doc destinations as plain text links,
+// followed by Starlight's default social icons (GitHub, npm). Links include
+// the site base path.
+const links = [
+  { href: '/velqu/getting-started/', label: 'Docs' },
+  { href: '/velqu/browser-wasm/', label: 'Browser-WASM' },
+  { href: '/velqu/deployment/', label: 'Deploy' },
+];
+---
+
+<nav class="header-links" aria-label="Primary">
+  {links.map((link) => <a href={link.href}>{link.label}</a>)}
+</nav>
+<Default />
+
+<style>
+  .header-links {
+    display: flex;
+    gap: 1.25rem;
+    margin-inline-end: 0.75rem;
+  }
+  .header-links a {
+    color: var(--sl-color-text);
+    font-size: 0.875rem;
+    text-decoration: none;
+    opacity: 0.85;
+  }
+  .header-links a:hover,
+  .header-links a:focus-visible {
+    opacity: 1;
+    color: var(--sl-color-text-accent);
+  }
+  @media (max-width: 50rem) {
+    /* Small screens: the mobile sidebar covers navigation; keep the header lean. */
+    .header-links {
+      display: none;
+    }
+  }
+</style>
