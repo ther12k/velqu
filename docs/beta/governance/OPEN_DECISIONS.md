@@ -69,7 +69,7 @@ Required by gate: Publishing
 
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-003 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-A-repository-organization.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-A-repository-organization.md` (completion record)
 
 ## OD-BETA-002 Decision Record
 
@@ -119,7 +119,7 @@ Required by gate: Public beta
 - `CONTRIBUTING.md`
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-004 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-B-license-contribution-model.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-B-license-contribution-model.md` (completion record)
 
 ## OD-BETA-003 Decision Record
 
@@ -166,7 +166,7 @@ Required by gate: Public beta
 - `docs/beta/governance/RELEASE_AUTHORITY.md`
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-006 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-C-release-authority.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-C-release-authority.md` (completion record)
 
 ## OD-BETA-004 Decision Record
 
@@ -215,7 +215,7 @@ Required by gate: Public beta
 - `CONTRIBUTING.md`
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (security contact marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-D-security-contact.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-D-security-contact.md` (completion record)
 
 ## OD-BETA-005 Decision Record
 
@@ -263,7 +263,7 @@ Required by gate: Packaging/docs
 - `docs/beta/workstreams/PLATFORM_SUPPORT.md`
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-005 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-E-supported-beta-platforms.md` (completion record)
 
 ## OD-BETA-006 Decision Record
 
@@ -311,7 +311,7 @@ Required by gate: Deployment docs
 - `docs/beta/workstreams/PLATFORM_SUPPORT.md`
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-008 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-F-reverse-proxy-first-statement.md` (completion record)
 
 ## OD-BETA-008 Decision Record
 
@@ -360,4 +360,4 @@ Required by gate: Beta announcement
 - `docs/reports/release-gate-report.md` (claims scoped/labeled historical)
 - `docs/beta/governance/OPEN_DECISIONS.md` (this record)
 - `docs/open-decisions.md` (OD-009 marked decided)
-- `docs/codex-spark-beta/tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md` (completion record)
+- `docs/beta/program/tasks/08_public_beta/BETA-017-G-public-benchmark-wording.md` (completion record)

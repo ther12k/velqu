@@ -21,7 +21,7 @@ GitHub repository at <https://github.com/ther12k/velqu>.
 6. Wait for review before merging.
 
 Repository packet work follows the branch, worktree, PR, and squash-merge rules
-in `docs/codex-spark-beta/WORKFLOW.md`.
+in `docs/beta/program/WORKFLOW.md`.
 
 ## Local verification
 

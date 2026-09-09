@@ -70,9 +70,9 @@ retained in the PR body of this packet). Outcome:
   `CHANGELOG.md`, `KNOWN-LIMITATIONS.md`, `sbom.cdx.json`, `npm-tarballs/`
   (9 tarballs), `SHA256SUMS.txt`.
 - Status bindings updated in this packet: task record
-  `docs/codex-spark-beta/tasks/08_public_beta/BETA-015-Z-…md` (TODO → PASS +
-  Result), `docs/codex-spark-beta/STATUS.md` checkbox,
-  `docs/codex-spark-beta/indexes/TASK_INDEX.md` row, parent ledger
+  `docs/beta/program/tasks/08_public_beta/BETA-015-Z-…md` (TODO → PASS +
+  Result), `docs/beta/program/STATUS.md` checkbox,
+  `docs/beta/program/indexes/TASK_INDEX.md` row, parent ledger
   `docs/beta/04_TASK_LEDGER.md` (`BETA-015` TODO → PASS).
 
 ## Disclosures

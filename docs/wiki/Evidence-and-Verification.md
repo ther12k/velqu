@@ -30,7 +30,7 @@ Release Rust builds use `--release` only. Benchmarks regenerate via
 
 One branch per packet, PR with `Closes #<issue>`, squash-merge keeps one
 atomic commit per packet —
-[docs/codex-spark-beta/WORKFLOW.md](https://github.com/ther12k/velqu/blob/master/docs/codex-spark-beta/WORKFLOW.md).
+[docs/beta/program/WORKFLOW.md](https://github.com/ther12k/velqu/blob/master/docs/beta/program/WORKFLOW.md).
 
 ## Known CI state (honest disclosure)
 

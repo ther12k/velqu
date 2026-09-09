@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Regenerate the Codex Spark queue indexes from packet statuses.
 
-Reads every packet/gate file under docs/codex-spark-beta, keeps the ones whose
+Reads every packet/gate file under docs/beta/program, keeps the ones whose
 frontmatter status is TODO, and rewrites:
 
-  - docs/codex-spark-beta/indexes/EXECUTION_QUEUE.md  (all unchecked)
-  - docs/codex-spark-beta/indexes/NEXT_25.md          (first 25 unchecked)
+  - docs/beta/program/indexes/EXECUTION_QUEUE.md  (all unchecked)
+  - docs/beta/program/indexes/NEXT_25.md          (first 25 unchecked)
 
 Each entry carries the registered GitHub issue number (`— #N`) so a packet PR
 can reference `Closes #N` without a manual lookup. Issue numbers come from
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPARK = ROOT / "docs" / "codex-spark-beta"
+SPARK = ROOT / "docs" / "beta" / "program"
 TASKS = SPARK / "tasks"
 GATES = SPARK / "gates"
 
