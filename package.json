@@ -14,7 +14,10 @@
     "package:archive": "./scripts/package",
     "test": "bun test packages examples/proof",
     "typecheck": "tsc -b tsconfig.json",
-    "velqu": "bun packages/cli/src/index.ts"
+    "velqu": "bun packages/cli/src/index.ts",
+    "packages:build": "bun scripts/build-packages.ts",
+    "publish:beta": "bash scripts/publish-beta.sh --dry-run",
+    "publish:beta:real": "bash scripts/publish-beta.sh"
   },
   "engines": {
     "bun": "1.4.0"

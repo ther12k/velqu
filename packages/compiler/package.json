@@ -1,14 +1,38 @@
 {
   "name": "@velqu/compiler",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.0-beta.1",
+  "description": "Velqu compiler: static route extraction, deterministic QPack emission, contract/OpenAPI output, and the browser-wasm target. Never executes application code.",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ther12k/velqu.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "typescript": "^5.9.3",
     "@velqu/contract": "workspace:*",
     "@velqu/schema": "workspace:*",
     "@velqu/core": "workspace:*"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
   }
 }
