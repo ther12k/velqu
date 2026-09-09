@@ -35,7 +35,7 @@ export {
   type CapabilityPortabilityEntryReport,
   type CapabilityPortabilityReport,
 } from "./capability-portability";
-export { diffContracts, PROBLEM_REGISTRY, type DiffEntry } from "./emit";
+export { diffContracts, PROBLEM_REGISTRY, capabilityInventoryHash, type DiffEntry } from "./emit";
 export { PINNED_TOOLCHAIN, assertPinnedToolchain, ToolchainError } from "./toolchain";
 export {
   evaluateAppStrategies,

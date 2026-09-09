@@ -1,4 +1,4 @@
-import { capabilityInventoryHash } from "../../compiler/src/emit";
+import { capabilityInventoryHash } from "@velqu/compiler";
 
 /**
  * M27-002-D: `velqu inspect capabilities` accuracy. Reads the

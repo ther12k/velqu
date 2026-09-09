@@ -47,7 +47,13 @@ describe("browser-runtime purity (R-001)", () => {
       readFileSync(join(import.meta.dir, "..", "package.json"), "utf8"),
     ) as Record<string, unknown>;
     expect(pkg.name).toBe("@velqu/browser-runtime");
-    expect(pkg.browser).toBe("./src/index.ts");
+    // Built browser output for generic resolvers; Bun consumers keep the
+    // (browser-only, purity-audited) TypeScript sources.
+    expect(pkg.browser).toBe("./dist/index.js");
+    const exp = (pkg.exports as Record<string, Record<string, string>>)["."];
+    expect(exp.bun).toBe("./src/index.ts");
+    expect(exp.default).toBe("./dist/index.js");
+    expect(exp.types).toBe("./dist/index.d.ts");
     expect(Object.keys(pkg.exports as object)).toEqual(["."]);
     // No build scripts that could smuggle native artifacts.
     expect(pkg.scripts).toBeUndefined();

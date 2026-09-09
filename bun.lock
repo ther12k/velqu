@@ -24,7 +24,7 @@
     },
     "packages/browser-runtime": {
       "name": "@velqu/browser-runtime",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
     },
     "packages/capability-auth-jwt": {
       "name": "@velqu/capability-auth-jwt",
@@ -36,17 +36,18 @@
     },
     "packages/cli": {
       "name": "@velqu/cli",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
       "bin": {
-        "velqu": "./src/index.ts",
+        "velqu": "./bin/velqu.js",
       },
       "dependencies": {
+        "@velqu/browser-runtime": "workspace:*",
         "@velqu/compiler": "workspace:*",
       },
     },
     "packages/compiler": {
       "name": "@velqu/compiler",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
       "dependencies": {
         "@velqu/contract": "workspace:*",
         "@velqu/core": "workspace:*",
@@ -56,15 +57,22 @@
     },
     "packages/contract": {
       "name": "@velqu/contract",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
     },
     "packages/core": {
       "name": "@velqu/core",
+      "version": "0.1.0-beta.1",
+      "dependencies": {
+        "@velqu/schema": "workspace:*",
+      },
+    },
+    "packages/publishing": {
+      "name": "@velqu/publishing",
       "version": "0.1.0",
     },
     "packages/schema": {
       "name": "@velqu/schema",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
     },
     "packages/testing": {
       "name": "@velqu/testing",
@@ -76,7 +84,7 @@
     },
     "packages/treaty": {
       "name": "@velqu/treaty",
-      "version": "0.1.0",
+      "version": "0.1.0-beta.1",
     },
   },
   "packages": {
@@ -101,6 +109,8 @@
     "@velqu/core": ["@velqu/core@workspace:packages/core"],
 
     "@velqu/proof-app": ["@velqu/proof-app@workspace:examples/proof"],
+
+    "@velqu/publishing": ["@velqu/publishing@workspace:packages/publishing"],
 
     "@velqu/schema": ["@velqu/schema@workspace:packages/schema"],
 

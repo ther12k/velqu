@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@velqu/contract": [
+        "packages/contract/dist/index.d.ts"
+      ],
+      "@velqu/schema": [
+        "packages/schema/dist/index.d.ts"
+      ],
+      "@velqu/core": [
+        "packages/core/dist/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/index.ts"
+  ]
+}
