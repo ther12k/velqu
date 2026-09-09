@@ -1,0 +1,57 @@
+---
+title: Velqu
+description: A Rust HTTP runtime running TypeScript handlers — one schema contract driving types, validation, clients, OpenAPI, and the contract lock.
+head:
+  - tag: title
+    content: Velqu — Rust-routed HTTP. One schema contract.
+template: splash
+hero:
+  title: Velqu
+  tagline: Rust-routed HTTP. One schema contract.
+  actions:
+    # Site base is /velqu (GitHub Pages project site) — frontmatter links are not base-adjusted.
+    - text: Get Started
+      link: /velqu/getting-started/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/ther12k/velqu
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+export const base = import.meta.env.BASE_URL; // Starlight base-adjusts actions & Markdown links, not component props.
+
+```bash
+bun add @velqu/core@beta
+```
+
+A Rust HTTP runtime that runs your TypeScript handlers on an embedded
+quickjs-ng engine. The host routes by method/path and enforces bounded
+queues, bodies, heap, stack, and deadlines **before any JavaScript runs** —
+while types, runtime validation, Treaty clients, OpenAPI, and the contract
+lock all derive from one schema declaration.
+
+<CardGrid>
+  <Card title="Rust routes before JavaScript">
+    Method/path dispatch, body limits, and schema validation happen in the
+    host. 404/405 never reach a handler; validation failures are typed 422s.
+  </Card>
+  <Card title="One schema contract">
+    The same schema IR drives generated TypeScript types, kernel validation,
+    Treaty clients, <code>openapi.json</code>, and the contract lock — no drift.
+  </Card>
+  <Card title="Bounded by construction">
+    Queues, bodies, headers, heap, stack, handler deadlines, and pending
+    operations all have enforced limits. Failures are redacted, typed RFC 9457
+    problems.
+  </Card>
+</CardGrid>
+
+<CardGrid>
+  <LinkCard title="Browser-WASM target" href={`${base}/browser-wasm/`} description="The same app as static assets in an ordinary browser — Rust kernel in WebAssembly, handlers in an isolated Worker." />
+  <LinkCard title="Deploying" href={`${base}/deployment/`} description="Shared mode: the Rust runtime binary plus a verified QPack. Deterministic, engine-matched artifacts." />
+  <LinkCard title="Known limitations" href={`${base}/known-limitations/`} description="Recorded honestly — trusted code only, evidence-bound claims." />
+  <LinkCard title="npm: @velqu/*@beta" href="https://www.npmjs.com/org/velqu" description="Published under the beta dist-tag." />
+</CardGrid>
