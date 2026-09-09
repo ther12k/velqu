@@ -8,7 +8,7 @@ lock.**
 [Browser-WASM guide](docs/beta/BROWSER_WASM.md) ·
 [Beta plan](docs/beta/README.md) ·
 [Architecture decisions](docs/okf/decisions/) ·
-[Contributing](docs/codex-spark-beta/WORKFLOW.md)
+[Contributing](docs/beta/program/WORKFLOW.md)
 
 ![status](https://img.shields.io/badge/channel-beta-orange)
 ![license](https://img.shields.io/badge/license-MIT-blue)
@@ -33,7 +33,7 @@ contract lock — one source of truth, no drift.
 
 Pre-beta development toward **`0.1.0-beta.1`** (ADR-0020,
 [`docs/beta/`](docs/beta/)). Milestone state:
-[`docs/codex-spark-beta/STATUS.md`](docs/codex-spark-beta/STATUS.md).
+[`docs/beta/program/STATUS.md`](docs/beta/program/STATUS.md).
 Material decisions live in [`docs/okf/decisions/`](docs/okf/decisions/);
 open owner decisions in
 [`docs/open-decisions.md`](docs/open-decisions.md).
@@ -211,7 +211,7 @@ samples, p50/p95/p99 (`benchmarks/raw/`, index in
 
 Contributions follow the packet workflow: one branch per packet, PR with
 `Closes #<issue>`, squash-merged — see
-[`docs/codex-spark-beta/WORKFLOW.md`](docs/codex-spark-beta/WORKFLOW.md).
+[`docs/beta/program/WORKFLOW.md`](docs/beta/program/WORKFLOW.md).
 `bun run verify` must pass before any milestone checkpoint. Never weaken a
 test or fixture to pass; failures are reported honestly.
 

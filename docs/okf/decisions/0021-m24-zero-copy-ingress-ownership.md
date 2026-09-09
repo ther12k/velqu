@@ -3,7 +3,7 @@
 - **Status:** Accepted (2026-08-20)
 - **Deciders:** Antigravity Engineering, Architecture Review
 - **Consulted:** ADR-0005 (native routing, lazy bridge), ADR-0008 (one runtime per worker), ADR-0018 (M2.4 authorization), AGENTS.md constraints 2/3/7/8/11
-- **Informs:** M24-001 … M24-010 (`docs/codex-spark-beta/tasks/01_m24_zero_copy_ingress/`), M3 multi-worker
+- **Informs:** M24-001 … M24-010 (`docs/beta/program/tasks/01_m24_zero_copy_ingress/`), M3 multi-worker
 
 ## Context
 

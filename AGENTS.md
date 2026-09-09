@@ -48,7 +48,7 @@ is regenerated with `bun run benchmark:all`.
 
 ## Working rules
 
-- Deliver via pull request: one branch per packet (`docs/codex-spark-beta/WORKFLOW.md`),
+- Deliver via pull request: one branch per packet (`docs/beta/program/WORKFLOW.md`),
   PR body contains `Closes #<issue>`, squash-merge keeps one atomic commit per packet.
   Use git worktrees for parallel packet work; the main checkout stays clean.
 - Keep commits atomic; clean tree at milestone checkpoints.

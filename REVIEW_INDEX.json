@@ -13,7 +13,7 @@
       "gate": "BETA-001..BETA-014 parent closure (observability, competitors, crossover suites, postgres, jwt, config/secrets, reverse-proxy/drain/deployment, security baseline, platform/packaging, publishing/versioning, documentation/limitations, soak/leak, canonical benchmark report)",
       "status": "PASS",
       "source": [
-        "docs/codex-spark-beta/tasks/08_public_beta/*-Z-*.md",
+        "docs/beta/program/tasks/08_public_beta/*-Z-*.md",
         "docs/beta/04_TASK_LEDGER.md"
       ],
       "tests": [
