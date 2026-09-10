@@ -41,14 +41,17 @@ signal for real evidence breakage.
 `scripts/validate-benchmark-evidence.py` distinguishes what each environment
 can prove:
 
-- **Ancestry is checked strictly whenever git can answer it.** The capture
-  commit must be a full 40-hex hash. If `git merge-base --is-ancestor` fails,
-  the validator checks whether the commit object is reachable
-  (`git rev-parse --verify <sha>^{commit}`): if present but not an ancestor,
-  that is fatal (evidence captured from an unrelated history). If the object
-  is absent — the squash-merge delivery case — ancestry is unprovable and is
-  reported as a note, not an error. The verify workflow checks out with
-  `fetch-depth: 0` so live-branch PR runs take the strict path.
+- **Ancestry proves provenance only when it holds.** The capture commit must
+  be a full 40-hex hash, and `git merge-base --is-ancestor` enforces
+  ancestry strictly whenever it holds (e.g. evidence captured directly on
+  master). When it does not hold, the validator reports a note, not an
+  error: the delivery flow squash-merges every packet and deletes its
+  branch, so a manifest captured on a packet branch is never an ancestor of
+  post-merge HEAD — and the pre-squash object may linger locally until gc,
+  so object presence does not make non-ancestry a decidable failure
+  either. Provenance for packet evidence is enforced at PR review while the
+  capture ref lives; the verify workflow checks out with `fetch-depth: 0`
+  so ancestry is checked wherever it can hold.
 - **Artifact hashes are checked byte-exact on the capture host** (the
   canonical local gate). In CI (`CI=true`), artifacts under `target/` —
   host-toolchain build outputs — are checked for presence only; byte identity
