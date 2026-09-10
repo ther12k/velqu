@@ -619,6 +619,13 @@ async function bundleEntries(
       format: "esm",
       sourcemap: sourceMap ? "linked" : "none",
       naming: "[name].[ext]",
+      // The @velqu/* exports maps route the "bun" condition to workspace
+      // sources (./src/index.ts) and only "default" to dist/. A plain
+      // browser target never consults "bun", so in-repo/workspace builds
+      // failed with `Could not resolve: "@velqu/browser-runtime"` on any
+      // tree without built dist/ (#1305). Honor the packages' own
+      // Bun-consumer mapping here.
+      conditions: ["bun"],
     });
   } catch (cause) {
     const errors = (cause as { errors?: unknown[] }).errors ?? [];

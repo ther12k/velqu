@@ -73,6 +73,15 @@ async function runCli(args: string[]): Promise<{ code: number; stdout: string; s
   return { code, stdout, stderr };
 }
 
+/** Fails with the CLI's captured stderr/stdout visible — a bare code check hides the actual error (#1305/#1306). */
+function expectCliOk(r: { code: number; stdout: string; stderr: string }) {
+  if (r.code !== 0) {
+    throw new Error(
+      `CLI exited ${r.code}\n--- stdout ---\n${r.stdout.slice(-1200)}\n--- stderr ---\n${r.stderr.slice(-1200)}`,
+    );
+  }
+}
+
 describe("BWASM-Q-006 documented quickstart workflow execution", () => {
   setupQuickstartApp();
 
@@ -80,7 +89,7 @@ describe("BWASM-Q-006 documented quickstart workflow execution", () => {
     const r = await runCli([
       "build", "--target", "browser-wasm", "--project", appDir, "--json",
     ]);
-    expect(r.code).toBe(0);
+    expectCliOk(r);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.status).toBe("ok");
     expect(parsed.target).toBe("browser-wasm");
@@ -93,7 +102,7 @@ describe("BWASM-Q-006 documented quickstart workflow execution", () => {
     const r = await runCli([
       "inspect", "browser", "--project", appDir, "--json",
     ]);
-    expect(r.code).toBe(0);
+    expectCliOk(r);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.status).toBe("ok");
     expect(parsed.target).toBe("browser");
@@ -123,7 +132,7 @@ describe("BWASM-Q-006 documented quickstart workflow execution", () => {
     const r = await runCli([
       "export", "--project", appDir, "--out", exportDir, "--json",
     ]);
-    expect(r.code).toBe(0);
+    expectCliOk(r);
     const parsed = JSON.parse(r.stdout);
     expect(parsed.status).toBe("ok");
     expect(parsed.command).toBe("export");

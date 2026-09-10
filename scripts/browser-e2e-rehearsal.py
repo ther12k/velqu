@@ -43,12 +43,24 @@ CHROMIUM = os.path.expanduser(
 
 def browser_path(name: str) -> str | None:
     if name == "chromium":
+        override = os.environ.get("VELQU_CHROME")
+        if override and os.path.exists(override):
+            return override
         return CHROMIUM if os.path.exists(CHROMIUM) else None
     return None  # firefox/webkit resolve through Playwright's own registry
 
 
 def bun(argv, cwd=REPO, check=True):
-    return subprocess.run(["bun", *argv], cwd=cwd, check=check, capture_output=True, text=True)
+    out = subprocess.run(["bun", *argv], cwd=cwd, check=False, capture_output=True, text=True)
+    if check and out.returncode != 0:
+        # Surface the captured output — a bare CalledProcessError hides the
+        # actual build error, which made failing CI lanes undiagnosable (#1305).
+        raise RuntimeError(
+            f"bun {' '.join(argv)} failed (exit {out.returncode})\n"
+            f"--- stdout ---\n{out.stdout[-1500:]}\n"
+            f"--- stderr ---\n{out.stderr[-1500:]}"
+        )
+    return out
 
 
 def link_workspace(project: str, packages=("core", "schema", "browser-runtime")):
@@ -112,7 +124,11 @@ def build_kv_entry(browser_dir: str, work: str):
     out_dir = os.path.join(browser_dir, "__velqu_editor__")
     os.makedirs(out_dir, exist_ok=True)
     out = bun(["build", entry, "--outdir", out_dir, "--target", "browser",
-               "--format", "esm", "--minify"], check=False)
+               "--format", "esm", "--minify",
+               # resolve @velqu/* exports to workspace sources (./src) on
+               # trees without built dist/ — same mapping the CLI's own
+               # browser bundler honors (#1305)
+               "--conditions", "bun"], check=False)
     if out.returncode != 0:
         raise RuntimeError(f"kv bundle failed: {out.stderr[-400:]}")
 
@@ -200,14 +216,26 @@ def main() -> int:
                    and "Hello E2E v1" in json.dumps(info.get("probe", {}).get("body")),
                    info.get("probe"))
 
-            # E3 — Service Worker installed, activated, controlling
+            # E3 — Service Worker installed, activated, controlling.
+            # A page that commits before the activated worker takes the
+            # navigation is never controlled, so a single immediate reload
+            # races activation; sample with one bounded retry on a fresh
+            # reload. The asserted property is unchanged: the page must be
+            # controlled by the activated worker (#1305).
             page.wait_for_function(
                 "async () => { const r = await navigator.serviceWorker.getRegistration(); return !!r && !!r.active; }",
                 timeout=60000)
-            page.reload(wait_until="domcontentloaded")
-            page.wait_for_function(
-                "document.getElementById('velqu-status')?.textContent.includes('ready')", timeout=45000)
-            controlled = page.evaluate("() => !!navigator.serviceWorker.controller")
+            controlled = False
+            for attempt in range(2):
+                page.reload(wait_until="domcontentloaded")
+                page.wait_for_function(
+                    "document.getElementById('velqu-status')?.textContent.includes('ready')", timeout=45000)
+                try:
+                    page.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=10000)
+                    controlled = True
+                    break
+                except Exception:
+                    controlled = False
             record("E3-sw-activated-and-controlling", controlled)
 
             # E4 — offline navigation (host down)
@@ -297,6 +325,9 @@ def main() -> int:
     report["REHEARSAL-PASS"] = all(v["ok"] for v in checks.values())
     print(json.dumps({"REHEARSAL-PASS": report["REHEARSAL-PASS"]}), flush=True)
     if args.out:
+        # fresh checkouts have no evidence/ tree; don't lose a full lane run
+        # to the report write (#1305)
+        os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
         with open(args.out, "w") as f:
             json.dump(report, f, indent=1)
     return 0 if report["REHEARSAL-PASS"] else 1
