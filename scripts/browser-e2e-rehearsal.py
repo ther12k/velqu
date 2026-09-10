@@ -325,6 +325,9 @@ def main() -> int:
     report["REHEARSAL-PASS"] = all(v["ok"] for v in checks.values())
     print(json.dumps({"REHEARSAL-PASS": report["REHEARSAL-PASS"]}), flush=True)
     if args.out:
+        # fresh checkouts have no evidence/ tree; don't lose a full lane run
+        # to the report write (#1305)
+        os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
         with open(args.out, "w") as f:
             json.dump(report, f, indent=1)
     return 0 if report["REHEARSAL-PASS"] else 1
