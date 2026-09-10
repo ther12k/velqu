@@ -9,6 +9,14 @@
  * Route classes measured: C0 health.live, C1 js.text, C2 js.json,
  * C3 hello.get (validated path), C3 users.create (validated body, POST),
  * C4 users.get (policy), C5 async.timer.
+ *
+ * Wire-order note (#1303): byte-exact expectations use the schema's
+ * DECLARATION order ({"id","name","email"}). That matches the fixture
+ * pack's js-strategy routes, whose bodies are engine-stringified
+ * (insertion order). Compiler-built packs carry native-strategy routes
+ * whose M25-005 fused direct encoder emits canonical (sorted) key order —
+ * a per-route disclosure in the build report, not a defect. Do not "fix"
+ * these expectations to sorted order.
  */
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";

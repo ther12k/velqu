@@ -11,5 +11,8 @@ export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-ma
 bun install --silent
 cargo build --release --workspace --quiet
 (cd baselines/raw-rust && cargo build --release --quiet)
+# The elysia2 baseline has its own lockfile and deps; a fresh checkout has
+# no node_modules there and the baseline fails to boot without them (#1303).
+(cd baselines/elysia2 && bun install --frozen-lockfile --silent)
 
 bun benchmarks/harness/run-all.ts "$@"
