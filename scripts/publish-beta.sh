@@ -30,7 +30,7 @@ if [ "$MODE" = "--dry-run" ]; then
   echo "== DRY RUN — nothing will be published =="
 fi
 
-for pkg in contract schema core treaty browser-runtime compiler cli; do
+for pkg in contract schema core treaty browser-runtime browser-pglite compiler cli; do
   echo "== @velqu/$pkg =="
   (cd "packages/$pkg" && bun publish "${ARGS[@]}")
 done

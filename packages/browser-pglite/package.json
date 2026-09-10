@@ -1,0 +1,33 @@
+{
+  "name": "@velqu/browser-pglite",
+  "version": "0.1.0-beta.1",
+  "description": "Velqu optional browser-local SQL capability (BWASM-C-003): the frozen async Postgres operation subset mapped onto PGlite running in the browser. Browser-local prototype data only — never multi-user, production-durable, or native-Postgres-performance. The native `postgres` grant stays deployment-required; this adapter is a distinct, opt-in surface.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ther12k/velqu.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "browser": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ]
+}

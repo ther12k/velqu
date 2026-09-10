@@ -5,7 +5,7 @@ Mode: `IMPLEMENT` — Implement the bounded change and its targeted tests.
 Priority: `P1`  
 Optional: `YES — excluded from the MVP release gate unless an owner decision promotes it before candidate freeze.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -56,12 +56,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] Supported SQL fixtures behave according to the documented capability subset.
-- [ ] Unsupported operations fail with stable, actionable codes.
-- [ ] Persistence is isolated by project and origin namespace.
-- [ ] The adapter never claims multi-user durability, production availability, or native Postgres performance.
-- [ ] Projects without the capability do not download or instantiate database assets.
-- [ ] Database bytes and versions are integrity-bound to the browser build.
+- [x] Supported SQL fixtures behave according to the documented capability subset.
+- [x] Unsupported operations fail with stable, actionable codes.
+- [x] Persistence is isolated by project and origin namespace.
+- [x] The adapter never claims multi-user durability, production availability, or native Postgres performance.
+- [x] Projects without the capability do not download or instantiate database assets.
+- [x] Database bytes and versions are integrity-bound to the browser build.
 
 ## Targeted tests and commands
 
@@ -77,10 +77,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] SQL support matrix.
-- [ ] Payload/network measurements.
-- [ ] Persistence/isolation logs.
-- [ ] Compatibility test results.
+- [x] SQL support matrix.
+- [x] Payload/network measurements.
+- [x] Persistence/isolation logs.
+- [x] Compatibility test results.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -128,3 +128,68 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+## Result (2026-09-11) — PASS
+
+Issue: BWASM-C-003 (no standalone GitHub issue; this task record is the
+tracking unit per the program's registration model).
+
+Files changed:
+- `packages/browser-pglite/` (new optional package): `src/local-sql.ts`
+  (adapter: lazy engine load via dynamic import, memory/indexeddb modes,
+  origin+namespace storage isolation, bounded deadlines, typed errors,
+  engine-native transactions, export/import/reset),
+  `src/subset.ts` (documented SQL subset + stable remediation hints),
+  `src/index.ts`, `test/local-sql.test.ts` (real-engine SQL corpus),
+  `test/lazy.test.ts` (lazy/isolation/fail-closed/subset/deadline with a
+  counting fake loader), `test/purity.test.ts` (R-001 pattern),
+  `package.json` (engine `@electric-sql/pglite` 0.5.8 exact pin),
+  `tsconfig.build.json`, `README.md`.
+- `scripts/build-packages.ts`, `scripts/publish-beta.sh` (package wired;
+  engine always external, never inlined), root `bun.lock` (+11 lines),
+  `package.json` (unchanged net).
+
+Commands run: `bun test packages/browser-pglite` → **20 pass / 0 fail**
+(82 expects); `bun run typecheck` → clean; package build (bun build +
+tsc -p tsconfig.build.json) → dist 11,806 B (gzip 3,370 B) with the
+engine external; full `unshare -rn ./scripts/verify` at the packet
+commit → ALL PASS (recorded in the PR).
+
+Targeted tests: SQL fixture corpus (DDL/DML/joins/CTE/window/params/
+RETURNING/transactions commit+rollback), unsupported-statement matrix
+(9 families → `UnsupportedStatement` + remediation BEFORE execution,
+loader count proves no engine call), isolation (distinct storage per
+origin+namespace on real ctor args; namespace validation incl. path
+escape), persistence modes (memory = no dataDir; indexeddb = namespaced
+`idb://`), blocked-storage fail-closed (`PersistenceUnavailable`, no
+silent fallback), lazy-load (zero engine loads before open; exactly one
+after), wall-clock deadline on yielding waits (+ disclosed no-preemption
+limit), export→import→reset round-trip on the real engine.
+
+Evidence: `docs/browser-wasm/evidence/capabilities/c003/` —
+`sql-support-matrix.md`, `payload-network.md` (adapter 11,806 B /
+gzip 3,370 B; engine wasm 10,088,161 + 395,242 B, lazy-only),
+`persistence-isolation.md`, `compatibility.txt` (20/20).
+
+Browser/OS/toolchain: Linux x86_64, Bun 1.4.0, TS 5.9.3,
+`@electric-sql/pglite` 0.5.8 (engine reports PostgreSQL 18.3 on wasm32).
+
+Acceptance criteria: all six demonstrated (see evidence above; claims
+discipline: the native `postgres` grant stays deployment-required — the
+adapter is a distinct `runtime:local-sql` v1 surface and the package
+docs forbid multi-user/durability/performance claims).
+
+Known limitations / residual risks:
+- Real-browser network trace and IndexedDB durability E2E (chromium
+  lane) not exercised in this packet — structural proof committed
+  (package-level opt-out + dynamic-import laziness + fake-loader
+  assertions); lane extension recorded as follow-up evidence.
+- `importAll` is full-replace; dumps are engine-version-tagged archives
+  (restore across engine major versions is an engine property, not
+  promised by the adapter contract).
+- Engine WASM exec is single-threaded with the caller: deadlines reject
+  the caller but never preempt in-engine work (documented + tested).
+
+Owner note: promotion of this optional capability into any release gate
+remains an owner decision (task frontmatter: excluded from the MVP gate
+unless promoted before candidate freeze — it was not promoted).

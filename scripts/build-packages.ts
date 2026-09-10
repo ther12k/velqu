@@ -24,6 +24,9 @@ const PKGS = [
   { name: "core", target: "bun", externals: ["@velqu/*"] },
   { name: "treaty", target: "bun", externals: [] },
   { name: "browser-runtime", target: "browser", externals: [] },
+  // C-003: optional local-SQL adapter; the PGlite engine is a real npm
+  // dependency — always external, never inlined (lazy dynamic import).
+  { name: "browser-pglite", target: "browser", externals: ["@electric-sql/pglite"] },
   { name: "compiler", target: "bun", externals: ["@velqu/*", "typescript"] },
   { name: "cli", target: "bun", externals: ["@velqu/*", "typescript"] },
 ] as const;
