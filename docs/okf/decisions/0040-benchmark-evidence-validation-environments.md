@@ -4,7 +4,7 @@ title: ADR-0040 Benchmark Evidence Validation Environments
 status: accepted
 date: 2026-09-10
 implements: "#1303 (benchmark harness drift), AGENTS.md constraint 12 (no performance claim without matched, reproducible evidence)"
-owner-ratified: pending — recorded during #1303; the capture-host/CI split below restores the gate to a state that can actually pass in either environment; revisit if the owner wants stronger cross-machine provenance.
+owner-ratified: 2026-09-11 — the repository owner ratified this ADR in an interactive session, on the strength of the amendment history below (the #1305 amendment corrected the first implementation's ancestry defect) and three consecutive green master verify runs operating under it. Provenance: introduced during #1303, amended during #1305 (both with full disclosure in the PR records); ratified verbatim-as-amended.
 ---
 
 # ADR-0040: Benchmark Evidence Validation Environments
@@ -72,3 +72,14 @@ can prove:
 - If cross-machine binary provenance becomes a requirement, the follow-up is
   a reproducible-toolchain container for capture and validation — a new ADR,
   not a silent change.
+
+## Ratification note (2026-09-11)
+
+Ratified by the owner in an interactive session after operating the design
+in production for two days: the original packet (#1303/#1304), the ancestry
+amendment (#1305/#1307, which itself was validated by a failed local gate
+before correction), and three consecutive green master verify runs (both
+architectures plus the chromium required lane) executing under these rules.
+The standing caveat is unchanged: if cross-machine binary provenance becomes
+a requirement, a reproducible-toolchain container for capture and validation
+is the follow-up — a new ADR, not a silent change.
