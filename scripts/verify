@@ -63,7 +63,7 @@ step "Independent-build reproducibility (M26-007-D)"
 ./scripts/compare-builds || fail "compare-builds"
 
 step "TypeScript test suites (packages + examples + conformance)"
-if ! bun test packages examples/proof conformance 2>buntest.log; then
+if ! bun test packages examples/proof conformance docs/browser-wasm/evidence/q-008/candidate-index.test.ts 2>buntest.log; then
   tail -40 buntest.log; fail "bun test"
 fi
 rm -f buntest.log

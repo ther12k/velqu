@@ -43,7 +43,7 @@ rewiring (R-001 seam replaced; options extended with `maxBodyBytes`,
 
 `packages/browser-runtime/test/fixtures/dispatcher-native-diff.sh` +
 `dispatcher-corpus.mjs` → evidence
-`docs/codex-spark-browser-wasm/evidence/dispatcher/native-browser-diff.txt`:
+`docs/browser-wasm/evidence/dispatcher/native-browser-diff.txt`:
 
 - Native: `velqu-runtime` serving `examples/proof/dist/app.qpack`
   (runtime + curls inside one netns).

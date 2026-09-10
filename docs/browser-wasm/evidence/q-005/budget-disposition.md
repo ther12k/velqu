@@ -5,7 +5,7 @@ Date: `2026-09-07`
 ## 1. Carried Finding: Kernel WASM Size Under Gzip-9 vs Brotli
 
 - **Carried Finding**: During K-006 and B-006, the vendored `q_browser_kernel_bg.wasm` had an interim gzip-9 size of `572,711 bytes`, which exceeded the 512,000 byte target.
-- **Budget Definition in BWASM-D-004**: `docs/codex-spark-browser-wasm/evidence/budgets.json` explicitly states:
+- **Budget Definition in BWASM-D-004**: `docs/browser-wasm/evidence/budgets.json` explicitly states:
   *"compression codec must be brotli (server default for wasm); gzip-9 numbers are interim proxies until brotli tooling is wired into measurement"*.
 - **Disposition**:
   - Brotli-11 compression tooling (`python-brotli` and `node:zlib` brotliCompressSync) is now integrated and wired into measurement.

@@ -10,7 +10,7 @@ registration decision.
 
 ## Decision record
 
-`docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md`
+`docs/browser-wasm/evidence/design-freeze-owner-decision.md`
 — decider (repository owner), method (explicit options in an
 interactive review session, no implied acceptance), four decisions,
 consequences, alternatives not selected, and the honesty history.

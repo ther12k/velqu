@@ -11,57 +11,58 @@
   "claims": [
     {
       "claim": "Native-vs-browser differential conformance: 4 exact-parity, 3 equivalent-by-contract, 4 native-only, 0 drift",
-      "path": "docs/codex-spark-browser-wasm/evidence/conformance/differential-matrix.json",
-      "sha256": "e7e552ba0b53e23a6e44bfca7652b23219ca9d2bf3b8e9cdb44d299f95138fea"
+      "path": "docs/browser-wasm/evidence/conformance/differential-matrix.json",
+      "sha256": "regenerated-per-run",
+      "note": "matrix is rewritten by conformance/browser/differential.test.ts on every run with environment-bound header data (sourceCommit, binary hashes, build ids); the claim substance (classifications 4/3/4 and zero drift) is verified structurally by the packet test, not by bytes. Bytes at 9c65894 were the capture at assembly."
     },
     {
       "claim": "Chromium required lane: emitted-artifact E2E journeys E1-E6 pass (Q-002)",
-      "path": "docs/codex-spark-browser-wasm/evidence/browser-lanes/chromium.json",
+      "path": "docs/browser-wasm/evidence/browser-lanes/chromium.json",
       "sha256": "37f295ffb3df6555646aff0e4f644c8ec2707b05dfd3a47c8c1593f1db35ca8f"
     },
     {
       "claim": "Preview-origin scope boundary + adversarial boundary checks verified; no hostile-code sandbox claim",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-003/threat-model-verification.md",
+      "path": "docs/browser-wasm/evidence/q-003/threat-model-verification.md",
       "sha256": "0df4120d3a427b1748c197f3aa11897fb9ccfbe7d269a6fb40bdb79169ec48ca"
     },
     {
       "claim": "35 stable DIAG_* codes across 12 lifecycle stages; snapshot-tested",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-004/diagnostic-catalog.md",
+      "path": "docs/browser-wasm/evidence/q-004/diagnostic-catalog.md",
       "sha256": "a4545fa8aaba840a3461b2e2bf8d7914e3cb21bc7e2c71b7fd6d81776a4bedf6"
     },
     {
       "claim": "Ratified size/startup/latency/leak budgets (BWASM-D-004)",
-      "path": "docs/codex-spark-browser-wasm/evidence/budgets.json",
+      "path": "docs/browser-wasm/evidence/budgets.json",
       "sha256": "d96a465347e050fd1dba3fd732408c7aa4a6ccbbd39b2371dbb415c3d255d0b4"
     },
     {
       "claim": "Budget rehearsal: kernel 400,229B brotli <= 512,000B; total 453,771B <= 1MiB; cold 1938ms; p99 1.4ms; soak bounded",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-005/budget-report.md",
+      "path": "docs/browser-wasm/evidence/q-005/budget-report.md",
       "sha256": "a64854f244c6c9319826855befedd300d225e4e598a073a7aea642482428f243"
     },
     {
       "claim": "Published BROWSER_WASM.md guide; terminology audit PASS; quickstart executable test 4/4",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-006/rendered-doc-output.md",
+      "path": "docs/browser-wasm/evidence/q-006/rendered-doc-output.md",
       "sha256": "e3779831ed7c8d429afbb3cad8a15417e21d419eafcc91d354892396f9924684"
     },
     {
       "claim": "Independent cleanroom evaluation round 1 (verbatim participant report)",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-007/participant-report-round1.md",
+      "path": "docs/browser-wasm/evidence/q-007/participant-report-round1.md",
       "sha256": "8971bc06acae61f58082cde0b844f39742ea911535f3e4715c5de4c0f1c5f7e3"
     },
     {
       "claim": "All 9 cleanroom findings dispositioned; D4/D5/D7 fixed and independently re-proven",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-007/defect-disposition.md",
+      "path": "docs/browser-wasm/evidence/q-007/defect-disposition.md",
       "sha256": "ccd459e5d3ec96ed161c4968cb1d8d579e3ec152d152666d5b64ff6403744c77"
     },
     {
       "claim": "Rounds 2-4: D4 PASS (201/404 at declared statuses), D5 PASS (timer 200 {ms}), D7 legs verified",
-      "path": "docs/codex-spark-browser-wasm/evidence/q-007/fix-verification.md",
+      "path": "docs/browser-wasm/evidence/q-007/fix-verification.md",
       "sha256": "376a57616824480aa09bad1c715432016adfff05a2155028b7a18e9d78f0eacf"
     },
     {
       "claim": "Kernel portable-crate checks: native tests, wasm32 checks, on-target execution, dependency audits",
-      "path": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt",
+      "path": "docs/browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt",
       "sha256": "2a2548a944ee92438db77b3b266dcab187ba5583fb52474cefe3c0c40a5f8867"
     }
   ],

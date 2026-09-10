@@ -156,3 +156,14 @@ Follow-up issue links:
   budgets, known-limitations baseline, **owner decision record**.
 - Lanes remain experimental-untested until BWASM-Q-002 evidence; budget
   changes require ADR amendment with measured evidence.
+
+## Resolution (2026-09-11)
+
+The exact blocker above was subsequently resolved: ADR-0039 was accepted
+with owner ratification on 2026-09-05 (see
+`docs/reports/bwasm-design-freeze-ratification.md` and the ADR frontmatter),
+and the budgets/lane classifications shipped as normative targets with
+measured evidence kept separate (BWASM-Q-005). The BLOCKED record above is
+retained as history. Note: the original acceptance-decision-provenance
+concern was addressed in the ADR-0037/0038 correction pass recorded in
+`docs/reports/bwasm-design-freeze-ratification.md`.

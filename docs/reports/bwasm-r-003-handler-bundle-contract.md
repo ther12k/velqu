@@ -29,7 +29,7 @@ diagnostic snapshots for every negative class.
   locations sanitized to project-relative paths (host prefixes
   stripped).
 
-## Evidence (`docs/codex-spark-browser-wasm/evidence/handler-bundle/`)
+## Evidence (`docs/browser-wasm/evidence/handler-bundle/`)
 
 - `golden-handlers.meta.json` — the golden bundle fixture.
 - `reproducibility.txt` — shuffled-input emissions identical,

@@ -25,7 +25,7 @@
   },
   "network_profile": "loopback / ephemeral localhost",
   "governance": {
-    "ratified_budgets_reference": "docs/codex-spark-browser-wasm/evidence/budgets.json",
-    "ratification_decision": "docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md"
+    "ratified_budgets_reference": "docs/browser-wasm/evidence/budgets.json",
+    "ratification_decision": "docs/browser-wasm/evidence/design-freeze-owner-decision.md"
   }
 }

@@ -369,7 +369,7 @@ describe("BWASM-Q-001 native-vs-browser differential conformance", () => {
       bunVersion: Bun.version,
       fixtures: matrix,
     };
-    const evidenceDir = join(root, "docs", "codex-spark-browser-wasm", "evidence", "conformance");
+    const evidenceDir = join(root, "docs", "browser-wasm", "evidence", "conformance");
     mkdirSync(evidenceDir, { recursive: true });
     writeFileSync(join(evidenceDir, "differential-matrix.json"), JSON.stringify(matrixOut, null, 1));
     expect(matrix.length).toBe(CORPUS.length);

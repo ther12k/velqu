@@ -4,7 +4,7 @@ title: ADR-0039 Browser Support Matrix, Compatibility Claims, and Release Budget
 status: accepted
 date: 2026-09-05
 implements: BWASM-D-004 (support matrix and budgets), ADR-0037 (browser-wasm product contract), ADR-0038 (threat model), ADR-0023 (canonical hashing)
-owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md).
+owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/browser-wasm/evidence/design-freeze-owner-decision.md).
 ---
 
 # ADR-0039: Browser Support Matrix, Compatibility Claims, and Release Budgets
@@ -143,7 +143,7 @@ measured evidence attached.
 ## Ratification record
 
 All blockers below were resolved on 2026-09-05 by the owner decision
-record (`docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md`);
+record (`docs/browser-wasm/evidence/design-freeze-owner-decision.md`);
 the items are retained as the historical blocker list.
 
 ## Former ratification blockers (resolved 2026-09-05)

@@ -4,7 +4,7 @@ title: ADR-0037 Browser-WASM Product and Runtime Contract
 status: accepted
 date: 2026-09-05
 implements: BWASM-D-001 (contract freeze), ADR-0026 (integrity is not authenticity), ADR-0023 (canonical hashing), ADR-0035 (same-process trusted code assumption)
-owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/codex-spark-browser-wasm/evidence/design-freeze-owner-decision.md).
+owner-ratified: 2026-09-05 — the repository owner, in an interactive review session, ratified this ADR as presented (decision record: docs/browser-wasm/evidence/design-freeze-owner-decision.md).
 owner-acceptance: ratified. History:  Provenance, precisely: the architecture invariant (hybrid Rust/WASM kernel + isolated Worker handlers, `fetch(Request): Promise<Response)` boundary, native production deployment, optional quickjs-wasm) was specified verbatim by the owner in the Browser-WASM GitHub packet (ZIP SHA-256 a25e3610513f9a7c9a54c3fcf4dc104dfc13fe6df314d0f43602ba86fc1dd2bc, research baseline ther12k/velqu@84740c5, 2026-09-04), and the owner's 2026-09-05 instruction authorized preparing the four design decisions before kernel work. The remaining ADR text (semantics classification details, lifecycle wording, capability table, consequences) is agent-authored under that authorization; the owner confirmed on 2026-09-05 that it matches intent. This frontmatter previously recorded blanket "owner acceptance"; corrected 2026-09-05 because authorization to prepare design documents is not acceptance of their decisions.
 ---
 

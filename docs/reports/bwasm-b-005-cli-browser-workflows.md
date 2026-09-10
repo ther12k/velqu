@@ -81,7 +81,7 @@ smoke** (HTTP-served verified bytes → kernel → real module Worker →
 200 `{"message":"Hello world"}` + RFC 9457 404 lane), CLI integration (6),
 fixtures (2). Neighbor suites green (114 pass across compiler/CLI/runtime).
 
-Evidence: `docs/codex-spark-browser-wasm/evidence/cli-browser/`
+Evidence: `docs/browser-wasm/evidence/cli-browser/`
 (`01-cli-transcript.txt`, `02-clean-consumer-log.txt` with 27 artifact
 hashes). Demo deployment buildId (this source state):
 `ffdb03d11e78f76df3f6167d6c30fb27e9d781d890f6b5e17fe9532a1ba903fa`.

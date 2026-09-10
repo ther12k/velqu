@@ -158,5 +158,5 @@
     "K-004: q-schema-runtime needs no cut; qualify by running its suite on the target",
     "re-measure q-bridge and q-pack on wasm32 after K-001..K-003 land (expected green without their native edges)"
   ],
-  "raw_evidence_dir": "docs/codex-spark-browser-wasm/evidence/wasm32/"
+  "raw_evidence_dir": "docs/browser-wasm/evidence/wasm32/"
 }

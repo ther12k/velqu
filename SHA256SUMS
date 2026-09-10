@@ -1,3 +1,7 @@
+# Snapshot of packet-registration file digests taken when the Browser-WASM
+# issue packet was registered to GitHub (pre-move). Paths refer to
+# docs/codex-spark-browser-wasm/ as it was named then; the tree now lives at
+# docs/browser-wasm/ (#1179 gate close). Registered files keep their bytes.
 c97f95aafb837405ccc25e7e844e8f84b3c05d90741b38537646f7db464ea865  DRY_RUN_ALL.txt
 34dfcd264974935c75f883de2a4aede7dd83d617456970385befa2534709ff54  BROWSER-WASM-PACKET.md
 e567837a14378310f0c15bf7a50287ac44176623f1725cf78ce4bc4c96eee12e  VALIDATION_REPORT.txt

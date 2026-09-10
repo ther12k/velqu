@@ -12,7 +12,7 @@ name: browser-lanes
 # standing disclosure on every packet PR). This workflow is the
 # committed lane definition; until CI executes again, the acceptance
 # evidence is the local green runs recorded under
-# docs/codex-spark-browser-wasm/evidence/browser-lanes/.
+# docs/browser-wasm/evidence/browser-lanes/.
 
 on:
   pull_request:
