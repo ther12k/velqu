@@ -30,6 +30,13 @@ fi
 rm -f clippy.log
 
 step "Rust workspace tests"
+# runtime_conformance resolves target/debug/velqu-bytecode relative to the
+# test binary; build the debug tool first or its embed tests fail with
+# NotFound on any tree that has not built it yet (#1303).
+if ! cargo build -p q-bytecode-tool --quiet 2>build.log; then
+  tail -20 build.log; fail "cargo build q-bytecode-tool"
+fi
+rm -f build.log
 if ! cargo test --workspace --quiet 2>test.log; then
   tail -40 test.log; fail "cargo test"
 fi

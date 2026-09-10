@@ -214,7 +214,24 @@ const FIXTURE_SCHEMAS: Record<string, unknown> = {
   },
 };
 
-function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyToId: Map<string, number> = new Map()) {
+/** M24-005-A: a route's declared header names = its security scheme headers. */
+function routeHeaderNames(r: Route): string[] {
+  return [...new Set((r.security ?? []).map((sec) => sec.header))].sort();
+}
+
+/** M24-006-A: a route's declared query field names = its query schema's object properties. */
+function routeQueryNames(r: Route, schemas: Record<string, unknown>): string[] {
+  const ir = r.query ? (schemas[r.query.schema] as { kind?: string; properties?: Record<string, unknown> } | undefined) : undefined;
+  return ir?.kind === "object" ? Object.keys(ir.properties ?? {}).sort() : [];
+}
+
+function routeEntry(
+  r: Route,
+  moduleId: string,
+  routeIdx: number = 0,
+  schemaKeyToId: Map<string, number> = new Map(),
+  nameTables: { header: string[]; query: string[]; schemas: Record<string, unknown> } = { header: [], query: [], schemas: {} },
+) {
   const defaultStatus = Object.keys(r.responses).includes("200")
     ? 200
     : Number(Object.keys(r.responses)[0] ?? 200);
@@ -223,6 +240,12 @@ function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyT
     .filter((n) => !isNaN(n))
     .sort((a, b) => a - b);
   const responseStrategy = r.responses["200"]?.strategy ?? (Object.values(r.responses)[0]?.strategy ?? "js");
+
+  // M24-005-A / M24-006-A: dense ids into the pack's canonical (sorted,
+  // deduped) name tables — verify() proves these are exactly derivable
+  // from the routes and rejects a tampered table or stale ids.
+  const headerNameIds = routeHeaderNames(r).map((n) => nameTables.header.indexOf(n));
+  const queryNameIds = routeQueryNames(r, nameTables.schemas).map((n) => nameTables.query.indexOf(n));
 
   const plan = {
     routeId: routeIdx,
@@ -233,8 +256,8 @@ function routeEntry(r: Route, moduleId: string, routeIdx: number = 0, schemaKeyT
     querySchemaId: r.query ? (schemaKeyToId.get(r.query.schema) ?? null) : null,
     headersSchemaId: null,
     bodySchemaId: r.body ? (schemaKeyToId.get(r.body.schema) ?? null) : null,
-    headerNameIds: [],
-    queryNameIds: [],
+    headerNameIds,
+    queryNameIds,
     cookieNameIds: [],
     defaultStatus,
     allowedStatuses,
@@ -356,7 +379,16 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     });
   }
 
-  const packRoutes = routes.map((r, i) => routeEntry(r, r.id.split(".")[0], i, schemaKeyToId));
+  // M24-005-A / M24-006-A canonical name tables: sorted, deduped union of
+  // the names every route declares (security scheme headers + query schema
+  // properties). The runtime rejects a pack whose tables or per-route ids
+  // are not exactly these.
+  const nameTables = {
+    header: [...new Set(routes.flatMap((r) => routeHeaderNames(r)))].sort(),
+    query: [...new Set(routes.flatMap((r) => routeQueryNames(r, schemas)))].sort(),
+    schemas,
+  };
+  const packRoutes = routes.map((r, i) => routeEntry(r, r.id.split(".")[0], i, schemaKeyToId, nameTables));
 
   const functions = [
     ...routes.map((r, i) => ({
@@ -459,6 +491,8 @@ function buildPack(routes: Route[], schemas: Record<string, unknown>, bundle: st
     functions,
     schemaManifest,
     policyManifest,
+    headerNameTable: nameTables.header,
+    queryNameTable: nameTables.query,
     router,
     integrity: { algorithm: "sha256", bundleSha256: sha(bundle), routesSha256: sha(canonical) },
   };
