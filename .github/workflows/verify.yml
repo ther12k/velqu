@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          # validate-benchmark-evidence proves manifest capture-commit ancestry
+          # whenever the commit objects are reachable; shallow clones cannot.
+          fetch-depth: 0
 
       - name: Install Rust toolchain (pinned)
         run: |
