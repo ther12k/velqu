@@ -1,6 +1,6 @@
 {
   "format": "velqu-startup-profile-v1",
-  "generatedAt": "2026-08-20T09:04:13Z",
+  "generatedAt": "2026-09-10T16:22:43Z",
   "pack": "benchmarks/raw/packs/app-10000.qpack",
   "runtime": "target/release/velqu-runtime",
   "tools": {
@@ -15,128 +15,40 @@
     "library": "target/alloc-tracer.so",
     "output": "benchmarks/raw/profiles/startup-10000.alloc.json",
     "counts": {
-      "mallocCalls": 1197,
-      "callocCalls": 288,
-      "reallocCalls": 193,
-      "freeCalls": 1843,
-      "allocatedBytes": 304959,
-      "reallocatedBytes": 7872
+      "mallocCalls": 7755106,
+      "callocCalls": 1,
+      "reallocCalls": 280332,
+      "freeCalls": 7755108,
+      "allocatedBytes": 590268388,
+      "reallocatedBytes": 490528320
     }
   },
   "status": "captured",
   "perfUnavailable": "host denied performance counters; retried with wall-clock",
-  "exitCode": -15,
-  "elapsedMs": 444.313,
-  "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":433.669988,\"stages\":[{\"stage\":\"pack.load\",\"ms\":341.59556499999997},{\"stage\":\"router.build\",\"ms\":6.77386},{\"stage\":\"engine.spawn\",\"ms\":0.026803},{\"stage\":\"bundle.load\",\"ms\":85.02726},{\"stage\":\"listen\",\"ms\":0.058094}],\"bundleEvalMs\":84.042441}\n",
-  "stderr": "",
+  "exitCode": 2,
+  "elapsedMs": 8006.644,
+  "stdout": "",
+  "stderr": "{\"level\":\"error\",\"event\":\"startup.rejected\",\"stage\":\"config.resolve\",\"error\":\"port from cli must be in range 1..=65535, got 0 (values are never clamped)\"}\n",
   "tool": "wall-clock",
-  "ready": {
-    "level": "info",
-    "event": "ready",
-    "appId": "scale-10000",
-    "routes": 10001,
-    "handlers": 10001,
-    "addr": "127.0.0.1:0",
-    "engine": "quickjs-ng/0.15.1",
-    "runtimeAbi": 1,
-    "contractHash": "0969a6cdfef60ae2a1beeb0425e8081b",
-    "startupMs": 433.669988,
-    "stages": [
-      {
-        "stage": "pack.load",
-        "ms": 341.59556499999997
-      },
-      {
-        "stage": "router.build",
-        "ms": 6.77386
-      },
-      {
-        "stage": "engine.spawn",
-        "ms": 0.026803
-      },
-      {
-        "stage": "bundle.load",
-        "ms": 85.02726
-      },
-      {
-        "stage": "listen",
-        "ms": 0.058094
-      }
-    ],
-    "bundleEvalMs": 84.042441
-  },
-  "startupStages": [
-    {
-      "stage": "pack.load",
-      "ms": 341.59556499999997
-    },
-    {
-      "stage": "router.build",
-      "ms": 6.77386
-    },
-    {
-      "stage": "engine.spawn",
-      "ms": 0.026803
-    },
-    {
-      "stage": "bundle.load",
-      "ms": 85.02726
-    },
-    {
-      "stage": "listen",
-      "ms": 0.058094
-    }
-  ],
+  "startupStages": [],
   "attempts": [
     {
       "tool": "perf",
       "exitCode": 1,
-      "elapsedMs": 2002.313,
+      "elapsedMs": 2002.831,
       "stdout": "",
       "stderr": "Error:\nNo supported events found.\nAccess to performance monitoring and observability operations is limited.\nConsider adjusting /proc/sys/kernel/perf_event_paranoid setting to open\naccess to performance monitoring and observability operations for processes\nwithout CAP_PERFMON, CAP_SYS_PTRACE or CAP_SYS_ADMIN Linux capability.\nMore information can be found at 'Perf events and tool security' document:\nhttps://www.kernel.org/doc/html/latest/admin-guide/perf-security.html\nperf_event_paranoid setting is 4:\n  -1: Allow use of (almost) all events by all users\n      Ignore mlock limit after perf_event_mlock_kb without CAP_IPC_LOCK\n>= 0: Disallow raw and ftrace function tracepoint access\n>= 1: Disallow CPU event access\n>= 2: Disallow kernel profiling\nTo make the adjusted perf_event_paranoid setting permanent preserve it\nin /etc/sysctl.conf (e.g. kernel.perf_event_paranoid = <setting>)\n",
       "ready": null
     },
     {
       "tool": "wall-clock",
-      "exitCode": -15,
-      "elapsedMs": 444.313,
-      "stdout": "{\"level\":\"info\",\"event\":\"ready\",\"appId\":\"scale-10000\",\"routes\":10001,\"handlers\":10001,\"addr\":\"127.0.0.1:0\",\"engine\":\"quickjs-ng/0.15.1\",\"runtimeAbi\":1,\"contractHash\":\"0969a6cdfef60ae2a1beeb0425e8081b\",\"startupMs\":433.669988,\"stages\":[{\"stage\":\"pack.load\",\"ms\":341.59556499999997},{\"stage\":\"router.build\",\"ms\":6.77386},{\"stage\":\"engine.spawn\",\"ms\":0.026803},{\"stage\":\"bundle.load\",\"ms\":85.02726},{\"stage\":\"listen\",\"ms\":0.058094}],\"bundleEvalMs\":84.042441}\n",
-      "stderr": "",
-      "ready": {
-        "level": "info",
-        "event": "ready",
-        "appId": "scale-10000",
-        "routes": 10001,
-        "handlers": 10001,
-        "addr": "127.0.0.1:0",
-        "engine": "quickjs-ng/0.15.1",
-        "runtimeAbi": 1,
-        "contractHash": "0969a6cdfef60ae2a1beeb0425e8081b",
-        "startupMs": 433.669988,
-        "stages": [
-          {
-            "stage": "pack.load",
-            "ms": 341.59556499999997
-          },
-          {
-            "stage": "router.build",
-            "ms": 6.77386
-          },
-          {
-            "stage": "engine.spawn",
-            "ms": 0.026803
-          },
-          {
-            "stage": "bundle.load",
-            "ms": 85.02726
-          },
-          {
-            "stage": "listen",
-            "ms": 0.058094
-          }
-        ],
-        "bundleEvalMs": 84.042441
-      }
+      "exitCode": 2,
+      "elapsedMs": 8006.644,
+      "stdout": "",
+      "stderr": "{\"level\":\"error\",\"event\":\"startup.rejected\",\"stage\":\"config.resolve\",\"error\":\"port from cli must be in range 1..=65535, got 0 (values are never clamped)\"}\n",
+      "ready": null
     }
-  ]
+  ],
+  "termination": "ready-line-bounded",
+  "warning": "runtime did not emit a ready line"
 }
