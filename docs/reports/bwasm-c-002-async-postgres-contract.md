@@ -63,7 +63,7 @@ CLI capability-inventory — 40/40. `tsc -b tsconfig.json` clean.
 Native: `cargo test -p q-engine-quickjs postgres` (4/4),
 `cargo test -p q-capability-postgres` green.
 
-Evidence: `docs/codex-spark-browser-wasm/evidence/capabilities/c002/`
+Evidence: `docs/browser-wasm/evidence/capabilities/c002/`
 (`01-api-diff.patch`, `02-async-contract-tests.txt`,
 `03-native-integration.txt`, `04-codemod-transcript.txt`). Canonical
 verification: `./scripts/verify` ALL PASS (M0–M2 + M2.2.1 + M2.3 +

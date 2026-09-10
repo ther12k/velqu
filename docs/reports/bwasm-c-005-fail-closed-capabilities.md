@@ -78,7 +78,7 @@ gates with call counters at 0, problem-shape RFC-9457 + secret-free
 regex + Response round-trip (Treaty decode path). Compiler +
 browser-runtime + CLI affected suites: 235/235.
 
-Evidence: `docs/codex-spark-browser-wasm/evidence/capabilities/c005/`
+Evidence: `docs/browser-wasm/evidence/capabilities/c005/`
 (`01-c005-tests.txt`, `02-portability-registry.json`,
 `03-problem-schema-example.json`, `04-consistency-report.txt`).
 

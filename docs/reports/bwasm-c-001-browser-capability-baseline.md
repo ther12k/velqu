@@ -73,7 +73,7 @@ end-to-end through the frozen graph, manifest canonicalization round trip
 Full browser-runtime package 121/121; CLI browser-deploy suite 35/35
 (incl. adapter-declaration assertions); `tsc -b` clean.
 
-Evidence: `docs/codex-spark-browser-wasm/evidence/capabilities/c001/`
+Evidence: `docs/browser-wasm/evidence/capabilities/c001/`
 (`01-capability-tests.txt`, `02-policy-traces.txt`,
 `03-adapter-manifest-example.json`).
 

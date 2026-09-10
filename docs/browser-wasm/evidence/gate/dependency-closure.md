@@ -90,10 +90,10 @@ digest difference is `docs/beta/BROWSER_WASM.md` (PR #1295, disclosed above).
 
 ```bash
 # 1. Candidate packet validator (schema, hashes, GO/P0 integrity, SBOM shape)
-bun test ./docs/codex-spark-browser-wasm/evidence/q-008/candidate-index.test.ts
+bun test ./docs/browser-wasm/evidence/q-008/candidate-index.test.ts
 
 # 2. Distributed-bytes checksums
-sha256sum -c docs/codex-spark-browser-wasm/evidence/q-008/checksums.sha256
+sha256sum -c docs/browser-wasm/evidence/q-008/checksums.sha256
 
 # 3. Canonical full verification (network namespace; CI is not an acceptance basis)
 unshare -rn bash -c 'ip link set lo up; ./scripts/verify'

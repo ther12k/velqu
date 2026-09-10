@@ -16,7 +16,7 @@ in a real browser:
 Browser selection: --browser chromium|firefox|webkit (the Playwright
 launch name). Required vs experimental lanes are defined in
 `.github/workflows/browser-lanes.yml` and
-`docs/codex-spark-browser-wasm/evidence/browser-matrix.json` — this
+`docs/browser-wasm/evidence/browser-matrix.json` — this
 script is the lane runner both CI and local evidence use.
 
 Usage:

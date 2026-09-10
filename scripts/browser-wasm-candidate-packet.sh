@@ -11,12 +11,12 @@
 #
 # Evidence-only: this script packages bytes and pointers; it runs no
 # implementation. All lane results it indexes must already exist under
-# docs/codex-spark-browser-wasm/evidence/ produced from THIS commit.
+# docs/browser-wasm/evidence/ produced from THIS commit.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-OUT=docs/codex-spark-browser-wasm/evidence/q-008
+OUT=docs/browser-wasm/evidence/q-008
 COMMIT=$(git rev-parse HEAD)
 DIRTY=$(git status --porcelain | wc -l)
 STAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -160,7 +160,7 @@ def sha(p):
     return h.hexdigest()
 
 def ev(rel, claim):
-    p = os.path.join("docs/codex-spark-browser-wasm/evidence", rel)
+    p = os.path.join("docs/browser-wasm/evidence", rel)
     if not os.path.isfile(p):
         raise SystemExit(f"CANDIDATE-INDEX ERROR: missing evidence file {p}")
     return {"claim": claim, "path": p, "sha256": sha(p)}

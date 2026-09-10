@@ -14,9 +14,9 @@ freezes the smallest dependency cuts the K-phase must perform.
 - Command: `cargo check --target wasm32-unknown-unknown -p <crate>` —
   one run per crate, exit code captured directly, **exact compiler
   output retained** (no inference): raw logs in
-  `docs/codex-spark-browser-wasm/evidence/wasm32/check-<crate>.log`,
+  `docs/browser-wasm/evidence/wasm32/check-<crate>.log`,
   machine-readable inventory in
-  `docs/codex-spark-browser-wasm/evidence/wasm32-baseline.json`.
+  `docs/browser-wasm/evidence/wasm32-baseline.json`.
 - Transitive blocker attribution via `cargo tree -i <blocked-crate>
   --target wasm32-unknown-unknown -e normal` traces.
 

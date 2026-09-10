@@ -22,6 +22,6 @@ Interim proxy: Gzip-9.
 ## Notes on Carried Finding
 
 - Carried finding from K-006: under `gzip -9`, `kernel.wasm` was 572,711 bytes (> 500 KiB proxy budget).
-- As explicitly ratified in `docs/codex-spark-browser-wasm/evidence/budgets.json` §size_budgets note:
+- As explicitly ratified in `docs/browser-wasm/evidence/budgets.json` §size_budgets note:
   *"compression codec must be brotli (server default for wasm); gzip-9 numbers are interim proxies until brotli tooling is wired into measurement"*.
 - Under the ratified standard Brotli-11 compression, `kernel.wasm` compresses to **400,229 bytes (390.8 KiB)**, providing **111,771 bytes of headroom** against the 512,000 bytes budget.

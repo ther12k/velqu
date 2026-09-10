@@ -6,7 +6,7 @@
 demonstrated at **one exact commit** (`69187c8bcb7005da940f27ecf9baea6dcb5f2787`),
 with raw logs, environment manifest, artifact hashes, and an external
 reviewer pass, packaged under
-`docs/codex-spark-browser-wasm/evidence/kernel-verification/`.
+`docs/browser-wasm/evidence/kernel-verification/`.
 
 ## Verification matrix (all at commit `69187c8`)
 

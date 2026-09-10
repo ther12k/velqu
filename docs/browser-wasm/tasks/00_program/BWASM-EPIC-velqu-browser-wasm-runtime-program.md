@@ -5,7 +5,7 @@ Mode: `GATE` — Coordinate dependencies and decisions; do not implement child w
 Priority: `P0`  
 Optional: `NO — mandatory for the Browser-WASM MVP.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -52,10 +52,10 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] The epic distinguishes static hosting from an application server.
-- [ ] It states that the MVP is Rust/WASM kernel plus isolated browser Worker handlers.
-- [ ] It states that exact QuickJS-NG-in-WASM parity is separately gated and optional by default.
-- [ ] It prohibits unsupported claims about hostile-code sandboxing, production secrets, shared persistence, and native performance parity.
+- [x] The epic distinguishes static hosting from an application server.
+- [x] It states that the MVP is Rust/WASM kernel plus isolated browser Worker handlers.
+- [x] It states that exact QuickJS-NG-in-WASM parity is separately gated and optional by default.
+- [x] It prohibits unsupported claims about hostile-code sandboxing, production secrets, shared persistence, and native performance parity.
 
 ## Targeted tests and commands
 
@@ -68,9 +68,9 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Registered issue index.
-- [ ] Owner decision log.
-- [ ] Final BWASM-GATE link and outcome.
+- [x] Registered issue index.
+- [x] Owner decision log.
+- [x] Final BWASM-GATE link and outcome.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -117,3 +117,17 @@ Known limitations:
 Residual risks:
 Follow-up issue links:
 ```
+
+## Gate close (2026-09-11)
+
+BWASM-GATE recorded **GO** against the exact candidate
+`bwasm-q-008-candidate-index` (source commit 9c65894; zero unresolved P0s;
+11 claims, 6 open risks all P2 with dispositions). Owner verdict recorded in
+`evidence/gate/gate-record.md` and issue #1179. Every acceptance criterion
+above is satisfied by the shipped artifacts: static hosting vs application
+server is the ADR-0037 contract; the MVP kernel/Worker split is
+BWASM-D-001/K-005/R-004; QuickJS-in-WASM parity is separately gated optional
+(BWASM-X-001, not started); forbidden claims are prohibited by
+ADR-0035/0038/0039. Registered issue index: `manifests/issues.json`;
+owner decision log: ADRs 0037-0039 + ratification report. Optional follow-ons
+(C-003 PGlite, X-001 parity spike) remain optional and unstarted.

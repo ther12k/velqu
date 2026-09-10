@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 
 const root = join(import.meta.dir, "../../../..");
-const packetDir = join(root, "docs/codex-spark-browser-wasm/evidence/q-008");
+const packetDir = join(root, "docs/browser-wasm/evidence/q-008");
 
 function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -52,18 +52,37 @@ describe("BWASM-Q-008 candidate packet integrity", () => {
   it("every claim's evidence file exists and hash-matches (no locally altered bytes)", () => {
     expect(index.claims.length).toBeGreaterThanOrEqual(10);
     for (const claim of index.claims) {
-      const p = join(root, "..", claim.path.replace(/^docs\/codex-spark-browser-wasm\/evidence/, "docs/codex-spark-browser-wasm/evidence"));
       const abs = join(root, claim.path);
-      const target = existsSync(abs) ? abs : p;
-      expect(existsSync(target), `missing evidence: ${claim.path}`).toBeTrue();
-      expect(sha256(target)).toBe(claim.sha256);
+      expect(existsSync(abs), `missing evidence: ${claim.path}`).toBeTrue();
+      if (claim.sha256 === "regenerated-per-run") {
+        // The matrix is rewritten by differential.test.ts on every run with
+        // environment-bound header data; verify the claim's substance
+        // structurally instead of by bytes.
+        const matrix = JSON.parse(readFileSync(abs, "utf8")) as {
+          schemaVersion: number;
+          suite: string;
+          fixtures: Array<{ classification: string; drift: string[] }>;
+        };
+        expect(matrix.schemaVersion).toBe(1);
+        expect(matrix.suite).toBe("bwasm-q-001-differential");
+        const counts: Record<string, number> = {};
+        for (const f of matrix.fixtures) {
+          expect(f.drift, `drift in ${f.classification}`).toHaveLength(0);
+          counts[f.classification] = (counts[f.classification] ?? 0) + 1;
+        }
+        expect(counts["exact-parity"]).toBe(4);
+        expect(counts["equivalent-by-contract"]).toBe(3);
+        expect(counts["native-only"]).toBe(4);
+        continue;
+      }
+      expect(sha256(abs)).toBe(claim.sha256);
     }
   });
 
   it("checksums.sha256 covers the distributed files and every digest matches", () => {
     const lines = readFileSync(join(packetDir, "checksums.sha256"), "utf8")
       .split("\n")
-      .filter((l) => l.trim().length > 0);
+      .filter((l) => l.trim().length > 0 && !l.trim().startsWith("#"));
     expect(lines.length).toBeGreaterThanOrEqual(8);
     for (const line of lines) {
       const [digest, ...rest] = line.trim().split(/\s+/);

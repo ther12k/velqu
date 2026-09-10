@@ -2,7 +2,7 @@
  * BWASM-Q-005 — Automated release size and artifact budget gate tests.
  *
  * Binds the implementation to the ratified budgets in
- * `docs/codex-spark-browser-wasm/evidence/budgets.json`:
+ * `docs/browser-wasm/evidence/budgets.json`:
  *
  * - base_wasm_kernel: <= 512,000 bytes brotli-compressed.
  * - runtime_js_glue: <= 51,200 bytes brotli-compressed.
