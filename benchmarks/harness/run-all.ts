@@ -74,6 +74,12 @@ async function main() {
   // 7. TypeScript scale
   await run("TypeScript Scale Suite", ["bun", "benchmarks/type-scale/measure.ts"]);
 
+  // 7b. Stage 1 leaves the harness fixture pack at examples/proof/dist/app.qpack,
+  // but the manifest's proofPack artifact is the CLI-built canonical pack that
+  // scripts/verify rebuilds deterministically (M26-007-D). Rebuild it before
+  // hashing, or every battery-then-verify sequence fails the hash check (#1303).
+  await run("Restore Canonical Proof Pack", ["bun", "packages/cli/src/index.ts", "build", "--project", "examples/proof"]);
+
   // 8. Emit master manifest
   const manifest = {
     format: "velqu-benchmark-manifest-v2",
