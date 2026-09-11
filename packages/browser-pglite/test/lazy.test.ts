@@ -89,7 +89,10 @@ describe("C-003 isolation (project + origin namespace)", () => {
   it("storage names are distinct per namespace and per origin", () => {
     expect(storageName("http://a", "app:one")).not.toBe(storageName("http://a", "app:two"));
     expect(storageName("http://a", "app:one")).not.toBe(storageName("http://b", "app:one"));
-    expect(storageName("http://a", "app:one")).toBe("velqu-local-sql:http://a:app:one");
+    // sanitized: no `/` or `:` from the origin survives into the idb path
+    // (an unsanitized name wedges PGlite's IDBFS at mount — E7 finding)
+    expect(storageName("http://a", "app:one")).toBe("velqu-local-sql-http___a_app_one");
+    expect(storageName("http://a", "app:one")).toMatch(/^[A-Za-z0-9._-]+$/);
   });
 
   it("memory mode constructs with NO dataDir; indexeddb mode with the namespaced idb:// dir", async () => {
@@ -106,7 +109,7 @@ describe("C-003 isolation (project + origin namespace)", () => {
       loader: fakeLoader(idbLog),
     });
     await idb.open();
-    expect(idbLog.ctorArgs[0].dataDir).toBe("idb://velqu-local-sql:http://iso.local:iso:idb");
+    expect(idbLog.ctorArgs[0].dataDir).toBe("idb://velqu-local-sql-http___iso.local_iso_idb");
     await mem.close();
     await idb.close();
   });

@@ -1,0 +1,104 @@
+{
+ "browser": "chromium",
+ "checks": {
+  "E1-kernel-boot": {
+   "ok": true,
+   "detail": "c5462f8d0bbb"
+  },
+  "E2-dispatcher-probe-200": {
+   "ok": true,
+   "detail": {
+    "method": "GET",
+    "path": "/hello/e2e",
+    "status": 200,
+    "body": "{\"message\":\"Hello E2E v1\"}"
+   }
+  },
+  "E3-sw-activated-and-controlling": {
+   "ok": true
+  },
+  "E4-precache-inventory": {
+   "ok": true,
+   "detail": {
+    "velqu:app:c5462f8d0bbba5af8719cce2496d12230e6cdcc7d6085abdb046cc6b9ddb287e": 13
+   }
+  },
+  "E4-offline-navigation": {
+   "ok": true
+  },
+  "E5-indexeddb-kv": {
+   "ok": true,
+   "detail": {
+    "first": {
+     "ok": true,
+     "roundTrip": 1,
+     "previous": null,
+     "keys": [
+      "persisted"
+     ]
+    },
+    "second": {
+     "ok": true,
+     "roundTrip": 2,
+     "previous": 1,
+     "keys": [
+      "persisted"
+     ]
+    },
+    "durable": true
+   }
+  },
+  "E7-sql-lazy-engine-network": {
+   "ok": true,
+   "detail": {
+    "crossOriginIsolated": true,
+    "engineAssets": [
+     "pglite-dist/pglite.wasm",
+     "pglite-dist/initdb.wasm",
+     "pglite-dist/pglite.data",
+     "pglite-dist/chunk-2BOC2OMW.js",
+     "pglite-dist/chunk-DDJLRBDX.js",
+     "pglite-dist/chunk-F4GETNPB.js",
+     "pglite-dist/chunk-JDT7TZ73.js",
+     "pglite-dist/chunk-NNS5RQRF.js",
+     "pglite-dist/chunk-QY3QWFKW.js",
+     "pglite-dist/chunk-RYDTTX3G.js",
+     "pglite-dist/index.js",
+     "pglite-dist/initdb.js",
+     "pglite-dist/pglite.js",
+     "pglite-dist/templating.js"
+    ],
+    "engineBytesFetched": 11
+   }
+  },
+  "E7-sql-indexeddb-durability": {
+   "ok": true,
+   "detail": {
+    "written": 1,
+    "readAfterReload": 1
+   }
+  },
+  "E7-sql-reset": {
+   "ok": true,
+   "detail": {
+    "ok": true,
+    "reset": true
+   }
+  },
+  "E6-update-applies-on-reload": {
+   "ok": true,
+   "detail": {
+    "newBuild": "82bc9f6360d5"
+   }
+  }
+ },
+ "environment": {
+  "browser": "chromium",
+  "version": "148.0.7778.96",
+  "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "buildIdV1": "c5462f8d0bbba5af8719cce2496d12230e6cdcc7d6085abdb046cc6b9ddb287e",
+  "buildIdV2": "82bc9f6360d5661413a347e666b8063a69cb2111bf727e1133adbca411de6ffa"
+ },
+ "REHEARSAL-PASS": true
+}

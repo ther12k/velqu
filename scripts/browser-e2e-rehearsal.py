@@ -12,6 +12,8 @@ in a real browser:
   E4  offline navigation                (cached shell + artifacts)
   E5  IndexedDB KV persistence          (C-004 adapter, reload-durable)
   E6  cache/update detection            (SW identity bytes + apply-on-reload)
+  E7  local-SQL IndexedDB durability    (C-003 adapter, lazy engine load,
+      network trace: zero engine bytes before first open)
 
 Browser selection: --browser chromium|firefox|webkit (the Playwright
 launch name). Required vs experimental lanes are defined in
@@ -133,6 +135,128 @@ def build_kv_entry(browser_dir: str, work: str):
         raise RuntimeError(f"kv bundle failed: {out.stderr[-400:]}")
 
 
+SQL_ENTRY = (
+    "import { createLocalSql } from '@velqu/browser-pglite';\n"
+    "let handle = null;\n"
+    "let opened = false;\n"
+    "async function db() {\n"
+    "  if (!handle) handle = createLocalSql({ namespace: 'e2e:sql', persistence: 'indexeddb' });\n"
+    "  if (!opened) { await handle.open(); opened = true; }\n"
+    "  return handle;\n"
+    "}\n"
+    "export async function run(mode) {\n"
+    "  try {\n"
+    "    const d = await db();\n"
+    "    if (mode === 'reset') {\n"
+    "      await d.reset();\n"
+    "      return { ok: true, reset: true };\n"
+    "    }\n"
+    "    if (mode === 'write') {\n"
+    "      await d.query('CREATE TABLE IF NOT EXISTS hits (id serial PRIMARY KEY, at timestamptz DEFAULT now())');\n"
+    "      await d.query('INSERT INTO hits DEFAULT VALUES');\n"
+    "    }\n"
+    "    const r = await d.query('SELECT count(*)::int AS n FROM hits');\n"
+    "    return { ok: true, count: r.rows[0].n };\n"
+    "  } catch (e) {\n"
+    "    return { ok: false, error: String((e && e.message) || e) };\n"
+    "  }\n"
+    "}\n"
+)
+
+
+def pglite_dist_dir():
+    import glob
+    pats = [
+        os.path.join(REPO, "node_modules/.bun/@electric-sql+pglite@*/node_modules/@electric-sql/pglite/dist"),
+        os.path.join(REPO, "node_modules/@electric-sql/pglite/dist"),
+    ]
+    for pat in pats:
+        hits = sorted(glob.glob(pat)) if "*" in pat else [pat]
+        if hits and os.path.isdir(hits[0]):
+            return hits[0]
+    raise RuntimeError("PGlite dist directory not found (is @electric-sql/pglite installed?)")
+
+
+def pglite_dist_js():
+    """The engine's own JS entry + chunks (its worker layout must stay
+    intact — see build_sql_entry)."""
+    d = pglite_dist_dir()
+    return sorted(n for n in os.listdir(d)
+                  if n.endswith(".js") and not n.endswith(".cjs"))
+
+
+def pglite_engine_assets():
+    """The engine's runtime assets (bun's nested store layout): both WASM
+    modules AND the Emscripten file pack (pglite.data) the wasm fetches
+    relative to its module URL."""
+    import glob
+    names = ["pglite.wasm", "initdb.wasm", "pglite.data"]
+    pats = [
+        os.path.join(REPO, "node_modules/.bun/@electric-sql+pglite@*/node_modules/@electric-sql/pglite/dist/"),
+        os.path.join(REPO, "node_modules/@electric-sql/pglite/dist/"),
+    ]
+    found = []
+    for pat in pats:
+        for n in names:
+            found.extend(sorted(glob.glob(os.path.join(pat, n))))
+        if found:
+            break
+    return found
+
+
+def build_sql_entry(browser_dir: str, work: str):
+    """Bundle the C-003 evidence entry beside the deployment (same
+    /__velqu_editor__/ passthrough as the KV lane) and serve the engine
+    WASM files next to it — PGlite resolves them relative to the bundle's
+    module URL."""
+    entry = os.path.join(work, "sql-entry.ts")
+    with open(entry, "w") as f:
+        f.write(SQL_ENTRY)
+    link_workspace(work, packages=("core", "schema", "browser-runtime", "browser-pglite"))
+    out_dir = os.path.join(browser_dir, "__velqu_editor__")
+    os.makedirs(out_dir, exist_ok=True)
+    # The engine stays EXTERNAL and is served from its own dist layout
+    # (import map below): a single-file re-bundle breaks emscripten's
+    # pthread worker in cross-origin-isolated pages (the engine wedges
+    # at init). The original dist layout is the supported configuration.
+    out = bun(["build", entry, "--outdir", out_dir, "--target", "browser",
+               "--format", "esm", "--minify",
+               "--external", "@electric-sql/pglite",
+               "--conditions", "bun"], check=False)
+    if out.returncode != 0:
+        raise RuntimeError(f"sql bundle failed: {out.stderr[-400:]}")
+    dist_src = pglite_dist_dir()
+    dist_dst = os.path.join(out_dir, "pglite-dist")
+    os.makedirs(dist_dst, exist_ok=True)
+    copied = []
+    engine_abs = pglite_engine_assets()          # absolute paths
+    js_names = pglite_dist_js()                  # plain names
+    for src in engine_abs:
+        name = os.path.basename(src)
+        shutil.copyfile(src, os.path.join(dist_dst, name))
+        copied.append("pglite-dist/" + name)
+    for name in js_names:
+        shutil.copyfile(os.path.join(dist_src, name), os.path.join(dist_dst, name))
+        copied.append("pglite-dist/" + name)
+    with open(os.path.join(out_dir, "e7.html"), "w") as f:
+        f.write(E7_PAGE)
+    return copied
+
+
+E7_PAGE = """<!doctype html>
+<html><head><meta charset=\"utf-8\"><title>e7</title></head>
+<body><div id=\"st\">loading</div>
+<script type=\"importmap\">
+  { \"imports\": { \"@electric-sql/pglite\": \"./pglite-dist/index.js\" } }
+</script>
+<script type=\"module\">
+  const m = await import('./sql-entry.js');
+  window.sql = m;
+  document.getElementById('st').textContent = 'ready';
+</script></body></html>
+"""
+
+
 def build_deployment(project: str, greeting: str, base_path: str | None = None):
     write_app(project, greeting)
     link_workspace(project)
@@ -166,6 +290,7 @@ def main() -> int:
     os.makedirs(project, exist_ok=True)
     build_v1, browser_dir = build_deployment(project, "Hello E2E v1")
     build_kv_entry(browser_dir, work)
+    engine_assets = build_sql_entry(browser_dir, work)
     port = 8961
 
     class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -174,6 +299,21 @@ def main() -> int:
 
         def log_message(self, *a):
             pass
+
+        def end_headers(self):
+            # C-003 (E7): a PGlite application page is a pthreads WASM host
+            # and wedges without SharedArrayBuffer — cross-origin isolation
+            # is a REAL runtime requirement of that optional capability.
+            # The isolation headers are served ONLY for the dedicated E7
+            # top-level document; the main shell keeps its unisolated
+            # deployment contract (the required service-worker lane broke
+            # under blanket COEP: require-corp — SW scripts refuse install
+            # even with CORP on this chromium).
+            if self.path.startswith("/__velqu_editor__/"):
+                self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+                self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+                self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            super().end_headers()
 
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), Quiet)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -197,6 +337,9 @@ def main() -> int:
             browser = launch.launch(headless=True, **kwargs)
             ctx = browser.new_context()
             page = ctx.new_page()
+            # network trace for the C-003 lazy-engine assertion (E7)
+            net_requests: list[str] = []
+            page.on("request", lambda r: net_requests.append(r.url))
             base = f"http://127.0.0.1:{port}"
 
             # E1 — kernel boot + handler execution
@@ -279,6 +422,47 @@ def main() -> int:
                    and kv.get("first", {}).get("ok") is True
                    and kv.get("second", {}).get("ok") is True,
                    kv)
+
+            # E7 — C-003 local-SQL, in a DEDICATED top-level document:
+            # a PGlite app page is a pthreads WASM host and requires
+            # cross-origin isolation (SAB); the isolation headers are
+            # served for /__velqu_editor__/e7.html only, so the main
+            # shell's deployment contract (incl. the required SW lane)
+            # is unchanged. The lane: lazy engine network trace, a write,
+            # IndexedDB durability across a real page reload, then reset.
+            sql = ctx.new_page()
+            sql.on("request", lambda r: net_requests.append(r.url))
+            sql.goto(f"{base}/__velqu_editor__/e7.html", timeout=45000)
+            sql.wait_for_function("document.getElementById('st')?.textContent === 'ready'", timeout=45000)
+            isolated = sql.evaluate("() => crossOriginIsolated")
+            first = sql.evaluate("() => window.sql.run('write')")
+            engine_urls = sql.evaluate(
+                "() => performance.getEntriesByType('resource').map(e => e.name)"
+                  " .filter(u => u.includes('pglite') || u.includes('initdb'))")
+            e7_lazy = (
+                first.get("ok") is True
+                and isolated is True
+                and len(engine_urls) > 0
+            )
+            record("E7-sql-lazy-engine-network", e7_lazy,
+                   {"crossOriginIsolated": isolated,
+                    "engineAssets": engine_assets,
+                    "engineBytesFetched": len(engine_urls)})
+
+            sql.reload(wait_until="domcontentloaded")
+            sql.wait_for_function("document.getElementById('st')?.textContent === 'ready'", timeout=45000)
+            readback = sql.evaluate("() => window.sql.run('read')")
+            e7_durable = (
+                readback.get("ok") is True
+                and isinstance(readback.get("count"), int)
+                and readback["count"] >= (first.get("count") or 0)
+            )
+            record("E7-sql-indexeddb-durability", e7_durable,
+                   {"written": first.get("count"), "readAfterReload": readback.get("count")})
+
+            reset = sql.evaluate("() => window.sql.run('reset')")
+            record("E7-sql-reset", reset.get("ok") is True, reset)
+            sql.close()
 
             # E6 — update detection: redeploy changed build; SW bytes change
             build_v2, _ = build_deployment(project, "Hello E2E v2")

@@ -180,7 +180,11 @@ function defaultOrigin(): string {
 }
 
 export function storageName(origin: string, namespace: string): string {
-  return `velqu-local-sql:${origin}:${namespace}`;
+  // Sanitized: this name becomes an IndexedDB database path (`idb://<name>`)
+  // and characters like `/` or `:` from the origin wedge PGlite's IDBFS
+  // (ErrnoError at mount). found in real-browser E2E (C-003 E7).
+  const safe = `${origin}:${namespace}`.replace(/[^A-Za-z0-9._-]/g, "_");
+  return `velqu-local-sql-${safe}`;
 }
 
 function validateNamespace(namespace: string): void {
