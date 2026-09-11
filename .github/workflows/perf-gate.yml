@@ -47,6 +47,8 @@ jobs:
             ~/.cargo/git
             target
           key: perf-gate-x86_64-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
       - name: Build release runtime
         run: cargo build --release -p velqu-runtime
       - name: Cold-start regression gate
