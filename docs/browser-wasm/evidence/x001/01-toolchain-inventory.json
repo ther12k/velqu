@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "spike": "BWASM-X-001",
+  "title": "QuickJS-NG WebAssembly Toolchain and Version Inventory",
+  "date": "2026-09-11",
+  "nativeTarget": {
+    "crate": "q-engine-quickjs",
+    "pinnedRquickjsVersion": "=0.12.2",
+    "pinnedQuickjsNgVersion": "0.15.1",
+    "buildModel": "native C compilation via cc-rs to host architecture (x86_64 / aarch64 glibc)"
+  },
+  "wasm32TargetAttempt": {
+    "target": "wasm32-unknown-unknown",
+    "rquickjsSysStatus": "FAILED",
+    "rquickjsSysError": "error: couldn't read bindings/wasm32-unknown-unknown.rs: No such file or directory (os error 2)",
+    "rquickjsSysWarning": "rquickjs-sys@0.12.2: rquickjs probably doesn't ship bindings for platform wasm32-unknown-unknown(n/a)",
+    "tokioStatus": "FAILED",
+    "tokioError": "compile_error!(\"This wasm target is unsupported by mio. If using Tokio, disable the net feature.\")",
+    "mioCompileErrorsCount": 48
+  },
+  "upstreamWasmEcosystem": {
+    "package": "@jitl/quickjs-ng-wasmfile-release-sync",
+    "version": "0.32.0",
+    "vendoredQuickjsNgVersion": "0.12.1",
+    "versionSkew": {
+      "nativeVersion": "0.15.1",
+      "wasmVersion": "0.12.1",
+      "skewCategory": "major-semantic-and-bytecode-gap",
+      "bytecodeCompatibility": false,
+      "es2024FeatureParity": false
+    },
+    "binaryArtifact": {
+      "path": "dist/emscripten-module.wasm",
+      "rawBytes": 528642,
+      "gzip9Bytes": 276787,
+      "brotli11Bytes": 241890
+    }
+  }
+}

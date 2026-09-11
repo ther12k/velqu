@@ -71,4 +71,4 @@ Revisit trigger:
 - [ ] **OD-051 — Performance budgets.** Freeze core/optional payload, cold/warm startup, first request, steady request, Worker restart, and memory-growth thresholds.
 - [ ] **OD-052 — Evidence ownership.** Assign independent reviewers for kernel/runtime/security/cleanroom/gate packets.
 - [ ] **OD-053 — Residual risk acceptance.** Define who can accept P1 risk, required metadata, and expiry.
-- [ ] **OD-054 — QuickJS promotion rule.** Define the exact X-001 thresholds that would justify making QuickJS-WASM supported or mandatory.
+- [x] **OD-054 — QuickJS promotion rule.** Define the exact X-001 thresholds that would justify making QuickJS-WASM supported or mandatory. — RESOLVED (2026-09-11): NO-GO verdict rendered in `docs/browser-wasm/evidence/x001/06-go-no-go-decision.md`. Evaluated across 6 dimensions; scored 9 / 30 (threshold >= 24/30). Fails due to 3-minor-version skew (0.12.1 vs 0.15.1, broken bytecode parity), +242 KB brotli payload bloat exceeding glue budget by 4.7x, 310x latency penalty, and 1,475x cold-start penalty. Hybrid Worker architecture permanently retained.

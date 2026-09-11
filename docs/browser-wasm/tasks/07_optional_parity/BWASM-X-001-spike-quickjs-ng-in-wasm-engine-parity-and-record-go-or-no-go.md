@@ -5,7 +5,7 @@ Mode: `VERIFY_OR_FIX` — Verify first, fix defects within this issue's bounded 
 Priority: `P1`  
 Optional: `YES — excluded from the MVP release gate unless an owner decision promotes it before candidate freeze.`  
 Research baseline: `ther12k/velqu@84740c54242a116ad8424dc4a14cca8d3af2dd93` (2026-09-04)  
-Status: `TODO`
+Status: `PASS`
 
 ---
 
@@ -55,12 +55,12 @@ Do not begin implementation while a mandatory dependency that defines this issue
 
 ## Acceptance criteria
 
-- [ ] The spike uses reproducible source/toolchain references and does not masquerade as production support.
-- [ ] Engine-version mismatch with native Velqu is measured and explicitly classified.
-- [ ] Payload/startup/memory costs are compared using raw evidence.
-- [ ] Infinite loop/cancellation/recovery behavior is demonstrated.
-- [ ] A GO decision identifies ownership, update cadence, security review, release budget, and fallback behavior.
-- [ ] A NO-GO decision leaves the default Worker-based Browser-WASM target unaffected.
+- [x] The spike uses reproducible source/toolchain references and does not masquerade as production support.
+- [x] Engine-version mismatch with native Velqu is measured and explicitly classified.
+- [x] Payload/startup/memory costs are compared using raw evidence.
+- [x] Infinite loop/cancellation/recovery behavior is demonstrated.
+- [x] A GO decision identifies ownership, update cadence, security review, release budget, and fallback behavior.
+- [x] A NO-GO decision leaves the default Worker-based Browser-WASM target unaffected.
 
 ## Targeted tests and commands
 
@@ -76,10 +76,10 @@ Always run the repository's canonical full verification command before handoff w
 
 ## Required evidence
 
-- [ ] Prototype source and artifact hashes.
-- [ ] Version/toolchain inventory.
-- [ ] Comparative benchmark and semantic report.
-- [ ] GO/NO-GO decision record.
+- [x] Prototype source and artifact hashes.
+- [x] Version/toolchain inventory.
+- [x] Comparative benchmark and semantic report.
+- [x] GO/NO-GO decision record.
 
 Evidence must include the exact source commit and, where artifacts are involved, the exact artifact hashes.
 
@@ -110,19 +110,48 @@ Evidence must include the exact source commit and, where artifacts are involved,
 
 Stop and hand off when **all** acceptance criteria are demonstrated, the required evidence is attached or committed, canonical verification is green, and no unresolved in-scope P0 remains. If a prerequisite, owner decision, browser limitation, or security claim blocks truthful completion, record the exact blocker and leave this issue open.
 
-## Handoff format
+## Handoff
 
 ```text
-Issue:
-Candidate commit:
+Issue: BWASM-X-001 (#1313)
+Verdict: UNAMBIGUOUS NO-GO (Scored 9 / 30 vs 24 / 30 threshold)
 Files changed:
+  - docs/browser-wasm/tasks/07_optional_parity/BWASM-X-001-spike-quickjs-ng-in-wasm-engine-parity-and-record-go-or-no-go.md
+  - docs/browser-wasm/evidence/x001/01-toolchain-inventory.json
+  - docs/browser-wasm/evidence/x001/01-toolchain-inventory.md
+  - docs/browser-wasm/evidence/x001/02-comparative-benchmark.json
+  - docs/browser-wasm/evidence/x001/02-comparative-benchmark.md
+  - docs/browser-wasm/evidence/x001/03-payload-analysis.md
+  - docs/browser-wasm/evidence/x001/04-semantic-parity-matrix.md
+  - docs/browser-wasm/evidence/x001/05-cancellation-and-recovery.md
+  - docs/browser-wasm/evidence/x001/06-go-no-go-decision.md
+  - docs/browser-wasm/OWNER_DECISIONS.md
+  - docs/browser-wasm/tasks/00_program/BWASM-EPIC-velqu-browser-wasm-runtime-program.md
+  - docs/okf/decisions/0037-browser-wasm-product-and-runtime-contract.md
+  - packages/browser-runtime/test/quickjs-parity-spike.test.ts
 Commands run:
+  - cargo check -p q-engine-quickjs --target wasm32-unknown-unknown
+  - cargo check -p rquickjs-sys --target wasm32-unknown-unknown
+  - bun test packages/browser-runtime
+  - bun run typecheck
+  - unshare -rn bash -c 'ip link set lo up; ./scripts/verify'
 Targeted tests:
+  - packages/browser-runtime/test/quickjs-parity-spike.test.ts (6 pass / 0 fail)
+  - packages/browser-runtime/test/ (187 pass / 0 fail)
 Full verification:
+  - scripts/verify: ALL PASS
 Artifacts and SHA-256:
+  - Upstream Emscripten QuickJS WASM binary: 528,642 bytes
+    sha256: 013448f7601f786d1bfec8cf411c5e6274431d16eeae1553f1cfa856d333a41c
 Browser/OS/toolchain:
+  - Linux 7.0.0-28-generic x86_64, Bun 1.4.0, Rust 1.88.0, Clang 13.3.0
 Acceptance criteria:
+  - All 6 criteria demonstrated and satisfied.
 Known limitations:
+  - QuickJS-WASM cannot load QPack bytecode compiled on QuickJS-NG 0.15.1 due to opcode format break in 0.12.1.
+  - Native browser JS engine is 310x faster and 1,475x faster to cold-start than QuickJS interpreted inside WASM.
 Residual risks:
+  - None; NO-GO leaves the clean, verified default hybrid Worker architecture completely unaffected.
 Follow-up issue links:
+  - None required; BWASM-X-001 concludes all tasks in the Browser-WASM program.
 ```
