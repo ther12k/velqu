@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "spike": "BWASM-X-001",
+  "title": "QuickJS-NG WASM vs Native Browser JS Execution Benchmark",
+  "date": "2026-09-11",
+  "host": {
+    "os": "Linux x86_64",
+    "runtime": "Bun 1.4.0 (Linux x64)"
+  },
+  "coldStartup": {
+    "quickjsWasm": {
+      "wasmInitMs": 42.45,
+      "contextCreationMs": 9.87,
+      "bundleEvalMs": 6.70,
+      "totalColdStartMs": 59.02
+    },
+    "nativeBrowserJs": {
+      "totalColdStartMs": 0.04
+    },
+    "overheadFactor": 1475.5
+  },
+  "requestThroughput": {
+    "iterations": 1000,
+    "quickjsWasm": {
+      "totalDurationMs": 497.48,
+      "meanLatencyUs": 497.5,
+      "p50LatencyUs": 485.0,
+      "p95LatencyUs": 530.0,
+      "p99LatencyUs": 610.0
+    },
+    "nativeBrowserJs": {
+      "totalDurationMs": 1.60,
+      "meanLatencyUs": 1.6,
+      "p50LatencyUs": 1.4,
+      "p95LatencyUs": 2.1,
+      "p99LatencyUs": 3.5
+    },
+    "slowdownFactor": 310.3
+  },
+  "memoryMetrics": {
+    "quickjsWasm": {
+      "wasmInitialLinearMemoryMb": 16,
+      "heapAllocatedBytes": 98174,
+      "allocatedBlocks": 1455,
+      "objectsCount": 356,
+      "atomsCount": 595,
+      "disposalAssertionRisk": "list_empty(&rt->gc_obj_list)"
+    },
+    "nativeBrowserJs": {
+      "additionalWasmLinearMemoryMb": 0,
+      "heapOverheadBytes": 0,
+      "disposalAssertionRisk": "none"
+    }
+  }
+}

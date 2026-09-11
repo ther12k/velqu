@@ -130,4 +130,5 @@ BWASM-D-001/K-005/R-004; QuickJS-in-WASM parity is separately gated optional
 (BWASM-X-001, not started); forbidden claims are prohibited by
 ADR-0035/0038/0039. Registered issue index: `manifests/issues.json`;
 owner decision log: ADRs 0037-0039 + ratification report. Optional follow-ons
-(C-003 PGlite, X-001 parity spike) remain optional and unstarted.
+are complete: C-003 PGlite (@velqu/browser-pglite, PR #1311/PR #1312) and X-001
+parity spike (NO-GO decision record, PR #1313).
