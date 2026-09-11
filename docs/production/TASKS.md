@@ -10,7 +10,7 @@ Status markers are maintained in `TASKS.json`; this Markdown file is the human-r
 
 **Required outcome:** The current M2.3-r1 baseline, roadmap authority, evidence model, and review packet format are frozen before further code changes.
 
-### - [ ] BASE-001 — Freeze the reviewed source baseline `P0`
+### - [x] BASE-001 — Freeze the reviewed source baseline `P0`
 
 Bind all future work to the exact reviewed archive and a real Git commit.
 
@@ -24,7 +24,7 @@ Bind all future work to the exact reviewed archive and a real Git commit.
 - SOURCE-BASELINE.md
 - git rev-parse output
 - SHA256SUMS.txt
-### - [ ] BASE-002 — Adopt ADR-0019 production-readiness program `P0`
+### - [x] BASE-002 — Adopt ADR-0019 production-readiness program `P0`
 
 Extend ADR-0018 through technical production candidate, RC, and GA without changing the minimal-core thesis.
 
@@ -39,7 +39,7 @@ Extend ADR-0018 through technical production candidate, RC, and GA without chang
 - ADR file
 - decision index link
 - OKF validation
-### - [ ] BASE-003 — Install the production master agent prompt `P0`
+### - [x] BASE-003 — Install the production master agent prompt `P0`
 
 Give one coding agent authority to execute the full ordered program while preserving stop conditions and owner boundaries.
 
@@ -53,7 +53,7 @@ Give one coding agent authority to execute the full ordered program while preser
 **Required evidence:**
 - MASTER_PRODUCTION_AGENT_PROMPT.md
 - AGENTS.md diff
-### - [ ] BASE-004 — Create machine-readable task and evidence ledgers `P0`
+### - [x] BASE-004 — Create machine-readable task and evidence ledgers `P0`
 
 Make status, dependencies, claims, tests, reports, and artifacts auditable by tools and the final reviewer.
 
@@ -68,7 +68,7 @@ Make status, dependencies, claims, tests, reports, and artifacts auditable by to
 - TASKS.json
 - TASKS.schema.json
 - EVIDENCE_INDEX.json schema
-### - [ ] BASE-005 — Strengthen source-to-evidence verification `P0`
+### - [x] BASE-005 — Strengthen source-to-evidence verification `P0`
 
 Prevent reports from claiming code, tests, or benchmark results absent from the packaged source.
 
@@ -83,7 +83,7 @@ Prevent reports from claiming code, tests, or benchmark results absent from the 
 - verify output
 - negative fixtures
 - generated report hash comparison
-### - [ ] BASE-GATE — Pass baseline program gate `P0`
+### - [x] BASE-GATE — Pass baseline program gate `P0`
 
 Authorize implementation only after the baseline, roadmap, prompt, evidence ledger, and review conventions are coherent.
 
@@ -103,7 +103,7 @@ Authorize implementation only after the baseline, roadmap, prompt, evidence ledg
 
 **Required outcome:** Current-pack execution is fully numeric, fail-before-ready, route plans are exact, schema identities are operational, and the router resolves directly to a numeric RoutePlan.
 
-### - [ ] M23R2-001 — Define explicit numeric and legacy engine load plans `P0`
+### - [x] M23R2-001 — Define explicit numeric and legacy engine load plans `P0`
 
 Separate current numeric packs from legacy string-table compatibility so no current request pays dual-path cost.
 
@@ -118,7 +118,7 @@ Separate current numeric packs from legacy string-table compatibility so no curr
 - unit tests
 - pack fixtures
 - startup failure logs
-### - [ ] M23R2-002 — Enforce exact function-vector and manifest equivalence `P0`
+### - [x] M23R2-002 — Enforce exact function-vector and manifest equivalence `P0`
 
 Make dense numeric dispatch fail closed for wrong in-range IDs, holes, kinds, duplicates, and length mismatches.
 
@@ -133,7 +133,7 @@ Make dense numeric dispatch fail closed for wrong in-range IDs, holes, kinds, du
 - QPack negative tests
 - engine load tests
 - numeric dispatch counters
-### - [ ] M23R2-003 — Enforce exact RoutePlan equivalence `P0`
+### - [x] M23R2-003 — Enforce exact RoutePlan equivalence `P0`
 
 Cross-check the execution plan against route contracts before readiness.
 
@@ -148,7 +148,7 @@ Cross-check the execution plan against route contracts before readiness.
 - pack validation tests
 - golden plans
 - tamper fixtures
-### - [ ] M23R2-004 — Operationalize RouteId, PolicyId, and SchemaId `P0`
+### - [x] M23R2-004 — Operationalize RouteId, PolicyId, and SchemaId `P0`
 
 Move all current-pack route, policy, and schema identity to deterministic dense numeric indexes while retaining debug names.
 
@@ -163,7 +163,7 @@ Move all current-pack route, policy, and schema identity to deterministic dense 
 - compiler golden output
 - type/pack tests
 - inspect output
-### - [ ] M23R2-005 — Compile FieldNeeds into a verified bitset `P0`
+### - [x] M23R2-005 — Compile FieldNeeds into a verified bitset `P0`
 
 Prepare M2.4 request admission decisions from exact route declarations.
 
@@ -177,7 +177,7 @@ Prepare M2.4 request admission decisions from exact route declarations.
 **Required evidence:**
 - field-needs conformance matrix
 - negative pack tests
-### - [ ] M23R2-006 — Bind the numeric execution graph to pack integrity `P0`
+### - [x] M23R2-006 — Bind the numeric execution graph to pack integrity `P0`
 
 Detect corruption of function manifests, route plans, and policy-to-handler mappings.
 
@@ -192,7 +192,7 @@ Detect corruption of function manifests, route plans, and policy-to-handler mapp
 - integrity tests
 - hash fixtures
 - pack spec update
-### - [ ] M23R2-007 — Implement numeric terminal router automaton `P0`
+### - [x] M23R2-007 — Implement numeric terminal router automaton `P0`
 
 Replace startup-built candidate scanning with one compiled traversal to a method terminal and RoutePlan.
 
@@ -208,7 +208,7 @@ Replace startup-built candidate scanning with one compiled traversal to a method
 - router conformance
 - 25/1k/10k route fixtures
 - allocation profile
-### - [ ] M23R2-008 — Remove current-pack string dispatch and duplicate references `P0`
+### - [x] M23R2-008 — Remove current-pack string dispatch and duplicate references `P0`
 
 Eliminate __velquRegister, handler BTreeMap, per-request handler/policy strings, and duplicate persistent handles for current packs.
 
@@ -223,7 +223,7 @@ Eliminate __velquRegister, handler BTreeMap, per-request handler/policy strings,
 - source inspection check
 - runtime counters
 - bundle size report
-### - [ ] M23R2-009 — Finish terminal settlement retention hardening `P0`
+### - [x] M23R2-009 — Finish terminal settlement retention hardening `P0`
 
 Ensure every timeout, cancel, quarantine, and interrupted watch removes settlement entries and floating operations exactly once.
 
@@ -238,7 +238,7 @@ Ensure every timeout, cancel, quarantine, and interrupted watch removes settleme
 - engine tests
 - settlement-table metric
 - task/slot gauges
-### - [ ] M23R2-GATE — Pass M2.3-r2 closure gate `P0`
+### - [x] M23R2-GATE — Pass M2.3-r2 closure gate `P0`
 
 Close exact numeric artifact loading, router scope, evidence, and performance before M2.4 consumes RoutePlan.
 

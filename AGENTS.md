@@ -2,7 +2,11 @@
 
 Any agent (human or AI) modifying this repository must honor the following.
 Primary sources: `docs/okf/MASTER_AGENT_PROMPT.md`, `docs/okf/delivery/prd.md`,
-`docs/okf/engineering/release-gates.md`.
+`docs/okf/engineering/release-gates.md`. The production-readiness program
+(ADR-0019, post-beta GA track) is governed by
+`docs/okf/MASTER_PRODUCTION_AGENT_PROMPT.md`, which supersedes the former
+M2/M4 stop language: an authorized agent continues milestone-to-milestone
+only after local gates pass.
 
 ## Non-negotiable architectural constraints
 
