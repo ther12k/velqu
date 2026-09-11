@@ -1,0 +1,13 @@
+{
+  "format": "velqu-cold-start-gate-v1",
+  "note": "Performance gate bounds for scripts/cold-start-gate.ts (#1319/M6-009). Deliberately loose (~80x baseline) so CI runner noise cannot flake the gate; the gate exists to catch catastrophic startup collapses (multi-second/minute) that functional readiness tests miss. Baseline from benchmarks/raw/cold-start/summary.json (velqu C0..C5 toReady p50 ~6.3ms, 2026-09-10 host run). Tightening is an owner benchmark decision per AGENTS constraint 12.",
+  "baseline": {
+    "date": "2026-09-10",
+    "toReadyP50Ms": 6.3,
+    "host": "13th Gen Intel(R) Core(TM) i5-13420H, Linux 7.0.0"
+  },
+  "bounds": {
+    "toReadyP50Ms": 500,
+    "toReadyP95Ms": 1500
+  }
+}

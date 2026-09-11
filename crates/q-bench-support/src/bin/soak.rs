@@ -417,6 +417,12 @@ fn main() {
         let mut window_base_completed = 0u64;
         let mut window_seq = 0u64;
         let mut cpu_before = process_cpu_secs();
+        // Incremental raw-evidence durability: each completed window is
+        // flushed to disk as it closes, so a 24h+ campaign survives a
+        // crash/reboot with at most one window of loss. The full file is
+        // rewritten at completion (below) as the canonical copy.
+        let mut raw_incremental =
+            std::fs::File::create(format!("{out_dir}/soak.jsonl")).expect("raw out");
         while Instant::now() < deadline {
             // Drain error reports non-blockingly so the tally is live
             // and the channel never grows unboundedly.
@@ -470,6 +476,11 @@ fn main() {
                     "queueRejectedTotal": queue_stats.iter().map(|s| s.rejected).sum::<u64>(),
                     "ownershipPendingSlots": own_pending,
                 }));
+                {
+                    use std::io::Write as _;
+                    let _ = writeln!(raw_incremental, "{}", windows.last().unwrap());
+                    let _ = raw_incremental.flush();
+                }
                 window_base_completed = now_completed;
                 window_start = Instant::now();
                 window_seq += 1;
