@@ -43,8 +43,12 @@ jobs:
         run: |
           bun scripts/build-packages.ts
           mkdir -p /tmp/aarch64-packs
+          # bun pm pack rewrites workspace:* deps to concrete versions in
+          # the packed manifest (npm pack does not) — without the rewrite
+          # npm cannot install the tarball at all.
           for pkg in contract schema core treaty browser-runtime browser-pglite compiler cli; do
-            (cd "packages/$pkg" && npm pack --pack-destination /tmp/aarch64-packs)
+            (cd "packages/$pkg" && bun pm pack)
+            mv packages/$pkg/*.tgz /tmp/aarch64-packs/
           done
           ls -la /tmp/aarch64-packs
 
@@ -52,12 +56,13 @@ jobs:
         run: |
           mkdir -p /tmp/aarch64-install && cd /tmp/aarch64-install
           npm init -y >/dev/null
-          npm install /tmp/aarch64-packs/velqu-contract-*.tgz \
-                      /tmp/aarch64-packs/velqu-schema-*.tgz \
-                      /tmp/aarch64-packs/velqu-core-*.tgz \
-                      /tmp/aarch64-packs/velqu-treaty-*.tgz 2>&1 | tail -2
-          node -e "import('@velqu/treaty').then(m => { if (typeof m.treaty !== 'function') throw new Error('bad export'); console.log('clean-install import OK'); })"
-          node -e "import('@velqu/core').then(m => { if (typeof m.route !== 'function') throw new Error('bad route export'); console.log('core route OK'); })"
+          npm install --no-audit --no-fund \
+            /tmp/aarch64-packs/velqu-contract-*.tgz \
+            /tmp/aarch64-packs/velqu-schema-*.tgz \
+            /tmp/aarch64-packs/velqu-core-*.tgz \
+            /tmp/aarch64-packs/velqu-treaty-*.tgz
+          node --input-type=module -e "import('@velqu/treaty').then(m => { if (typeof m.treaty !== 'function') throw new Error('bad export'); console.log('clean-install import OK'); })"
+          node --input-type=module -e "import('@velqu/core').then(m => { if (typeof m.route !== 'function') throw new Error('bad route export'); console.log('core route OK'); })"
 
       - name: Bounded aarch64 soak (10 minutes)
         run: |
