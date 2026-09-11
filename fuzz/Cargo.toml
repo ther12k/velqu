@@ -1,0 +1,62 @@
+[workspace]
+
+[package]
+name = "velqu-runtime-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+
+[dependencies.q-pack]
+path = "../crates/q-pack"
+[dependencies.q-router]
+path = "../crates/q-router"
+[dependencies.q-http]
+path = "../crates/q-http"
+[dependencies.q-schema-runtime]
+path = "../crates/q-schema-runtime"
+[dependencies.q-bridge]
+path = "../crates/q-bridge"
+[dependencies.q-runtime-model]
+path = "../crates/q-runtime-model"
+
+[[bin]]
+name = "pack_verify"
+path = "fuzz_targets/pack_verify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "router_match"
+path = "fuzz_targets/router_match.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "http_decode"
+path = "fuzz_targets/http_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "schema_validate"
+path = "fuzz_targets/schema_validate.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bridge_handles"
+path = "fuzz_targets/bridge_handles.rs"
+test = false
+doc = false
+bench = false

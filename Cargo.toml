@@ -15,7 +15,12 @@ members = [
     "crates/q-capabilities",
     "crates/q-capability-postgres",
     "crates/q-bench-support",
+    # The fuzz crate (cargo-fuzz) is excluded from the workspace: it
+    # builds with its own sanitizer/coverage RUSTFLAGS and lockfile
+    # (M6-002/#1318) so `cargo test --workspace` and release builds are
+    # never affected.
 ]
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.1.0"
