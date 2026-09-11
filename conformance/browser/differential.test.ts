@@ -282,7 +282,11 @@ describe("BWASM-Q-001 native-vs-browser differential conformance", () => {
       stdout: "ignore",
       stderr: "ignore",
     });
-    const deadline = Date.now() + 15_000;
+    // readiness wait, not an assertion: the aarch64 CI runner measured
+    // >15 s cold boot under concurrent bun-test load (#1315 rerun), so
+    // the deadline is generous; a genuinely broken runtime still fails
+    // this wait, just later.
+    const deadline = Date.now() + 45_000;
     for (;;) {
       try {
         await fetch(`http://127.0.0.1:${nativePort}/greet/ping`);
