@@ -25,6 +25,8 @@ path = "../crates/q-schema-runtime"
 path = "../crates/q-bridge"
 [dependencies.q-runtime-model]
 path = "../crates/q-runtime-model"
+[dependencies.q-capabilities]
+path = "../crates/q-capabilities"
 
 [[bin]]
 name = "pack_verify"
@@ -57,6 +59,20 @@ bench = false
 [[bin]]
 name = "bridge_handles"
 path = "fuzz_targets/bridge_handles.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codec_encoders"
+path = "fuzz_targets/codec_encoders.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capabilities_policy"
+path = "fuzz_targets/capabilities_policy.rs"
 test = false
 doc = false
 bench = false

@@ -13,6 +13,13 @@ release builds are unaffected by the sanitizer/coverage toolchain.
 | `http_decode` | query strings + percent escapes (`parse_query_with_policy`, `percent_decode_with_policy`) | no amplification (output ≤ 2x/3x input asserted) |
 | `schema_validate` | arbitrary JSON → `validate` against a nested IR incl. a `(a+)+` backtracking-bait pattern | deterministic classification; <1 s watchdog against catastrophic backtracking |
 | `bridge_handles` | op streams against a capacity-8 slab (insert/settle/stale-access) | stale/foreign handles never grant access; live ≤ capacity |
+| `codec_encoders` | response + RFC 9457 problem encoders (M25-005/006) with adversarial extension maps | emitted bytes are valid JSON; RFC 9457 invariants hold |
+| `capabilities_policy` | SSRF gate (`resolve_and_validate`), redirect limiter, capability identity/inventory/DAG | metadata-resolved hosts always denied; pin sets always dialable; typed outcomes |
+
+Plus `scripts/ts-fuzz-campaign.ts` (seeded property-fuzz over the
+published `treaty()` API — the TypeScript encoder surface cargo-fuzz
+cannot reach) and `scripts/unsafe-audit.py` (the explicit unsafe/FFI
+audit artifact). Full acceptance→target mapping: [COVERAGE.md](COVERAGE.md).
 
 ## Running
 
