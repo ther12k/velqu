@@ -1,0 +1,80 @@
+name: ga-platform-aarch64
+
+# ADR-0042 (#1322): aarch64 glibc promotion evidence. The required
+# `verify` lane already proves representative conformance on
+# ubuntu-24.04-arm on every PR; this job adds the promotion-specific
+# evidence: publishable packaging, clean-install from packed tarballs
+# under a plain-Node resolver, and a bounded soak run.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ga-platform-aarch64.yml"
+  schedule:
+    - cron: "0 3 * * 1" # weekly, Monday 03:00 UTC
+
+jobs:
+  aarch64-qualification:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain (pinned)
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal --component rustfmt,clippy
+          rustup default 1.96.0
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Build runtime + pack a reference app
+        run: |
+          cargo build --release -p velqu-runtime
+          bun install --frozen-lockfile
+          bun packages/cli/src/index.ts build --project examples/proof
+
+      - name: Pack publishable tarballs
+        run: |
+          bun scripts/build-packages.ts
+          mkdir -p /tmp/aarch64-packs
+          # bun pm pack rewrites workspace:* deps to concrete versions in
+          # the packed manifest (npm pack does not) — without the rewrite
+          # npm cannot install the tarball at all.
+          for pkg in contract schema core treaty browser-runtime browser-pglite compiler cli; do
+            (cd "packages/$pkg" && bun pm pack)
+            mv packages/$pkg/*.tgz /tmp/aarch64-packs/
+          done
+          ls -la /tmp/aarch64-packs
+
+      - name: Clean-install from tarballs (plain Node resolver)
+        run: |
+          mkdir -p /tmp/aarch64-install && cd /tmp/aarch64-install
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund \
+            /tmp/aarch64-packs/velqu-contract-*.tgz \
+            /tmp/aarch64-packs/velqu-schema-*.tgz \
+            /tmp/aarch64-packs/velqu-core-*.tgz \
+            /tmp/aarch64-packs/velqu-treaty-*.tgz
+          node --input-type=module -e "import('@velqu/treaty').then(m => { if (typeof m.treaty !== 'function') throw new Error('bad export'); console.log('clean-install import OK'); })"
+          node --input-type=module -e "import('@velqu/core').then(m => { if (typeof m.route !== 'function') throw new Error('bad route export'); console.log('core route OK'); })"
+
+      - name: Bounded aarch64 soak (10 minutes)
+        run: |
+          mkdir -p benchmarks/raw/ga-aarch64-soak
+          ./target/release/q-soak --workers 2 --duration-secs 600 --window-secs 30 \
+            --out-dir benchmarks/raw/ga-aarch64-soak | tail -1
+
+      - name: Upload qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: aarch64-qualification
+          path: |
+            benchmarks/raw/ga-aarch64-soak/soak-summary.json
+            benchmarks/raw/ga-aarch64-soak/soak.jsonl
+          retention-days: 90
