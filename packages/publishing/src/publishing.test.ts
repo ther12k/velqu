@@ -20,12 +20,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "..", "..", "..");
+// Mirrors ALL_PKGS in scripts/publish-beta.sh (dependency order). The
+// sync test below fails if either list drifts — the #1315 defect was a
+// package (browser-pglite) present in the publish script but absent
+// here, leaving the one unpublished package unqualified.
 const PUBLISH_ORDER = [
   "contract",
   "schema",
   "core",
   "treaty",
   "browser-runtime",
+  "browser-pglite",
   "compiler",
   "cli",
 ] as const;
@@ -113,6 +118,33 @@ describe("npm packaging readiness", () => {
   it("cross-package workspace deps are declared where imports exist", () => {
     const core = JSON.parse(readFileSync(join(root, "packages", "core", "package.json"), "utf8"));
     expect(core.dependencies["@velqu/schema"]).toBe("workspace:*");
+  });
+
+  it("PUBLISH_ORDER stays in sync with scripts/publish-beta.sh ALL_PKGS", () => {
+    const script = readFileSync(join(root, "scripts", "publish-beta.sh"), "utf8");
+    const m = script.match(/ALL_PKGS=\(([^)]+)\)/);
+    expect(m).toBeDefined();
+    const scriptOrder = m![1].trim().split(/\s+/);
+    expect(scriptOrder.join(" ")).toBe(PUBLISH_ORDER.join(" "));
+  });
+
+  it("browser-pglite keeps the PGlite engine external (C-003 packaging invariant)", () => {
+    // The engine is a real npm dependency loaded via dynamic import on
+    // first open() — never inlined into dist/, never vendored into the
+    // tarball. A regressed build (engine bundled) would balloon dist to
+    // ~10 MB; the adapter is ~12 KB.
+    const manifest = JSON.parse(
+      readFileSync(join(root, "packages", "browser-pglite", "package.json"), "utf8"),
+    );
+    expect(manifest.dependencies["@electric-sql/pglite"]).toBe("0.5.8"); // exact pin
+    const dist = readFileSync(join(root, "packages", "browser-pglite", "dist", "index.js"));
+    expect(dist.byteLength).toBeLessThan(100_000);
+    // no @velqu/* workspace deps: --only browser-pglite is dependency-safe
+    expect(Object.keys(manifest.dependencies ?? {}).some((d) => d.startsWith("@velqu/"))).toBeFalse();
+    // the tarball ships only src/dist/README — no engine assets, no wasm
+    const { files } = packDirs["browser-pglite"];
+    expect(files.some((f) => f.endsWith(".wasm"))).toBeFalse();
+    expect(files.every((f) => f.startsWith("package/src/") || f.startsWith("package/dist/") || f === "package/README.md" || f === "package/package.json" || f === "package/")).toBeTrue();
   });
 
   it("bun pm pack replaces workspace:* with the beta version (publish-path parity)", () => {

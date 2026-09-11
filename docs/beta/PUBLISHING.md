@@ -46,11 +46,23 @@ bun run publish:beta          # == scripts/publish-beta.sh --dry-run
 
 # 2. Owner decision recorded (OD-050), then:
 npm login                     # once per machine
-bun run publish:beta:real     # publishes all seven, --tag beta, dependency order
+bun run publish:beta:real     # dependency order; skips already-live versions
+bash scripts/publish-beta.sh --only browser-pglite   # just one package
 ```
 
 Publish order (dependency graph): `contract` → `schema` → `core` →
-`treaty` → `browser-runtime` → `compiler` → `cli`.
+`treaty` → `browser-runtime` → `browser-pglite` → `compiler` → `cli`.
+
+**Re-runs are idempotent (since #1315).** In real mode the script checks
+the registry first and SKIPs any package whose exact version is already
+live (the registry rejects republishing), so a re-run proceeds to the
+packages still missing instead of dying at the first published one under
+`set -e`. `--only <pkg>` restricts the run to a single package — safe
+once the target's `@velqu/*` dependencies are already on the registry
+(`browser-pglite` has none, which the packaging test asserts).
+`@velqu/browser-pglite` (BWASM-C-003) is wired into the order and
+qualified by the packaging tests; its first publish is an owner action
+per OD-050. `--dry-run` performs no registry queries.
 
 ## Tag discipline
 
