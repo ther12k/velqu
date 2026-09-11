@@ -48,9 +48,20 @@ function handle(ctx) {
 | p99 Latency | 610.0 µs | 3.5 µs | **174.3x** |
 
 ### Why QuickJS-in-WASM is 310x Slower
-1. **Interpreter-in-Interpreter**: QuickJS is a C-based bytecode interpreter. When compiled to WebAssembly, every QuickJS bytecode dispatch is executed by a C loop compiled to WASM instructions, which in turn are executed/interpreted by the browser's WASM engine.
-2. **Boundary Serialization**: Data entering QuickJS must be serialized across the WebAssembly linear memory boundary (JS object -> JSON string or FFI heap -> QuickJS value -> QuickJS execution -> return value -> JS object).
+1. **Interpreted handler execution inside WASM**: QuickJS is a C-based bytecode interpreter. Compiled to WebAssembly, the QuickJS interpreter itself runs as WASM code, so every handler bytecode dispatch happens inside that interpreted-in-WASM C loop — instead of letting the browser's optimized JS engine execute the handler directly. (Note: modern browsers typically *compile* WASM, they do not interpret it; the penalty comes from running a second, non-JIT JavaScript engine plus the host/guest boundary, not from WASM interpretation.)
+2. **Boundary Serialization**: Data entering QuickJS must be serialized across the host/guest WebAssembly linear memory boundary (JS object -> JSON string or FFI heap -> QuickJS value -> QuickJS execution -> return value -> JS object).
 3. **No JIT**: QuickJS has no JIT compiler; modern browser engines (V8 TurboFan/Sparkplug, JSC FTL, SpiderMonkey Ion) compile hot loops to native machine instructions.
+
+### Scope of these numbers
+
+These are **X-001 qualification microbenchmark** results on the tested
+QuickJS-WASM implementation (`@jitl/quickjs-ng-wasmfile-release-sync@0.32.0`,
+handler-invocation fixture), not end-to-end Velqu request-pipeline
+benchmarks. The defensible phrasing is: *in the X-001 qualification
+microbenchmark, the tested QuickJS-WASM implementation was ~1,475x
+slower at cold initialization and ~310x slower per handler invocation
+than direct browser JavaScript.* Do not promote these factors into
+product/marketing claims about "Velqu on QuickJS-WASM".
 
 ---
 
