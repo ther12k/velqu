@@ -31,7 +31,7 @@ contract lock — one source of truth, no drift.
 
 ## Status & install
 
-Pre-beta development toward **`0.1.0-beta.1`** (ADR-0020,
+Public beta **`0.1.0-beta.1`** shipped (ADR-0020,
 [`docs/beta/`](docs/beta/)). Milestone state:
 [`docs/beta/program/STATUS.md`](docs/beta/program/STATUS.md).
 Material decisions live in [`docs/okf/decisions/`](docs/okf/decisions/);
@@ -154,14 +154,14 @@ path parameters are required and URI-encoded by the client.
 | Deterministic QPack + independent-build reproducibility | Available | M2 / M26 |
 | Scheduler correctness pass (owner-scoped microtasks, deadlines) | Available | M2.2.1 |
 | Numeric RoutePlan (no string identities on the hot path) | Available | M2.3 |
-| Zero-copy ingress/worker slab | Planned | M2.4 |
-| Schema JSON codecs | Planned | M2.5 |
-| Binary QPack v2 | Planned | M2.6 |
-| Capabilities / WinterTC | Planned | M2.7 |
-| Browser fetch boundary | Planned | M2.8 |
-| Multi-worker service mode | Planned | M3 |
-| Browser-WASM static deployment (Rust/WASM kernel + Worker handlers) | Release candidate — gate pending | BWASM |
-| Alpha release (`0.1.0-beta.1`) | Planned | M4 / ADR-0020 |
+| Zero-copy ingress/worker slab | Available | M2.4 |
+| Schema JSON codecs | Available | M2.5 |
+| Binary QPack v2 | Available | M2.6 |
+| Capabilities / WinterTC | Available | M2.7 |
+| Browser fetch boundary | Available | M2.8 |
+| Multi-worker service mode | Available | M3 |
+| Browser-WASM static deployment (Rust/WASM kernel + Worker handlers) | Beta — gate GO (2026-09-11, #1179) | BWASM |
+| Alpha release (`0.1.0-beta.1`) | Available | M4 / ADR-0020 |
 
 ## Examples
 
@@ -183,24 +183,28 @@ Verified against the pinned toolchain on Linux x86_64:
 | wasm-bindgen (browser kernel ABI) | 0.2.108 |
 
 Beta deployment target is Linux x86_64
-([`docs/beta/INSTALL.md`](docs/beta/INSTALL.md)). Browser evidence lanes
-run Chromium; other browsers are documented but untested
-([`docs/beta/KNOWN-LIMITATIONS.md`](docs/beta/KNOWN-LIMITATIONS.md)).
+([`docs/beta/INSTALL.md`](docs/beta/INSTALL.md)). Browser support policy:
+Chromium is the tested/required lane; Firefox and WebKit run as
+experimental CI lanes (green, but not promoted to supported without a
+ratified policy change —
+[`docs/beta/KNOWN-LIMITATIONS.md`](docs/beta/KNOWN-LIMITATIONS.md)).
 Performance claims are evidence-bound — matched candidates, retained raw
 samples, p50/p95/p99 (`benchmarks/raw/`, index in
 [`benchmarks/manifest.json`](benchmarks/manifest.json)).
 
 ## Roadmap
 
-- **Now:** forward track per ADR-0018 — M2.4 zero-copy ingress, M2.5
-  schema JSON codecs, M2.6 binary QPack v2, M2.7 capabilities/WinterTC,
-  M2.8 fetch, then M3 multi-worker.
-- **Finish line:** `0.1.0-beta.1` under ADR-0020
-  ([`docs/beta/`](docs/beta/)); the GA track (ADR-0019,
-  [`docs/production/`](docs/production/)) follows post-beta.
-- **Browser-WASM:** all eight program phases complete; the release
-  candidate packet (checksums, SBOM, candidate index) is assembled and
-  awaiting the recorded GO/NO-GO gate review.
+- **Shipped:** the full ADR-0018 forward track — M2.4 zero-copy ingress,
+  M2.5 schema JSON codecs, M2.6 binary QPack v2, M2.7
+  capabilities/WinterTC, M2.8 fetch, M3 multi-worker — through the
+  `0.1.0-beta.1` public beta under ADR-0020 ([`docs/beta/`](docs/beta/)).
+- **Browser-WASM:** all eight program phases complete; the release gate
+  recorded **GO** on 2026-09-11 (#1179, candidate 9c65894). Optional
+  follow-ons shipped: PGlite local SQL (C-003) and the QuickJS-in-WASM
+  parity spike (X-001, closed NO-GO — `docs/browser-wasm/evidence/x001/`).
+- **Next:** GA track under ADR-0019
+  ([`docs/production/`](docs/production/)); the Beta-WASM program is
+  complete and the production ledger awaits its reconciliation pass.
 
 ## Documentation
 

@@ -6,7 +6,8 @@
     "experimental": "allowed-failure lanes surface drift early; they can NEVER satisfy a release gate",
     "unverified": "a browser absent from this matrix is unverified/unsupported — no implicit claims",
     "ownership": "BWASM program maintains this matrix; changes to lane classifications require an owner decision (ADR amendment per D-004/ADR-0039)",
-    "cadence": "required lanes run on every PR and weekly (scheduled); experimental lanes run on the weekly schedule and release candidates"
+    "cadence": "required lanes run on every PR and weekly (scheduled); experimental lanes run on the weekly schedule and release candidates",
+    "promotion": "lane classification changes require an owner decision recorded as an ADR-0039 amendment; green CI runs alone never promote a lane (owner direction 2026-09-11)"
   },
   "lanes": [
     {
@@ -16,7 +17,7 @@
       "classification": "tested — REQUIRED lane",
       "runner": "scripts/browser-e2e-rehearsal.py --browser chromium",
       "lastEvidence": {
-        "kind": "local green run (CI runners stalled since ~#714 — standing disclosure)",
+        "kind": "CI green run (browser-lanes workflow, required lane — green on every PR since #1305; plus pre-CI local runs)",
         "browserVersion": "151.0.7922.34",
         "commit": "see evidence/browser-lanes/chromium.json",
         "result": "REHEARSAL-PASS (E1-E6)"
@@ -29,8 +30,9 @@
       "classification": "experimental — allowed-failure lane",
       "runner": "scripts/browser-e2e-rehearsal.py --browser firefox",
       "lastEvidence": {
-        "kind": "none — lane defined, browser binary not yet provisioned in this environment",
-        "status": "untested"
+        "kind": "CI green run (browser-lanes workflow, allowed-failure lane — currently passing)",
+        "status": "experimental-lane green; NOT promoted to tested",
+        "note": "Runs green on every PR in the browser-lanes CI workflow since #1305/#1312. Classification stays experimental by owner direction (2026-09-11 review): CI green does NOT promote a lane; promotion requires an ADR-0039 amendment."
       }
     },
     {
@@ -40,8 +42,9 @@
       "classification": "experimental — allowed-failure lane",
       "runner": "scripts/browser-e2e-rehearsal.py --browser webkit",
       "lastEvidence": {
-        "kind": "none — lane defined, browser binary not yet provisioned in this environment",
-        "status": "untested"
+        "kind": "CI green run (browser-lanes workflow, allowed-failure lane — currently passing)",
+        "status": "experimental-lane green; NOT promoted to tested",
+        "note": "Runs green on every PR in the browser-lanes CI workflow since #1305/#1312. Classification stays experimental by owner direction (2026-09-11 review): CI green does NOT promote a lane; promotion requires an ADR-0039 amendment."
       }
     },
     {
@@ -58,8 +61,17 @@
     }
   ],
   "featureBaseline": {
-    "required": ["WebAssembly (instantiation)", "Web Workers (module)", "ES2022", "structuredClone", "Fetch"],
-    "conditional": ["Cache Storage (offline/upgrade lanes)", "IndexedDB (kv capability)"],
+    "required": [
+      "WebAssembly (instantiation)",
+      "Web Workers (module)",
+      "ES2022",
+      "structuredClone",
+      "Fetch"
+    ],
+    "conditional": [
+      "Cache Storage (offline/upgrade lanes)",
+      "IndexedDB (kv capability)"
+    ],
     "absence": "missing core execution features prevent startup with an actionable diagnostic; missing conditional features fail closed for the declared capability (never silently disabled)"
   }
 }

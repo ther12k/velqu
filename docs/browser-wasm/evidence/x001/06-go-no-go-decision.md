@@ -44,7 +44,7 @@ Executing TypeScript route handlers in QuickJS-NG compiled to WebAssembly **fail
 Per the task acceptance criteria:
 > *"A NO-GO decision leaves the default Worker-based Browser-WASM target unaffected."*
 
-The ratified **Hybrid Browser-WASM Architecture** (ADR-0037, ADR-0038, BWASM-D-001) is permanently confirmed as the production standard:
+The ratified **Hybrid Browser-WASM Architecture** (ADR-0037, ADR-0038, BWASM-D-001) is confirmed as the production standard **for the current Velqu contract**:
 - **Rust Kernel (`q-browser-kernel`)**: Compiles to WebAssembly, owning route matching, schema validation, QPack verification, capability authorization, and problem mapping.
 - **Handler Execution**: Executes in isolated browser Web Workers using the browser's native, highly optimized JavaScript engine (`@velqu/browser-runtime`).
 - **Isolation Boundary**: Governed by the browser origin and sandboxed iframe deployment model (ADR-0038), backed by supervisor kill-and-replace Worker recovery (`WorkerHost`).
@@ -52,7 +52,31 @@ The ratified **Hybrid Browser-WASM Architecture** (ADR-0037, ADR-0038, BWASM-D-0
 
 ---
 
-## 4. Disposition of Decisions and Tasks
+## 4. Revisit Rule (X-001 remains closed — not dogma)
 
-- **OD-054 (QuickJS Promotion Rule)**: Resolved as **REJECTED** based on measured evidence in `01-toolchain-inventory.md` through `05-cancellation-and-recovery.md`.
+X-001 is **archived/closed** with no backlog. The verdict binds the
+current contract; it is not a "never revisit forever" claim. Reopening
+requires **all four** material upstream changes, re-evidenced:
+
+1. **Exact engine-version parity**: a maintainable QuickJS-WASM build of
+   the *same* quickjs-ng version native Velqu pins (currently 0.15.1),
+   with QPack bytecode compatibility proven — no fork carried by Velqu.
+2. **Payload within ratified budgets**: the engine fits the BWASM-D-004
+   size budgets (glue ≤ 51.2 kB brotli; total initial transfer ≤ 1 MiB)
+   without displacing the kernel budget.
+3. **Execution gap materially closed**: the per-invocation gap vs direct
+   browser JS drops from the measured ~310x to a level justified by the
+   parity benefit, under the same microbenchmark methodology.
+4. **Recovery semantics at least equal** to the Worker supervisor:
+   deadline preemption or equivalent, plus clean disposal without C-level
+   aborts on cancellation.
+
+Absent a recorded owner decision that re-opens the gate under these
+conditions, teams should not re-run this experiment.
+
+---
+
+## 5. Disposition of Decisions and Tasks
+
+- **OD-054 (QuickJS Promotion Rule)**: Resolved as **REJECTED** based on measured evidence in `01-toolchain-inventory.md` through `05-cancellation-and-recovery.md`, with the revisit rule in §4.
 - **BWASM-X-001**: Closed as **PASS** (spike completed, evidence gathered, NO-GO verdict rendered, all acceptance criteria satisfied).
