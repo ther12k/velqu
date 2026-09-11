@@ -80,3 +80,14 @@ await db.close();
 
 No `node:*`/`Bun.*` in the package sources (purity-audited like the core
 browser runtime). Engine: `@electric-sql/pglite` 0.5.8, an exact pin.
+
+## Deployer note: cross-origin isolation
+
+PGlite is a pthreads WebAssembly build: a page that opens the database
+must be **cross-origin isolated** (serve `Cross-Origin-Opener-Policy:
+same-origin` + `Cross-Origin-Embedder-Policy: require-corp` for the
+document) or engine initialization wedges. The storage name is
+sanitized (`velqu-local-sql-<origin>_<namespace>` with
+`[^A-Za-z0-9._-]` → `_`) so origins with `://` are safe for the
+IndexedDB path. Verified end-to-end in the chromium E7 rehearsal lane
+(`docs/browser-wasm/evidence/browser-lanes/chromium-e7.json`).

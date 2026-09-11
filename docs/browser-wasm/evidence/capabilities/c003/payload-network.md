@@ -37,12 +37,11 @@ Two structural layers, both verified:
    - source-graph assertion: no static
      `from "@electric-sql/pglite"` anywhere in `src/`.
 
-## Network-trace caveat (disclosed)
+## Real-browser network trace (RESOLVED — was a disclosed caveat)
 
-A real-browser network trace (deploy a project WITH the adapter, assert
-zero pglite-origin requests before open) was not part of this packet's
-local lanes; the CI chromium lane does not exercise this package. The
-two structural layers above are the committed proof; a browser-lane
-extension that exercises `runtime:local-sql` end-to-end (including
-IndexedDB persistence durability) is the natural follow-up evidence and
-is listed as a known limitation in the task record.
+The rehearsal now carries an E7 lane (`chromium-e7.json`): the bundled
+adapter imports the engine only at first `open()`, and the network
+trace confirms ZERO pglite-origin requests before that point (11 engine
+asset fetches after; the deployment's own `kernel.wasm` is filtered out
+of the assertion). Cross-origin isolation status is asserted alongside
+(`crossOriginIsolated: true` — the engine is a pthreads WASM build).

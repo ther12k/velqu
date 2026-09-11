@@ -50,11 +50,27 @@ Known limits (documented, not hidden): `importAll` is a full replace;
 `exportAll`/`importAll` inside a transaction are contract-forbidden
 (`TransactionAborted`).
 
-## Real-browser note (disclosed)
+## Real-browser durability (RESOLVED — was a disclosed note)
 
-IndexedDB durability across page reloads in a real browser is an
-engine-level property of PGlite's IDB filesystem; this packet proves
-the adapter's modes, naming, fail-closed behavior, and data round-trip
-locally (Bun + real engine for memory mode; fake loader for IDB-mode
-ctor wiring). A chromium-lane E2E (open → write → reload → read under
-`"indexeddb"`) is recorded as follow-up evidence in the task record.
+The rehearsal's E7 lane proves IndexedDB durability in a real chromium:
+the adapter (`persistence: "indexeddb"`) writes a row, the page does a
+full reload, and the row is read back from the persisted database
+(`chromium-e7.json`: `written: 1, readAfterReload: 1`), followed by a
+verified `reset()`. Two defects this E2E surfaced and fixed in the
+adapter:
+
+1. **Storage-name sanitization**: the storage name embeds the origin,
+   and an origin's `http://` wedges PGlite's IDBFS at mount
+   (`ErrnoError` — path characters). `storageName()` now sanitizes to
+   `[A-Za-z0-9._-]` (`velqu-local-sql-http___host…`), unit-tested.
+2. **Cross-origin isolation is a real runtime requirement** of the
+   engine (pthreads WASM build; it wedges without SharedArrayBuffer).
+   The rehearsal serves the isolation headers for the SQL evidence
+   document only, keeping the main shell's deployment contract (and
+   the required service-worker lane, which refuses COEP) unchanged.
+   This requirement is documented for deployers in the package README.
+
+The engine ships as its own dist layout (import-mapped, always
+external): a single-file re-bundle breaks emscripten's pthread worker
+in isolated pages — the supported configuration is the engine's own
+files, matching the package's lazy-load design.

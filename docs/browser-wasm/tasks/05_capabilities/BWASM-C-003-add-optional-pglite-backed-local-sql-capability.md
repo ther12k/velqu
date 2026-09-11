@@ -193,3 +193,26 @@ Known limitations / residual risks:
 Owner note: promotion of this optional capability into any release gate
 remains an owner decision (task frontmatter: excluded from the MVP gate
 unless promoted before candidate freeze — it was not promoted).
+
+## Follow-up evidence (2026-09-11) — real-browser E7 lane
+
+The two disclosed limitations above are resolved: the browser-e2e
+rehearsal gained an **E7 lane** (chromium, emitted-artifact deployment +
+bundled adapter): `E7-sql-lazy-engine-network` (crossOriginIsolated
+true; ZERO engine requests before first open, 11 after — network
+trace), `E7-sql-indexeddb-durability` (write → full page reload →
+read-back from IndexedDB: 1 → 1), `E7-sql-reset` (verified). Full run:
+`REHEARSAL-PASS: true` with E1–E6 unchanged. Evidence:
+`docs/browser-wasm/evidence/browser-lanes/chromium-e7.json`.
+
+The E2E surfaced two real defects, both fixed in the adapter:
+
+1. `storageName()` now sanitizes `[^A-Za-z0-9._-]` — an origin's
+   `http://` inside the `idb://` database name wedged PGlite's IDBFS at
+   mount (ErrnoError; unit-tested).
+2. Cross-origin isolation documented as a hard runtime requirement of
+   the engine (pthreads WASM); the rehearsal serves isolation headers
+   ONLY for the SQL evidence document — the required SW lane rejects
+   blanket COEP, so the main shell's deployment contract is unchanged.
+   The engine ships as its own dist layout via import map (single-file
+   re-bundles break emscripten's pthread worker in isolated pages).
