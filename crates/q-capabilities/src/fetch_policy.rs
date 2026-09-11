@@ -701,7 +701,16 @@ pub const HOSTNAME_METADATA_ENDPOINTS: &[&str] =
 /// Case-insensitive metadata-hostname check with trailing-dot (FQDN)
 /// normalization: `Metadata.Google.Internal.` is denied exactly like the
 /// bare form.
+///
+/// Non-ASCII hosts reject immediately: every metadata endpoint name is
+/// ASCII, so nothing else can match — and the cheap `truncate(253)`
+/// length clip would panic on a multi-byte char boundary (found by the
+/// M6-002 capabilities_policy fuzz target with adversarial host bytes;
+/// a hostile `Host:`/URL must never be able to panic the gate).
 pub fn is_metadata_hostname(host: &str) -> bool {
+    if !host.is_ascii() {
+        return false;
+    }
     let mut lower = host.trim_end_matches('.').to_ascii_lowercase();
     lower.truncate(253); // longest legal FQDN; keeps truncate cheap and bounded
     HOSTNAME_METADATA_ENDPOINTS.contains(&lower.as_str())
@@ -1184,6 +1193,22 @@ pub fn is_untrusted_forward_header(name: &str) -> bool {
 mod tests {
     use super::*;
     use std::net::IpAddr;
+
+    /// M6-002 regression (capabilities_policy fuzz target, 2026-09-12):
+    /// `truncate(253)` panicked when byte 253 split a multi-byte char.
+    /// A hostile Host/URL must never panic the SSRF gate.
+    #[test]
+    fn metadata_hostname_never_panics_on_multibyte_hosts() {
+        // 253rd byte is inside the two-byte 'é' — the old code panicked.
+        let hostile = "é".repeat(127) + "a";
+        assert_eq!(hostile.len(), 255);
+        assert!(!is_metadata_hostname(&hostile));
+        assert!(!is_metadata_hostname(&"é".repeat(200)));
+        assert!(!is_metadata_hostname("méta.google.internal"));
+        // Sanity: real names still deny, ASCII or dotted.
+        assert!(is_metadata_hostname("metadata.google.internal"));
+        assert!(is_metadata_hostname("Metadata.Google.Internal."));
+    }
 
     fn ip(s: &str) -> IpAddr {
         s.parse().expect("test address")
