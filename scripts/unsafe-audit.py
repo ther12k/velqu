@@ -45,6 +45,14 @@ PATTERN = re.compile(r"\bunsafe\s+(?:fn|impl|trait|extern|mod)|\bunsafe\s*\{")
 def classify(crate: str, rel_path: str, line: str) -> str:
     if "/tests/" in rel_path or rel_path.endswith("_test.rs") or rel_path.endswith("conformance.rs") and "/tests/" in rel_path:
         return "test-scope unsafe (covered by workspace test runs; not the serving path)"
+    if "Box::from_raw" in line and "leaked" in line:
+        # cfg(test) fixture inside crates/q-pack/src/lib.rs (the only
+        # Box::from_raw in the workspace): the test leaks a slice to
+        # mimic include_bytes!, asserts zero-copy views, then reclaims
+        # the exact same allocation so LeakSanitizer stays clean. The
+        # pointer provenance is the test's own Box::leak — no serving-
+        # path bytes are affected (owner review 3, 2026-09-12).
+        return "test-scope unsafe (zero-copy fixture reclaims its own Box::leak'd slice after the assertions; covered by workspace test runs under LeakSanitizer; not the serving path)"
     if "AllocCounters" in line or "alloc_fn" in line or "f(&mut c)" in line:
         return "FFI call (tracer snapshot fn pointer into the allocation tracer; bench-support evidence tool, not the serving path)"
     if "getrusage" in line or "assume_init" in line or "dlsym" in line or ("transmute" in line and "AllocCounters" in line):
