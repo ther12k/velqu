@@ -1,0 +1,39 @@
+{
+  "format": "velqu-sanitizer-applicability-v1",
+  "snapshot": "2026-09-12",
+  "requirement": "M6-003: applicable ASan/LSan/TSan/UBSan/Miri/Loom-style checks pass or carry an explicit platform/applicability waiver",
+  "techniques": [
+    {
+      "technique": "ASan",
+      "status": "exercised",
+      "evidence": "S1 stage of scripts/fuzz-campaign.sh — RUSTFLAGS='-Zsanitizer=address' over cargo +nightly test --workspace; log benchmarks/raw/ga-m6-fuzz/asan-workspace.log"
+    },
+    {
+      "technique": "LSan",
+      "status": "covered-by-ASan",
+      "evidence": "LeakSanitizer is enabled by default in the Rust ASan build on Linux; the S1 workspace pass therefore exercises leak detection with zero leaks required for exit 0 (same log as ASan)"
+    },
+    {
+      "technique": "UBSan",
+      "status": "exercised (QuickJS C FFI)",
+      "evidence": "S2 stage — quickjs-ng sources compiled by the rquickjs-sys cc build with clang -fsanitize=undefined -fno-sanitize-recover=all; test binary linked by clang. Rust-side UBSan is not separately run: rustc -Zsanitizer accepts one sanitizer per build and the workspace's release-critical invariants are exercised under ASan S1"
+    },
+    {
+      "technique": "Miri",
+      "status": "per-crate include/exclude map",
+      "evidence": "fuzz/miri-scope.json — included: q-runtime-model, q-router, q-schema-runtime, q-bridge, q-pack; all others excluded with recorded reasons and compensations; unsafe-audit.py fails closed on a crate missing from the map"
+    },
+    {
+      "technique": "TSan",
+      "status": "explicit applicability waiver",
+      "evidence": "The concurrency-critical first-party surface (q-bridge bounded slab, dispatcher fairness/shutdown, worker lifecycle) is exercised by deterministic property suites (q-bridge slab lifecycle/fuzz target, M3-005/M3-008 fairness + shutdown, M3-007 cancellation) and the 24h/72h soak under concurrent producers. Full-workspace TSan is waived for M6-003: tokio/hyper do not compile cleanly under TSan without tokio_unstable cfg churn, and the serving path contains no custom lock-free algorithm where TSan's unique value lies. Revisit trigger: any hand-rolled lock-free structure entering the serving path.",
+      "waiver": "M6-003-applicability (owner review 2026-09-12)"
+    },
+    {
+      "technique": "Loom-style",
+      "status": "explicit applicability waiver",
+      "evidence": "Loom model-checks custom schedulers/lock-free structures; Velqu's scheduler is tokio with bounded channels and generation-checked slots whose interleavings are covered by the deterministic property suites above plus the chaos program (M3-010-B, beta-009-d). No custom lock-free algorithm exists in the serving path. Revisit trigger: same as TSan.",
+      "waiver": "M6-003-applicability (owner review 2026-09-12)"
+    }
+  ]
+}

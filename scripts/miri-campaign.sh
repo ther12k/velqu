@@ -18,15 +18,18 @@ done
 
 OUT="benchmarks/raw/ga-m6-fuzz"
 mkdir -p "$OUT"
-MIRI_CRATES=(q-runtime-model q-router q-schema-runtime q-bridge q-pack)
-EXCLUDED="q-engine-quickjs, q-engine, q-runtime, q-http, q-capabilities, q-capability-postgres, q-bytecode-tool, q-browser-kernel, velqu-runtime (FFI/tokio/hyper/memmap2/rquickjs boundaries — Miri does not execute foreign C code; covered by the ASan+UBSan pass and the libFuzzer campaigns instead)"
+# The crate list is read from the single machine-readable source of
+# truth shared with scripts/unsafe-audit.py (owner review 2026-09-12):
+# the runner and the audit can no longer disagree about scope.
+MIRI_CRATES=($(python3 -c "import json;print(' '.join(json.load(open('fuzz/miri-scope.json'))['included']))"))
+echo "miri scope from fuzz/miri-scope.json: ${MIRI_CRATES[*]}"
 
 {
   echo "{"
   echo " \"campaign\": \"ga-m6-miri\","
   echo " \"startedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
   echo " \"toolchain\": \"$(rustc +nightly --version)\","
-  echo ' "excludedWithReason": "'"$(echo "$EXCLUDED" | sed 's/"/\\"/g')"',"
+  echo ' "excludedWithReason": '"$(python3 -c "import json;d=json.load(open('fuzz/miri-scope.json'));print(json.dumps([{k: e[k] for k in ('crate','reason')} for e in d['excluded']]))")',"
   echo ' "crates": ['
 } > "$OUT/miri-ledger.json"
 
