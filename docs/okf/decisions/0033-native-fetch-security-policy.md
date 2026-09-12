@@ -54,6 +54,28 @@ before classification — mapped forms must not evade the classifier.
 Denial is a typed, loggable error naming the class; there is no silent
 fallback to "best effort".
 
+**Amendment (owner decision 2026-09-12, #1318): IPv6 public dialability
+is globally-reachable-only.** The rule is semantic, not a hard-coded
+range list:
+
+> Default fetch trust permits globally reachable public destinations;
+> IETF-reserved and special-purpose IPv6 destinations that are not
+> globally reachable are denied.
+
+The classifier implements this rule against an explicit snapshot of the
+IANA IPv6 Special-Purpose Address Registry (documented alongside
+`is_globally_reachable_v6` in `crates/q-capabilities/src/fetch_policy.rs`),
+so new IANA special-purpose prefixes are a table+test update, not a
+philosophy change. Regression fixtures — `7::` (0000::/8, Reserved by
+IETF), `2001:db8::1` (documentation), and `5f00::1` (SRv6 SID: forwardable
+but not globally reachable — deliberately NOT described as "reserved")
+— plus known-public addresses (`2001:4860:4860::8888`, `2620:fe::fe`,
+`2001:1::1`, ...) pin both directions of the rule. `std`'s
+`Ipv6Addr::is_global()` is nightly-only experimental (still on Rust
+1.98) and is NOT used; Velqu owns the classifier, its table, and its
+tests. Origin: the M6-002 `capabilities_policy` fuzz target surfaced
+`7::` classifying Public/dialable (`fuzz/COVERAGE.md`, observation 3).
+
 **Override posture**: the default constructor offers no escape hatch. A
 `FetchPolicy::trusted_loopback_explicit()` exists for opt-in, explicit
 local testing (e.g., integration tests dialing a local mock origin) and is
