@@ -2414,9 +2414,9 @@ mod tests {
         assert_eq!(g.produced(), 0, "failed step accepts no bytes");
     }
 
-    fn resolver_of(
-        addrs: &'static [std::net::IpAddr],
-    ) -> impl FnMut(&str) -> Result<Vec<IpAddr>, String> {
+    fn resolver_of<'a>(
+        addrs: &'a [std::net::IpAddr],
+    ) -> impl FnMut(&str) -> Result<Vec<IpAddr>, String> + 'a {
         move |_host| Ok(addrs.to_vec())
     }
 
@@ -2451,9 +2451,8 @@ mod tests {
         let policy = FetchPolicy::default();
         let public_a: IpAddr = "93.184.216.34".parse().unwrap();
         let public_b: IpAddr = "2606:2800:220:1:248:1893:25c8:1946".parse().unwrap();
-        let static_addrs: &'static [std::net::IpAddr] =
-            Box::leak(vec![public_a, public_b].into_boxed_slice());
-        let pinned = resolve_and_validate(&policy, "example.com", resolver_of(static_addrs))
+        let addrs = [public_a, public_b];
+        let pinned = resolve_and_validate(&policy, "example.com", resolver_of(&addrs))
             .expect("all-public resolution validates");
         // The returned set is the connect pin set: same addresses, same
         // order, IPv4-mapped forms normalized.
@@ -2465,15 +2464,11 @@ mod tests {
         let policy = FetchPolicy::default();
         // First answer public, second private: the classic rebinding
         // first-glance trick is denied because EVERY address must pass.
-        let static_addrs: &'static [std::net::IpAddr] = Box::leak(
-            vec![
-                "93.184.216.34".parse::<IpAddr>().unwrap(),
-                "10.0.0.9".parse::<IpAddr>().unwrap(),
-            ]
-            .into_boxed_slice(),
-        );
-        let err =
-            resolve_and_validate(&policy, "rebind.test", resolver_of(static_addrs)).unwrap_err();
+        let addrs = [
+            "93.184.216.34".parse::<IpAddr>().unwrap(),
+            "10.0.0.9".parse::<IpAddr>().unwrap(),
+        ];
+        let err = resolve_and_validate(&policy, "rebind.test", resolver_of(&addrs)).unwrap_err();
         assert!(matches!(
             err,
             FetchPolicyError::AddressDenied {
@@ -2482,8 +2477,8 @@ mod tests {
             }
         ));
         // Empty resolution is a typed denial too.
-        let static_empty: &'static [std::net::IpAddr] = Box::leak(Vec::new().into_boxed_slice());
-        let err = resolve_and_validate(&policy, "nx.test", resolver_of(static_empty)).unwrap_err();
+        let empty: [std::net::IpAddr; 0] = [];
+        let err = resolve_and_validate(&policy, "nx.test", resolver_of(&empty)).unwrap_err();
         assert!(
             matches!(&err, FetchPolicyError::HostnameDenied { reason, .. }
             if reason.contains("no addresses resolved"))

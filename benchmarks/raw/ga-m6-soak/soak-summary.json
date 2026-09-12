@@ -1,0 +1,20 @@
+{
+  "format": "velqu-soak-summary-v1",
+  "status": "retained-evidence",
+  "note": "24h soak ran 932 windows (~15.6 hours, >35M requests) until system reboot; retained as resource/leak evidence per owner direction 2026-09-12. Contention windows annotated in CONTENTION.md.",
+  "configuredDurationSecs": 86400,
+  "actualElapsedSecs": 56012.864735985,
+  "workers": 2,
+  "totalWindows": 932,
+  "totalRequestsDispatched": 55180398,
+  "queueRejectedTotal": 35087333,
+  "leakAnalysis": {
+    "firstWindowRssKib": 5980,
+    "lastWindowRssKib": 3720,
+    "rssGrowthKib": -2260,
+    "maxWindowToWindowGrowthKib": 376,
+    "windows": 932,
+    "verdict": "FLAT_RSS_NO_LEAK",
+    "note": "Process RSS started at 5980 KiB and ended at 3720 KiB; flat within run noise over 932 windows; zero monotonic growth."
+  }
+}

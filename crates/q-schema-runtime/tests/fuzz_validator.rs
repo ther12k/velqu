@@ -190,7 +190,11 @@ fn validator_never_panics_and_is_deterministic() {
         },
     ];
     let mut rng = Rng(0xf00dfeedfaceb00c);
-    for _ in 0..40_000 {
+    #[cfg(miri)]
+    let iters = 100;
+    #[cfg(not(miri))]
+    let iters = 40_000;
+    for _ in 0..iters {
         let ir = &irs[(rng.next() as usize) % irs.len()];
         let v = random_json(&mut rng, 3);
         let a = validate(ir, &v, Source::Body);
@@ -260,7 +264,11 @@ fn direct_decoder_programs_never_panic_and_are_deterministic() {
     let prog = DecoderProgram::compile(&test_ir, Source::Path);
     let mut rng = Rng(0xbadc0ffeed000001);
 
-    for _ in 0..20_000 {
+    #[cfg(miri)]
+    let iters = 100;
+    #[cfg(not(miri))]
+    let iters = 20_000;
+    for _ in 0..iters {
         let id_val = format!("{}", (rng.next() % 1000) as i64 - 200);
         let name_val = format!("usr_{}", rng.next() % 100);
         let active_val = if rng.next().is_multiple_of(2) {
@@ -391,7 +399,11 @@ fn encoded_decoded_round_trip_matches_reference() {
     let mut rng = Rng(0xC0DEC0DE);
     let mut accepted = 0usize;
     let mut rejected = 0usize;
-    for iteration in 0..20_000 {
+    #[cfg(miri)]
+    let total_iters = 100;
+    #[cfg(not(miri))]
+    let total_iters = 20_000;
+    for iteration in 0..total_iters {
         let sid = (rng.next() % schemas.len() as u64) as u32;
         let ir = &schemas[sid as usize];
         // values biased toward the schema's shape: shallow random JSON over
@@ -523,12 +535,16 @@ fn encoded_decoded_round_trip_matches_reference() {
         }
     }
     // the corpus must exercise both sides meaningfully
+    #[cfg(miri)]
+    let min_count = 10;
+    #[cfg(not(miri))]
+    let min_count = 1_000;
     assert!(
-        accepted > 1_000,
+        accepted > min_count,
         "corpus too rejection-heavy: {accepted} accepted"
     );
     assert!(
-        rejected > 1_000,
+        rejected > min_count,
         "corpus too acceptance-heavy: {rejected} rejected"
     );
 }

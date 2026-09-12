@@ -50,6 +50,7 @@ json.dump(doc, open(path, "w"), indent=2)
 PYEOF
 
 fail=0
+export MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-disable-isolation"
 for c in "${MIRI_CRATES[@]}"; do
   nice -n 10 cargo +nightly miri test -p "$c" --quiet > "$OUT/miri-$c.log" 2>&1
   rc=$?

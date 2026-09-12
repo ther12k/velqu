@@ -140,7 +140,8 @@ fi
 # ---- Sanitizer stage S1: ASan workspace pass (documented form) ----
 echo "running sanitizer stage S1: ASan workspace pass..."
 S1_RC=0
-RUSTFLAGS="-Zsanitizer=address" cargo +nightly test --workspace --quiet -- --test-threads=2 \
+cargo +nightly build -p q-bytecode-tool --target x86_64-unknown-linux-gnu -Zbuild-std --quiet 2>/dev/null || true
+RUSTFLAGS="-Zsanitizer=address" cargo +nightly test --workspace --target x86_64-unknown-linux-gnu -Zbuild-std --quiet -- --test-threads=2 \
   > "$OUT/asan-workspace.log" 2>&1
 S1_RC=$?
 if [ "$S1_RC" != "0" ]; then
@@ -149,23 +150,31 @@ fi
 
 # ---- Sanitizer stage S2: UBSan over the QuickJS C FFI ----
 # The C/FFI boundary (quickjs-ng compiled by rquickjs-sys) is exactly
-# what Miri cannot execute. Compile the C sources with clang's UBSan
-# instrumentation and link the test binary with clang so the runtime is
-# attached. If the toolchain cannot realize this configuration, record
-# configuration-blocked honestly.
-echo "running sanitizer stage S2: UBSan on the QuickJS C FFI (clang)..."
+# what Miri cannot execute. Compile the C sources with clang/gcc UBSan
+# instrumentation and link with libubsan so the runtime is attached.
+echo "running sanitizer stage S2: UBSan on the QuickJS C FFI..."
 S2_RC=0
-CC=clang \
-CFLAGS="-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
-RUSTFLAGS="-Clinker=clang -Clink-arg=-fsanitize=undefined" \
-cargo +nightly test -p q-engine-quickjs --quiet -- --test-threads=2 \
-  > "$OUT/ubsan-quickjs-ffi.log" 2>&1
-S2_RC=$?
+LIBUBSAN="$(gcc -print-file-name=libubsan.so 2>/dev/null || clang -print-file-name=libubsan.so 2>/dev/null || true)"
+if [ -f "$LIBUBSAN" ]; then
+  LD_PRELOAD="$LIBUBSAN" \
+  CFLAGS="-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
+  RUSTFLAGS="-Clink-arg=-lubsan" \
+  cargo +nightly test -p q-engine-quickjs --quiet -- --test-threads=2 \
+    > "$OUT/ubsan-quickjs-ffi.log" 2>&1
+  S2_RC=$?
+else
+  CC=clang \
+  CFLAGS="-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
+  RUSTFLAGS="-Clinker=clang -Clink-arg=-fsanitize=undefined" \
+  cargo +nightly test -p q-engine-quickjs --quiet -- --test-threads=2 \
+    > "$OUT/ubsan-quickjs-ffi.log" 2>&1
+  S2_RC=$?
+fi
 if [ "$S2_RC" != "0" ] && ! grep -qi "SanitizerUnique\|runtime error" "$OUT/ubsan-quickjs-ffi.log"; then
   # Distinguish a real UBSan finding from a configuration failure: if
   # the log shows no sanitizer report AND the build failed, it is a
   # configuration problem — still a failure flag, but labeled honestly.
-  if grep -qi "error:.*linker\|error: unknown argument\|cannot find -l" "$OUT/ubsan-quickjs-ffi.log"; then
+  if grep -qi "error:.*linker\|error: unknown argument\|cannot find -l\|can't find crate" "$OUT/ubsan-quickjs-ffi.log"; then
     S2_RESULT="configuration-blocked"
   else
     S2_RESULT="findings-or-failure"
