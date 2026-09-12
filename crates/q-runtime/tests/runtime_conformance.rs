@@ -3687,16 +3687,41 @@ globalThis.__velquFunctions = [spin_forever, ok_probe];
 /// serves from source — startup rejects loudly before ready. (The
 /// explicit source path from M26-002-C is a flag, never an automatic
 /// fallback.)
+fn find_bytecode_bin() -> std::path::PathBuf {
+    let mut candidates = Vec::new();
+    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
+        let p = std::path::PathBuf::from(manifest);
+        if let Some(root) = p.parent().and_then(|p| p.parent()) {
+            candidates.push(root.join("target/debug/velqu-bytecode"));
+            candidates.push(root.join("target/x86_64-unknown-linux-gnu/debug/velqu-bytecode"));
+            candidates.push(root.join("target/release/velqu-bytecode"));
+        }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(p) = exe.parent().and_then(|p| p.parent()) {
+            candidates.push(p.join("velqu-bytecode"));
+            if let Some(p2) = p.parent().and_then(|p| p.parent()) {
+                candidates.push(p2.join("velqu-bytecode"));
+            }
+        }
+    }
+    candidates.push(std::path::PathBuf::from("target/debug/velqu-bytecode"));
+    candidates.push(std::path::PathBuf::from(
+        "target/x86_64-unknown-linux-gnu/debug/velqu-bytecode",
+    ));
+    candidates.push(std::path::PathBuf::from("target/release/velqu-bytecode"));
+    candidates
+        .into_iter()
+        .find(|p| p.exists())
+        .expect("locate velqu-bytecode binary")
+}
+
 #[test]
 fn hash_valid_garbage_bytecode_rejects_before_ready() {
     // fixture pack with real embedded bytecode
     let dir = temp_dir("nofallback");
     let pack_path = write_pack(&dir);
-    let bytecode_bin = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.to_path_buf())))
-        .map(|p| p.join("velqu-bytecode"))
-        .expect("locate target dir");
+    let bytecode_bin = find_bytecode_bin();
     let bc_path = dir.join("app-bc.qpack");
     let out = Command::new(&bytecode_bin)
         .args([
@@ -3754,13 +3779,7 @@ fn no_bytecode_flag_recovers_cross_target_packs_from_source() {
     // build the standard fixture pack and embed host-matching bytecode
     let dir = temp_dir("srcpath");
     let pack_path = write_pack(&dir);
-    // velqu-bytecode is a separate workspace bin: resolve it from the
-    // test executable's target dir (target/debug/deps -> target/debug)
-    let bin = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.to_path_buf())))
-        .map(|p| p.join("velqu-bytecode"))
-        .expect("locate target dir");
+    let bin = find_bytecode_bin();
     let bc_path = dir.join("app-bc.qpack");
     let out = Command::new(bin)
         .args([

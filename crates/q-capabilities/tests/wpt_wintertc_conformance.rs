@@ -370,9 +370,7 @@ fn fetch_m28_policy_manifest_vectors_execute_against_compiled_policy() {
                             .collect()
                     })
                     .unwrap_or_default();
-                let static_addrs: &'static [IpAddr] = Box::leak(addrs.into_boxed_slice());
-                let mut resolve =
-                    move |_host: &str| Ok::<Vec<IpAddr>, String>(static_addrs.to_vec());
+                let mut resolve = |_host: &str| Ok::<Vec<IpAddr>, String>(addrs.clone());
                 resolve_and_validate(&policy, case["host"].as_str().unwrap(), &mut resolve)
                     .map(|_| "")
                     .map_err(|e| err_variant(&e).to_string())

@@ -3095,7 +3095,8 @@ pub mod qpack2 {
             let owned = reader::PackBytes::Owned(file.clone());
             // standalone-binary carrier: static bytes, zero-copy by
             // construction (leaked here to mimic include_bytes!)
-            let embedded = reader::PackBytes::Embedded(Box::leak(file.clone().into_boxed_slice()));
+            let leaked: &'static [u8] = Box::leak(file.clone().into_boxed_slice());
+            let embedded = reader::PackBytes::Embedded(leaked);
 
             let m = reader::validate(&mapped).expect("mapped file validates");
             let o = reader::validate(&owned).expect("owned file validates");
@@ -3128,6 +3129,11 @@ pub mod qpack2 {
                     "embedded section {:#x} body is not a view into the static bytes",
                     e_ent.section_id
                 );
+            }
+
+            // Reclaim the leaked slice so LeakSanitizer does not trip
+            unsafe {
+                drop(Box::from_raw(leaked as *const [u8] as *mut [u8]));
             }
             let _ = std::fs::remove_dir_all(&dir);
         }

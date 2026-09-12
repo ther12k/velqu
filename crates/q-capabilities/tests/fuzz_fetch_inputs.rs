@@ -169,9 +169,8 @@ fn fuzzed_hosts_never_panic_the_egress_gate_and_ok_implies_dialable() {
             ],
         ];
         let addrs = rng.pick(&answers).clone();
-        let static_addrs: &'static [IpAddr] = Box::leak(addrs.into_boxed_slice());
-        if let Ok(pinned) = resolve_and_validate(&policy, &host, move |_h: &str| {
-            Ok::<Vec<IpAddr>, String>(static_addrs.to_vec())
+        if let Ok(pinned) = resolve_and_validate(&policy, &host, |_h: &str| {
+            Ok::<Vec<IpAddr>, String>(addrs.clone())
         }) {
             for addr in &pinned {
                 assert!(
