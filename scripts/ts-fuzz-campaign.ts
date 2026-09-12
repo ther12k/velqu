@@ -58,18 +58,22 @@ const ADVERSARIAL_QUERY: readonly [string, string][] = [
 // Statuses stay strictly within valid native Response range (200..599).
 // Invalid transport statuses (like 999) throw RangeError in ResponseInit
 // constructor and are transport failures, not HTTP response outcomes.
-const ADVERSARIAL_RESPONSES: readonly [number, string][] = [
+// Null-body statuses (204, 304) are paired with a `null` body per the
+// Fetch Standard: constructing a Response with any non-null body (even
+// "") must throw TypeError there, so fixture validity requires the null
+// body, not just the in-range status (owner review 2026-09-12).
+const ADVERSARIAL_RESPONSES: readonly [number, string | null][] = [
   [200, '{"message":"ok"}'],
   [200, "not json at all"],
   [200, ""],
   [201, '{"message":"created"}'],
-  [204, ""],
+  [204, null],
   [301, "redirect body"],
   [400, '{"type":"https://velqu.dev/problems/bad","title":"bad","status":400}'],
   [404, '{"type":"https://velqu.dev/problems/not-found","title":"not found","status":404}'],
   [422, '{"type":"https://velqu.dev/problems/validation","title":"t","status":422,"errors":[]}'],
   [422, "garbage"],
-  [500, null as unknown as string],
+  [500, null],
   [502, "{}"],
   [503, ""],
   [200, '{"message":' + "9".repeat(400) + '}'],
@@ -112,7 +116,10 @@ async function main() {
   const fakeFetch: TreatyFetch = async () => {
     const idx = respIdx++;
     const [status, body] = ADVERSARIAL_RESPONSES[idx % ADVERSARIAL_RESPONSES.length]!;
-    const res = new Response(body ?? "null", { status });
+    // body is passed through verbatim (string | null): a `??` fallback
+    // here would coerce a null-body fixture into a string body and make
+    // null-body statuses spec-invalid (owner review 2026-09-12).
+    const res = new Response(body, { status });
     transportResponsesConstructed += 1;
     return res;
   };
