@@ -42,13 +42,17 @@ dropped. If a surface has no target here, the issue cannot close.
    non-ASCII can never match). Regression test:
    `fetch_policy::tests::metadata_hostname_never_panics_on_multibyte_hosts`.
 
-3. **Owner-decision observation (recorded, NOT dispositioned here)** —
-   IP literal `7::` (0000::/8, IANA-reserved) classifies as
-   `AddressClass::Public` and is dialable under default trust mode.
-   Not metadata-reachable (real metadata endpoints are v4
-   169.254.169.254 → LinkLocal-denied and `fd00:ec2::254` → Private-
-   denied), so no exploitable path today; std exposes no stable
-   `is_reserved` for IPv6. Hardening option: classify reserved v6
-   ranges (`::/8` minus unspecified/loopback, `2001:db8::/32`,
-   `5f00::/16`) as `AddressClass::Reserved`. Requires an owner decision
-   + ADR-0033 amendment — deliberately not changed in this packet.
+3. **Owner decision (2026-09-12): HARDEN BEFORE GA — RESOLVED.** The
+   observation that IP literal `7::` (0000::/8) classified as
+   `AddressClass::Public`/dialable was escalated to the owner and
+   decided: default fetch trust permits only **globally reachable**
+   public destinations; IETF-reserved and special-purpose IPv6
+   destinations that are not globally reachable (0000::/8,
+   2001:db8::/32 documentation, 5f00::/16 SRv6 SID — forwardable but
+   not globally reachable, deliberately not called "reserved") deny by
+   default. Implemented as the semantic rule in ADR-0033 §2's amendment
+   with the IANA registry snapshot documented at
+   `is_globally_reachable_v6`; regression fixtures pin both directions
+   (`7::`, `2001:db8::1`, `5f00::1` deny; `2001:4860:4860::8888`,
+   `2620:fe::fe`, `2001:1::1` stay Public). std's nightly-only
+   `is_global()` is not used — Velqu owns the classifier.

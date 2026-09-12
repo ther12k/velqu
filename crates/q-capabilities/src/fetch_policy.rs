@@ -153,6 +153,66 @@ impl fmt::Display for AddressClass {
     }
 }
 
+/// Globally-reachable test for IPv6 unicast addresses (the Default
+/// trust mode's dialability gate). Implements the semantic rule of the
+/// ADR-0033 amendment: an address is dialable-public only when its
+/// prefix is globally reachable per the IANA IPv6 Special-Purpose
+/// Address Registry snapshot below. std's `Ipv6Addr::is_global()` is
+/// nightly-only experimental (still true on Rust 1.98) and is NOT used;
+/// this classifier owns its explicit table and tests instead.
+///
+/// Registry snapshot (iana.org/assignments/iana-ipv6-special-registry,
+/// 2026-09): non-globally-reachable prefixes that are NOT already
+/// classified elsewhere (loopback/link-local/ULA/multicast are handled
+/// above; ::/128 unspecified likewise):
+///
+///   0000::/8          Reserved by IETF (RFC 4291)   — not reachable
+///   100::/64          Discard-Only (RFC 6666)        — not reachable
+///   2001::/32         TEREDO (RFC 4380)              — not reachable
+///   2001:2::/48       Benchmarking (RFC 5180)        — not reachable
+///   2001:10::/28      ORCHID (RFC 4843)              — not reachable
+///   2001:20::/28      ORCHIDv2 (RFC 7343)            — not reachable
+///   2001:db8::/32     Documentation (RFC 3849)       — not reachable
+///   2620:db8::/32     Documentation 2 (RFC 9637)     — not reachable
+///   fc00::/7          ULA — classified Private above (listed for completeness)
+///   fe80::/10         link-local — classified above (completeness)
+///   5f00::/16         SRv6 SID (draft-ietf-spring-srv6-network...)
+///                     — forwardable, NOT globally reachable
+///   64:ff9b::/96      NAT64 well-known (RFC 6052)    — translation of
+///                     the embedded v4; the v4 side is classified by
+///                     the normalize() path (mapped v4 never reaches
+///                     this table), so the prefix itself denies.
+///   64:ff9b:1::/48    Local-use NAT64 (RFC 8215)     — not reachable
+///
+/// Globally reachable by registry: 2000::/3 global unicast (minus the
+/// special-purpose exceptions above). Everything outside 2000::/3 that
+/// is not otherwise classified is also Reserved (fail-closed).
+fn is_globally_reachable_v6(v6: std::net::Ipv6Addr) -> bool {
+    let seg = v6.segments();
+    // Globally reachable = 2000::/3 global unicast (RFC 4291) minus the
+    // IANA special-purpose entries inside it. Everything outside
+    // 2000::/3 fails closed (0000::/8 reserved-by-IETF, 5f00::/16 SRv6
+    // SID, 64:ff9b::/96 NAT64, ...).
+    if !(0x2000..=0x3FFF).contains(&seg[0]) {
+        return false;
+    }
+    match (seg[0], seg[1]) {
+        // 2001:0000::/32 TEREDO (RFC 4380) — segments 2.. are inside
+        // the /32 when seg[1] == 0x0000.
+        (0x2001, 0x0000) => false,
+        // 2001:0002::/48 Benchmarking (RFC 5180).
+        (0x2001, 0x0002) => false,
+        // 2001:0010::/28 ORCHID (RFC 4843) = 2001:0010..=2001:001f,
+        // 2001:0020::/28 ORCHIDv2 (RFC 7343) = 2001:0020..=2001:002f.
+        (0x2001, s1) if (0x0010..=0x002f).contains(&s1) => false,
+        // 2001:0db8::/32 Documentation (RFC 3849).
+        (0x2001, 0x0db8) => false,
+        // 2620:0db8::/32 Documentation 2 (RFC 9637).
+        (0x2620, 0x0db8) => false,
+        _ => true,
+    }
+}
+
 impl AddressClass {
     /// Classify a resolved address. IPv4-mapped IPv6 is normalized to its
     /// IPv4 form first — mapped forms must not evade the classifier.
@@ -194,9 +254,21 @@ impl AddressClass {
                     AddressClass::Unspecified
                 } else if v6.is_multicast() {
                     AddressClass::Multicast
+                } else if !is_globally_reachable_v6(v6) {
+                    // ADR-0033 §amendment (owner decision 2026-09-12):
+                    // default fetch trust permits only globally reachable
+                    // public destinations. IETF-reserved and special-
+                    // purpose IPv6 prefixes that are not globally
+                    // reachable (0000::/8, 2001:db8::/32 documentation,
+                    // 5f00::/16 SRv6 SID, 2001:10::/28 ORCHID, ...)
+                    // deny by default. Semantic rule, not a hard-coded
+                    // range list: the table below is the current IANA
+                    // special-purpose registry snapshot this classifier
+                    // implements.
+                    AddressClass::Reserved
                 } else {
                     // IPv4-mapped forms were normalized above, so any
-                    // remaining global-scope IPv6 address is public.
+                    // remaining globally reachable IPv6 address is public.
                     AddressClass::Public
                 }
             }
@@ -1197,6 +1269,57 @@ mod tests {
     /// M6-002 regression (capabilities_policy fuzz target, 2026-09-12):
     /// `truncate(253)` panicked when byte 253 split a multi-byte char.
     /// A hostile Host/URL must never panic the SSRF gate.
+    /// ADR-0033 amendment (owner decision 2026-09-12): default fetch
+    /// trust permits only globally reachable public destinations.
+    /// Origin: the capabilities_policy fuzz target surfaced IP literal
+    /// `7::` classifying Public/dialable (fuzz/COVERAGE.md obs. 3).
+    #[test]
+    fn ipv6_non_public_destinations_deny_by_default() {
+        use std::net::Ipv6Addr;
+        let reserved = [
+            "7::",              // 0000::/8 Reserved by IETF (RFC 4291)
+            "2001:db8::1",      // 2001:db8::/32 Documentation (RFC 3849)
+            "5f00::1",          // 5f00::/16 SRv6 SID — forwardable, not globally reachable
+            "2001::1",          // 2001::/32 TEREDO
+            "2001:2::1",        // 2001:2::/48 Benchmarking
+            "2001:10::1",       // 2001:10::/28 ORCHID
+            "2001:20::1",       // 2001:20::/28 ORCHIDv2
+            "2620:db8::1",      // 2620:db8::/32 Documentation 2
+            "64:ff9b::1.2.3.4", // NAT64 well-known (outside 2000::/3)
+            "100::1",           // Discard-Only (outside 2000::/3)
+            "4000::1",          // outside 2000::/3 — fail closed
+        ];
+        for a in reserved {
+            let addr = a.parse::<Ipv6Addr>().unwrap();
+            assert_eq!(
+                AddressClass::classify(IpAddr::V6(addr)),
+                AddressClass::Reserved,
+                "{a} must classify Reserved (non-globally-reachable)"
+            );
+        }
+    }
+
+    #[test]
+    fn ipv6_known_public_destinations_still_dialable() {
+        use std::net::Ipv6Addr;
+        let public = [
+            "2606:4700:4700::1111", // Cloudflare DNS (2001:... family, global)
+            "2620:fe::fe",          // Quad9 (2620::/23 is global unicast, not the db8 carve-out)
+            "2001:4860:4860::8888", // Google DNS — inside 2001::/16 but NOT a special-purpose /32
+            "2a00:1450:4001::1",    // RIPE-space global unicast
+            "2001:1::1",            // APNIC global unicast between the special-purpose carves
+        ];
+        for a in public {
+            let addr = a.parse::<Ipv6Addr>().unwrap();
+            let cls = AddressClass::classify(IpAddr::V6(addr));
+            assert_eq!(
+                cls,
+                AddressClass::Public,
+                "{a} must stay Public/dialable (deny rule too broad)"
+            );
+        }
+    }
+
     #[test]
     fn metadata_hostname_never_panics_on_multibyte_hosts() {
         // 253rd byte is inside the two-byte 'é' — the old code panicked.
