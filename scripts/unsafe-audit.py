@@ -21,24 +21,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/production/evidence/m6-unsafe-audit.md"
 
-# First-party crates where unsafe may appear. q-engine-quickjs is the
-# only crate expected to carry FFI-adjacent unsafe (rquickjs is safe-wrapped).
-CRATES = [
-    "crates/q-runtime-model",
-    "crates/q-router",
-    "crates/q-schema-runtime",
-    "crates/q-bridge",
-    "crates/q-pack",
-    "crates/q-capabilities",
-    "crates/q-capability-postgres",
-    "crates/q-engine",
-    "crates/q-engine-quickjs",
-    "crates/q-http",
-    "crates/q-bytecode-tool",
-    "crates/q-browser-kernel",
-    "crates/q-runtime",
-    "crates/q-bench-support",
+# Every first-party workspace crate is audited. Miri coverage per crate
+# comes from the single machine-readable source of truth (fuzz/miri-scope.json),
+# shared with scripts/miri-campaign.sh — the audit can no longer claim a
+# Miri inclusion the runner does not perform (owner review 2026-09-12).
+import json
+
+WORKSPACE_CRATES = [
+    "q-runtime", "q-bytecode-tool", "q-engine", "q-runtime-model",
+    "q-engine-quickjs", "q-http", "q-router", "q-browser-kernel",
+    "q-bridge", "q-pack", "q-schema-runtime", "q-capabilities",
+    "q-capability-postgres", "q-bench-support",
 ]
+MIRI_SCOPE = json.loads((ROOT / "fuzz" / "miri-scope.json").read_text())
+MIRI_INCLUDED = set(MIRI_SCOPE["included"])
+MIRI_EXCLUDED = {e["crate"]: e for e in MIRI_SCOPE["excluded"]}
+mapped = MIRI_INCLUDED | set(MIRI_EXCLUDED)
+missing_from_map = [c for c in WORKSPACE_CRATES if c not in mapped]
+CRATES = [f"crates/{c}" for c in WORKSPACE_CRATES]
 
 PATTERN = re.compile(r"\bunsafe\s+(?:fn|impl|trait|extern|mod)|\bunsafe\s*\{")
 
@@ -63,24 +63,32 @@ def classify(crate: str, rel_path: str, line: str) -> str:
         return "raw memory op"
     return "UNCLASSIFIED"
 
+def miri_line(crate: str) -> str:
+    name = crate.removeprefix("crates/")
+    if name in MIRI_INCLUDED:
+        return "Miri: INCLUDED (scripts/miri-campaign.sh)"
+    e = MIRI_EXCLUDED.get(name)
+    if e is None:
+        return "Miri: NOT IN SCOPE MAP — AUDIT FAILURE"
+    comps = "; ".join(e.get("compensations", []))
+    return f"Miri: EXCLUDED — {e['reason']}. Compensations: {comps}"
+
+
 def covering_evidence(crate: str) -> list[str]:
     ev = ["ASan workspace pass (S1, scripts/fuzz-campaign.sh)"]
-    if crate in ("crates/q-engine-quickjs",):
-        ev += [
-            "UBSan C-FFI stage (S2, clang -fsanitize=undefined over quickjs-ng)",
-            "Miri: excluded with reason (foreign C engine not Miri-executable)",
-            "cargo-fuzz: bridge_handles target (stale/foreign handle invariants)",
-            "cargo-fuzz: pack_verify target (bytecode/manifest trust boundary)",
-            "engine conformance + settlement tests (cargo test -p q-engine-quickjs)",
-        ]
-    elif crate == "crates/q-bridge":
-        ev += [
-            "cargo-fuzz: bridge_handles target (stale/foreign access never grants)",
-            "Miri: q-bridge included (scripts/miri-campaign.sh)",
-            "bounded-slab property tests (cargo test -p q-bridge)",
-        ]
-    else:
-        ev += ["Miri: crate included (scripts/miri-campaign.sh)", "workspace unit tests"]
+    ev.append(miri_line(crate))
+    name = crate.removeprefix("crates/")
+    fuzz_targets = {
+        "q-engine-quickjs": ["cargo-fuzz: bridge_handles + pack_verify (handle and bytecode trust boundaries)"],
+        "q-bridge": ["cargo-fuzz: bridge_handles (stale/foreign access never grants)"],
+        "q-http": ["cargo-fuzz: http_decode (ingress decoder no-amplification)"],
+        "q-capabilities": ["cargo-fuzz: capabilities_policy (SSRF gate, redirect limiter, identity/inventory/DAG)"],
+        "q-schema-runtime": ["cargo-fuzz: schema_validate + codec_encoders"],
+        "q-router": ["cargo-fuzz: router_match"],
+        "q-pack": ["cargo-fuzz: pack_verify"],
+    }.get(name, [])
+    ev += fuzz_targets
+    ev.append("workspace unit/conformance tests (cargo test -p)")
     return ev
 
 def main() -> int:
@@ -135,8 +143,8 @@ def main() -> int:
         lines.append("")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"audit written: {OUT.relative_to(ROOT)} ({len(rows)} occurrences, {unclassified} unclassified)")
-    return 1 if unclassified else 0
+    print(f"audit written: {OUT.relative_to(ROOT)} ({len(rows)} occurrences, {unclassified} unclassified, {len(missing_from_map)} crates missing from miri-scope.json)")
+    return 1 if (unclassified or missing_from_map) else 0
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -153,63 +153,308 @@ impl fmt::Display for AddressClass {
     }
 }
 
-/// Globally-reachable test for IPv6 unicast addresses (the Default
-/// trust mode's dialability gate). Implements the semantic rule of the
-/// ADR-0033 amendment: an address is dialable-public only when its
-/// prefix is globally reachable per the IANA IPv6 Special-Purpose
-/// Address Registry snapshot below. std's `Ipv6Addr::is_global()` is
-/// nightly-only experimental (still true on Rust 1.98) and is NOT used;
-/// this classifier owns its explicit table and tests instead.
+/// Special-purpose address classification (the Default trust mode's
+/// dialability gate) — one explicit, longest-prefix-match CIDR table for
+/// BOTH families, bound to the IANA special-purpose registries snapshot
+/// dated **2026-09-12** (iana.org/assignments/iana-ipv6-special-registry
+/// and .../iana-ipv4-special-registry). The semantic rule is ADR-0033
+/// §2's amendment: *default fetch trust permits globally reachable
+/// public destinations; IETF-reserved and special-purpose destinations
+/// that are not globally reachable are denied.* Prefixes inside a
+/// special-purpose parent are denied by the parent entry; only the
+/// registry-listed globally-reachable more-specifics are explicitly
+/// allowed. Tunneling/translation prefixes that the registry marks
+/// globally reachable (NAT64 64:ff9b::/96) are STILL denied here as a
+/// Velqu security-policy decision, recorded as such — not attributed to
+/// the registry. std's `Ipv6Addr::is_global()` is nightly-only
+/// experimental (still on Rust 1.98) and is NOT used.
 ///
-/// Registry snapshot (iana.org/assignments/iana-ipv6-special-registry,
-/// 2026-09): non-globally-reachable prefixes that are NOT already
-/// classified elsewhere (loopback/link-local/ULA/multicast are handled
-/// above; ::/128 unspecified likewise):
-///
-///   0000::/8          Reserved by IETF (RFC 4291)   — not reachable
-///   100::/64          Discard-Only (RFC 6666)        — not reachable
-///   2001::/32         TEREDO (RFC 4380)              — not reachable
-///   2001:2::/48       Benchmarking (RFC 5180)        — not reachable
-///   2001:10::/28      ORCHID (RFC 4843)              — not reachable
-///   2001:20::/28      ORCHIDv2 (RFC 7343)            — not reachable
-///   2001:db8::/32     Documentation (RFC 3849)       — not reachable
-///   2620:db8::/32     Documentation 2 (RFC 9637)     — not reachable
-///   fc00::/7          ULA — classified Private above (listed for completeness)
-///   fe80::/10         link-local — classified above (completeness)
-///   5f00::/16         SRv6 SID (draft-ietf-spring-srv6-network...)
-///                     — forwardable, NOT globally reachable
-///   64:ff9b::/96      NAT64 well-known (RFC 6052)    — translation of
-///                     the embedded v4; the v4 side is classified by
-///                     the normalize() path (mapped v4 never reaches
-///                     this table), so the prefix itself denies.
-///   64:ff9b:1::/48    Local-use NAT64 (RFC 8215)     — not reachable
-///
-/// Globally reachable by registry: 2000::/3 global unicast (minus the
-/// special-purpose exceptions above). Everything outside 2000::/3 that
-/// is not otherwise classified is also Reserved (fail-closed).
-fn is_globally_reachable_v6(v6: std::net::Ipv6Addr) -> bool {
-    let seg = v6.segments();
-    // Globally reachable = 2000::/3 global unicast (RFC 4291) minus the
-    // IANA special-purpose entries inside it. Everything outside
-    // 2000::/3 fails closed (0000::/8 reserved-by-IETF, 5f00::/16 SRv6
-    // SID, 64:ff9b::/96 NAT64, ...).
-    if !(0x2000..=0x3FFF).contains(&seg[0]) {
-        return false;
+/// Binding: the regression tests below pin this table's behavior in
+/// both directions; any registry-driven table edit MUST update the
+/// fixtures (and the snapshot date here) in the same change.
+struct V4Entry {
+    net: u32,
+    bits: u8,
+    class: AddressClass,
+}
+struct V6Entry {
+    net: u128,
+    bits: u8,
+    class: AddressClass,
+}
+
+const V4_SPECIAL: &[V4Entry] = &[
+    // Registry snapshot 2026-09-12 (longest-prefix match; order irrelevant)
+    V4Entry {
+        net: 0,
+        bits: 32,
+        class: AddressClass::Unspecified,
+    }, // 0.0.0.0/32
+    V4Entry {
+        net: 0,
+        bits: 8,
+        class: AddressClass::Reserved,
+    }, // "This network" (RFC 791) — non-global
+    V4Entry {
+        net: v4(10, 0, 0, 0),
+        bits: 8,
+        class: AddressClass::Private,
+    },
+    V4Entry {
+        net: v4(100, 64, 0, 0),
+        bits: 10,
+        class: AddressClass::Reserved,
+    }, // CGNAT (RFC 6598)
+    V4Entry {
+        net: v4(127, 0, 0, 0),
+        bits: 8,
+        class: AddressClass::Loopback,
+    },
+    V4Entry {
+        net: v4(169, 254, 0, 0),
+        bits: 16,
+        class: AddressClass::LinkLocal,
+    },
+    V4Entry {
+        net: v4(172, 16, 0, 0),
+        bits: 12,
+        class: AddressClass::Private,
+    },
+    V4Entry {
+        net: v4(192, 0, 0, 0),
+        bits: 24,
+        class: AddressClass::Reserved,
+    }, // IETF Protocol Assignments — non-global
+    V4Entry {
+        net: v4(192, 0, 0, 9),
+        bits: 32,
+        class: AddressClass::Public,
+    }, // PCP anycast — registry GR=True
+    V4Entry {
+        net: v4(192, 0, 0, 10),
+        bits: 32,
+        class: AddressClass::Public,
+    }, // DS-Lite NAT64 anycast — registry GR=True
+    V4Entry {
+        net: v4(192, 0, 2, 0),
+        bits: 24,
+        class: AddressClass::Reserved,
+    }, // TEST-NET-1
+    V4Entry {
+        net: v4(192, 31, 196, 0),
+        bits: 24,
+        class: AddressClass::Public,
+    }, // AS112 — registry GR=True
+    V4Entry {
+        net: v4(192, 52, 193, 0),
+        bits: 24,
+        class: AddressClass::Public,
+    }, // AMT anycast — registry GR=True
+    V4Entry {
+        net: v4(192, 88, 99, 0),
+        bits: 24,
+        class: AddressClass::Reserved,
+    }, // 6to4 relay anycast — deprecated, non-global
+    V4Entry {
+        net: v4(192, 168, 0, 0),
+        bits: 16,
+        class: AddressClass::Private,
+    },
+    V4Entry {
+        net: v4(192, 175, 48, 0),
+        bits: 24,
+        class: AddressClass::Public,
+    }, // DirectDelegation AS112 — GR=True
+    V4Entry {
+        net: v4(198, 18, 0, 0),
+        bits: 15,
+        class: AddressClass::Reserved,
+    }, // Benchmarking (RFC 2544)
+    V4Entry {
+        net: v4(198, 51, 100, 0),
+        bits: 24,
+        class: AddressClass::Reserved,
+    }, // TEST-NET-2
+    V4Entry {
+        net: v4(203, 0, 113, 0),
+        bits: 24,
+        class: AddressClass::Reserved,
+    }, // TEST-NET-3
+    V4Entry {
+        net: v4(224, 0, 0, 0),
+        bits: 4,
+        class: AddressClass::Multicast,
+    },
+    V4Entry {
+        net: v4(240, 0, 0, 0),
+        bits: 4,
+        class: AddressClass::Reserved,
+    }, // Reserved (incl. broadcast /32)
+];
+
+const V6_SPECIAL: &[V6Entry] = &[
+    V6Entry {
+        net: 0,
+        bits: 128,
+        class: AddressClass::Unspecified,
+    }, // ::/128
+    V6Entry {
+        net: 1,
+        bits: 128,
+        class: AddressClass::Loopback,
+    }, // ::1/128
+    // NAT64 well-known (RFC 6052): the registry marks it Globally
+    // Reachable=True, but Velqu security policy denies
+    // translation/tunneling prefixes explicitly — recorded as policy,
+    // not attributed to the registry.
+    V6Entry {
+        net: 0x64ff9b0000000000_0000000000000000,
+        bits: 96,
+        class: AddressClass::Reserved,
+    },
+    V6Entry {
+        net: 0x64ff9b0100000000_0000000000000000,
+        bits: 48,
+        class: AddressClass::Reserved,
+    }, // local-use NAT64
+    V6Entry {
+        net: 0x0100000000000000_0000000000000000,
+        bits: 64,
+        class: AddressClass::Reserved,
+    }, // 100::/64 discard-only
+    // 2001::/23 IETF Protocol Assignments — parent is non-global; only
+    // the registry-listed anycast addresses are allowed:
+    V6Entry {
+        net: 0x2001000000000000_0000000000000000,
+        bits: 23,
+        class: AddressClass::Reserved,
+    },
+    V6Entry {
+        net: 0x2001000100000000_0000000000000001,
+        bits: 128,
+        class: AddressClass::Public,
+    }, // 2001:1::1
+    V6Entry {
+        net: 0x2001000100000000_0000000000000002,
+        bits: 128,
+        class: AddressClass::Public,
+    }, // 2001:1::2
+    V6Entry {
+        net: 0x2001000100000000_0000000000000003,
+        bits: 128,
+        class: AddressClass::Public,
+    }, // 2001:1::3
+    V6Entry {
+        net: 0x2001000300000000_0000000000000001,
+        bits: 128,
+        class: AddressClass::Public,
+    }, // 2001:3::1
+    V6Entry {
+        net: 0x2001000400000000_0000000000000112,
+        bits: 128,
+        class: AddressClass::Public,
+    }, // 2001:4::112
+    // 2001:2::/48 Benchmarking and 2001:10::/28 ORCHID (deprecated) are
+    // covered by the parent deny; listed for registry readability:
+    V6Entry {
+        net: 0x2001000200000000_0000000000000000,
+        bits: 48,
+        class: AddressClass::Reserved,
+    },
+    V6Entry {
+        net: 0x2001001000000000_0000000000000000,
+        bits: 28,
+        class: AddressClass::Reserved,
+    },
+    // ORCHIDv2 2001:20::/28 — registry Globally Reachable=True: ALLOWED
+    // (more-specific beats the parent; owner-corrected 2026-09-12).
+    V6Entry {
+        net: 0x2001002000000000_0000000000000000,
+        bits: 28,
+        class: AddressClass::Public,
+    },
+    V6Entry {
+        net: 0x20010db800000000_0000000000000000,
+        bits: 32,
+        class: AddressClass::Reserved,
+    }, // 2001:db8::/32
+    V6Entry {
+        net: 0x3fff000000000000_0000000000000000,
+        bits: 20,
+        class: AddressClass::Reserved,
+    }, // 3fff::/20 Documentation (RFC 9637) — the correct prefix
+    V6Entry {
+        net: 0x5f00000000000000_0000000000000000,
+        bits: 16,
+        class: AddressClass::Reserved,
+    }, // 5f00::/16 SRv6 SID — forwardable, NOT globally reachable
+    V6Entry {
+        net: 0x2002000000000000_0000000000000000,
+        bits: 16,
+        class: AddressClass::Reserved,
+    }, // 2002::/16 6to4 — deprecated, non-global; tunneling security-deny
+    V6Entry {
+        net: 0xfc00000000000000_0000000000000000,
+        bits: 7,
+        class: AddressClass::Private,
+    }, // ULA
+    V6Entry {
+        net: 0xfe80000000000000_0000000000000000,
+        bits: 10,
+        class: AddressClass::LinkLocal,
+    },
+    V6Entry {
+        net: 0xff00000000000000_0000000000000000,
+        bits: 8,
+        class: AddressClass::Multicast,
+    },
+];
+
+const fn v4(a: u8, b: u8, c: u8, d: u8) -> u32 {
+    ((a as u32) << 24) | ((b as u32) << 16) | ((c as u32) << 8) | (d as u32)
+}
+
+/// Longest-prefix classification over the snapshot table; addresses
+/// outside every entry fall back to 2000::/3 global unicast (Public) or
+/// fail closed (Reserved) for IPv6, and Public for IPv4 (general space).
+fn classify_v4(v4: std::net::Ipv4Addr) -> AddressClass {
+    let bits = u32::from(v4);
+    let mut best: Option<(u8, AddressClass)> = None;
+    for e in V4_SPECIAL {
+        let mask_ok = if e.bits == 0 {
+            true
+        } else {
+            (bits >> (32 - e.bits as u32)) == (e.net >> (32 - e.bits as u32))
+        };
+        if mask_ok && best.is_none_or(|(b, _)| e.bits > b) {
+            best = Some((e.bits, e.class));
+        }
     }
-    match (seg[0], seg[1]) {
-        // 2001:0000::/32 TEREDO (RFC 4380) — segments 2.. are inside
-        // the /32 when seg[1] == 0x0000.
-        (0x2001, 0x0000) => false,
-        // 2001:0002::/48 Benchmarking (RFC 5180).
-        (0x2001, 0x0002) => false,
-        // 2001:0010::/28 ORCHID (RFC 4843) = 2001:0010..=2001:001f,
-        // 2001:0020::/28 ORCHIDv2 (RFC 7343) = 2001:0020..=2001:002f.
-        (0x2001, s1) if (0x0010..=0x002f).contains(&s1) => false,
-        // 2001:0db8::/32 Documentation (RFC 3849).
-        (0x2001, 0x0db8) => false,
-        // 2620:0db8::/32 Documentation 2 (RFC 9637).
-        (0x2620, 0x0db8) => false,
-        _ => true,
+    best.map_or(AddressClass::Public, |(_, class)| class)
+}
+
+fn classify_v6(v6: std::net::Ipv6Addr) -> AddressClass {
+    let bits = u128::from(v6);
+    let mut best: Option<(u8, AddressClass)> = None;
+    for e in V6_SPECIAL {
+        let mask_ok = if e.bits == 0 {
+            true
+        } else {
+            (bits >> (128 - e.bits as u32)) == (e.net >> (128 - e.bits as u32))
+        };
+        if mask_ok && best.is_none_or(|(b, _)| e.bits > b) {
+            best = Some((e.bits, e.class));
+        }
+    }
+    if let Some((_, class)) = best {
+        return class;
+    }
+    // General space: 2000::/3 global unicast is Public; everything else
+    // (outside all table entries AND outside 2000::/3) fails closed.
+    if (0x2000..=0x3FFF).contains(&v6.segments()[0]) {
+        AddressClass::Public
+    } else {
+        AddressClass::Reserved
     }
 }
 
@@ -222,56 +467,8 @@ impl AddressClass {
             return AddressClass::Metadata;
         }
         match addr {
-            IpAddr::V4(v4) => {
-                if v4.is_loopback() {
-                    AddressClass::Loopback
-                } else if v4.is_link_local() {
-                    AddressClass::LinkLocal
-                } else if v4.is_private() {
-                    AddressClass::Private
-                } else if v4.is_unspecified() {
-                    AddressClass::Unspecified
-                } else if v4.is_multicast() {
-                    AddressClass::Multicast
-                } else if v4.is_broadcast()
-                    || v4.is_documentation()
-                    || v4.octets()[0] & 0xFC == 0x64
-                {
-                    // 255.255.255.255, 192.0.2.0/24 & friends, 100.64.0.0/10 (CGNAT)
-                    AddressClass::Reserved
-                } else {
-                    AddressClass::Public
-                }
-            }
-            IpAddr::V6(v6) => {
-                if v6.is_loopback() {
-                    AddressClass::Loopback
-                } else if v6.is_unicast_link_local() {
-                    AddressClass::LinkLocal
-                } else if v6.is_unique_local() {
-                    AddressClass::Private
-                } else if v6.is_unspecified() {
-                    AddressClass::Unspecified
-                } else if v6.is_multicast() {
-                    AddressClass::Multicast
-                } else if !is_globally_reachable_v6(v6) {
-                    // ADR-0033 §amendment (owner decision 2026-09-12):
-                    // default fetch trust permits only globally reachable
-                    // public destinations. IETF-reserved and special-
-                    // purpose IPv6 prefixes that are not globally
-                    // reachable (0000::/8, 2001:db8::/32 documentation,
-                    // 5f00::/16 SRv6 SID, 2001:10::/28 ORCHID, ...)
-                    // deny by default. Semantic rule, not a hard-coded
-                    // range list: the table below is the current IANA
-                    // special-purpose registry snapshot this classifier
-                    // implements.
-                    AddressClass::Reserved
-                } else {
-                    // IPv4-mapped forms were normalized above, so any
-                    // remaining globally reachable IPv6 address is public.
-                    AddressClass::Public
-                }
-            }
+            IpAddr::V4(v4) => classify_v4(v4),
+            IpAddr::V6(v6) => classify_v6(v6),
         }
     }
 
@@ -1273,20 +1470,27 @@ mod tests {
     /// trust permits only globally reachable public destinations.
     /// Origin: the capabilities_policy fuzz target surfaced IP literal
     /// `7::` classifying Public/dialable (fuzz/COVERAGE.md obs. 3).
+    /// ADR-0033 amendment (owner decisions 2026-09-11 + 2026-09-12
+    /// correction review): default fetch trust permits only globally
+    /// reachable public destinations. The deny fixtures include the owner's
+    /// specific cases; the corrected-registry entries (ORCHIDv2 allow,
+    /// 3fff::/20 deny, 2001::/23 parent deny) are pinned in the allow test.
     #[test]
     fn ipv6_non_public_destinations_deny_by_default() {
         use std::net::Ipv6Addr;
         let reserved = [
             "7::",              // 0000::/8 Reserved by IETF (RFC 4291)
             "2001:db8::1",      // 2001:db8::/32 Documentation (RFC 3849)
+            "3fff::1",          // 3fff::/20 Documentation (RFC 9637) — the correct prefix
             "5f00::1",          // 5f00::/16 SRv6 SID — forwardable, not globally reachable
-            "2001::1",          // 2001::/32 TEREDO
+            "2001::1",          // 2001::/23 parent (IETF Protocol Assignments) — non-global
+            "2001:5::1",        // inside 2001::/23, not a registry-listed anycast — deny
             "2001:2::1",        // 2001:2::/48 Benchmarking
-            "2001:10::1",       // 2001:10::/28 ORCHID
-            "2001:20::1",       // 2001:20::/28 ORCHIDv2
-            "2620:db8::1",      // 2620:db8::/32 Documentation 2
-            "64:ff9b::1.2.3.4", // NAT64 well-known (outside 2000::/3)
-            "100::1",           // Discard-Only (outside 2000::/3)
+            "2001:10::1",       // 2001:10::/28 ORCHID (deprecated)
+            "2002::1",          // 2002::/16 6to4 — deprecated, non-global
+            "64:ff9b::1.2.3.4", // NAT64 well-known — registry GR=True but Velqu translation/tunneling security-deny
+            "64:ff9b:1::1",     // local-use NAT64
+            "100::1",           // 100::/64 Discard-Only
             "4000::1",          // outside 2000::/3 — fail closed
         ];
         for a in reserved {
@@ -1303,11 +1507,16 @@ mod tests {
     fn ipv6_known_public_destinations_still_dialable() {
         use std::net::Ipv6Addr;
         let public = [
-            "2606:4700:4700::1111", // Cloudflare DNS (2001:... family, global)
-            "2620:fe::fe",          // Quad9 (2620::/23 is global unicast, not the db8 carve-out)
-            "2001:4860:4860::8888", // Google DNS — inside 2001::/16 but NOT a special-purpose /32
+            "2606:4700:4700::1111", // Cloudflare DNS — general 2000::/3
+            "2620:fe::fe",          // Quad9
+            "2001:4860:4860::8888", // Google DNS — 2001::/16 outside the 2001::/23 parent
             "2a00:1450:4001::1",    // RIPE-space global unicast
-            "2001:1::1",            // APNIC global unicast between the special-purpose carves
+            "2001:8000::1",         // above the 2001::/23 parent (seg[1] > 0x01ff)
+            "2001:20::1", // ORCHIDv2 2001:20::/28 — registry Globally Reachable=True (owner-corrected)
+            "2001:1::1",  // registry-listed IETF anycast — allowed more-specific
+            "2001:3::1",  // registry-listed IETF anycast
+            "2001:4::112", // registry-listed IETF anycast
+            "2620:db8::1", // NOT a registry special-purpose prefix (RFC 9637 is 3fff::/20) — general space
         ];
         for a in public {
             let addr = a.parse::<Ipv6Addr>().unwrap();
@@ -1317,6 +1526,45 @@ mod tests {
                 AddressClass::Public,
                 "{a} must stay Public/dialable (deny rule too broad)"
             );
+        }
+    }
+
+    /// IPv4 side of the same rule: the registry's non-global ranges that
+    /// std's helpers do not cover (0.0.0.0/8, 198.18.0.0/15, 240.0.0.0/4,
+    /// 192.0.0.0/24) deny; the registry's globally-reachable anycast
+    /// exceptions stay dialable.
+    #[test]
+    fn ipv4_non_public_destinations_deny_by_default() {
+        use std::net::Ipv4Addr;
+        let reserved = [
+            "0.0.0.1",        // 0.0.0.0/8 "This network" — non-global
+            "198.18.0.1",     // 198.18.0.0/15 Benchmarking
+            "240.0.0.1",      // 240.0.0.0/4 Reserved
+            "192.0.0.77",     // 192.0.0.0/24 IETF Protocol Assignments — non-global
+            "192.88.99.1",    // 6to4 relay anycast — deprecated, non-global
+            "198.19.255.255", // benchmarking upper half
+        ];
+        for a in reserved {
+            let addr = a.parse::<Ipv4Addr>().unwrap();
+            assert_eq!(
+                AddressClass::classify(IpAddr::V4(addr)),
+                AddressClass::Reserved,
+                "{a} must classify Reserved (non-globally-reachable)"
+            );
+        }
+        let public = [
+            "192.0.0.9",    // PCP anycast — registry GR=True
+            "192.0.0.10",   // DS-Lite NAT64 anycast — registry GR=True
+            "192.31.196.1", // AS112 — GR=True
+            "192.52.193.1", // AMT anycast — GR=True
+            "192.175.48.1", // DirectDelegation AS112 — GR=True
+            "8.8.8.8",
+            "1.1.1.1",
+        ];
+        for a in public {
+            let addr = a.parse::<Ipv4Addr>().unwrap();
+            let cls = AddressClass::classify(IpAddr::V4(addr));
+            assert_eq!(cls, AddressClass::Public, "{a} must stay Public");
         }
     }
 

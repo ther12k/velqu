@@ -73,6 +73,9 @@ const CONTRACT = {
 };
 
 let findings = 0;
+let t1Iterations = 0;
+let t2Iterations = 0;
+let t3Iterations = 0;
 const record = (cls: string, detail: string) => {
   findings += 1;
   console.error(`FINDING [${cls}] seed=${SEED}: ${detail}`);
@@ -82,13 +85,23 @@ async function main() {
   const deadline = Date.now() + DURATION_SECS * 1000;
   let iterations = 0;
 
-  // Scripted transport: replies with the next adversarial pair.
+  // Scripted adversarial transport: each call replies with the NEXT
+  // fixture pair. (Harness fix, owner review 2026-09-12: the first
+  // draft built `api` with captureFetch and pointed T3 at it, so the
+  // adversarial transport was never exercised and respIdx never
+  // advanced — T3 silently always saw the first fixture.)
   let respIdx = 0;
   const fakeFetch: TreatyFetch = async () => {
     const [status, body] = ADVERSARIAL_RESPONSES[respIdx % ADVERSARIAL_RESPONSES.length]!;
     respIdx += 1;
     return new Response(body ?? "null", { status });
   };
+  const apiResp = treaty<Record<string, { path: string; method: string; resp: Record<number, unknown> }>>({
+    baseUrl: "https://treaty-fuzz.test",
+    contract: CONTRACT as never,
+    fetchImpl: fakeFetch,
+  } as never);
+  const itemsResp = (apiResp as never as Record<string, Record<string, (p: unknown) => Record<string, (o?: unknown) => Promise<unknown>>>>)["items"];
 
   while (Date.now() < deadline) {
     for (let burst = 0; burst < 500; burst++) {
@@ -110,6 +123,7 @@ async function main() {
       // hop is CALLED with path params (apply -> bound method map), the
       // method-name call fires the request, query rides in opts.
       const items = (api as never as Record<string, Record<string, (p: unknown) => Record<string, (o?: unknown) => Promise<unknown>>>>)["items"];
+      t1Iterations += 1;
       try {
         await items.get({ id: param }).get();
       } catch (e) {
@@ -138,6 +152,7 @@ async function main() {
         fetchImpl: qFetch,
       } as never);
       const itemsQ = (apiQ as never as Record<string, Record<string, (p: unknown) => Record<string, (b: unknown, o?: unknown) => Promise<unknown>>>>)["items"];
+      t2Iterations += 1;
       try {
         // write route: leaf bind (no :params -> empty), then post(body, opts)
         await itemsQ.post({}).post({}, { query: { [qk]: qv } });
@@ -156,25 +171,31 @@ async function main() {
       }
 
       // --- T3: adversarial responses always yield the outcome shape ---
-      const [status] = ADVERSARIAL_RESPONSES[respIdx % ADVERSARIAL_RESPONSES.length] ?? [200, "{}"];
+      // (Runs on itemsResp — the fakeFetch-driven client. The fixture's
+      // status is what THIS call received; captured before the request
+      // by snapshotting the index.)
+      const t3Idx = respIdx;
       let result: unknown;
       try {
-        result = await items.get({ id: "stable" }).get();
+        t3Iterations += 1;
+        result = await itemsResp.get({ id: "stable" }).get();
       } catch (e) {
+        const [status] = ADVERSARIAL_RESPONSES[t3Idx % ADVERSARIAL_RESPONSES.length]!;
         record("T3", `status ${status} made request() reject instead of a structured outcome: ${e}`);
         continue;
       }
+      const [t3Status] = ADVERSARIAL_RESPONSES[t3Idx % ADVERSARIAL_RESPONSES.length]!;
       const r = result as { data: unknown; error: unknown };
       const shapeOk =
         (r.data !== null && r.error === null) || (r.data === null && r.error !== null);
       if (!shapeOk) {
-        record("T3", `status ${status} produced a third outcome shape: ${JSON.stringify(r).slice(0, 200)}`);
+        record("T3", `status ${t3Status} produced a third outcome shape: ${JSON.stringify(r).slice(0, 200)}`);
       }
-      if (status >= 200 && status <= 299 && r.error !== null) {
-        record("T3", `2xx status ${status} mapped to an error outcome`);
+      if (t3Status >= 200 && t3Status <= 299 && r.error !== null) {
+        record("T3", `2xx status ${t3Status} mapped to an error outcome`);
       }
-      if (status >= 300 && r.data !== null) {
-        record("T3", `non-2xx status ${status} mapped to a data outcome`);
+      if (t3Status >= 300 && r.data !== null) {
+        record("T3", `non-2xx status ${t3Status} mapped to a data outcome`);
       }
     }
   }
@@ -186,6 +207,13 @@ async function main() {
     durationSecs: DURATION_SECS,
     seed: SEED,
     iterations,
+    // Per-class coverage counters (owner requirement 2026-09-12): an
+    // empty class can no longer hide behind a total iteration count.
+    t1Iterations,
+    t2Iterations,
+    t3Iterations,
+    transportResponsesConsumed: respIdx,
+    coverageEmpty: [t1Iterations, t2Iterations, t3Iterations].some((n) => n === 0),
     surface: "packages/treaty (published treaty() API: path interpolation, query serialization, response mapping)",
     totalFindings: findings,
     result: findings === 0
@@ -196,7 +224,9 @@ async function main() {
   const out = outIdx !== -1 ? process.argv[outIdx + 1]! : "benchmarks/raw/ga-m6-fuzz/ts-treaty-ledger.json";
   await Bun.write(out, JSON.stringify(ledger, null, 1) + "\n");
   console.log(JSON.stringify(ledger, null, 1));
-  process.exit(findings === 0 ? 0 : 1);
+  const coverageEmpty =
+    t1Iterations === 0 || t2Iterations === 0 || t3Iterations === 0;
+  process.exit(findings === 0 && !coverageEmpty ? 0 : 1);
 }
 
 import type { TreatyFetch } from "../packages/treaty/src/index";

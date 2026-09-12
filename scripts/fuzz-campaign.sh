@@ -221,6 +221,7 @@ ts_findings = 0
 ts_path = os.path.join(os.path.dirname(path), "ts-treaty-ledger.json")
 if os.path.exists(ts_path):
     ts_findings = json.load(open(ts_path)).get("totalFindings", 0)
+d["applicabilityMatrix"] = json.load(open("fuzz/sanitizer-applicability.json"))
 d["tsEncoderCampaign"] = {
     "surface": "packages/treaty encoders (TypeScript; cargo-fuzz cannot reach)",
     "ledger": "benchmarks/raw/ga-m6-fuzz/ts-treaty-ledger.json",

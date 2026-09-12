@@ -1,0 +1,62 @@
+{
+  "format": "velqu-miri-scope-v1",
+  "snapshot": "2026-09-12",
+  "note": "Single source of truth for Miri coverage, read by BOTH scripts/miri-campaign.sh (runner) and scripts/unsafe-audit.py (evidence generator). Every workspace crate must appear in exactly one of included/excluded; the audit fails closed on a crate missing from this map.",
+  "included": [
+    "q-runtime-model",
+    "q-router",
+    "q-schema-runtime",
+    "q-bridge",
+    "q-pack"
+  ],
+  "excluded": [
+    {
+      "crate": "q-engine-quickjs",
+      "reason": "foreign C engine (quickjs-ng via rquickjs) is not Miri-executable",
+      "compensations": [
+        "UBSan C-FFI stage S2 (clang -fsanitize=undefined over the quickjs-ng sources)",
+        "cargo-fuzz: bridge_handles (handle lifecycle invariants) and pack_verify (bytecode/manifest trust boundary)"
+      ]
+    },
+    {
+      "crate": "q-engine",
+      "reason": "tokio-dependent engine trait runtime; async executor is not Miri-executable at this scale",
+      "compensations": ["ASan workspace pass S1", "engine conformance and settlement suites"]
+    },
+    {
+      "crate": "q-runtime",
+      "reason": "tokio/hyper ingress boundary; its unsafe inventory is test-scope only (see the unsafe audit artifact)",
+      "compensations": ["ASan workspace pass S1", "runtime conformance suite (cargo test -p q-runtime)"]
+    },
+    {
+      "crate": "q-http",
+      "reason": "hyper/tokio HTTP boundary is not Miri-executable",
+      "compensations": ["ASan workspace pass S1", "cargo-fuzz: http_decode ingress decoder invariants"]
+    },
+    {
+      "crate": "q-capabilities",
+      "reason": "tokio-dependent test harness (timer/fetch); first-party unsafe-free logic is covered by ASan S1",
+      "compensations": ["ASan workspace pass S1", "cargo-fuzz: capabilities_policy (SSRF gate, redirect limiter, identity/inventory/DAG)"]
+    },
+    {
+      "crate": "q-capability-postgres",
+      "reason": "tokio + native postgres client FFI boundary",
+      "compensations": ["ASan workspace pass S1", "capability contract suites"]
+    },
+    {
+      "crate": "q-bytecode-tool",
+      "reason": "binary tool transitively depending on q-engine-quickjs (foreign C engine)",
+      "compensations": ["ASan workspace pass S1", "bytecode round-trip conformance"]
+    },
+    {
+      "crate": "q-browser-kernel",
+      "reason": "wasm-bindgen ABI crate — built for wasm32, not host-Miri-executable",
+      "compensations": ["ASan workspace pass S1", "browser kernel verification suite (cargo test -p q-browser-kernel)"]
+    },
+    {
+      "crate": "q-bench-support",
+      "reason": "bench/evidence tooling only; unsafe inventory is libc getrusage/dlsym diagnostics instrumentation, not the serving path — EXPLICIT M6-003 WAIVER (owner review 2026-09-12)",
+      "compensations": ["ASan workspace pass S1", "soak harness deterministic verification of every response"]
+    }
+  ]
+}
