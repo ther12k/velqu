@@ -356,6 +356,19 @@ function makeProxy(
               `treaty: missing required path parameter "${paramName}" for route "${id}"`,
             );
           }
+          const strVal = String(val);
+          const decoded = (() => {
+            try {
+              return decodeURIComponent(strVal);
+            } catch {
+              return strVal;
+            }
+          })();
+          if (decoded === "." || decoded === "..") {
+            throw new Error(
+              `treaty: invalid path parameter "${paramName}" for route "${id}": dot-only path segments ("." and "..") are not allowed`,
+            );
+          }
         }
       }
       const path = pathSegs

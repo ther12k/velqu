@@ -122,7 +122,7 @@ for t in "${TARGETS[@]}"; do
 done
 
 echo "" >> "$OUT/campaign-ledger.json"
-echo "], \"totalNewFindings\": $crash_total" >> "$OUT/campaign-ledger.json"
+echo "], \"totalNewFindings\": $crash_total }" >> "$OUT/campaign-ledger.json"
 echo "campaign complete: $OUT/campaign-ledger.json (total new findings: $crash_total, FUZZ_FAILED=$FUZZ_FAILED)"
 
 # ---- TS-side encoder campaign (Treaty; see fuzz/COVERAGE.md) ----
@@ -180,7 +180,8 @@ if [ "$S2_RC" != "0" ]; then
 fi
 
 # ---- Finalize ledger with sanitizer stages, then exit fail-closed ----
-python3 - "$OUT/campaign-ledger.json" "$S1_RC" "$S2_RC" "$S2_RESULT" <<'PYEOF'
+FINALIZER_FAILED=0
+python3 - "$OUT/campaign-ledger.json" "$S1_RC" "$S2_RC" "$S2_RESULT" <<'PYEOF' || FINALIZER_FAILED=1
 import json, sys
 path, s1, s2, s2_result = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
 d = json.load(open(path))
@@ -210,7 +211,7 @@ print("ledger finalized")
 PYEOF
 
 # Append the fail-closed verdict flags to the ledger.
-python3 - "$OUT/campaign-ledger.json" "$FUZZ_FAILED" "$SAN_FAILED" <<'PYEOF'
+python3 - "$OUT/campaign-ledger.json" "$FUZZ_FAILED" "$SAN_FAILED" <<'PYEOF' || FINALIZER_FAILED=1
 import json, sys
 path = sys.argv[1]
 fuzz_failed = sys.argv[2] == "1"
@@ -238,8 +239,14 @@ json.dump(d, open(path, "w"), indent=1)
 print("verdict recorded: campaignPassed =", d["verdict"]["campaignPassed"])
 PYEOF
 
-if [ "$FUZZ_FAILED" != "0" ] || [ "$SAN_FAILED" != "0" ]; then
-  echo "CAMPAIGN FAILED (FUZZ_FAILED=$FUZZ_FAILED SAN_FAILED=$SAN_FAILED) — ledger contains the evidence; exit non-zero."
+# Validate that the resulting ledger is well-formed JSON
+python3 -m json.tool "$OUT/campaign-ledger.json" > /dev/null 2>&1 || {
+  echo "ERROR: final ledger is not valid JSON" >&2
+  FINALIZER_FAILED=1
+}
+
+if [ "$FUZZ_FAILED" != "0" ] || [ "$SAN_FAILED" != "0" ] || [ "$FINALIZER_FAILED" != "0" ]; then
+  echo "CAMPAIGN FAILED (FUZZ_FAILED=$FUZZ_FAILED SAN_FAILED=$SAN_FAILED FINALIZER_FAILED=$FINALIZER_FAILED) — ledger contains the evidence; exit non-zero."
   exit 1
 fi
 echo "CAMPAIGN PASSED — zero findings across all targets and sanitizer stages."

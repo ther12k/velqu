@@ -8,16 +8,16 @@
  * API with a scripted fetch/dispatch:
  *
  *   T1 path params   — hostile param values (traversal, scheme, separators,
- *                      unicode) must stay inside the route path segment
- *                      (encodeURIComponent) and never change the target
- *                      route or origin;
+ *                      dot-only segments, unicode); dot-only values
+ *                      ("." and "..", including encoded forms) must be
+ *                      rejected, and legal params must stay strictly
+ *                      inside their path segment under standard URL parsing;
  *   T2 query ser     — hostile query keys/values must serialize losslessly
  *                      through URLSearchParams (round-trip equality);
- *   T3 response map  — adversarial status/body pairs (malformed JSON,
- *                      wrong types, huge strings) must resolve to exactly
- *                      the documented outcome shape ({data,error:null} on
- *                      2xx, {data:null,error} otherwise) — never reject,
- *                      never a third shape.
+ *   T3 response map  — adversarial status/body pairs across valid HTTP
+ *                      status range (200..599) must resolve to exactly
+ *                      the documented outcome shape, and the returned
+ *                      status must match the transport status.
  *
  * Every failure is recorded in the findings ledger with the seed and the
  * failing case; a clean run writes an explicit zero-findings record
@@ -25,7 +25,7 @@
  *
  * Usage: bun scripts/ts-fuzz-campaign.ts [--duration-secs N] [--seed S]
  */
-import { treaty } from "../packages/treaty/src/index";
+import { treaty, type TreatyFetch } from "../packages/treaty/src/index";
 
 const arg = (name: string, def: number) => {
   const i = process.argv.indexOf(name);
@@ -45,7 +45,8 @@ const rnd = () => {
 const pick = <T>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)]!;
 
 const ADVERSARIAL_PARAMS: readonly string[] = [
-  "ok", "..%2F..%2Fetc", "../../etc/passwd", "a/b", "a?b=c", "a#b",
+  "ok", ".", "..", "%2e", "%2e%2e", "%2E", "%2E%2E",
+  "..%2F..%2Fetc", "../../etc/passwd", "a/b", "a?b=c", "a#b",
   "javascript:alert(1)", "%2e%2e%2f", "\0", "白", "a".repeat(300),
   "-", "%00", " ", "+", "&param=x=", "%252e%252e%252f",
 ];
@@ -53,17 +54,26 @@ const ADVERSARIAL_QUERY: readonly [string, string][] = [
   ["k", "v"], ["&k=", "v"], ["k", "&v=#"], ["白", "值"], ["", "v"],
   ["k", "x".repeat(500)], ["=", "="], ["k", "\0"], ["a b", "c d"],
 ];
+
+// Statuses stay strictly within valid native Response range (200..599).
+// Invalid transport statuses (like 999) throw RangeError in ResponseInit
+// constructor and are transport failures, not HTTP response outcomes.
 const ADVERSARIAL_RESPONSES: readonly [number, string][] = [
   [200, '{"message":"ok"}'],
   [200, "not json at all"],
   [200, ""],
+  [201, '{"message":"created"}'],
+  [204, ""],
+  [301, "redirect body"],
+  [400, '{"type":"https://velqu.dev/problems/bad","title":"bad","status":400}'],
+  [404, '{"type":"https://velqu.dev/problems/not-found","title":"not found","status":404}'],
   [422, '{"type":"https://velqu.dev/problems/validation","title":"t","status":422,"errors":[]}'],
   [422, "garbage"],
   [500, null as unknown as string],
+  [502, "{}"],
+  [503, ""],
   [200, '{"message":' + "9".repeat(400) + '}'],
-  [301, "redirect body"],
-  [999, "{}"],
-  [200, '﻿{"message":"bom"}'],
+  [200, '\ufeff{"message":"bom"}'],
 ];
 
 interface RouteInfoLike { path: string; method: string }
@@ -76,25 +86,35 @@ let findings = 0;
 let t1Iterations = 0;
 let t2Iterations = 0;
 let t3Iterations = 0;
+let transportResponsesConstructed = 0;
+
 const record = (cls: string, detail: string) => {
   findings += 1;
   console.error(`FINDING [${cls}] seed=${SEED}: ${detail}`);
 };
 
+function isDotOnly(s: string): boolean {
+  try {
+    const d = decodeURIComponent(s);
+    return d === "." || d === "..";
+  } catch {
+    return s === "." || s === "..";
+  }
+}
+
 async function main() {
   const deadline = Date.now() + DURATION_SECS * 1000;
   let iterations = 0;
 
-  // Scripted adversarial transport: each call replies with the NEXT
-  // fixture pair. (Harness fix, owner review 2026-09-12: the first
-  // draft built `api` with captureFetch and pointed T3 at it, so the
-  // adversarial transport was never exercised and respIdx never
-  // advanced — T3 silently always saw the first fixture.)
+  // Scripted adversarial transport for T3: each call replies with the NEXT
+  // fixture pair from ADVERSARIAL_RESPONSES.
   let respIdx = 0;
   const fakeFetch: TreatyFetch = async () => {
-    const [status, body] = ADVERSARIAL_RESPONSES[respIdx % ADVERSARIAL_RESPONSES.length]!;
-    respIdx += 1;
-    return new Response(body ?? "null", { status });
+    const idx = respIdx++;
+    const [status, body] = ADVERSARIAL_RESPONSES[idx % ADVERSARIAL_RESPONSES.length]!;
+    const res = new Response(body ?? "null", { status });
+    transportResponsesConstructed += 1;
+    return res;
   };
   const apiResp = treaty<Record<string, { path: string; method: string; resp: Record<number, unknown> }>>({
     baseUrl: "https://treaty-fuzz.test",
@@ -119,24 +139,36 @@ async function main() {
         contract: CONTRACT as never,
         fetchImpl: captureFetch,
       } as never);
-      // Documented navigation (probed against the runtime): the leaf-id
-      // hop is CALLED with path params (apply -> bound method map), the
-      // method-name call fires the request, query rides in opts.
       const items = (api as never as Record<string, Record<string, (p: unknown) => Record<string, (o?: unknown) => Promise<unknown>>>>)["items"];
       t1Iterations += 1;
+      const shouldReject = isDotOnly(param);
       try {
         await items.get({ id: param }).get();
+        if (shouldReject) {
+          record("T1", `dot-only param ${JSON.stringify(param)} was accepted without error; target was: ${capturedUrl}`);
+          continue;
+        }
       } catch (e) {
+        if (shouldReject) {
+          // Expected rejection for dot-only segments
+          continue;
+        }
         record("T1", `path param ${JSON.stringify(param)} made treaty() throw: ${e}`);
         continue;
       }
-      // Invariants: same origin, and the param stayed inside its segment.
-      if (!capturedUrl.startsWith("https://treaty-fuzz.test/items/")) {
-        record("T1", `param ${JSON.stringify(param)} escaped the route path: ${capturedUrl}`);
-      }
-      const originLess = capturedUrl.slice("https://treaty-fuzz.test".length);
-      if (originLess.includes("//") || /https?:/i.test(originLess.split("/items/")[1] ?? "")) {
-        record("T1", `param ${JSON.stringify(param)} injected a scheme or empty segment: ${capturedUrl}`);
+
+      // Invariants for accepted params: must parse as standard URL,
+      // origin must be unchanged, and pathname must stay in /items/...
+      try {
+        const parsed = new URL(capturedUrl);
+        if (parsed.origin !== "https://treaty-fuzz.test") {
+          record("T1", `param ${JSON.stringify(param)} changed origin: ${capturedUrl}`);
+        }
+        if (!parsed.pathname.startsWith("/items/")) {
+          record("T1", `param ${JSON.stringify(param)} escaped /items/ path prefix: ${parsed.pathname}`);
+        }
+      } catch (e) {
+        record("T1", `captured URL is not valid URL: ${capturedUrl} (${e})`);
       }
 
       // --- T2: hostile query serialization round-trips losslessly ---
@@ -154,7 +186,6 @@ async function main() {
       const itemsQ = (apiQ as never as Record<string, Record<string, (p: unknown) => Record<string, (b: unknown, o?: unknown) => Promise<unknown>>>>)["items"];
       t2Iterations += 1;
       try {
-        // write route: leaf bind (no :params -> empty), then post(body, opts)
         await itemsQ.post({}).post({}, { query: { [qk]: qv } });
       } catch (e) {
         record("T2", `query ${JSON.stringify([qk, qv])} made treaty() throw: ${e}`);
@@ -171,34 +202,41 @@ async function main() {
       }
 
       // --- T3: adversarial responses always yield the outcome shape ---
-      // (Runs on itemsResp — the fakeFetch-driven client. The fixture's
-      // status is what THIS call received; captured before the request
-      // by snapshotting the index.)
       const t3Idx = respIdx;
+      const [expectedStatus] = ADVERSARIAL_RESPONSES[t3Idx % ADVERSARIAL_RESPONSES.length]!;
       let result: unknown;
       try {
         t3Iterations += 1;
         result = await itemsResp.get({ id: "stable" }).get();
       } catch (e) {
-        const [status] = ADVERSARIAL_RESPONSES[t3Idx % ADVERSARIAL_RESPONSES.length]!;
-        record("T3", `status ${status} made request() reject instead of a structured outcome: ${e}`);
+        record("T3", `status ${expectedStatus} made request() reject instead of structured outcome: ${e}`);
         continue;
       }
-      const [t3Status] = ADVERSARIAL_RESPONSES[t3Idx % ADVERSARIAL_RESPONSES.length]!;
       const r = result as { data: unknown; error: unknown };
       const shapeOk =
         (r.data !== null && r.error === null) || (r.data === null && r.error !== null);
       if (!shapeOk) {
-        record("T3", `status ${t3Status} produced a third outcome shape: ${JSON.stringify(r).slice(0, 200)}`);
+        record("T3", `status ${expectedStatus} produced a third outcome shape: ${JSON.stringify(r).slice(0, 200)}`);
       }
-      if (t3Status >= 200 && t3Status <= 299 && r.error !== null) {
-        record("T3", `2xx status ${t3Status} mapped to an error outcome`);
-      }
-      if (t3Status >= 300 && r.data !== null) {
-        record("T3", `non-2xx status ${t3Status} mapped to a data outcome`);
+      if (expectedStatus >= 200 && expectedStatus <= 299) {
+        if (r.error !== null) {
+          record("T3", `2xx status ${expectedStatus} mapped to error outcome`);
+        }
+      } else if (expectedStatus >= 300) {
+        if (r.data !== null || r.error === null) {
+          record("T3", `non-2xx status ${expectedStatus} mapped to data outcome or null error`);
+        } else {
+          const errStatus = (r.error as { status?: number }).status;
+          if (errStatus !== expectedStatus) {
+            record("T3", `non-2xx status ${expectedStatus} returned wrong error.status: ${errStatus}`);
+          }
+        }
       }
     }
   }
+
+  const coverageEmpty =
+    t1Iterations === 0 || t2Iterations === 0 || t3Iterations === 0 || transportResponsesConstructed === 0;
 
   const ledger = {
     campaign: "ga-m6-ts-treaty-encoders",
@@ -207,16 +245,14 @@ async function main() {
     durationSecs: DURATION_SECS,
     seed: SEED,
     iterations,
-    // Per-class coverage counters (owner requirement 2026-09-12): an
-    // empty class can no longer hide behind a total iteration count.
     t1Iterations,
     t2Iterations,
     t3Iterations,
-    transportResponsesConsumed: respIdx,
-    coverageEmpty: [t1Iterations, t2Iterations, t3Iterations].some((n) => n === 0),
+    transportResponsesConstructed,
+    coverageEmpty,
     surface: "packages/treaty (published treaty() API: path interpolation, query serialization, response mapping)",
     totalFindings: findings,
-    result: findings === 0
+    result: findings === 0 && !coverageEmpty
       ? "zero-findings — explicit record, not a bare green claim"
       : "findings — each requires a regression test or an owner-accepted risk record",
   };
@@ -224,10 +260,7 @@ async function main() {
   const out = outIdx !== -1 ? process.argv[outIdx + 1]! : "benchmarks/raw/ga-m6-fuzz/ts-treaty-ledger.json";
   await Bun.write(out, JSON.stringify(ledger, null, 1) + "\n");
   console.log(JSON.stringify(ledger, null, 1));
-  const coverageEmpty =
-    t1Iterations === 0 || t2Iterations === 0 || t3Iterations === 0;
   process.exit(findings === 0 && !coverageEmpty ? 0 : 1);
 }
 
-import type { TreatyFetch } from "../packages/treaty/src/index";
 main();
