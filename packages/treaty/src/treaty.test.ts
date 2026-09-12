@@ -206,6 +206,19 @@ describe("treaty (Eden-style typing & runtime)", () => {
     expect(() => api.hello.get({} as any)).toThrow("missing required path parameter \"name\"");
   });
 
+  test("runtime rejects dot-only path parameters that would mutate route paths", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({ name: "." } as any)).toThrow("dot-only path segments");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({ name: ".." } as any)).toThrow("dot-only path segments");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({ name: "%2e" } as any)).toThrow("dot-only path segments");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({ name: "%2e%2e" } as any)).toThrow("dot-only path segments");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => api.hello.get({ name: "%2E%2E" } as any)).toThrow("dot-only path segments");
+  });
+
   test("runtime encodes path parameters and rejects undeclared methods", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => (api.hello.get({ name: "Rafi" }) as any).post()).toThrow("method \"POST\" is not allowed");

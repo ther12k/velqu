@@ -345,15 +345,15 @@ const V6_SPECIAL: &[V6Entry] = &[
         class: AddressClass::Public,
     }, // 2001:1::3
     V6Entry {
-        net: 0x2001000300000000_0000000000000001,
-        bits: 128,
+        net: 0x2001000300000000_0000000000000000,
+        bits: 32,
         class: AddressClass::Public,
-    }, // 2001:3::1
+    }, // 2001:3::/32 AMT (RFC 7450) — registry GR=True
     V6Entry {
-        net: 0x2001000400000000_0000000000000112,
-        bits: 128,
+        net: 0x2001000401120000_0000000000000000,
+        bits: 48,
         class: AddressClass::Public,
-    }, // 2001:4::112
+    }, // 2001:4:112::/48 AS112-v6 (RFC 7535) — registry GR=True
     // 2001:2::/48 Benchmarking and 2001:10::/28 ORCHID (deprecated) are
     // covered by the parent deny; listed for registry readability:
     V6Entry {
@@ -370,6 +370,12 @@ const V6_SPECIAL: &[V6Entry] = &[
     // (more-specific beats the parent; owner-corrected 2026-09-12).
     V6Entry {
         net: 0x2001002000000000_0000000000000000,
+        bits: 28,
+        class: AddressClass::Public,
+    },
+    // Drone Remote ID Entity Tags (DETs) 2001:30::/28 (RFC 9374) — registry GR=True: ALLOWED
+    V6Entry {
+        net: 0x2001003000000000_0000000000000000,
         bits: 28,
         class: AddressClass::Public,
     },
@@ -1485,9 +1491,10 @@ mod tests {
             "5f00::1",          // 5f00::/16 SRv6 SID — forwardable, not globally reachable
             "2001::1",          // 2001::/23 parent (IETF Protocol Assignments) — non-global
             "2001:5::1",        // inside 2001::/23, not a registry-listed anycast — deny
-            "2001:2::1",        // 2001:2::/48 Benchmarking
-            "2001:10::1",       // 2001:10::/28 ORCHID (deprecated)
-            "2002::1",          // 2002::/16 6to4 — deprecated, non-global
+            "2001:4::112", // NOT in 2001:4:112::/48 AS112-v6 (different placement) -> parent deny
+            "2001:2::1",   // 2001:2::/48 Benchmarking
+            "2001:10::1",  // 2001:10::/28 ORCHID (deprecated)
+            "2002::1",     // 2002::/16 6to4 — deprecated, non-global
             "64:ff9b::1.2.3.4", // NAT64 well-known — registry GR=True but Velqu translation/tunneling security-deny
             "64:ff9b:1::1",     // local-use NAT64
             "100::1",           // 100::/64 Discard-Only
@@ -1513,9 +1520,11 @@ mod tests {
             "2a00:1450:4001::1",    // RIPE-space global unicast
             "2001:8000::1",         // above the 2001::/23 parent (seg[1] > 0x01ff)
             "2001:20::1", // ORCHIDv2 2001:20::/28 — registry Globally Reachable=True (owner-corrected)
+            "2001:30::1", // DETs 2001:30::/28 — registry Globally Reachable=True
             "2001:1::1",  // registry-listed IETF anycast — allowed more-specific
-            "2001:3::1",  // registry-listed IETF anycast
-            "2001:4::112", // registry-listed IETF anycast
+            "2001:3::1",  // 2001:3::/32 AMT — registry GR=True
+            "2001:3::2",  // 2001:3::/32 AMT other address
+            "2001:4:112::1", // 2001:4:112::/48 AS112-v6 — registry GR=True
             "2620:db8::1", // NOT a registry special-purpose prefix (RFC 9637 is 3fff::/20) — general space
         ];
         for a in public {
