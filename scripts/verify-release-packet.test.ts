@@ -240,6 +240,7 @@ describe("verify-release-packet verification suite (#1321 / M8-003)", () => {
 
   test("registry revocation beats --trusted-key even when the keyring does not know the revocation", () => {
     const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-registry-revoked-"));
+    const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-revoked-")) + "/registry.json";
     try {
       createMockPacket(packetDir);
       // Sign with a key that is cryptographically valid in the keyring
@@ -249,8 +250,9 @@ describe("verify-release-packet verification suite (#1321 / M8-003)", () => {
 
       // A registry copy that both ALLOWLISTS the untrusted key as active
       // AND lists it as revoked — revocation must win over the allowlist
-      // and over --trusted-key.
-      const registryCopy = join(packetDir, "registry-copy.json");
+      // and over --trusted-key. Fixture deliberately includes the
+      // DUPLICATE (status revoked + revokedKeys) and lives OUTSIDE the
+      // packet dir so it never mixes with manifest completeness checks.
       writeFileSync(
         registryCopy,
         JSON.stringify({
@@ -269,10 +271,115 @@ describe("verify-release-packet verification suite (#1321 / M8-003)", () => {
         { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
       );
       const stderr = new TextDecoder().decode(proc.stderr);
+      // Must be the CONTROLLED signer rejection (the explicit-key contract),
+      // not an accidental `set -u` unbound-variable crash from the
+      // duplicate-revoked entry.
       expect(proc.exitCode).toBe(1);
-      expect(stderr).toContain("REVOKED in the trusted publishers registry");
+      expect(stderr).toContain("every key named via --trusted-key is revoked");
+      expect(stderr).not.toContain("unbound variable");
     } finally {
       rmSync(packetDir, { recursive: true, force: true });
+      rmSync(registryCopy, { force: true });
+    }
+  });
+
+  test("fail-closed when the registry is unreadable/corrupt even with a valid signature and explicit trusted key", () => {
+    const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-corrupt-registry-"));
+    const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-corrupt-")) + "/registry.json";
+    try {
+      createMockPacket(packetDir);
+      signManifest(packetDir, trustedFingerprint);
+
+      // Corrupt registry: signature is valid and the signer is explicitly
+      // named — the run must STILL fail because the revocation authority
+      // cannot be consulted.
+      writeFileSync(registryCopy, "{ this is not valid JSON !!!");
+
+      const proc = Bun.spawnSync(
+        ["bash", verifierBin, "--packet-dir", packetDir, "--require-signature", "--trusted-keys-file", registryCopy, "--trusted-key", trustedFingerprint],
+        { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
+      );
+      const stderr = new TextDecoder().decode(proc.stderr);
+      expect(proc.exitCode).toBe(2);
+      expect(stderr).toContain("unreadable or invalid");
+      expect(stderr).toContain("refusing to verify against an unreadable registry");
+    } finally {
+      rmSync(packetDir, { recursive: true, force: true });
+      rmSync(registryCopy, { force: true });
+    }
+  });
+
+  test("fail when every --trusted-key is revoked; no silent fallback to another active registry publisher", () => {
+    const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-all-explicit-revoked-"));
+    const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-allexplicit-")) + "/registry.json";
+    try {
+      createMockPacket(packetDir);
+      // Signed by a DIFFERENT key that IS active in the registry: if the
+      // verifier fell back to the registry allowlist, this signature would
+      // be accepted — the explicit-key contract says it must not be.
+      signManifest(packetDir, trustedFingerprint);
+
+      writeFileSync(
+        registryCopy,
+        JSON.stringify({
+          format: "velqu-trusted-publishers-v1",
+          version: 1,
+          publishers: [
+            { id: "fallback-active", name: "Other Active Publisher", email: "untrusted@attacker.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: untrustedFingerprint, status: "active" },
+            { id: "explicit-revoked", name: "Explicit Key (revoked)", email: "trusted@velqu.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: trustedFingerprint, status: "revoked" },
+          ],
+          revokedKeys: [trustedFingerprint],
+        }, null, 2),
+      );
+
+      const proc = Bun.spawnSync(
+        ["bash", verifierBin, "--packet-dir", packetDir, "--require-signature", "--trusted-keys-file", registryCopy, "--trusted-key", trustedFingerprint],
+        { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
+      );
+      const stderr = new TextDecoder().decode(proc.stderr);
+      expect(proc.exitCode).toBe(1);
+      expect(stderr).toContain("every key named via --trusted-key is revoked");
+      expect(stderr).toContain("refusing to fall back");
+    } finally {
+      rmSync(packetDir, { recursive: true, force: true });
+      rmSync(registryCopy, { force: true });
+    }
+  });
+
+  test("registry with a duplicate revoked entry still accepts a packet from an untouched active publisher", () => {
+    const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-active-publisher-"));
+    const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-active-")) + "/registry.json";
+    try {
+      createMockPacket(packetDir);
+      // Signed by the trusted key: registry marks the OTHER key revoked
+      // (with the deliberate duplicate) but leaves this one active — the
+      // duplicate must not poison acceptance of the legitimate publisher.
+      signManifest(packetDir, trustedFingerprint);
+
+      writeFileSync(
+        registryCopy,
+        JSON.stringify({
+          format: "velqu-trusted-publishers-v1",
+          version: 1,
+          publishers: [
+            { id: "trusted-active", name: "Trusted Publisher", email: "trusted@velqu.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: trustedFingerprint, status: "active" },
+            { id: "other-revoked", name: "Other Key (revoked)", email: "untrusted@attacker.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: untrustedFingerprint, status: "revoked" },
+          ],
+          revokedKeys: [untrustedFingerprint],
+        }, null, 2),
+      );
+
+      const proc = Bun.spawnSync(
+        ["bash", verifierBin, "--packet-dir", packetDir, "--require-signature", "--trusted-keys-file", registryCopy],
+        { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
+      );
+      const stdout = new TextDecoder().decode(proc.stdout);
+      expect(proc.exitCode).toBe(0);
+      expect(stdout).toContain("SIGNATURE-OK: authentic signature from trusted publisher");
+      expect(stdout).toContain("RELEASE PACKET VERIFICATION PASSED");
+    } finally {
+      rmSync(packetDir, { recursive: true, force: true });
+      rmSync(registryCopy, { force: true });
     }
   });
 
