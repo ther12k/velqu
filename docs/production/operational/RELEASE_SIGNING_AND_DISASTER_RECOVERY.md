@@ -68,9 +68,10 @@ scripts/verify-release-packet.sh --packet-dir release/ --require-signature --tru
 ### Verification Checks Performed:
 1. **Signature Validity**: machine-readable GPG status is captured separately from human output, and the **gpg exit code is preserved**. Acceptance requires BOTH `[GNUPG:] GOODSIG` (key/signature status acceptable) AND `[GNUPG:] VALIDSIG` (cryptographic validity) for the same signature. `BADSIG`, `ERRSIG`, `NO_PUBKEY`, and `UNEXPECTED` fail immediately.
 2. **Revocation and Expiry**: `REVKEYSIG` (revoked signing key), `EXPKEYSIG` (expired signing key), and `EXPSIG` (expired signature) are rejected explicitly — `VALIDSIG` alone (cryptographic validity without key-status acceptance) is never sufficient, even when the fingerprint is allowlisted. Note GnuPG can exit 0 for expired-key signatures; the explicit status rejection is what catches this.
-3. **Authorized Publisher Trust (primary-key pinning)**: the registry `docs/production/operational/trusted-publishers.json` pins **PRIMARY key fingerprints**. When a signature is made by a signing subkey, GnuPG's `VALIDSIG` line carries the signing subkey fingerprint in its first field and the PRIMARY key fingerprint in its last field; the verifier matches the **primary** field against the registry. A subkey signature is accepted only because its primary key is pinned — trust is never widened to the subkey itself.
-4. **Artifact Integrity**: Executes `sha256sum -c SHA256SUMS.txt` verifying every artifact's byte hash matches the signed manifest.
-5. **Packet Completeness**: parses the manifest into a set of literal paths and compares filenames with fixed-string whole-line matching (never regex), so an unlisted `velqu.runtime` is not covered by a manifest entry `velqu-runtime`.
+3. **Revocation Precedence — the registry is the revocation authority**: fingerprints listed under `revokedKeys` or with publisher `status: "revoked"` in `trusted-publishers.json` are rejected BEFORE any allowlist check. This holds even when the local GPG keyring has NOT imported the key's revocation certificate (GPG itself then still reports GOODSIG+VALIDSIG), and even when the key is named explicitly via `--trusted-key`: a revoked key named as the explicit trust argument is dropped from the allowlist with an error. The committed registry alone is authoritative for revocation — importing revocation certificates to every verifier keyring is good hygiene but never a precondition for rejection.
+4. **Authorized Publisher Trust (primary-key pinning)**: the registry `docs/production/operational/trusted-publishers.json` pins **PRIMARY key fingerprints**. When a signature is made by a signing subkey, GnuPG's `VALIDSIG` line carries the signing subkey fingerprint in its first field and the PRIMARY key fingerprint in its last field; the verifier matches the **primary** field against the registry. A subkey signature is accepted only because its primary key is pinned — trust is never widened to the subkey itself.
+5. **Artifact Integrity**: Executes `sha256sum -c SHA256SUMS.txt` verifying every artifact's byte hash matches the signed manifest.
+6. **Packet Completeness**: parses the manifest into a set of literal paths and compares filenames with fixed-string whole-line matching (never regex), so an unlisted `velqu.runtime` is not covered by a manifest entry `velqu-runtime`.
 
 ---
 
@@ -103,7 +104,7 @@ If an authorized publisher signing key is compromised or suspected of exposure:
 ```
 
 ### Invariant:
-Any verifier running `scripts/verify-release-packet.sh` automatically rejects releases signed by a revoked key listed in `trusted-publishers.json`.
+Any verifier running `scripts/verify-release-packet.sh` rejects a signature from a key revoked in `trusted-publishers.json` — via the GPG `REVKEYSIG` status when the keyring knows the revocation, and via the registry's revoked set otherwise. Registry revocation is authoritative in both paths and cannot be bypassed with `--trusted-key`.
 
 ---
 

@@ -78,22 +78,61 @@ for k in "${EXPLICIT_TRUSTED_KEYS[@]}"; do
 done
 
 if [[ -f "$TRUSTED_KEYS_FILE" ]]; then
+  # REVOCATION PRECEDENCE (review of 64e8c5c6): the registry is the
+  # revocation authority. Keys listed under "revokedKeys" or with publisher
+  # "status": "revoked" are collected into REVOKED_FINGERPRINTS and are
+  # rejected BEFORE any allowlist check — including when the caller names
+  # them via --trusted-key. The registry's revocation record does not
+  # require the local GPG keyring to have imported the revocation
+  # certificate; the committed registry alone is authoritative.
+  REVOKED_FINGERPRINTS=()
   FILE_KEYS=$(python3 -c "
 import json, sys
+active, revoked = [], []
 try:
     doc = json.load(open(sys.argv[1]))
     for p in doc.get('publishers', []):
-        if p.get('status') == 'active' and 'fingerprint' in p:
-            print(p['fingerprint'].strip().upper().replace(' ', ''))
+        fpr = str(p.get('fingerprint', '')).strip().upper().replace(' ', '')
+        if not fpr:
+            continue
+        if p.get('status') == 'revoked':
+            revoked.append(fpr)
+        elif p.get('status') == 'active':
+            active.append(fpr)
+    for fpr in doc.get('revokedKeys', []):
+        fpr = str(fpr).strip().upper().replace(' ', '')
+        if fpr:
+            revoked.append(fpr)
 except Exception as e:
-    pass
-" "$TRUSTED_KEYS_FILE")
-  while IFS= read -r line; do
-    if [[ -n "$line" ]]; then
-      TRUSTED_FINGERPRINTS+=("$line")
+    print(f'__PARSE_ERROR__:{e}', file=sys.stderr)
+for fpr in active:
+    print('A', fpr)
+for fpr in revoked:
+    print('R', fpr)
+" "$TRUSTED_KEYS_FILE" ) || {
+    echo "ERROR: failed to read trusted publishers registry: $TRUSTED_KEYS_FILE" >&2
+    exit 2
+  }
+  while read -r flag fpr; do
+    if [[ "$flag" == "A" ]]; then
+      TRUSTED_FINGERPRINTS+=("$fpr")
+    elif [[ "$flag" == "R" ]]; then
+      REVOKED_FINGERPRINTS+=("$fpr")
     fi
   done <<< "$FILE_KEYS"
 fi
+
+# Registry revocation overrides explicit trust: drop any --trusted-key that
+# the registry has revoked, and refuse the run if it was the only key given.
+for i in "${!TRUSTED_FINGERPRINTS[@]}"; do
+  for rfpr in "${REVOKED_FINGERPRINTS[@]}"; do
+    if [[ "${TRUSTED_FINGERPRINTS[$i]}" == "$rfpr" ]]; then
+      echo "ERROR: key $rfpr is REVOKED in the trusted publishers registry and is rejected even when named via --trusted-key." >&2
+      unset 'TRUSTED_FINGERPRINTS[i]'
+    fi
+  done
+done
+TRUSTED_FINGERPRINTS=("${TRUSTED_FINGERPRINTS[@]}")
 
 if [[ $DRY_RUN -eq 1 ]]; then
   echo "--- Dry-run Verification Plan ---"
@@ -211,6 +250,17 @@ if [[ $SIG_EXISTS -eq 1 ]]; then
   SIG_SIGNING_FPR=$(grep '^\[GNUPG:\] VALIDSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $3}' | tr '[:lower:]' '[:upper:]')
   SIG_PRIMARY_FPR=$(grep '^\[GNUPG:\] VALIDSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $NF}' | tr '[:lower:]' '[:upper:]')
   echo "Signature by signing-key $SIG_SIGNING_FPR (primary key $SIG_PRIMARY_FPR)"
+
+  # REVOCATION PRECEDENCE: check the registry's revoked set BEFORE the
+  # allowlist. A key revoked in trusted-publishers.json is rejected even if
+  # the local GPG keyring has not imported the revocation certificate and
+  # even if it was named via --trusted-key.
+  for rfpr in "${REVOKED_FINGERPRINTS[@]}"; do
+    if [[ "$SIG_PRIMARY_FPR" == "$rfpr" || "$SIG_SIGNING_FPR" == "$rfpr" ]]; then
+      echo "ERROR: signer key is REVOKED in the trusted publishers registry ($rfpr) — rejected regardless of keyring state or --trusted-key." >&2
+      exit 1
+    fi
+  done
 
   # Verify the PRIMARY key fingerprint is an authorized publisher.
   IS_TRUSTED=0

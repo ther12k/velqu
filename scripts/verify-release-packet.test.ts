@@ -238,6 +238,44 @@ describe("verify-release-packet verification suite (#1321 / M8-003)", () => {
     }
   }, 20_000);
 
+  test("registry revocation beats --trusted-key even when the keyring does not know the revocation", () => {
+    const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-registry-revoked-"));
+    try {
+      createMockPacket(packetDir);
+      // Sign with a key that is cryptographically valid in the keyring
+      // (no revocation certificate imported — GPG will report
+      // GOODSIG + VALIDSIG on verification).
+      signManifest(packetDir, untrustedFingerprint);
+
+      // A registry copy that both ALLOWLISTS the untrusted key as active
+      // AND lists it as revoked — revocation must win over the allowlist
+      // and over --trusted-key.
+      const registryCopy = join(packetDir, "registry-copy.json");
+      writeFileSync(
+        registryCopy,
+        JSON.stringify({
+          format: "velqu-trusted-publishers-v1",
+          version: 1,
+          publishers: [
+            { id: "sneaky", name: "Sneaky Key", email: "untrusted@attacker.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: untrustedFingerprint, status: "active" },
+            { id: "sneaky-revoked", name: "Sneaky Key (revoked)", email: "untrusted@attacker.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: untrustedFingerprint, status: "revoked" },
+          ],
+          revokedKeys: [untrustedFingerprint],
+        }, null, 2),
+      );
+
+      const proc = Bun.spawnSync(
+        ["bash", verifierBin, "--packet-dir", packetDir, "--require-signature", "--trusted-keys-file", registryCopy, "--trusted-key", untrustedFingerprint],
+        { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
+      );
+      const stderr = new TextDecoder().decode(proc.stderr);
+      expect(proc.exitCode).toBe(1);
+      expect(stderr).toContain("REVOKED in the trusted publishers registry");
+    } finally {
+      rmSync(packetDir, { recursive: true, force: true });
+    }
+  });
+
   test("fail-closed on EXPIRED signing key (no GOODSIG)", () => {
     const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-expired-"));
     try {
