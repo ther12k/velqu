@@ -47,9 +47,9 @@ VELQU_SIGN_RELEASE=1 VELQU_GPG_KEY=<AUTHORIZED_KEY_FINGERPRINT> ./scripts/releas
 ### Invariants:
 1. Working tree must be strictly clean (`git status --porcelain` must be empty).
 2. The release runtime binary (`target/release/velqu-runtime`) must exist and be built from the exact HEAD commit.
-3. Every artifact is checksummed into `SHA256SUMS.txt`.
-4. `gpg --batch --yes --armor --detach-sign` creates `SHA256SUMS.txt.asc`.
-5. The packet immediately executes self-verification via `scripts/verify-release-packet.sh --require-signature`. If signing or verification fails, the release script aborts fail-closed with a non-zero exit code. **There is zero silent fallback to unsigned releases.**
+3. Every artifact is checksummed into `SHA256SUMS.txt` — including nested manifests such as `npm-tarballs/SHA256SUMS.txt`; only the top-level manifest and its own signature are excluded.
+4. `gpg --batch --yes --armor --local-user <key> --detach-sign` creates `SHA256SUMS.txt.asc`. The signer identity is **mandatory** in signing mode and pinned with `--local-user` (NOT `--default-key`, which GnuPG may silently ignore when the named key is unavailable, falling back to another key); if the requested key is absent, signing fails rather than choosing a different signer.
+5. The packet immediately executes self-verification via `scripts/verify-release-packet.sh --require-signature --trusted-key <the same key>`, proving the signature was made by the identity that was requested. If signing or verification fails, the release script aborts fail-closed with a non-zero exit code. **There is zero silent fallback to unsigned releases.**
 
 ---
 
@@ -66,10 +66,11 @@ scripts/verify-release-packet.sh --packet-dir release/ --require-signature --tru
 ```
 
 ### Verification Checks Performed:
-1. **Signature Validity**: Validates `SHA256SUMS.txt.asc` over `SHA256SUMS.txt` using machine-readable GPG status output (`[GNUPG:] VALIDSIG` and `[GNUPG:] GOODSIG`). BADSIG or ERRSIG fails immediately.
-2. **Authorized Publisher Trust**: Asserts that the signer key fingerprint exists in `docs/production/operational/trusted-publishers.json` with status `active`. Unrecognized or revoked keys fail closed.
-3. **Artifact Integrity**: Executes `sha256sum -c SHA256SUMS.txt` verifying every artifact's byte hash matches the signed manifest.
-4. **Packet Completeness**: Checks that no unlisted or extraneous files exist in the release directory.
+1. **Signature Validity**: machine-readable GPG status is captured separately from human output, and the **gpg exit code is preserved**. Acceptance requires BOTH `[GNUPG:] GOODSIG` (key/signature status acceptable) AND `[GNUPG:] VALIDSIG` (cryptographic validity) for the same signature. `BADSIG`, `ERRSIG`, `NO_PUBKEY`, and `UNEXPECTED` fail immediately.
+2. **Revocation and Expiry**: `REVKEYSIG` (revoked signing key), `EXPKEYSIG` (expired signing key), and `EXPSIG` (expired signature) are rejected explicitly — `VALIDSIG` alone (cryptographic validity without key-status acceptance) is never sufficient, even when the fingerprint is allowlisted. Note GnuPG can exit 0 for expired-key signatures; the explicit status rejection is what catches this.
+3. **Authorized Publisher Trust (primary-key pinning)**: the registry `docs/production/operational/trusted-publishers.json` pins **PRIMARY key fingerprints**. When a signature is made by a signing subkey, GnuPG's `VALIDSIG` line carries the signing subkey fingerprint in its first field and the PRIMARY key fingerprint in its last field; the verifier matches the **primary** field against the registry. A subkey signature is accepted only because its primary key is pinned — trust is never widened to the subkey itself.
+4. **Artifact Integrity**: Executes `sha256sum -c SHA256SUMS.txt` verifying every artifact's byte hash matches the signed manifest.
+5. **Packet Completeness**: parses the manifest into a set of literal paths and compares filenames with fixed-string whole-line matching (never regex), so an unlisted `velqu.runtime` is not covered by a manifest entry `velqu-runtime`.
 
 ---
 

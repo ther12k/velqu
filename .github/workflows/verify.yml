@@ -50,6 +50,12 @@ jobs:
       - name: Full verification
         run: ./scripts/verify
 
+      # #1321 / M8-003: the release signing/verification test suite runs on
+      # the same lane (gpg is preinstalled on GitHub ubuntu runners); it uses
+      # isolated ephemeral keyrings and never touches publisher keys.
+      - name: Verify release-packet signing behavior
+        run: bun test scripts/verify-release-packet.test.ts
+
   okf-only:
     runs-on: ubuntu-latest
     timeout-minutes: 5

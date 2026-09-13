@@ -112,10 +112,11 @@ done
 
 # BETA-015-G: single top-level checksum manifest over every shipped file
 # (packet artifacts, SBOM, and npm tarballs). Nested SHA256SUMS.txt files
-# verify independently inside their own directory.
+# (e.g. npm-tarballs/SHA256SUMS.txt) ARE checksummed into the top-level manifest,
+# while only the top-level manifest itself and its signature are excluded.
 (
   cd "$OUT"
-  find . -type f ! -name SHA256SUMS.txt ! -name "SHA256SUMS.txt.asc" | sed 's|^\./||' | LC_ALL=C sort |
+  find . -type f ! -path "./SHA256SUMS.txt" ! -path "./SHA256SUMS.txt.asc" | sed 's|^\./||' | LC_ALL=C sort |
     while IFS= read -r f; do
       sha256sum "$f"
     done > SHA256SUMS.txt
@@ -133,16 +134,20 @@ if [[ $SIGN -eq 1 ]]; then
     exit 1
   fi
 
-  GPG_ARGS=(--batch --yes --armor --detach-sign)
-  if [[ -n "$GPG_KEY" ]]; then
-    GPG_ARGS+=(--default-key "$GPG_KEY")
+  if [[ -z "$GPG_KEY" ]]; then
+    echo "ERROR: release signing requested (--sign) but no publisher key specified (--key or VELQU_GPG_KEY)." >&2
+    echo "GnuPG requires an explicit authorized signer identity; failing closed (no silent fallback)." >&2
+    exit 1
   fi
+
+  # Use --local-user to explicitly enforce the chosen signer key (not --default-key which can silently fall back)
+  GPG_ARGS=(--batch --yes --armor --detach-sign --local-user "$GPG_KEY")
 
   gpg "${GPG_ARGS[@]}" --output "$OUT/SHA256SUMS.txt.asc" "$OUT/SHA256SUMS.txt"
   echo "SIGNATURE-GENERATED: $OUT/SHA256SUMS.txt.asc"
 
-  # Immediately self-verify with required signature
-  ./scripts/verify-release-packet.sh --packet-dir "$OUT" --require-signature
+  # Immediately self-verify with required signature and required signer key
+  ./scripts/verify-release-packet.sh --packet-dir "$OUT" --require-signature --trusted-key "$GPG_KEY"
 else
   # Verify checksums and completeness
   ./scripts/verify-release-packet.sh --packet-dir "$OUT"
