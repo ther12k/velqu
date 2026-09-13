@@ -1,0 +1,149 @@
+{
+ "campaign": "ga-m6-sustained-fuzz",
+ "startedAt": "2026-09-12T12:06:16Z",
+ "durationPerTargetSecs": 900,
+ "seed": 1789214776,
+ "fuzzer": "libFuzzer (cargo-fuzz 0.13.2, nightly 1.100.0-nightly)",
+ "failClosed": "exit is non-zero if any target errors, any new finding appears, or any sanitizer stage fails",
+ "targets": [
+  {
+   "target": "pack_verify",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 18923,
+   "corpusAfter": 27442,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "router_match",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 215,
+   "corpusAfter": 237,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "http_decode",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 2360,
+   "corpusAfter": 2730,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "schema_validate",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 10160,
+   "corpusAfter": 13230,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "bridge_handles",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 129,
+   "corpusAfter": 142,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "codec_encoders",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 3314,
+   "corpusAfter": 6956,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  },
+  {
+   "target": "capabilities_policy",
+   "durationSecs": 900,
+   "exitCode": 0,
+   "corpusBefore": 1355,
+   "corpusAfter": 3196,
+   "newFindings": 0,
+   "result": "zero-findings",
+   "note": "no crash/leak/timeout/OOM artifact and clean exit during the configured campaign; explicit zero-findings record, not a bare green claim"
+  }
+ ],
+ "totalNewFindings": 0,
+ "sanitizerCampaign": {
+  "S1": {
+   "stage": "ASan workspace pass",
+   "command": "RUSTFLAGS='-Zsanitizer=address' cargo +nightly test --workspace",
+   "exitCode": 0,
+   "log": "benchmarks/raw/ga-m6-fuzz/asan-workspace.log",
+   "result": "zero-findings"
+  },
+  "S2": {
+   "stage": "UBSan over the QuickJS C FFI (clang -fsanitize=undefined, -fno-sanitize-recover=all; test binary linked by clang)",
+   "command": "CC=clang CFLAGS='-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer' RUSTFLAGS='-Clinker=clang -Clink-arg=-fsanitize=undefined' cargo +nightly test -p q-engine-quickjs",
+   "exitCode": 0,
+   "log": "benchmarks/raw/ga-m6-fuzz/ubsan-quickjs-ffi.log",
+   "result": "zero-findings"
+  },
+  "note": "Two separate stages: rustc -Zsanitizer accepts ONE sanitizer and 'undefined' is not in its set (owner correction 2026-09-12); C-side UBSan is realized through clang instrumentation of the quickjs-ng sources at the rquickjs-sys cc build plus a clang-linked test binary."
+ },
+ "verdict": {
+  "totalNewFindings": 0,
+  "fuzzFailed": false,
+  "sanitizerFailed": false,
+  "campaignPassed": true,
+  "rule": "closing #1318 requires campaignPassed=true AND every finding dispositioned (regression test or owner-accepted risk)"
+ },
+ "applicabilityMatrix": {
+  "format": "velqu-sanitizer-applicability-v1",
+  "snapshot": "2026-09-12",
+  "requirement": "M6-003: applicable ASan/LSan/TSan/UBSan/Miri/Loom-style checks pass or carry an explicit platform/applicability waiver",
+  "techniques": [
+   {
+    "technique": "ASan",
+    "status": "exercised",
+    "evidence": "S1 stage of scripts/fuzz-campaign.sh \u2014 RUSTFLAGS='-Zsanitizer=address' over cargo +nightly test --workspace; log benchmarks/raw/ga-m6-fuzz/asan-workspace.log"
+   },
+   {
+    "technique": "LSan",
+    "status": "covered-by-ASan",
+    "evidence": "LeakSanitizer is enabled by default in the Rust ASan build on Linux; the S1 workspace pass therefore exercises leak detection with zero leaks required for exit 0 (same log as ASan)"
+   },
+   {
+    "technique": "UBSan",
+    "status": "exercised (QuickJS C FFI)",
+    "evidence": "S2 stage \u2014 quickjs-ng sources compiled by the rquickjs-sys cc build with clang -fsanitize=undefined -fno-sanitize-recover=all; test binary linked by clang. Rust-side UBSan is not separately run: rustc -Zsanitizer accepts one sanitizer per build and the workspace's release-critical invariants are exercised under ASan S1"
+   },
+   {
+    "technique": "Miri",
+    "status": "per-crate include/exclude map",
+    "evidence": "fuzz/miri-scope.json \u2014 included: q-runtime-model, q-router, q-schema-runtime, q-bridge, q-pack; all others excluded with recorded reasons and compensations; unsafe-audit.py fails closed on a crate missing from the map"
+   },
+   {
+    "technique": "TSan",
+    "status": "explicit applicability waiver",
+    "evidence": "The concurrency-critical first-party surface (q-bridge bounded slab, dispatcher fairness/shutdown, worker lifecycle) is exercised by deterministic property suites (q-bridge slab lifecycle/fuzz target, M3-005/M3-008 fairness + shutdown, M3-007 cancellation) and the 24h/72h soak under concurrent producers. Full-workspace TSan is waived for M6-003: tokio/hyper do not compile cleanly under TSan without tokio_unstable cfg churn, and the serving path contains no custom lock-free algorithm where TSan's unique value lies. Revisit trigger: any hand-rolled lock-free structure entering the serving path.",
+    "waiver": "M6-003-applicability (owner review 2026-09-12)"
+   },
+   {
+    "technique": "Loom-style",
+    "status": "explicit applicability waiver",
+    "evidence": "Loom model-checks custom schedulers/lock-free structures; Velqu's scheduler is tokio with bounded channels and generation-checked slots whose interleavings are covered by the deterministic property suites above plus the chaos program (M3-010-B, beta-009-d). No custom lock-free algorithm exists in the serving path. Revisit trigger: same as TSan.",
+    "waiver": "M6-003-applicability (owner review 2026-09-12)"
+   }
+  ]
+ },
+ "tsEncoderCampaign": {
+  "surface": "packages/treaty encoders (TypeScript; cargo-fuzz cannot reach)",
+  "ledger": "benchmarks/raw/ga-m6-fuzz/ts-treaty-ledger.json",
+  "totalFindings": 0
+ }
+}
