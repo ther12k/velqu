@@ -2,13 +2,13 @@ name: perf-gate
 
 # #1319 / M6-009: merge-blocking performance gates, deliberately SEPARATE
 # from the functional `verify` lane. Two gates:
-#   1. cold-start-regression — boot-to-ready p50/p95 against committed
-#      bounds (benchmarks/gate-thresholds.json). Loose bounds catch
-#      catastrophic startup collapses; tightening is an owner benchmark
-#      decision (constraint 12).
-# Runs on runtime-affecting paths, weekly, and on demand. Not part of
-# scripts/verify: timing gates in per-PR verify would flake on shared
-# runners; a bound this loose still trips on real collapses.
+#   1. cold-start — boot-to-ready p50/p95 against committed bounds.
+#   2. throughput-latency — warm throughput (min rps) & latency (max p50/p95/p99)
+#      across C0 (static liveness), C1 (text), C2 (JSON), and C3 (validated path).
+# Both gates enforce fail-closed regression checks against benchmarks/gate-thresholds.json.
+#
+# Runs on runtime-affecting paths, dependency/toolchain changes, threshold/gate
+# script updates, weekly, and on demand.
 
 on:
   workflow_dispatch:
@@ -16,13 +16,16 @@ on:
     - cron: "0 4 * * 1" # weekly, Monday 04:00 UTC
   pull_request:
     paths:
-      - "crates/q-runtime/**"
-      - "crates/q-engine/**"
-      - "crates/q-engine-quickjs/**"
-      - "crates/q-http/**"
-      - "crates/q-bridge/**"
-      - "crates/q-router/**"
-      - "crates/q-pack/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "package.json"
+      - "bun.lock"
+      - "crates/**"
+      - "examples/proof/**"
+      - "scripts/cold-start-gate.ts"
+      - "scripts/throughput-latency-gate.ts"
+      - "benchmarks/gate-thresholds.json"
       - ".github/workflows/perf-gate.yml"
 
 jobs:
@@ -53,3 +56,33 @@ jobs:
         run: cargo build --release -p velqu-runtime
       - name: Cold-start regression gate
         run: bun scripts/cold-start-gate.ts --samples 20
+
+  throughput-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain (pinned)
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal
+          rustup default 1.96.0
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: perf-gate-x86_64-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+      - name: Build release runtime
+        run: cargo build --release -p velqu-runtime
+      - name: Build proof pack
+        run: bun packages/cli/src/index.ts build --project examples/proof
+      - name: Throughput and latency regression gate
+        run: bun scripts/throughput-latency-gate.ts --duration-secs 3 --concurrency 10

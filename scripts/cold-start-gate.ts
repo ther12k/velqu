@@ -25,19 +25,33 @@ const samplesFlag = process.argv.indexOf("--samples");
 const SAMPLES =
   samplesFlag !== -1 ? Number(process.argv[samplesFlag + 1]) || 20 : 20;
 
-interface Thresholds {
+interface ThresholdsDoc {
   format: string;
   note: string;
-  baseline: { date: string; toReadyP50Ms: number; host: string };
-  bounds: { toReadyP50Ms: number; toReadyP95Ms: number };
+  coldStart?: {
+    note: string;
+    baseline: { date: string; toReadyP50Ms: number; host: string };
+    bounds: { toReadyP50Ms: number; toReadyP95Ms: number };
+  };
+  baseline?: { date: string; toReadyP50Ms: number; host: string };
+  bounds?: { toReadyP50Ms: number; toReadyP95Ms: number };
 }
 
-const thresholds: Thresholds = JSON.parse(
+const thresholdsDoc: ThresholdsDoc = JSON.parse(
   readFileSync(join(root, "benchmarks", "gate-thresholds.json"), "utf8"),
 );
 
-if (!existsSync(join(root, "target", "release", "velqu-runtime"))) {
-  console.error("cold-start-gate: target/release/velqu-runtime not built");
+const bounds = thresholdsDoc.coldStart?.bounds ?? thresholdsDoc.bounds;
+const baseline = thresholdsDoc.coldStart?.baseline ?? thresholdsDoc.baseline;
+
+if (!bounds || typeof bounds.toReadyP50Ms !== "number" || typeof bounds.toReadyP95Ms !== "number") {
+  console.error("cold-start-gate: invalid or missing bounds in benchmarks/gate-thresholds.json");
+  process.exit(2);
+}
+
+const bin = join(root, "target", "release", "velqu-runtime");
+if (!existsSync(bin)) {
+  console.error(`cold-start-gate: target/release/velqu-runtime not built at ${bin}`);
   process.exit(2);
 }
 
@@ -46,18 +60,19 @@ if (!existsSync(join(root, "target", "release", "velqu-runtime"))) {
 // unchanged). Building out-of-tree is rejected by the import policy
 // (B-003), so a throwaway project copy is not an option.
 const pack = join(root, "examples", "proof", "dist", "app.qpack");
-try {
-  await $`bun packages/cli/src/index.ts build --project examples/proof`.quiet();
-} catch (e) {
-  console.error(`cold-start-gate: proof build failed: ${e}`);
-  process.exit(2);
+if (!existsSync(pack)) {
+  try {
+    await $`bun packages/cli/src/index.ts build --project examples/proof`.quiet();
+  } catch (e) {
+    console.error(`cold-start-gate: proof build failed: ${e}`);
+    process.exit(2);
+  }
 }
 if (!existsSync(pack)) {
   console.error("cold-start-gate: proof pack missing after build");
   process.exit(2);
 }
 
-const bin = join(root, "target", "release", "velqu-runtime");
 const toReady: number[] = [];
 
 for (let i = 0; i < SAMPLES; i++) {
@@ -68,14 +83,14 @@ for (let i = 0; i < SAMPLES; i++) {
     stderr: "ignore",
   });
   try {
-    const deadline = Date.now() + thresholds.bounds.toReadyP95Ms + 5_000;
+    const deadline = Date.now() + bounds.toReadyP95Ms + 5_000;
     for (;;) {
       try {
-        const res = await fetch(`http://127.0.0.1:${port}/greet/ping`);
+        const res = await fetch(`http://127.0.0.1:${port}/health/live`);
         await res.arrayBuffer();
         break;
       } catch {
-        if (Date.now() > deadline) throw new Error(`sample ${i}: not ready`);
+        if (Date.now() > deadline) throw new Error(`sample ${i}: not ready within deadline`);
         await Bun.sleep(5);
       }
     }
@@ -92,24 +107,37 @@ const pct = (p: number) =>
 const p50 = pct(0.5);
 const p95 = pct(0.95);
 
+const p50Pass = p50 <= bounds.toReadyP50Ms;
+const p95Pass = p95 <= bounds.toReadyP95Ms;
+const pass = p50Pass && p95Pass;
+
 const report = {
   gate: "cold-start-regression",
   date: new Date().toISOString(),
+  candidate: "velqu-runtime",
   samples: SAMPLES,
-  bounds: thresholds.bounds,
+  baseline: baseline ?? null,
+  bounds,
   measured: { toReadyP50Ms: p50, toReadyP95Ms: p95, allMs: toReady },
-  pass:
-    p50 <= thresholds.bounds.toReadyP50Ms &&
-    p95 <= thresholds.bounds.toReadyP95Ms,
+  pass,
 };
 console.log(JSON.stringify(report, null, 2));
 
-if (!report.pass) {
-  console.error(
-    `cold-start-gate: FAIL — p50 ${p50}ms / p95 ${p95}ms exceeds bounds ` +
-      `${thresholds.bounds.toReadyP50Ms}/${thresholds.bounds.toReadyP95Ms}ms. ` +
-      `Functional readiness passing no longer implies acceptable startup.`,
-  );
+console.log("\n--- Cold-Start Threshold Evaluations ---");
+console.log("Metric | Measured | Threshold | Baseline | Unit | Direction | Status");
+console.log("---|---:|---:|---:|---|---|---");
+console.log(`boot_to_ready_p50 | ${p50.toFixed(2)} | ${bounds.toReadyP50Ms} | ${baseline?.toReadyP50Ms ?? "N/A"} | ms | <= max | ${p50Pass ? "PASS" : "FAIL"}`);
+console.log(`boot_to_ready_p95 | ${p95.toFixed(2)} | ${bounds.toReadyP95Ms} | N/A | ms | <= max | ${p95Pass ? "PASS" : "FAIL"}`);
+
+if (!pass) {
+  console.error(`\n✗ cold-start-gate: FAIL — boot-to-ready regression threshold violation:`);
+  if (!p50Pass) {
+    console.error(`  - p50 ${p50.toFixed(2)} ms exceeds maximum threshold ${bounds.toReadyP50Ms} ms (baseline: ${baseline?.toReadyP50Ms ?? "N/A"} ms)`);
+  }
+  if (!p95Pass) {
+    console.error(`  - p95 ${p95.toFixed(2)} ms exceeds maximum threshold ${bounds.toReadyP95Ms} ms`);
+  }
+  console.error(`Functional readiness passing no longer implies acceptable startup.`);
   process.exit(1);
 }
-console.log("cold-start-gate: PASS");
+console.log("\n✓ cold-start-gate: PASS — cold-start performance within approved budgets.");
