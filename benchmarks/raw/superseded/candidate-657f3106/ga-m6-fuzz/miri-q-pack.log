@@ -1,0 +1,87 @@
+warning: unused workspace dependency `q-bench-support`
+  --> Cargo.toml:43:1
+   |
+43 | q-bench-support = { path = "crates/q-bench-support" }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_workspace_dependencies` is set to `warn` by default
+help: consider removing the workspace dependency `q-bench-support`
+warning: unused workspace dependency `q-runtime`
+  --> Cargo.toml:32:1
+   |
+32 | q-runtime = { path = "crates/q-runtime" }
+   | ^^^^^^^^^
+   |
+help: consider removing the workspace dependency `q-runtime`
+warning: unused workspace dependency `tokio-postgres`
+  --> Cargo.toml:52:1
+   |
+52 | tokio-postgres = { version = "0.7", features = ["runtime"] }
+   | ^^^^^^^^^^^^^^
+   |
+help: consider removing the workspace dependency `tokio-postgres`
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+
+running 100 tests
+.............................error: unsupported operation: Miri does not support file-backed memory mappings
+   --> /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memmap2-0.9.11/src/unix.rs:101:13
+    |
+101 | /             mmap(
+102 | |                 std::ptr::null_mut(),
+103 | |                 map_len as libc::size_t,
+104 | |                 prot,
+...   |
+107 | |                 aligned_offset as off_t,
+108 | |             )
+    | |_____________^ unsupported operation occurred here
+    |
+    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+    = note: this is on thread `qpack2::tests::`
+    = note: stack backtrace:
+            0: memmap2::os::MmapInner::new
+                at /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memmap2-0.9.11/src/unix.rs:101:13: 108:14
+            1: memmap2::os::MmapInner::map
+                at /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memmap2-0.9.11/src/unix.rs:254:9: 260:10
+            2: memmap2::MmapOptions::map::<&std::fs::File>
+                at /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memmap2-0.9.11/src/lib.rs:432:9: 438:10
+            3: memmap2::Mmap::map::<&std::fs::File>
+                at /home/ther12k/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memmap2-0.9.11/src/lib.rs:764:18: 764:46
+            4: qpack2::reader::PackBytes::open
+                at crates/q-pack/src/lib.rs:615:44: 615:69
+            5: qpack2::tests::pack_bytes_mapped_and_owned_validate_identically_zero_copy
+                at crates/q-pack/src/lib.rs:3094:26: 3094:56
+            6: qpack2::tests::pack_bytes_mapped_and_owned_validate_identically_zero_copy::{closure#0}
+                at crates/q-pack/src/lib.rs:3078:72: 3078:72
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
+error: test failed, to rerun pass `-p q-pack --lib`
+
+Caused by:
+  process didn't exit successfully: `/home/ther12k/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo-miri runner /home/ther12k/Workspace/Learning/velqu/target/miri/x86_64-unknown-linux-gnu/debug/build/q-pack/dc69df7728074667/out/q_pack-dc69df7728074667 --quiet` (exit status: 1)

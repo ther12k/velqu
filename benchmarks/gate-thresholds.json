@@ -1,6 +1,18 @@
 {
-  "format": "velqu-cold-start-gate-v1",
-  "note": "Performance gate bounds for scripts/cold-start-gate.ts (#1319/M6-009). Deliberately loose (~80x baseline) so CI runner noise cannot flake the gate; the gate exists to catch catastrophic startup collapses (multi-second/minute) that functional readiness tests miss. Baseline from benchmarks/raw/cold-start/summary.json (velqu C0..C5 toReady p50 ~6.3ms, 2026-09-10 host run). Tightening is an owner benchmark decision per AGENTS constraint 12.",
+  "format": "velqu-gate-thresholds-v2",
+  "note": "Merge-blocking performance gate thresholds for scripts/cold-start-gate.ts and scripts/throughput-latency-gate.ts (#1319 / M6-009). Bounds are deliberately generous floors designed to catch catastrophic regressions (e.g. 10x-36x latency blowups or 70-90% throughput collapses) without flaking on noisy shared CI runners; they do not guarantee detection of moderate regressions (tightening requires an owner benchmark decision per AGENTS constraint 12).",
+  "coldStart": {
+    "note": "Boot-to-ready bounds for cold-start-gate.ts. Baseline from benchmarks/raw/cold-start/summary.json (velqu C0..C5 toReady p50 ~6.3ms, 2026-09-10 host run).",
+    "baseline": {
+      "date": "2026-09-10",
+      "toReadyP50Ms": 6.3,
+      "host": "13th Gen Intel(R) Core(TM) i5-13420H, Linux 7.0.0"
+    },
+    "bounds": {
+      "toReadyP50Ms": 500,
+      "toReadyP95Ms": 1500
+    }
+  },
   "baseline": {
     "date": "2026-09-10",
     "toReadyP50Ms": 6.3,
@@ -9,5 +21,82 @@
   "bounds": {
     "toReadyP50Ms": 500,
     "toReadyP95Ms": 1500
+  },
+  "throughputLatency": {
+    "note": "Throughput (min rps) and latency (max p50/p95/p99 us) collapse-prevention thresholds for scripts/throughput-latency-gate.ts. Evaluated over C0 (static liveness), C1 (JS text), C2 (JS JSON), and C3 (validated parameter). Baseline from benchmarks/raw/warm/summary.json (10s cells, c=10, 2026-09-10 host run). Bounds are generous floors (~10-25% of baseline throughput, 10x-36x baseline p99 latency) to reliably catch severe performance collapses in shared CI environments without flaking.",
+    "baseline": {
+      "date": "2026-09-10",
+      "host": "13th Gen Intel(R) Core(TM) i5-13420H, Linux 7.0.0",
+      "concurrency": 10,
+      "source": "benchmarks/raw/warm/summary.json"
+    },
+    "concurrency": 10,
+    "durationSecs": 3,
+    "routes": {
+      "C0": {
+        "path": "/health/live",
+        "description": "Static native liveness (bypasses JS execution)",
+        "baseline": {
+          "rps": 60959,
+          "p50Us": 129.5,
+          "p95Us": 330.2,
+          "p99Us": 684.4
+        },
+        "bounds": {
+          "minRps": 10000,
+          "maxP50Us": 2500,
+          "maxP95Us": 8000,
+          "maxP99Us": 20000
+        }
+      },
+      "C1": {
+        "path": "/js-text",
+        "description": "JavaScript computed plaintext string",
+        "baseline": {
+          "rps": 38556,
+          "p50Us": 181.1,
+          "p95Us": 608.7,
+          "p99Us": 1373.6
+        },
+        "bounds": {
+          "minRps": 5000,
+          "maxP50Us": 4000,
+          "maxP95Us": 12000,
+          "maxP99Us": 30000
+        }
+      },
+      "C2": {
+        "path": "/js-json",
+        "description": "JavaScript computed small JSON object",
+        "baseline": {
+          "rps": 49115,
+          "p50Us": 179.3,
+          "p95Us": 362.5,
+          "p99Us": 834.0
+        },
+        "bounds": {
+          "minRps": 5000,
+          "maxP50Us": 4000,
+          "maxP95Us": 12000,
+          "maxP99Us": 30000
+        }
+      },
+      "C3": {
+        "path": "/hello/Rafi",
+        "description": "Parameterized route with schema validation",
+        "baseline": {
+          "rps": 34528,
+          "p50Us": 249.3,
+          "p95Us": 503.5,
+          "p99Us": 1217.4
+        },
+        "bounds": {
+          "minRps": 4000,
+          "maxP50Us": 5000,
+          "maxP95Us": 15000,
+          "maxP99Us": 35000
+        }
+      }
+    }
   }
 }
