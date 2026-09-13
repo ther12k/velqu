@@ -15,12 +15,14 @@
  *   - Latency (microseconds, µs): measured <= threshold (lower is better) for
  *     p50, p95, and p99 percentiles.
  *   - Errors: 0 allowed. Missing, empty, or invalid measurements FAIL closed.
+ *   - Strict bounds validation: every threshold bound must be a finite positive number.
+ *   - Route filter validation: unknown route IDs in --routes fail closed.
  *
- * Usage: bun scripts/throughput-latency-gate.ts [--duration-secs N] [--concurrency N] [--routes C0,C1...]
+ * Usage: bun scripts/throughput-latency-gate.ts [--thresholds <path>] [--duration-secs N] [--concurrency N] [--routes C0,C1...]
  */
 import { $ } from "bun";
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const root = join(import.meta.dir, "..");
 
@@ -29,10 +31,13 @@ function argValue(name: string): string | undefined {
   return i !== -1 ? process.argv[i + 1] : undefined;
 }
 
-const DURATION_SECS = Number(argValue("--duration-secs")) || 3;
-const CONCURRENCY = Number(argValue("--concurrency")) || 10;
-const ROUTES_FILTER = argValue("--routes")?.split(",").map((s) => s.trim());
-const BASE_PORT = Number(argValue("--port")) || 19500;
+const customThresholdsPath = argValue("--thresholds");
+const thresholdsPath = customThresholdsPath ? resolve(customThresholdsPath) : join(root, "benchmarks", "gate-thresholds.json");
+
+if (!existsSync(thresholdsPath)) {
+  console.error(`throughput-latency-gate: thresholds file missing at ${thresholdsPath}`);
+  process.exit(2);
+}
 
 interface RouteThresholds {
   path: string;
@@ -68,16 +73,81 @@ interface ThresholdsDoc {
   };
 }
 
-const thresholdsPath = join(root, "benchmarks", "gate-thresholds.json");
-if (!existsSync(thresholdsPath)) {
-  console.error(`throughput-latency-gate: thresholds file missing at ${thresholdsPath}`);
+let doc: ThresholdsDoc;
+try {
+  doc = JSON.parse(readFileSync(thresholdsPath, "utf8"));
+} catch (e) {
+  console.error(`throughput-latency-gate: failed to parse thresholds JSON at ${thresholdsPath}: ${e}`);
   process.exit(2);
 }
 
-const doc: ThresholdsDoc = JSON.parse(readFileSync(thresholdsPath, "utf8"));
 const config = doc.throughputLatency;
-if (!config || !config.routes || Object.keys(config.routes).length === 0) {
-  console.error("throughput-latency-gate: no throughputLatency.routes configured in benchmarks/gate-thresholds.json");
+if (!config || !config.routes || typeof config.routes !== "object" || Object.keys(config.routes).length === 0) {
+  console.error("throughput-latency-gate: no valid throughputLatency.routes configured in thresholds file");
+  process.exit(2);
+}
+
+// Duration & Concurrency: use JSON configuration as default with optional CLI override
+const cliDuration = argValue("--duration-secs");
+const cliConcurrency = argValue("--concurrency");
+const DURATION_SECS = cliDuration !== undefined ? Number(cliDuration) : config.durationSecs ?? 3;
+const CONCURRENCY = cliConcurrency !== undefined ? Number(cliConcurrency) : config.concurrency ?? 10;
+
+if (!Number.isFinite(DURATION_SECS) || DURATION_SECS <= 0) {
+  console.error(`throughput-latency-gate: invalid durationSecs: ${DURATION_SECS}. Must be a positive number.`);
+  process.exit(2);
+}
+if (!Number.isInteger(CONCURRENCY) || CONCURRENCY <= 0) {
+  console.error(`throughput-latency-gate: invalid concurrency: ${CONCURRENCY}. Must be a positive integer.`);
+  process.exit(2);
+}
+
+// Strict validation of route bounds: every bound must be finite and > 0
+for (const [routeId, spec] of Object.entries(config.routes)) {
+  if (!spec || typeof spec !== "object") {
+    console.error(`throughput-latency-gate: route ${routeId} specification missing or not an object`);
+    process.exit(2);
+  }
+  if (!spec.path || typeof spec.path !== "string") {
+    console.error(`throughput-latency-gate: route ${routeId} missing path string`);
+    process.exit(2);
+  }
+  const b = spec.bounds;
+  if (!b || typeof b !== "object") {
+    console.error(`throughput-latency-gate: route ${routeId} missing bounds object`);
+    process.exit(2);
+  }
+  const requiredNumericBounds: Array<keyof typeof b> = ["minRps", "maxP50Us", "maxP95Us", "maxP99Us"];
+  for (const key of requiredNumericBounds) {
+    const val = b[key];
+    if (typeof val !== "number" || !Number.isFinite(val) || val <= 0) {
+      console.error(`throughput-latency-gate: route ${routeId} has invalid or non-positive bound '${key}': ${val}`);
+      process.exit(2);
+    }
+  }
+}
+
+// Route selection: reject unknown routes fail-closed
+const knownRouteIds = Object.keys(config.routes);
+const cliRoutesRaw = argValue("--routes");
+const ROUTES_FILTER = cliRoutesRaw ? cliRoutesRaw.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
+
+let targetRouteIds: string[];
+if (ROUTES_FILTER) {
+  const unknownRoutes = ROUTES_FILTER.filter((r) => !knownRouteIds.includes(r));
+  if (unknownRoutes.length > 0) {
+    console.error(
+      `throughput-latency-gate: unknown route(s) in --routes: ${unknownRoutes.join(", ")}. Known routes: ${knownRouteIds.join(", ")}`,
+    );
+    process.exit(2);
+  }
+  targetRouteIds = ROUTES_FILTER;
+} else {
+  targetRouteIds = knownRouteIds;
+}
+
+if (targetRouteIds.length === 0) {
+  console.error("throughput-latency-gate: no target routes selected for benchmark");
   process.exit(2);
 }
 
@@ -163,14 +233,6 @@ async function runBenchmark(): Promise<{ measurements: Measurement[]; evaluation
 
     const measurements: Measurement[] = [];
     const evaluations: EvaluationResult[] = [];
-
-    const targetRouteIds = Object.keys(config!.routes).filter(
-      (id) => !ROUTES_FILTER || ROUTES_FILTER.includes(id),
-    );
-
-    if (targetRouteIds.length === 0) {
-      throw new Error(`No matching routes found for filter: ${ROUTES_FILTER?.join(", ")}`);
-    }
 
     for (const routeId of targetRouteIds) {
       const spec = config!.routes[routeId]!;
@@ -342,7 +404,8 @@ async function runBenchmark(): Promise<{ measurements: Measurement[]; evaluation
 
 async function main() {
   console.log("=== Performance Gate: Throughput & Latency Regression Check (#1319 / M6-009) ===");
-  console.log(`Duration: ${DURATION_SECS}s per route | Concurrency: ${CONCURRENCY} | Target routes: ${ROUTES_FILTER ? ROUTES_FILTER.join(", ") : "all"}`);
+  console.log(`Duration: ${DURATION_SECS}s per route | Concurrency: ${CONCURRENCY} | Target routes: ${targetRouteIds.join(", ")}`);
+  console.log(`Thresholds File: ${thresholdsPath}`);
   console.log(`Baseline Source: ${config!.baseline.source} (${config!.baseline.host})\n`);
 
   let res: { measurements: Measurement[]; evaluations: EvaluationResult[] };

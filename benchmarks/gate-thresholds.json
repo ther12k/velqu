@@ -1,6 +1,6 @@
 {
   "format": "velqu-gate-thresholds-v2",
-  "note": "Merge-blocking performance gate thresholds for scripts/cold-start-gate.ts and scripts/throughput-latency-gate.ts (#1319 / M6-009). Bounds are calibrated against committed baselines with CI runner tolerance to prevent flaking on noisy shared runners while catching catastrophic regressions (fail-closed). Tightening is an owner benchmark decision per AGENTS constraint 12.",
+  "note": "Merge-blocking performance gate thresholds for scripts/cold-start-gate.ts and scripts/throughput-latency-gate.ts (#1319 / M6-009). Bounds are deliberately generous floors designed to catch catastrophic regressions (e.g. 10x-36x latency blowups or 70-90% throughput collapses) without flaking on noisy shared CI runners; they do not guarantee detection of moderate regressions (tightening requires an owner benchmark decision per AGENTS constraint 12).",
   "coldStart": {
     "note": "Boot-to-ready bounds for cold-start-gate.ts. Baseline from benchmarks/raw/cold-start/summary.json (velqu C0..C5 toReady p50 ~6.3ms, 2026-09-10 host run).",
     "baseline": {
@@ -23,7 +23,7 @@
     "toReadyP95Ms": 1500
   },
   "throughputLatency": {
-    "note": "Throughput (min rps) and latency (max p50/p95/p99 us) thresholds for scripts/throughput-latency-gate.ts. Evaluated over C0 (static liveness), C1 (JS text), C2 (JS JSON), and C3 (validated parameter). Baseline from benchmarks/raw/warm/summary.json (10s cells, c=10, 2026-09-10 host run).",
+    "note": "Throughput (min rps) and latency (max p50/p95/p99 us) collapse-prevention thresholds for scripts/throughput-latency-gate.ts. Evaluated over C0 (static liveness), C1 (JS text), C2 (JS JSON), and C3 (validated parameter). Baseline from benchmarks/raw/warm/summary.json (10s cells, c=10, 2026-09-10 host run). Bounds are generous floors (~10-25% of baseline throughput, 10x-36x baseline p99 latency) to reliably catch severe performance collapses in shared CI environments without flaking.",
     "baseline": {
       "date": "2026-09-10",
       "host": "13th Gen Intel(R) Core(TM) i5-13420H, Linux 7.0.0",

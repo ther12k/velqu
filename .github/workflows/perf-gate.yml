@@ -7,8 +7,8 @@ name: perf-gate
 #      across C0 (static liveness), C1 (text), C2 (JSON), and C3 (validated path).
 # Both gates enforce fail-closed regression checks against benchmarks/gate-thresholds.json.
 #
-# Runs on runtime-affecting paths, dependency/toolchain changes, threshold/gate
-# script updates, weekly, and on demand.
+# Runs on runtime-affecting paths, dependency/toolchain changes, compiler/CLI packages,
+# threshold/gate script updates, weekly, and on demand.
 
 on:
   workflow_dispatch:
@@ -22,9 +22,11 @@ on:
       - "package.json"
       - "bun.lock"
       - "crates/**"
+      - "packages/**"
       - "examples/proof/**"
       - "scripts/cold-start-gate.ts"
       - "scripts/throughput-latency-gate.ts"
+      - "scripts/throughput-latency-gate.test.ts"
       - "benchmarks/gate-thresholds.json"
       - ".github/workflows/perf-gate.yml"
 
@@ -84,5 +86,7 @@ jobs:
         run: cargo build --release -p velqu-runtime
       - name: Build proof pack
         run: bun packages/cli/src/index.ts build --project examples/proof
+      - name: Verify regression-gate behavior (fail-closed test suite)
+        run: bun test scripts/throughput-latency-gate.test.ts
       - name: Throughput and latency regression gate
         run: bun scripts/throughput-latency-gate.ts --duration-secs 3 --concurrency 10
