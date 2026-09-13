@@ -2412,12 +2412,23 @@ fn problem_from_object(obj: &Object<'_>) -> Outcome {
     // M25-006-A: RFC 9457 extension members — every own property beyond
     // the standard envelope crosses (non-JSON values like functions are
     // skipped, never failing the whole problem), name-sorted for
-    // deterministic output.
+    // deterministic output. The reserved envelope member names (type,
+    // title, status, instance, detail, errors) and the internal problem
+    // markers never cross as extensions: the envelope is frozen, and an
+    // extension shadowing it would let a handler rewrite the problem's
+    // declared status/type/title (M6-002 codec_encoders campaign finding).
     let mut extensions: Vec<(String, serde_json::Value)> = Vec::new();
     for key in obj.keys::<String>().flatten() {
         if matches!(
             key.as_str(),
-            "__problem" | "problem" | "status" | "detail" | "errors"
+            "__problem"
+                | "problem"
+                | "type"
+                | "title"
+                | "status"
+                | "instance"
+                | "detail"
+                | "errors"
         ) {
             continue;
         }
