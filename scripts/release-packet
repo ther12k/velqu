@@ -2,8 +2,42 @@
 # Build a self-verifying release packet from the CURRENT commit.
 # Artifacts land in release/ (untracked). sha256sum -c SHA256SUMS.txt
 # must pass from inside release/ — the manifest lists only shipped files.
+#
+# #1321 / M8-003: supports detached OpenPGP manifest signing via --sign
+# or VELQU_SIGN_RELEASE=1. When enabled, SHA256SUMS.txt is signed producing
+# SHA256SUMS.txt.asc, and the packet is immediately verified against the
+# trusted publisher key before completion. Fails closed if signing fails.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+SIGN=0
+GPG_KEY="${VELQU_GPG_KEY:-}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --sign)
+      SIGN=1
+      shift
+      ;;
+    --key)
+      GPG_KEY="$2"
+      SIGN=1
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: scripts/release-packet [--sign] [--key <key-id-or-fpr>]"
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "${VELQU_SIGN_RELEASE:-0}" == "1" ]]; then
+  SIGN=1
+fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "release packet requires a clean working tree" >&2
@@ -81,7 +115,7 @@ done
 # verify independently inside their own directory.
 (
   cd "$OUT"
-  find . -type f ! -name SHA256SUMS.txt | sed 's|^\./||' | LC_ALL=C sort |
+  find . -type f ! -name SHA256SUMS.txt ! -name "SHA256SUMS.txt.asc" | sed 's|^\./||' | LC_ALL=C sort |
     while IFS= read -r f; do
       sha256sum "$f"
     done > SHA256SUMS.txt
@@ -90,3 +124,28 @@ done
 echo "release packet: commit ${SHORT}"
 (cd "$OUT" && sha256sum -c SHA256SUMS.txt)
 echo "CHECKSUMS-OK: $(grep -c . "$OUT/SHA256SUMS.txt") files covered"
+
+# #1321 / M8-003: Artifact signing step
+if [[ $SIGN -eq 1 ]]; then
+  echo "Signing release manifest with OpenPGP detached signature..."
+  if ! command -v gpg >/dev/null 2>&1; then
+    echo "ERROR: gpg command not found, required for release signing." >&2
+    exit 1
+  fi
+
+  GPG_ARGS=(--batch --yes --armor --detach-sign)
+  if [[ -n "$GPG_KEY" ]]; then
+    GPG_ARGS+=(--default-key "$GPG_KEY")
+  fi
+
+  gpg "${GPG_ARGS[@]}" --output "$OUT/SHA256SUMS.txt.asc" "$OUT/SHA256SUMS.txt"
+  echo "SIGNATURE-GENERATED: $OUT/SHA256SUMS.txt.asc"
+
+  # Immediately self-verify with required signature
+  ./scripts/verify-release-packet.sh --packet-dir "$OUT" --require-signature
+else
+  # Verify checksums and completeness
+  ./scripts/verify-release-packet.sh --packet-dir "$OUT"
+fi
+
+echo "RELEASE-PACKET-COMPLETE: $OUT/ is ready."
