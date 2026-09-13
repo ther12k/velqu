@@ -52,7 +52,8 @@ Every release candidate must pass forward and backward compatibility verificatio
    - If QPack bytecode format increments, `q-bytecode-tool` recompiles packs without source changes.
    - Treaty clients on version N communicate with servers running N+1 without contract violation.
 2. **Emergency Downgrade (N+1 → N)**:
-   - Reverting binary `velqu-runtime` to version N immediately restores previous serving behavior.
+   - Rollback restores the **known-compatible runtime + application pack pair** from the previous release (plus its related configuration). Replacing the `velqu-runtime` binary alone is NOT sufficient: startup verifies the pack and enforces bytecode/engine compatibility by default, so an N runtime paired with an incompatible pack can be rejected at startup rather than restored to service.
+   - The previous signed release packet remains archived with immutable checksums and signatures; its runtime/pack pair is the rollback unit.
    - Persistent stores (such as namespaced KV or PostgreSQL databases) do not perform irreversible state mutations during canary phases.
 
 ---

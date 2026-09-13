@@ -67,6 +67,10 @@ echo "=== Velqu Release Packet Verifier (#1321 / M8-003) ==="
 echo "Packet Directory: $PACKET_DIR"
 echo "Require Signature: $([[ $REQUIRE_SIGNATURE -eq 1 ]] && echo 'YES (fail closed if unsigned)' || echo 'NO (optional)')"
 
+# Temp files (gpg status capture, parsed manifest paths) are cleaned up on exit.
+TMP_FILES=()
+trap '[[ ${#TMP_FILES[@]} -gt 0 ]] && rm -f "${TMP_FILES[@]}" || true' EXIT
+
 # Load trusted publisher key fingerprints
 TRUSTED_FINGERPRINTS=()
 for k in "${EXPLICIT_TRUSTED_KEYS[@]}"; do
@@ -143,43 +147,82 @@ if [[ $SIG_EXISTS -eq 1 ]]; then
     exit 1
   fi
 
-  # Run gpg with machine-readable status output
-  GPG_OUTPUT=$(gpg --batch --status-fd 1 --verify "$SIGNATURE" "$MANIFEST" 2>&1 || true)
-
-  # Check for bad or error signatures
-  if echo "$GPG_OUTPUT" | grep -qE '^\[GNUPG:\] (BADSIG|ERRSIG)'; then
-    echo "ERROR: invalid or corrupted signature detected in $SIGNATURE" >&2
-    echo "$GPG_OUTPUT" | grep -E '^\[GNUPG:\] (BADSIG|ERRSIG)' >&2
-    exit 1
+  # Machine-readable status goes to its own file (--status-file); gpg's human
+  # output is kept separate. The gpg EXIT CODE is preserved: a non-zero exit
+  # is a verification failure even when VALIDSIG (cryptographic validity
+  # alone) is present — VALIDSIG can accompany EXPSIG/EXPKEYSIG/REVKEYSIG.
+  GPG_STATUS_FILE=$(mktemp)
+  GPG_LOG_FILE=$(mktemp)
+  TMP_FILES+=("$GPG_STATUS_FILE" "$GPG_LOG_FILE")
+  if gpg --batch --status-file "$GPG_STATUS_FILE" --verify "$SIGNATURE" "$MANIFEST" >"$GPG_LOG_FILE" 2>&1; then
+    GPG_FAILED=0
+  else
+    GPG_FAILED=1
   fi
 
-  if echo "$GPG_OUTPUT" | grep -q '^\[GNUPG:\] NO_PUBKEY'; then
-    KEY_ID=$(echo "$GPG_OUTPUT" | grep '^\[GNUPG:\] NO_PUBKEY' | head -n1 | awk '{print $3}')
+  # Reject disqualifying statuses explicitly, with actionable diagnostics.
+  if grep -q '^\[GNUPG:\] REVKEYSIG' "$GPG_STATUS_FILE"; then
+    KEY_ID=$(grep '^\[GNUPG:\] REVKEYSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $3}')
+    echo "ERROR: signature made by REVOKED key $KEY_ID — rejected regardless of fingerprint allowlisting." >&2
+    exit 1
+  fi
+  if grep -q '^\[GNUPG:\] EXPKEYSIG' "$GPG_STATUS_FILE"; then
+    KEY_ID=$(grep '^\[GNUPG:\] EXPKEYSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $3}')
+    echo "ERROR: signature made by EXPIRED key $KEY_ID — rejected (no GOODSIG)." >&2
+    exit 1
+  fi
+  if grep -q '^\[GNUPG:\] EXPSIG' "$GPG_STATUS_FILE"; then
+    echo "ERROR: signature itself has EXPIRED — rejected." >&2
+    exit 1
+  fi
+  if grep -q '^\[GNUPG:\] NO_PUBKEY' "$GPG_STATUS_FILE"; then
+    KEY_ID=$(grep '^\[GNUPG:\] NO_PUBKEY' "$GPG_STATUS_FILE" | head -n1 | awk '{print $3}')
     echo "ERROR: signing public key $KEY_ID is not present in the local keyring." >&2
     exit 1
   fi
-
-  VALIDSIG_LINE=$(echo "$GPG_OUTPUT" | grep '^\[GNUPG:\] VALIDSIG' | head -n 1 || true)
-  if [[ -z "$VALIDSIG_LINE" ]]; then
-    echo "ERROR: signature verification failed; no [GNUPG:] VALIDSIG status found." >&2
-    echo "$GPG_OUTPUT" >&2
+  if grep -qE '^\[GNUPG:\] (BADSIG|ERRSIG|UNEXPECTED)' "$GPG_STATUS_FILE"; then
+    echo "ERROR: invalid or corrupted signature detected in $SIGNATURE" >&2
+    grep -E '^\[GNUPG:\] (BADSIG|ERRSIG|UNEXPECTED)' "$GPG_STATUS_FILE" >&2
+    exit 1
+  fi
+  if [[ $GPG_FAILED -ne 0 ]]; then
+    echo "ERROR: gpg exited non-zero while verifying $SIGNATURE:" >&2
+    cat "$GPG_LOG_FILE" >&2
     exit 1
   fi
 
-  SIG_FPR=$(echo "$VALIDSIG_LINE" | awk '{print $3}' | tr '[:lower:]' '[:upper:]')
-  echo "Valid signature found from key fingerprint: $SIG_FPR"
+  # A normal acceptance requires BOTH GOODSIG (key/signature status accepted)
+  # and VALIDSIG (cryptographic validity) for the same signature.
+  if ! grep -q '^\[GNUPG:\] GOODSIG' "$GPG_STATUS_FILE"; then
+    echo "ERROR: no [GNUPG:] GOODSIG status — signature key/signature status not acceptable (expired or revoked variants are rejected)." >&2
+    cat "$GPG_LOG_FILE" >&2
+    exit 1
+  fi
+  if ! grep -q '^\[GNUPG:\] VALIDSIG' "$GPG_STATUS_FILE"; then
+    echo "ERROR: no [GNUPG:] VALIDSIG status — signature is not cryptographically valid." >&2
+    cat "$GPG_LOG_FILE" >&2
+    exit 1
+  fi
 
-  # Verify signer is in the trusted publishers list
+  # VALIDSIG fields: $3 = fingerprint of the key that MADE the signature
+  # (a signing SUBKEY when subkeys are used); the LAST field = PRIMARY key
+  # fingerprint. The trusted-publishers registry pins PRIMARY fingerprints,
+  # so the primary field is authoritative for the trust decision.
+  SIG_SIGNING_FPR=$(grep '^\[GNUPG:\] VALIDSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $3}' | tr '[:lower:]' '[:upper:]')
+  SIG_PRIMARY_FPR=$(grep '^\[GNUPG:\] VALIDSIG' "$GPG_STATUS_FILE" | head -n1 | awk '{print $NF}' | tr '[:lower:]' '[:upper:]')
+  echo "Signature by signing-key $SIG_SIGNING_FPR (primary key $SIG_PRIMARY_FPR)"
+
+  # Verify the PRIMARY key fingerprint is an authorized publisher.
   IS_TRUSTED=0
   for tfpr in "${TRUSTED_FINGERPRINTS[@]}"; do
-    if [[ "$SIG_FPR" == "$tfpr" ]]; then
+    if [[ "$SIG_PRIMARY_FPR" == "$tfpr" ]]; then
       IS_TRUSTED=1
       break
     fi
   done
 
   if [[ $IS_TRUSTED -eq 0 ]]; then
-    echo "ERROR: signer key $SIG_FPR is NOT authorized in trusted publishers list." >&2
+    echo "ERROR: signer primary key $SIG_PRIMARY_FPR is NOT authorized in trusted publishers list." >&2
     echo "Configured trusted keys:" >&2
     for tfpr in "${TRUSTED_FINGERPRINTS[@]}"; do
       echo "  - $tfpr" >&2
@@ -187,7 +230,7 @@ if [[ $SIG_EXISTS -eq 1 ]]; then
     exit 1
   fi
 
-  echo "✓ SIGNATURE-OK: authentic signature from trusted publisher $SIG_FPR"
+  echo "✓ SIGNATURE-OK: authentic signature from trusted publisher (primary key $SIG_PRIMARY_FPR)"
 else
   echo "Notice: packet is unsigned (SHA256SUMS.txt.asc absent). Skipped signature check."
 fi
@@ -201,15 +244,22 @@ echo "Verifying SHA-256 artifact checksums from $(basename "$MANIFEST")..."
 CHECKSUM_COUNT=$(wc -l < "$MANIFEST")
 echo "✓ CHECKSUMS-OK: $CHECKSUM_COUNT files verified identically against manifest"
 
-# Step 3: Completeness check (ensure no unexpected unlisted files)
+# Step 3: Completeness check (ensure no unexpected unlisted files).
+# The manifest is parsed into a set of literal paths and compared with
+# fixed-string whole-line matching — filenames are never treated as regex
+# (a manifest entry "velqu-runtime" must NOT cover an unlisted
+# "velqu.runtime").
 echo "Verifying packet completeness (no unlisted extraneous files)..."
+MANIFEST_PATHS_FILE=$(mktemp)
+TMP_FILES+=("$MANIFEST_PATHS_FILE")
+sed -E 's/^[0-9a-fA-F]{64}[[:space:]]+//' "$MANIFEST" | sed 's|^\./||' > "$MANIFEST_PATHS_FILE"
 UNLISTED_FILES=()
 while IFS= read -r f; do
   rel="${f#$PACKET_DIR/}"
   if [[ "$rel" == "SHA256SUMS.txt" || "$rel" == "SHA256SUMS.txt.asc" ]]; then
     continue
   fi
-  if ! grep -q "  $rel\$" "$MANIFEST" && ! grep -q "  \./$rel\$" "$MANIFEST"; then
+  if ! grep -Fxq "$rel" "$MANIFEST_PATHS_FILE"; then
     UNLISTED_FILES+=("$rel")
   fi
 done < <(find "$PACKET_DIR" -type f | LC_ALL=C sort)

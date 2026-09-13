@@ -17,14 +17,18 @@ A critical architectural distinction governs Velqu performance governance:
 
 ## 2. Service Level Indicators (SLIs) and Objectives (SLOs)
 
-| Objective | Metric / Indicator (SLI) | Target (30-day window) | Measurement Point |
+The PromQL expressions below are the **rolling 5-minute service-level indicators** — the short-window signal operators watch live. The **SLO targets are evaluated over a 30-day window** by aggregating those recorded rates (e.g. via recording rules) into an error-budget ratio over the month; the 5-minute expression is not itself the 30-day evaluation.
+
+Numerator and denominator are aggregated with `sum(...)` over the whole service scope **before** division. Without the aggregation, vector matching pairs each status-code series with itself (e.g. status=200 numerator over status=200 denominator), yielding a constant 1.0 for every positive-rate series and hiding 5xx traffic entirely.
+
+| Objective | Metric / Indicator (SLI, 5-minute rolling) | SLO Target (30-day window) | Measurement Point |
 |---|---|---|---|
-| **Availability** | `rate(http_requests_total{status!~"5.."}[5m]) / rate(http_requests_total[5m])` | **≥ 99.9%** | Ingress reverse proxy & runtime metrics |
+| **Availability** | `sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))` (aggregate first; per-series division is wrong — see above) | **≥ 99.9%** successful requests | Ingress reverse proxy & runtime metrics |
 | **P95 Latency (Light/Static)** | P95 duration for C0 (liveness) and C1 (text) requests | **≤ 15 ms** | Host HTTP ingress listener |
 | **P95 Latency (JSON/Validated)** | P95 duration for C2 (JSON) and C3 (schema-validated) | **≤ 35 ms** | Host HTTP ingress listener |
 | **Readiness Recovery** | Time from startup or post-drain to `/health/ready` 200 OK | **≤ 5.0 s** | Health probe poller |
-| **Queue Health** | Percentage of requests dropped due to queue backpressure | **≤ 0.01%** | Dispatcher queue rejected counter |
-| **Memory Retention** | Process RSS drift post-warmup | **Flat (zero monotonic growth over 24h)** | OS `/proc/<pid>/status` / cgroup memory |
+| **Queue Health** | `sum(rate(dispatcher_queue_rejected_total[5m])) / sum(rate(http_requests_total[5m]))` (aggregated the same way) | **≤ 0.01%** of requests shed | Dispatcher queue rejected counter |
+| **Memory Retention** | Process RSS drift post-warmup | **Flat (no monotonic growth beyond tolerance over 24h)** | OS `/proc/<pid>/status` / cgroup memory |
 
 ---
 
