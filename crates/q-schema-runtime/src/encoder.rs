@@ -1570,7 +1570,10 @@ impl ProblemProgram {
     /// come from the runtime registry unless the IR froze overrides. The
     /// detail member validates against the declared shape (typed field
     /// errors on mismatch); `errors` serialize as-is; extension members
-    /// append after the standard envelope in sorted key order.
+    /// append after the standard envelope in sorted key order — extension
+    /// members named like an envelope member (`type`, `title`, `status`,
+    /// `instance`, `detail`, `errors`) are skipped, since the envelope is
+    /// frozen and RFC 9457 forbids duplicate member names.
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &self,
@@ -1628,6 +1631,20 @@ impl ProblemProgram {
             out.push(b']');
         }
         for (k, v) in extensions {
+            // RFC 9457 §3.1 forbids duplicate members; the envelope members
+            // are frozen, so an extension named like an envelope member is
+            // definitionally not an extension. Emitting it would append a
+            // second "status"/"type"/... key and the last occurrence would
+            // shadow the frozen envelope on parse (found by the M6-002
+            // codec_encoders campaign: {"\xff":0,"status":{}} made the
+            // problem's status parse as {} instead of the declared 422).
+            // Such members are skipped, deterministically.
+            if matches!(
+                k.as_str(),
+                "type" | "title" | "status" | "instance" | "detail" | "errors"
+            ) {
+                continue;
+            }
             out.push(b',');
             let _ = serde_json::to_writer(&mut *out, k.as_str());
             out.push(b':');
@@ -1758,6 +1775,63 @@ mod m25_006_a_tests {
             out,
             b"{\"type\":\"https://velqu.dev/problems/validation\",\"title\":\"Conflict\",\"status\":422,\"instance\":\"/x\"}"
         );
+    }
+
+    /// M6-002 codec_encoders campaign regression: an extension member named
+    /// like an envelope member ("status", "type", ...) must be skipped, not
+    /// appended — appending a second member let the last occurrence shadow
+    /// the frozen envelope on parse (a problem's status parsed as {}
+    /// instead of the declared 422).
+    #[test]
+    fn problem_encoder_skips_envelope_named_extensions() {
+        let program = ProblemProgram::compile(&problem_ir(None, "Conflict", 422, None)).unwrap();
+        let extensions = vec![
+            ("\u{ff}".to_string(), serde_json::json!(0)),
+            ("status".to_string(), serde_json::json!({})),
+            (
+                "type".to_string(),
+                serde_json::json!("https://evil.example/shadow"),
+            ),
+            ("title".to_string(), serde_json::json!("shadowed")),
+            ("instance".to_string(), serde_json::json!("/shadowed")),
+            ("detail".to_string(), serde_json::json!("shadowed")),
+            ("errors".to_string(), serde_json::json!([])),
+            ("legit".to_string(), serde_json::json!(7)),
+        ];
+        let mut out = Vec::new();
+        program
+            .encode(
+                "https://velqu.dev/problems/fuzz",
+                "Fuzz problem",
+                None,
+                None,
+                &[],
+                &extensions,
+                "/fuzz",
+                &mut out,
+            )
+            .unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(
+            parsed["status"], 422,
+            "declared status must survive: {parsed}"
+        );
+        assert_eq!(parsed["type"], "https://velqu.dev/problems/fuzz");
+        // the IR's declared title wins over the registry title (frozen override)
+        assert_eq!(parsed["title"], "Conflict");
+        assert_eq!(parsed["instance"], "/fuzz");
+        assert!(parsed.get("detail").is_none());
+        assert!(parsed.get("errors").is_none());
+        assert_eq!(parsed["legit"], 7, "non-reserved extensions still cross");
+        // no duplicate members anywhere in the emitted bytes
+        let text = String::from_utf8(out).unwrap();
+        for member in ["\"status\"", "\"type\"", "\"title\"", "\"instance\""] {
+            assert_eq!(
+                text.matches(member).count(),
+                1,
+                "duplicate member {member}: {text}"
+            );
+        }
     }
 
     /// Declared detail shapes validate: a detail violating the declared

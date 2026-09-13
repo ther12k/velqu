@@ -61,6 +61,17 @@ pub fn body(
         v["errors"] = serde_json::to_value(errors).unwrap_or(Value::Null);
     }
     for (k, val) in extensions {
+        // Envelope members are frozen (RFC 9457 §3.1 forbids duplicate
+        // member names): an extension named like an envelope member would
+        // REPLACE the frozen value here (serde_json object insert), so it
+        // is skipped — same reserved set the generated ProblemProgram
+        // encoder enforces (M6-002 codec_encoders campaign finding).
+        if matches!(
+            k.as_str(),
+            "type" | "title" | "status" | "instance" | "detail" | "errors"
+        ) {
+            continue;
+        }
         v[k.as_str()] = val.clone();
     }
     v
