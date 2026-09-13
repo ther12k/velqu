@@ -1,7 +1,8 @@
 {
   "format": "velqu-trusted-publishers-v1",
   "version": 1,
-  "note": "Machine-readable inventory of authorized release publisher signing keys for Velqu official distribution (M8-003). Verification fails closed if a signed release packet is not signed by one of these active keys. Fingerprints pin PRIMARY keys: a signature made by a signing subkey is accepted only through the pinned primary key's fingerprint (the verifier matches the primary-key field of GnuPG's VALIDSIG status).",
+  "note": "Machine-readable inventory of authorized release publisher signing keys for Velqu official distribution (M8-003). Verification fails closed if a signed release packet is not signed by one of these active keys. Fingerprints pin PRIMARY keys: a signature made by a signing subkey is accepted only through the pinned primary key's fingerprint (the verifier matches the primary-key field of GnuPG's VALIDSIG status). Keys under revokedKeys or with status \"revoked\" are rejected BEFORE any allowlist check — including when named via --trusted-key.",
+  "keyLifecycle": "Before any RC/GA publication, the Owner must (1) provision a dedicated publisher signing key on release infrastructure, (2) ratify its fingerprint here with status \"active\", and (3) archive the provisioning record (who created the key, on what host, from what entropy) with the release evidence. Keys not ratified by the Owner must not carry status \"active\".",
   "publishers": [
     {
       "id": "velqu-official-release-2026",
@@ -10,11 +11,11 @@
       "type": "openpgp-ed25519",
       "fingerprintType": "primary",
       "fingerprint": "7F4FBB5DD54A0F63B0FADC960CF16E189E3FC700",
-      "status": "active",
+      "status": "provisioning-pending",
+      "statusNote": "Placeholder fingerprint from a development-machine key generated during release-tooling bring-up (2026-09-12). NOT owner-ratified; NOT authorized to sign RC/GA packets in its current state. Replaced by an owner-provisioned release key with status \"active\" before RC, or removed if superseded.",
       "created": "2026-09-01",
       "expires": "2028-09-01"
     }
   ],
   "revokedKeys": []
 }
-
