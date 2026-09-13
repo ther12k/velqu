@@ -2971,6 +2971,12 @@ pub mod qpack2 {
 
         // ---- M26-005-C: unsafe confinement + platform smoke ----
 
+        // The mapped carrier is not Miri-executable: Miri reports
+        // file-backed mmap as an unsupported operation (a platform
+        // limitation, not UB). The mmap path stays covered by the
+        // native test runs and the ASan workspace pass (S1); Miri
+        // keeps the slice-handling logic through the Owned carrier.
+        #[cfg(not(miri))]
         #[test]
         fn pack_bytes_open_works_on_write_protected_files() {
             // Platform smoke: production packs are read-only artifacts;
@@ -3074,6 +3080,10 @@ pub mod qpack2 {
 
         // ---- M26-005-A: mmap/read-only pack bytes ----
 
+        // Miri cannot emulate the file-backed mapping this test opens;
+        // the owned+embedded slice logic it shares with the mapped
+        // carrier is exercised everywhere else (see PackBytes::open).
+        #[cfg(not(miri))]
         #[test]
         fn pack_bytes_mapped_and_owned_validate_identically_zero_copy() {
             let payloads: Vec<(u16, &[u8])> = vec![
@@ -3152,10 +3162,16 @@ pub mod qpack2 {
             std::fs::write(&empty, b"").unwrap();
             let bytes = reader::PackBytes::open(&empty).unwrap();
             assert!(reader::validate(&bytes).is_err());
-            // junk bytes: mapped path on unix, must reject (never panic)
+            // junk bytes: mapped path on unix, must reject (never panic).
+            // Under Miri the mapping is an unsupported operation, so the
+            // same bytes go through the Owned carrier — the rejection
+            // logic is carrier-independent (same &[u8] consumer).
             let junk = dir.join("junk.qpk2");
             std::fs::write(&junk, vec![0x41u8; 4096]).unwrap();
+            #[cfg(not(miri))]
             let bytes = reader::PackBytes::open(&junk).unwrap();
+            #[cfg(miri)]
+            let bytes = reader::PackBytes::Owned(std::fs::read(&junk).unwrap());
             assert!(reader::validate(&bytes).is_err());
             assert!(reader::parse_directory_with_binding(&bytes).is_err());
             let _ = std::fs::remove_dir_all(&dir);
