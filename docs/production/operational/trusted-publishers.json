@@ -1,0 +1,18 @@
+{
+  "format": "velqu-trusted-publishers-v1",
+  "version": 1,
+  "note": "Machine-readable inventory of authorized release publisher signing keys for Velqu official distribution (M8-003). Verification fails closed if a signed release packet is not signed by one of these active keys.",
+  "publishers": [
+    {
+      "id": "velqu-official-release-2026",
+      "name": "Velqu Official Release Key (2026)",
+      "email": "release@velqu.dev",
+      "type": "openpgp-ed25519",
+      "fingerprint": "7F4FBB5DD54A0F63B0FADC960CF16E189E3FC700",
+      "status": "active",
+      "created": "2026-09-01",
+      "expires": "2028-09-01"
+    }
+  ],
+  "revokedKeys": []
+}
