@@ -71,7 +71,11 @@ echo "Require Signature: $([[ $REQUIRE_SIGNATURE -eq 1 ]] && echo 'YES (fail clo
 TMP_FILES=()
 trap '[[ ${#TMP_FILES[@]} -gt 0 ]] && rm -f "${TMP_FILES[@]}" || true' EXIT
 
-# Load trusted publisher key fingerprints
+# Load trusted publisher key fingerprints.
+# EXPLICIT_TRUSTED_KEYS are kept SEPARATE (review of 5fb98538, finding 3):
+# if the operator names keys explicitly, verification must succeed only via
+# those keys — a revoked explicit key never falls back to other registry
+# publishers.
 TRUSTED_FINGERPRINTS=()
 for k in "${EXPLICIT_TRUSTED_KEYS[@]}"; do
   TRUSTED_FINGERPRINTS+=("$k")
@@ -85,32 +89,54 @@ if [[ -f "$TRUSTED_KEYS_FILE" ]]; then
   # them via --trusted-key. The registry's revocation record does not
   # require the local GPG keyring to have imported the revocation
   # certificate; the committed registry alone is authoritative.
+  #
+  # Registry read failures are FATAL (review of 5fb98538, finding 1): a
+  # registry that cannot be parsed must never behave as an empty revocation
+  # list. The Python helper exits non-zero on any error and prints nothing
+  # on stdout (no partial results).
   REVOKED_FINGERPRINTS=()
   FILE_KEYS=$(python3 -c "
 import json, sys
-active, revoked = [], []
+
+def fail(msg):
+    print(f'throughput: registry parse error: {msg}', file=sys.stderr)
+    sys.exit(1)
+
 try:
-    doc = json.load(open(sys.argv[1]))
-    for p in doc.get('publishers', []):
-        fpr = str(p.get('fingerprint', '')).strip().upper().replace(' ', '')
-        if not fpr:
-            continue
-        if p.get('status') == 'revoked':
-            revoked.append(fpr)
-        elif p.get('status') == 'active':
-            active.append(fpr)
-    for fpr in doc.get('revokedKeys', []):
-        fpr = str(fpr).strip().upper().replace(' ', '')
-        if fpr:
-            revoked.append(fpr)
+    with open(sys.argv[1]) as fh:
+        doc = json.load(fh)
 except Exception as e:
-    print(f'__PARSE_ERROR__:{e}', file=sys.stderr)
+    fail(f'cannot read or parse JSON: {e}')
+if not isinstance(doc, dict):
+    fail('registry root is not a JSON object')
+
+active, revoked = [], []
+publishers = doc.get('publishers', [])
+if not isinstance(publishers, list):
+    fail('publishers is not a list')
+for p in publishers:
+    if not isinstance(p, dict):
+        fail('publisher entry is not an object')
+    fpr = str(p.get('fingerprint', '')).strip().upper().replace(' ', '')
+    if not fpr:
+        fail('publisher entry missing fingerprint')
+    if p.get('status') == 'revoked':
+        revoked.append(fpr)
+    elif p.get('status') == 'active':
+        active.append(fpr)
+for fpr in doc.get('revokedKeys', []):
+    fpr = str(fpr).strip().upper().replace(' ', '')
+    if not fpr:
+        fail('empty entry in revokedKeys')
+    revoked.append(fpr)
+
 for fpr in active:
     print('A', fpr)
 for fpr in revoked:
     print('R', fpr)
 " "$TRUSTED_KEYS_FILE" ) || {
-    echo "ERROR: failed to read trusted publishers registry: $TRUSTED_KEYS_FILE" >&2
+    echo "ERROR: trusted publishers registry is unreadable or invalid: $TRUSTED_KEYS_FILE" >&2
+    echo "       The registry is the revocation authority; refusing to verify against an unreadable registry." >&2
     exit 2
   }
   while read -r flag fpr; do
@@ -122,17 +148,67 @@ for fpr in revoked:
   done <<< "$FILE_KEYS"
 fi
 
-# Registry revocation overrides explicit trust: drop any --trusted-key that
-# the registry has revoked, and refuse the run if it was the only key given.
-for i in "${!TRUSTED_FINGERPRINTS[@]}"; do
-  for rfpr in "${REVOKED_FINGERPRINTS[@]}"; do
-    if [[ "${TRUSTED_FINGERPRINTS[$i]}" == "$rfpr" ]]; then
-      echo "ERROR: key $rfpr is REVOKED in the trusted publishers registry and is rejected even when named via --trusted-key." >&2
-      unset 'TRUSTED_FINGERPRINTS[i]'
+# Registry revocation overrides explicit trust. Build the filtered allowlist
+# as a NEW array (no unset-during-iteration); deduplicate; then enforce the
+# explicit-key contract: if --trusted-key was given and EVERY named key is
+# revoked, the run fails outright — it must not silently fall back to other
+# active registry publishers (review of 5fb98538, finding 3).
+REVOKED_DEDUPED=()
+for rfpr in "${REVOKED_FINGERPRINTS[@]}"; do
+  DUPLICATE=0
+  for seen in "${REVOKED_DEDUPED[@]:-}"; do
+    if [[ "$seen" == "$rfpr" ]]; then
+      DUPLICATE=1
+      break
     fi
   done
+  if [[ $DUPLICATE -eq 0 ]]; then
+    REVOKED_DEDUPED+=("$rfpr")
+  fi
 done
-TRUSTED_FINGERPRINTS=("${TRUSTED_FINGERPRINTS[@]}")
+REVOKED_FINGERPRINTS=("${REVOKED_DEDUPED[@]}")
+
+FILTERED_TRUSTED=()
+EXPLICIT_ALL_REVOKED=0
+if [[ ${#EXPLICIT_TRUSTED_KEYS[@]} -gt 0 ]]; then
+  EXPLICIT_REVOKED_COUNT=0
+  for efpr in "${EXPLICIT_TRUSTED_KEYS[@]}"; do
+    IS_REVOKED=0
+    for rfpr in "${REVOKED_FINGERPRINTS[@]:-}"; do
+      if [[ "$efpr" == "$rfpr" ]]; then
+        IS_REVOKED=1
+        EXPLICIT_REVOKED_COUNT=$((EXPLICIT_REVOKED_COUNT + 1))
+        echo "ERROR: key $efpr is REVOKED in the trusted publishers registry and is rejected even when named via --trusted-key." >&2
+        break
+      fi
+    done
+    if [[ $IS_REVOKED -eq 0 ]]; then
+      FILTERED_TRUSTED+=("$efpr")
+    fi
+  done
+  if [[ $EXPLICIT_REVOKED_COUNT -eq ${#EXPLICIT_TRUSTED_KEYS[@]} ]]; then
+    EXPLICIT_ALL_REVOKED=1
+  fi
+else
+  for tfpr in "${TRUSTED_FINGERPRINTS[@]:-}"; do
+    IS_REVOKED=0
+    for rfpr in "${REVOKED_FINGERPRINTS[@]:-}"; do
+      if [[ "$tfpr" == "$rfpr" ]]; then
+        IS_REVOKED=1
+        break
+      fi
+    done
+    if [[ $IS_REVOKED -eq 0 ]]; then
+      FILTERED_TRUSTED+=("$tfpr")
+    fi
+  done
+fi
+TRUSTED_FINGERPRINTS=("${FILTERED_TRUSTED[@]:-}")
+
+if [[ $EXPLICIT_ALL_REVOKED -eq 1 ]]; then
+  echo "ERROR: every key named via --trusted-key is revoked in the trusted publishers registry; refusing to fall back to other registry publishers." >&2
+  exit 1
+fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
   echo "--- Dry-run Verification Plan ---"
