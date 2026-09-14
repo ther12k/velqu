@@ -1,0 +1,42 @@
+warning: unused workspace dependency `q-bench-support`
+  --> Cargo.toml:43:1
+   |
+43 | q-bench-support = { path = "crates/q-bench-support" }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_workspace_dependencies` is set to `warn` by default
+help: consider removing the workspace dependency `q-bench-support`
+warning: unused workspace dependency `q-runtime`
+  --> Cargo.toml:32:1
+   |
+32 | q-runtime = { path = "crates/q-runtime" }
+   | ^^^^^^^^^
+   |
+help: consider removing the workspace dependency `q-runtime`
+warning: unused workspace dependency `tokio-postgres`
+  --> Cargo.toml:52:1
+   |
+52 | tokio-postgres = { version = "0.7", features = ["runtime"] }
+   | ^^^^^^^^^^^^^^
+   |
+help: consider removing the workspace dependency `tokio-postgres`
+
+running 58 tests
+..........................................................
+test result: ok. 58 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 67.39s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.72s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.19s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

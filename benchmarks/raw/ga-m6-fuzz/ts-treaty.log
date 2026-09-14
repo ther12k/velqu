@@ -1,0 +1,16 @@
+{
+ "campaign": "ga-m6-ts-treaty-encoders",
+ "startedAt": "2026-09-14T00:18:51.864Z",
+ "finishedAt": "2026-09-14T00:28:51.864Z",
+ "durationSecs": 600,
+ "seed": 1789338807,
+ "iterations": 74578000,
+ "t1Iterations": 74578000,
+ "t2Iterations": 55124664,
+ "t3Iterations": 55124664,
+ "transportResponsesConstructed": 55124664,
+ "coverageEmpty": false,
+ "surface": "packages/treaty (published treaty() API: path interpolation, query serialization, response mapping)",
+ "totalFindings": 0,
+ "result": "zero-findings — explicit record, not a bare green claim"
+}

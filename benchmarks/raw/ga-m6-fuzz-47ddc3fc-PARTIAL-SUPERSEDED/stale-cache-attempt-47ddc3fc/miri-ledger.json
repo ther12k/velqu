@@ -1,0 +1,93 @@
+{
+  "campaign": "ga-m6-miri",
+  "startedAt": "2026-09-13T04:14:20Z",
+  "toolchain": "rustc 1.100.0-nightly (67eda617e 2026-09-10)",
+  "scopeSource": "fuzz/miri-scope.json",
+  "excludedWithReason": [
+    {
+      "crate": "q-engine-quickjs",
+      "reason": "foreign C engine (quickjs-ng via rquickjs) is not Miri-executable"
+    },
+    {
+      "crate": "q-engine",
+      "reason": "tokio-dependent engine trait runtime; async executor is not Miri-executable at this scale"
+    },
+    {
+      "crate": "q-runtime",
+      "reason": "tokio/hyper ingress boundary; its unsafe inventory is test-scope only (see the unsafe audit artifact)"
+    },
+    {
+      "crate": "q-http",
+      "reason": "hyper/tokio HTTP boundary is not Miri-executable"
+    },
+    {
+      "crate": "q-capabilities",
+      "reason": "tokio-dependent test harness (timer/fetch); first-party unsafe-free logic is covered by ASan S1"
+    },
+    {
+      "crate": "q-capability-postgres",
+      "reason": "tokio + native postgres client FFI boundary"
+    },
+    {
+      "crate": "q-bytecode-tool",
+      "reason": "binary tool transitively depending on q-engine-quickjs (foreign C engine)"
+    },
+    {
+      "crate": "q-browser-kernel",
+      "reason": "wasm-bindgen ABI crate \u2014 built for wasm32, not host-Miri-executable"
+    },
+    {
+      "crate": "q-bench-support",
+      "reason": "bench/evidence tooling only; unsafe inventory is libc getrusage/dlsym diagnostics instrumentation, not the serving path \u2014 EXPLICIT M6-003 WAIVER (owner review 2026-09-12)"
+    }
+  ],
+  "crates": [
+    {
+      "crate": "q-runtime-model",
+      "exitCode": 0,
+      "log": "benchmarks/raw/ga-m6-fuzz/miri-q-runtime-model.log",
+      "result": "zero-findings"
+    },
+    {
+      "crate": "q-router",
+      "exitCode": 0,
+      "log": "benchmarks/raw/ga-m6-fuzz/miri-q-router.log",
+      "result": "zero-findings"
+    },
+    {
+      "crate": "q-schema-runtime",
+      "exitCode": 0,
+      "log": "benchmarks/raw/ga-m6-fuzz/miri-q-schema-runtime.log",
+      "result": "zero-findings"
+    },
+    {
+      "crate": "q-bridge",
+      "exitCode": 0,
+      "log": "benchmarks/raw/ga-m6-fuzz/miri-q-bridge.log",
+      "result": "zero-findings"
+    },
+    {
+      "crate": "q-pack",
+      "exitCode": 101,
+      "log": "benchmarks/raw/ga-m6-fuzz/miri-q-pack.log",
+      "result": "findings \u2014 UB reported; regression test or disposition required"
+    }
+  ],
+  "cratesRequired": [
+    "q-runtime-model",
+    "q-router",
+    "q-schema-runtime",
+    "q-bridge",
+    "q-pack"
+  ],
+  "cratesRecorded": [
+    "q-runtime-model",
+    "q-router",
+    "q-schema-runtime",
+    "q-bridge",
+    "q-pack"
+  ],
+  "coverageComplete": true,
+  "anyFindings": true,
+  "verdict": "failed"
+}
