@@ -42,6 +42,7 @@ Usage: analyze-soak.py <soak.jsonl> [--partial] [--min-hours H]
                        [--capacity N] [--expected-workers N]
 """
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -89,6 +90,8 @@ def validate_summary_schema(summary):
         value = summary.get(key)
         if isinstance(value, bool) or not isinstance(value, types):
             return f"missing or malformed summary field {key!r}", None
+        if isinstance(value, float) and not math.isfinite(value):
+            return f"non-finite summary field {key!r}", None
         norm[key] = value
     retained = summary.get("retainedMemory")
     if not isinstance(retained, dict):
@@ -102,6 +105,8 @@ def validate_summary_schema(summary):
         return "workers must be >= 1", None
     if norm["totalCompletedVerified"] < 0 or norm["actualDurationSecs"] <= 0:
         return "summary totals/duration out of range", None
+    if not 0 < norm["windowSecs"] <= 3600:
+        return "summary windowSecs out of range", None
     return None, norm
 
 
@@ -124,7 +129,23 @@ def main():
 
     if not jsonl.exists():
         return fail_invalid(f"raw log not found: {jsonl}")
-    rows = [json.loads(line) for line in jsonl.read_text().splitlines() if line.strip()]
+    rows = []
+    for line in jsonl.read_text().splitlines():
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        # Python's JSON decoder accepts NaN/Infinity tokens; the consumed
+        # measurements must be finite or the evidence is invalid.
+        for k in ("elapsedSecs", "windowSecs", "requests", "throughputOpsPerSec",
+                  "processRssKib", "queueTotal", "ownershipPendingSlots"):
+            v = r.get(k)
+            if v is None:
+                return fail_invalid(f"raw sample missing field {k!r}")
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                return fail_invalid(f"raw field {k!r} is not numeric")
+            if isinstance(v, float) and not math.isfinite(v):
+                return fail_invalid(f"non-finite raw field {k!r}")
+        rows.append(r)
     if not rows:
         return fail_invalid("raw log has no samples")
 
@@ -167,6 +188,8 @@ def main():
         summary = json.loads(summary_path.read_text())
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         return fail_invalid(f"summary is not valid JSON: {exc}")
+    if not isinstance(summary, dict):
+        return fail_invalid("summary is not a JSON object")
 
     status = summary.get("status")
     if isinstance(status, str) and status in RETAINED_STATUSES:
@@ -194,7 +217,28 @@ def main():
         return fail_invalid(
             f"observed duration {actual_h:.2f} h < required minimum {min_hours:g} h "
             "(a retained partial run does not substitute for duration)")
-    if elapsed < s["configuredDurationSecs"] - 2 * s["windowSecs"]:
+
+    # Raw coverage must span the run continuously — start, middle, and end.
+    # The last timestamp alone proves nothing: a log missing its first 30
+    # minutes differs by ~2% of requests (inside the agreement bound) yet
+    # does not cover the claimed duration. Each row carries its actual
+    # windowSecs, so gaps are distinguishable from sampling jitter.
+    ws = s["windowSecs"]
+    if rows[0]["elapsedSecs"] > 2 * ws + 5:
+        return fail_invalid(
+            f"raw log does not start at run start (first window ends at "
+            f"{rows[0]['elapsedSecs']:.0f}s; expected ~{ws:.0f}s)")
+    prev = None
+    for r in rows:
+        if prev is not None:
+            gap = r["elapsedSecs"] - prev["elapsedSecs"]
+            step = prev["windowSecs"]
+            if abs(gap - step) > max(5.0, 0.5 * step):
+                return fail_invalid(
+                    f"raw coverage hole: gap {gap:.0f}s vs window {step:.0f}s "
+                    f"at seq {r.get('seq', '?')}")
+        prev = r
+    if elapsed < s["configuredDurationSecs"] - 2 * ws:
         return fail_invalid(
             "raw windows do not cover the configured duration "
             f"(last window at {elapsed/3600:.2f} h vs configured {configured_h:.2f} h)")

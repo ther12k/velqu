@@ -33,7 +33,7 @@ def window(seq, elapsed, rss_kib, pending=2, queue=2048, requests=600_000, tput=
     return {
         "seq": seq,
         "elapsedSecs": elapsed,
-        "windowSecs": 120.0,
+        "windowSecs": 240.0,
         "requests": requests,
         "throughputOpsPerSec": tput,
         "processRssKib": rss_kib,
@@ -70,7 +70,7 @@ def base_summary(**over):
         "workers": 2,
         "chaos": {"enabled": True},
         "configuredDurationSecs": 86400,
-        "windowSecs": 120,
+        "windowSecs": 240,
         "actualDurationSecs": 86400,
         "totalCompletedVerified": 216_000_000,
         "retainedMemory": {"processRssGrowthKib": 0},
@@ -201,6 +201,68 @@ def main():
         expect("arithmetic replay prints 0.298 drift",
                "0.298 B/completed-request" in r.stdout, r.stdout[-400:])
         expect("arithmetic replay T1 PASS", "PASS  T1" in r.stdout)
+
+        # 13. front-trimmed log: remove the first 15 of 720 windows (~2.08%
+        #     of requests — inside the 5% agreement bound) from a valid 48h
+        #     fixture. The last timestamp still says 48h; only raw start
+        #     coverage can catch it.
+        full = [window(i, (i + 1) * 240.0, 4000) for i in range(720)]
+        trimmed_pct = 100.0 * (720 - 705) / 720
+        d = write_case(root, "front-trimmed", full[15:],
+                       base_summary(configuredDurationSecs=172_800,
+                                    actualDurationSecs=172_800,
+                                    totalCompletedVerified=432_000_000))
+        r = run(d, "--capacity", "2048")
+        expect(f"front-trimmed ({trimmed_pct:.2f}% requests, inside agreement bound) exits 2",
+               r.returncode == 2, f"got {r.returncode}")
+        expect("front-trimmed rejected on raw start coverage",
+               "does not start at run start" in r.stdout, r.stdout[-300:])
+
+        # 14. middle hole: drop one window; the gap is ~2x windowSecs.
+        holed = [w for i, w in enumerate(full) if i != 300]
+        d = write_case(root, "middle-hole", holed,
+                       base_summary(configuredDurationSecs=172_800,
+                                    actualDurationSecs=172_800,
+                                    totalCompletedVerified=432_000_000))
+        r = run(d, "--capacity", "2048")
+        expect("middle hole exits 2", r.returncode == 2, f"got {r.returncode}")
+        expect("middle hole rejected on coverage gap", "coverage hole" in r.stdout,
+               r.stdout[-300:])
+
+        # 15. NaN configuredDurationSecs in an otherwise valid summary: NaN
+        #     comparisons are all false, so type checks alone let it reach
+        #     PASS; isfinite must reject it first.
+        s = base_summary(configuredDurationSecs=float("nan"))
+        d = write_case(root, "nan-configured", full[:360], s)
+        r = run(d)
+        expect("NaN configured duration exits 2", r.returncode == 2, f"got {r.returncode}")
+        expect("NaN rejection names the field",
+               "non-finite summary field 'configuredDurationSecs'" in r.stdout,
+               r.stdout[-300:])
+
+        # 16. Infinity actualDurationSecs -> invalid, not an instant pass.
+        d = write_case(root, "inf-actual", full[:360],
+                       base_summary(actualDurationSecs=float("inf")))
+        r = run(d)
+        expect("infinite actual duration exits 2", r.returncode == 2, f"got {r.returncode}")
+
+        # 17. top-level array summary: the object check must run before any
+        #     attribute access — controlled invalid, not a traceback.
+        d = write_case(root, "array-summary", full[:360], [])
+        r = run(d)
+        expect("array summary exits 2 (no traceback)",
+               r.returncode == 2 and "Traceback" not in r.stderr
+               and "summary is not a JSON object" in r.stdout,
+               f"rc={r.returncode} stderr={r.stderr[-200:]}")
+
+        # 18. non-finite raw measurement -> invalid evidence.
+        bad = window(0, 240.0, 4000)
+        bad["throughputOpsPerSec"] = float("nan")
+        d = write_case(root, "nan-raw", [bad] + full[1:360],
+                       base_summary())
+        r = run(d)
+        expect("non-finite raw field exits 2", r.returncode == 2, f"got {r.returncode}")
+        expect("raw rejection names the field", "non-finite raw field" in r.stdout)
 
     print(f"\n{'ALL PASS' if not FAILURES else 'FAILURES: ' + ', '.join(FAILURES)}")
     return 1 if FAILURES else 0
