@@ -1,0 +1,470 @@
+warning: binary `bridge_handles` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
+   |                                                        ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::non_kebab_case_bins` is set to `warn` by default
+help: to change the binary name to `bridge-handles`, convert `bin.name`
+  --> Cargo.toml:60:8
+   |
+60 - name = "bridge_handles"
+60 + name = "bridge-handles"
+   |
+warning: binary `capabilities_policy` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
+   |                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `capabilities-policy`, convert `bin.name`
+  --> Cargo.toml:74:8
+   |
+74 - name = "capabilities_policy"
+74 + name = "capabilities-policy"
+   |
+warning: binary `codec_encoders` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
+   |                                                        ^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `codec-encoders`, convert `bin.name`
+  --> Cargo.toml:67:8
+   |
+67 - name = "codec_encoders"
+67 + name = "codec-encoders"
+   |
+warning: binary `http_decode` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `http-decode`, convert `bin.name`
+  --> Cargo.toml:46:8
+   |
+46 - name = "http_decode"
+46 + name = "http-decode"
+   |
+warning: binary `pack_verify` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `pack-verify`, convert `bin.name`
+  --> Cargo.toml:32:8
+   |
+32 - name = "pack_verify"
+32 + name = "pack-verify"
+   |
+warning: binary `router_match` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
+   |                                                        ^^^^^^^^^^^^
+   |
+help: to change the binary name to `router-match`, convert `bin.name`
+  --> Cargo.toml:39:8
+   |
+39 - name = "router_match"
+39 + name = "router-match"
+   |
+warning: binary `schema_validate` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
+   |                                                        ^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `schema-validate`, convert `bin.name`
+  --> Cargo.toml:53:8
+   |
+53 - name = "schema_validate"
+53 + name = "schema-validate"
+   |
+warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
+   Compiling velqu-runtime-fuzz v0.0.0 (/home/ther12k/Workspace/Learning/velqu/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.69s
+warning: binary `bridge_handles` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
+   |                                                        ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::non_kebab_case_bins` is set to `warn` by default
+help: to change the binary name to `bridge-handles`, convert `bin.name`
+  --> Cargo.toml:60:8
+   |
+60 - name = "bridge_handles"
+60 + name = "bridge-handles"
+   |
+warning: binary `capabilities_policy` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
+   |                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `capabilities-policy`, convert `bin.name`
+  --> Cargo.toml:74:8
+   |
+74 - name = "capabilities_policy"
+74 + name = "capabilities-policy"
+   |
+warning: binary `codec_encoders` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
+   |                                                        ^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `codec-encoders`, convert `bin.name`
+  --> Cargo.toml:67:8
+   |
+67 - name = "codec_encoders"
+67 + name = "codec-encoders"
+   |
+warning: binary `http_decode` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `http-decode`, convert `bin.name`
+  --> Cargo.toml:46:8
+   |
+46 - name = "http_decode"
+46 + name = "http-decode"
+   |
+warning: binary `pack_verify` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `pack-verify`, convert `bin.name`
+  --> Cargo.toml:32:8
+   |
+32 - name = "pack_verify"
+32 + name = "pack-verify"
+   |
+warning: binary `router_match` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
+   |                                                        ^^^^^^^^^^^^
+   |
+help: to change the binary name to `router-match`, convert `bin.name`
+  --> Cargo.toml:39:8
+   |
+39 - name = "router_match"
+39 + name = "router-match"
+   |
+warning: binary `schema_validate` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
+   |                                                        ^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `schema-validate`, convert `bin.name`
+  --> Cargo.toml:53:8
+   |
+53 - name = "schema_validate"
+53 + name = "schema-validate"
+   |
+warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.06s
+     Running `fuzz/target/x86_64-unknown-linux-gnu/release/http_decode -artifact_prefix=/home/ther12k/Workspace/Learning/velqu/fuzz/artifacts/http_decode/ -max_total_time=900 -rss_limit_mb=4096 -seed=1789265912 -print_final_stats=1 /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/http_decode`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1789265912
+INFO: Loaded 1 modules   (839 inline 8-bit counters): 839 [0x5e5085be1390, 0x5e5085be16d7), 
+INFO: Loaded 1 PC tables (839 PCs): 839 [0x5e5085be16d8,0x5e5085be4b48), 
+INFO:     2730 files found in /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/http_decode
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 2730 min: 1b max: 2993b total: 1147742b rss: 38Mb
+#2731	INITED cov: 135 ft: 685 corp: 206/13909b exec/s: 0 rss: 137Mb
+#10037	REDUCE cov: 135 ft: 685 corp: 206/13908b lim: 2756 exec/s: 10037 rss: 174Mb L: 6/2679 MS: 1 EraseBytes-
+#31838	REDUCE cov: 135 ft: 685 corp: 206/13907b lim: 2965 exec/s: 31838 rss: 274Mb L: 5/2679 MS: 1 EraseBytes-
+#65536	pulse  cov: 135 ft: 685 corp: 206/13907b lim: 3295 exec/s: 21845 rss: 438Mb
+#68000	REDUCE cov: 135 ft: 685 corp: 206/13906b lim: 3317 exec/s: 22666 rss: 445Mb L: 4/2679 MS: 1 EraseBytes-
+#115461	REDUCE cov: 135 ft: 685 corp: 206/13903b lim: 3779 exec/s: 28865 rss: 496Mb L: 70/2679 MS: 5 CopyPart-EraseBytes-CrossOver-CopyPart-EraseBytes-
+#131072	pulse  cov: 135 ft: 685 corp: 206/13903b lim: 3933 exec/s: 26214 rss: 501Mb
+#213839	REDUCE cov: 135 ft: 685 corp: 206/13901b lim: 4096 exec/s: 30548 rss: 501Mb L: 135/2679 MS: 3 ShuffleBytes-CopyPart-EraseBytes-
+#262144	pulse  cov: 135 ft: 685 corp: 206/13901b lim: 4096 exec/s: 29127 rss: 501Mb
+#521595	REDUCE cov: 135 ft: 685 corp: 206/13894b lim: 4096 exec/s: 30682 rss: 506Mb L: 2672/2672 MS: 1 EraseBytes-
+#524288	pulse  cov: 135 ft: 685 corp: 206/13894b lim: 4096 exec/s: 30840 rss: 506Mb
+#528206	REDUCE cov: 135 ft: 685 corp: 206/13893b lim: 4096 exec/s: 29344 rss: 506Mb L: 134/2672 MS: 1 EraseBytes-
+#604777	REDUCE cov: 135 ft: 685 corp: 206/13892b lim: 4096 exec/s: 31830 rss: 506Mb L: 221/2672 MS: 1 EraseBytes-
+#696610	REDUCE cov: 135 ft: 685 corp: 206/13813b lim: 4096 exec/s: 33171 rss: 506Mb L: 2593/2593 MS: 3 CrossOver-EraseBytes-CopyPart-
+#781494	REDUCE cov: 135 ft: 685 corp: 206/13774b lim: 4096 exec/s: 32562 rss: 506Mb L: 2554/2554 MS: 4 ChangeASCIIInt-CopyPart-EraseBytes-EraseBytes-
+#1048576	pulse  cov: 135 ft: 685 corp: 206/13774b lim: 4096 exec/s: 32768 rss: 507Mb
+#1065136	REDUCE cov: 135 ft: 685 corp: 206/13773b lim: 4096 exec/s: 32276 rss: 507Mb L: 2553/2553 MS: 1 EraseBytes-
+#1188379	REDUCE cov: 135 ft: 685 corp: 206/13743b lim: 4096 exec/s: 32118 rss: 507Mb L: 2523/2523 MS: 2 ShuffleBytes-EraseBytes-
+#1270008	REDUCE cov: 135 ft: 685 corp: 206/13742b lim: 4096 exec/s: 32564 rss: 507Mb L: 106/2523 MS: 3 ChangeBit-ChangeBinInt-EraseBytes-
+#1286404	REDUCE cov: 135 ft: 685 corp: 206/13741b lim: 4096 exec/s: 32984 rss: 507Mb L: 213/2523 MS: 1 EraseBytes-
+#1342597	REDUCE cov: 135 ft: 685 corp: 206/13739b lim: 4096 exec/s: 33564 rss: 507Mb L: 1208/2523 MS: 3 InsertByte-InsertByte-EraseBytes-
+#1507384	REDUCE cov: 135 ft: 685 corp: 206/13737b lim: 4096 exec/s: 33497 rss: 507Mb L: 331/2523 MS: 2 CMP-EraseBytes- DE: "\000\000"-
+#1514493	REDUCE cov: 135 ft: 685 corp: 206/13734b lim: 4096 exec/s: 33655 rss: 507Mb L: 1205/2523 MS: 4 ChangeByte-CMP-CopyPart-EraseBytes- DE: "\207\012\000\000\000\000\000\000"-
+#1534614	REDUCE cov: 135 ft: 685 corp: 206/13724b lim: 4096 exec/s: 34102 rss: 507Mb L: 1195/2523 MS: 1 EraseBytes-
+#1590292	REDUCE cov: 135 ft: 685 corp: 206/13722b lim: 4096 exec/s: 33836 rss: 507Mb L: 328/2523 MS: 1 EraseBytes-
+#1686403	REDUCE cov: 135 ft: 685 corp: 206/13721b lim: 4096 exec/s: 34416 rss: 507Mb L: 215/2523 MS: 1 EraseBytes-
+#1711021	REDUCE cov: 135 ft: 685 corp: 206/13715b lim: 4096 exec/s: 34220 rss: 507Mb L: 1189/2523 MS: 3 ChangeBinInt-EraseBytes-CopyPart-
+#1729305	REDUCE cov: 135 ft: 685 corp: 206/13699b lim: 4096 exec/s: 34586 rss: 507Mb L: 1173/2523 MS: 4 CopyPart-EraseBytes-ChangeBinInt-CopyPart-
+#1749896	REDUCE cov: 135 ft: 685 corp: 206/13671b lim: 4096 exec/s: 34311 rss: 507Mb L: 303/2523 MS: 5 CrossOver-CMP-CrossOver-CopyPart-EraseBytes- DE: "\377\377\377\377\377\377\002i"-
+#1763049	REDUCE cov: 135 ft: 685 corp: 206/13666b lim: 4096 exec/s: 34569 rss: 507Mb L: 298/2523 MS: 3 ChangeByte-CopyPart-EraseBytes-
+#1773882	REDUCE cov: 135 ft: 685 corp: 206/13651b lim: 4096 exec/s: 34113 rss: 507Mb L: 1158/2523 MS: 2 ChangeBit-EraseBytes-
+#1849768	REDUCE cov: 135 ft: 685 corp: 206/13650b lim: 4096 exec/s: 34254 rss: 507Mb L: 200/2523 MS: 1 EraseBytes-
+#1852947	REDUCE cov: 135 ft: 685 corp: 206/13635b lim: 4096 exec/s: 34313 rss: 507Mb L: 283/2523 MS: 4 PersAutoDict-CopyPart-EraseBytes-CopyPart- DE: "\000\000"-
+#1863700	REDUCE cov: 135 ft: 685 corp: 206/13629b lim: 4096 exec/s: 34512 rss: 507Mb L: 1152/2523 MS: 3 EraseBytes-ChangeByte-CrossOver-
+#2044904	REDUCE cov: 135 ft: 685 corp: 206/13626b lim: 4096 exec/s: 34659 rss: 507Mb L: 1149/2523 MS: 1 EraseBytes-
+#2097152	pulse  cov: 135 ft: 685 corp: 206/13626b lim: 4096 exec/s: 34379 rss: 507Mb
+#2136361	REDUCE cov: 135 ft: 685 corp: 206/13625b lim: 4096 exec/s: 34457 rss: 507Mb L: 264/2523 MS: 1 EraseBytes-
+#2378497	REDUCE cov: 135 ft: 685 corp: 206/13624b lim: 4096 exec/s: 35499 rss: 507Mb L: 134/2523 MS: 1 EraseBytes-
+#2441243	REDUCE cov: 135 ft: 685 corp: 206/13623b lim: 4096 exec/s: 35900 rss: 507Mb L: 282/2523 MS: 1 EraseBytes-
+#2496941	REDUCE cov: 135 ft: 685 corp: 206/13620b lim: 4096 exec/s: 35670 rss: 507Mb L: 279/2523 MS: 3 EraseBytes-EraseBytes-CopyPart-
+#2510432	REDUCE cov: 135 ft: 685 corp: 206/13619b lim: 4096 exec/s: 35863 rss: 507Mb L: 278/2523 MS: 1 EraseBytes-
+#2534676	REDUCE cov: 135 ft: 685 corp: 206/13606b lim: 4096 exec/s: 35699 rss: 507Mb L: 1136/2523 MS: 4 ChangeBinInt-InsertByte-CopyPart-EraseBytes-
+#2542164	REDUCE cov: 135 ft: 685 corp: 206/13605b lim: 4096 exec/s: 35805 rss: 507Mb L: 204/2523 MS: 1 EraseBytes-
+#2589276	REDUCE cov: 135 ft: 685 corp: 206/13598b lim: 4096 exec/s: 35962 rss: 507Mb L: 271/2523 MS: 2 InsertByte-EraseBytes-
+#2696443	REDUCE cov: 135 ft: 685 corp: 206/13586b lim: 4096 exec/s: 36438 rss: 507Mb L: 259/2523 MS: 2 ChangeBinInt-EraseBytes-
+#2827500	REDUCE cov: 135 ft: 685 corp: 206/13584b lim: 4096 exec/s: 36720 rss: 507Mb L: 2521/2521 MS: 1 EraseBytes-
+#2874207	REDUCE cov: 135 ft: 685 corp: 206/13576b lim: 4096 exec/s: 36848 rss: 507Mb L: 207/2521 MS: 2 ShuffleBytes-EraseBytes-
+#2924583	REDUCE cov: 135 ft: 685 corp: 206/13575b lim: 4096 exec/s: 36557 rss: 507Mb L: 327/2521 MS: 1 EraseBytes-
+#2933882	REDUCE cov: 135 ft: 685 corp: 206/13549b lim: 4096 exec/s: 36673 rss: 507Mb L: 2495/2495 MS: 4 ChangeASCIIInt-ChangeByte-EraseBytes-CopyPart-
+#3226718	REDUCE cov: 135 ft: 685 corp: 206/13547b lim: 4096 exec/s: 37088 rss: 507Mb L: 325/2495 MS: 1 EraseBytes-
+#3351699	REDUCE cov: 135 ft: 685 corp: 206/13546b lim: 4096 exec/s: 36831 rss: 507Mb L: 258/2495 MS: 1 EraseBytes-
+#3388155	REDUCE cov: 135 ft: 685 corp: 206/13540b lim: 4096 exec/s: 36827 rss: 507Mb L: 252/2495 MS: 1 EraseBytes-
+#3407241	REDUCE cov: 135 ft: 685 corp: 206/13537b lim: 4096 exec/s: 36637 rss: 507Mb L: 204/2495 MS: 1 EraseBytes-
+#3435918	REDUCE cov: 135 ft: 685 corp: 206/13536b lim: 4096 exec/s: 36945 rss: 507Mb L: 324/2495 MS: 1 EraseBytes-
+#3681269	REDUCE cov: 135 ft: 685 corp: 206/13535b lim: 4096 exec/s: 36812 rss: 507Mb L: 2494/2494 MS: 1 EraseBytes-
+#3831559	REDUCE cov: 135 ft: 685 corp: 206/13515b lim: 4096 exec/s: 37199 rss: 507Mb L: 1116/2494 MS: 5 CopyPart-CMP-EraseBytes-CMP-PersAutoDict- DE: "\000\000\000\000\000\000\014\323"-"\001\000"-"\377\377\377\377\377\377\002i"-
+#3891903	REDUCE cov: 135 ft: 685 corp: 206/13509b lim: 4096 exec/s: 37065 rss: 507Mb L: 246/2494 MS: 4 EraseBytes-ChangeBit-ChangeBinInt-PersAutoDict- DE: "\000\000"-
+#3944079	REDUCE cov: 135 ft: 685 corp: 206/13508b lim: 4096 exec/s: 37208 rss: 507Mb L: 2493/2493 MS: 1 EraseBytes-
+#4052725	REDUCE cov: 135 ft: 685 corp: 206/13507b lim: 4096 exec/s: 37180 rss: 507Mb L: 532/2493 MS: 1 EraseBytes-
+#4137598	REDUCE cov: 135 ft: 685 corp: 206/13506b lim: 4096 exec/s: 37275 rss: 507Mb L: 1115/2493 MS: 3 ChangeByte-EraseBytes-CopyPart-
+#4194304	pulse  cov: 135 ft: 685 corp: 206/13506b lim: 4096 exec/s: 37449 rss: 507Mb
+#4288184	REDUCE cov: 135 ft: 685 corp: 206/13499b lim: 4096 exec/s: 37615 rss: 508Mb L: 1108/2493 MS: 1 EraseBytes-
+#4395119	REDUCE cov: 135 ft: 685 corp: 206/13442b lim: 4096 exec/s: 37565 rss: 508Mb L: 2436/2436 MS: 4 EraseBytes-ShuffleBytes-CrossOver-CopyPart-
+#4418595	REDUCE cov: 135 ft: 685 corp: 206/13441b lim: 4096 exec/s: 37445 rss: 508Mb L: 203/2436 MS: 1 EraseBytes-
+#4754946	REDUCE cov: 135 ft: 685 corp: 206/13439b lim: 4096 exec/s: 37440 rss: 508Mb L: 211/2436 MS: 1 EraseBytes-
+#4828237	REDUCE cov: 135 ft: 685 corp: 206/13438b lim: 4096 exec/s: 37428 rss: 510Mb L: 263/2436 MS: 1 EraseBytes-
+#4887907	REDUCE cov: 135 ft: 685 corp: 206/13436b lim: 4096 exec/s: 37599 rss: 510Mb L: 530/2436 MS: 5 ChangeBit-ChangeBinInt-EraseBytes-ShuffleBytes-CopyPart-
+#5052473	REDUCE cov: 135 ft: 685 corp: 206/13435b lim: 4096 exec/s: 37705 rss: 510Mb L: 274/2436 MS: 1 EraseBytes-
+#5180526	REDUCE cov: 135 ft: 685 corp: 206/13433b lim: 4096 exec/s: 37540 rss: 510Mb L: 244/2436 MS: 3 EraseBytes-ChangeBinInt-CopyPart-
+#5360332	REDUCE cov: 135 ft: 685 corp: 206/13432b lim: 4096 exec/s: 37484 rss: 510Mb L: 529/2436 MS: 1 EraseBytes-
+#5612660	REDUCE cov: 135 ft: 685 corp: 206/13428b lim: 4096 exec/s: 37668 rss: 510Mb L: 525/2436 MS: 3 ShuffleBytes-EraseBytes-CopyPart-
+#6453952	REDUCE cov: 135 ft: 685 corp: 206/13427b lim: 4096 exec/s: 36879 rss: 510Mb L: 199/2436 MS: 1 EraseBytes-
+#6591995	REDUCE cov: 135 ft: 685 corp: 206/13352b lim: 4096 exec/s: 36826 rss: 510Mb L: 2361/2361 MS: 3 EraseBytes-PersAutoDict-CopyPart- DE: "\000\000"-
+#6720505	REDUCE cov: 135 ft: 685 corp: 206/13338b lim: 4096 exec/s: 36724 rss: 511Mb L: 2347/2347 MS: 5 ChangeBinInt-EraseBytes-ShuffleBytes-CopyPart-CMP- DE: "\030\012\000\000\000\000\000\000"-
+#6729051	REDUCE cov: 135 ft: 685 corp: 206/13337b lim: 4096 exec/s: 36770 rss: 511Mb L: 613/2347 MS: 1 EraseBytes-
+#7509817	REDUCE cov: 135 ft: 685 corp: 206/13336b lim: 4096 exec/s: 35423 rss: 512Mb L: 1113/2347 MS: 5 CMP-EraseBytes-ChangeBinInt-CopyPart-CopyPart- DE: "\000\000"-
+#7515106	REDUCE cov: 135 ft: 685 corp: 206/13333b lim: 4096 exec/s: 35282 rss: 512Mb L: 241/2347 MS: 4 EraseBytes-CopyPart-InsertByte-EraseBytes-
+#7538402	REDUCE cov: 135 ft: 685 corp: 206/13332b lim: 4096 exec/s: 35391 rss: 512Mb L: 133/2347 MS: 1 EraseBytes-
+#7616284	REDUCE cov: 135 ft: 685 corp: 206/13331b lim: 4096 exec/s: 35260 rss: 512Mb L: 524/2347 MS: 2 ChangeBit-EraseBytes-
+#7625659	REDUCE cov: 135 ft: 685 corp: 206/13328b lim: 4096 exec/s: 35303 rss: 512Mb L: 610/2347 MS: 5 ChangeByte-CopyPart-EraseBytes-CopyPart-CopyPart-
+#7725576	REDUCE cov: 135 ft: 685 corp: 206/13327b lim: 4096 exec/s: 35276 rss: 512Mb L: 323/2347 MS: 2 InsertByte-EraseBytes-
+#8156058	REDUCE cov: 135 ft: 685 corp: 206/13326b lim: 4096 exec/s: 35307 rss: 514Mb L: 1107/2347 MS: 2 ShuffleBytes-EraseBytes-
+#8254501	REDUCE cov: 135 ft: 685 corp: 206/13325b lim: 4096 exec/s: 35275 rss: 514Mb L: 133/2347 MS: 3 EraseBytes-ShuffleBytes-CrossOver-
+#8388608	pulse  cov: 135 ft: 685 corp: 206/13325b lim: 4096 exec/s: 35394 rss: 514Mb
+#8443872	REDUCE cov: 135 ft: 685 corp: 206/13323b lim: 4096 exec/s: 35330 rss: 514Mb L: 239/2347 MS: 1 EraseBytes-
+#8471753	REDUCE cov: 135 ft: 685 corp: 206/13322b lim: 4096 exec/s: 35446 rss: 514Mb L: 202/2347 MS: 1 EraseBytes-
+#8486819	REDUCE cov: 135 ft: 685 corp: 206/13321b lim: 4096 exec/s: 35361 rss: 514Mb L: 130/2347 MS: 1 EraseBytes-
+#8488585	REDUCE cov: 135 ft: 685 corp: 206/13320b lim: 4096 exec/s: 35369 rss: 514Mb L: 201/2347 MS: 1 EraseBytes-
+#8670997	REDUCE cov: 135 ft: 685 corp: 206/13318b lim: 4096 exec/s: 35536 rss: 514Mb L: 2345/2345 MS: 2 InsertByte-EraseBytes-
+#8864064	REDUCE cov: 135 ft: 685 corp: 206/13314b lim: 4096 exec/s: 35598 rss: 514Mb L: 520/2345 MS: 2 CopyPart-EraseBytes-
+#8934445	REDUCE cov: 135 ft: 685 corp: 206/13313b lim: 4096 exec/s: 35737 rss: 515Mb L: 1112/2345 MS: 1 EraseBytes-
+#8949071	REDUCE cov: 135 ft: 685 corp: 206/13308b lim: 4096 exec/s: 35653 rss: 515Mb L: 2340/2340 MS: 1 EraseBytes-
+#9097715	REDUCE cov: 135 ft: 685 corp: 206/13306b lim: 4096 exec/s: 35817 rss: 515Mb L: 208/2340 MS: 4 ChangeBit-EraseBytes-ChangeBit-CopyPart-
+#9225446	REDUCE cov: 135 ft: 685 corp: 206/13304b lim: 4096 exec/s: 35757 rss: 515Mb L: 321/2340 MS: 1 EraseBytes-
+#9284468	REDUCE cov: 135 ft: 685 corp: 206/13303b lim: 4096 exec/s: 35847 rss: 515Mb L: 238/2340 MS: 2 ChangeBinInt-EraseBytes-
+#9658698	REDUCE cov: 135 ft: 685 corp: 206/13301b lim: 4096 exec/s: 36039 rss: 515Mb L: 319/2340 MS: 5 ChangeBinInt-CopyPart-ChangeASCIIInt-ShuffleBytes-EraseBytes-
+#9758060	REDUCE cov: 135 ft: 685 corp: 206/13297b lim: 4096 exec/s: 36140 rss: 515Mb L: 234/2340 MS: 2 ChangeBinInt-EraseBytes-
+#9778456	REDUCE cov: 135 ft: 685 corp: 206/13296b lim: 4096 exec/s: 36216 rss: 515Mb L: 133/2340 MS: 1 EraseBytes-
+#9824810	REDUCE cov: 135 ft: 685 corp: 206/13287b lim: 4096 exec/s: 36253 rss: 515Mb L: 1098/2340 MS: 4 CrossOver-PersAutoDict-EraseBytes-CopyPart- DE: "\377\377\377\377\377\377\002i"-
+#9914287	REDUCE cov: 135 ft: 685 corp: 206/13281b lim: 4096 exec/s: 36316 rss: 515Mb L: 1092/2340 MS: 2 CopyPart-EraseBytes-
+#10176279	REDUCE cov: 135 ft: 685 corp: 206/13278b lim: 4096 exec/s: 36343 rss: 515Mb L: 316/2340 MS: 1 EraseBytes-
+#10271628	REDUCE cov: 135 ft: 685 corp: 206/13258b lim: 4096 exec/s: 36424 rss: 516Mb L: 1072/2340 MS: 4 EraseBytes-InsertByte-ChangeByte-CopyPart-
+#10548659	REDUCE cov: 135 ft: 685 corp: 206/13257b lim: 4096 exec/s: 36374 rss: 516Mb L: 129/2340 MS: 1 EraseBytes-
+#10587342	REDUCE cov: 135 ft: 685 corp: 206/13255b lim: 4096 exec/s: 36258 rss: 517Mb L: 314/2340 MS: 3 InsertByte-InsertByte-EraseBytes-
+#10642348	REDUCE cov: 135 ft: 685 corp: 206/13254b lim: 4096 exec/s: 36322 rss: 517Mb L: 201/2340 MS: 1 EraseBytes-
+#10734194	REDUCE cov: 135 ft: 685 corp: 206/13251b lim: 4096 exec/s: 36387 rss: 517Mb L: 1069/2340 MS: 1 EraseBytes-
+#10753865	REDUCE cov: 135 ft: 685 corp: 206/13247b lim: 4096 exec/s: 36330 rss: 517Mb L: 230/2340 MS: 1 EraseBytes-
+#11057446	REDUCE cov: 135 ft: 685 corp: 206/13246b lim: 4096 exec/s: 36493 rss: 517Mb L: 313/2340 MS: 1 EraseBytes-
+#11076977	REDUCE cov: 135 ft: 685 corp: 206/13245b lim: 4096 exec/s: 36557 rss: 517Mb L: 312/2340 MS: 1 EraseBytes-
+#11104215	REDUCE cov: 135 ft: 685 corp: 206/13243b lim: 4096 exec/s: 36527 rss: 517Mb L: 2338/2338 MS: 2 CopyPart-EraseBytes-
+#11464482	REDUCE cov: 135 ft: 685 corp: 206/13242b lim: 4096 exec/s: 36745 rss: 517Mb L: 262/2338 MS: 2 CopyPart-EraseBytes-
+#11484623	REDUCE cov: 135 ft: 685 corp: 206/13240b lim: 4096 exec/s: 36692 rss: 517Mb L: 104/2338 MS: 1 EraseBytes-
+#11652734	REDUCE cov: 135 ft: 685 corp: 206/13239b lim: 4096 exec/s: 36875 rss: 517Mb L: 69/2338 MS: 1 EraseBytes-
+#11860520	REDUCE cov: 135 ft: 685 corp: 206/13238b lim: 4096 exec/s: 36948 rss: 517Mb L: 200/2338 MS: 1 EraseBytes-
+#11980821	REDUCE cov: 135 ft: 685 corp: 206/13236b lim: 4096 exec/s: 36977 rss: 517Mb L: 219/2338 MS: 1 EraseBytes-
+#12398918	REDUCE cov: 135 ft: 685 corp: 206/13234b lim: 4096 exec/s: 37122 rss: 518Mb L: 18/2338 MS: 2 EraseBytes-CopyPart-
+#12865254	REDUCE cov: 135 ft: 685 corp: 206/13232b lim: 4096 exec/s: 36863 rss: 518Mb L: 310/2338 MS: 1 EraseBytes-
+#13095246	REDUCE cov: 135 ft: 685 corp: 206/13231b lim: 4096 exec/s: 36784 rss: 518Mb L: 229/2338 MS: 2 CopyPart-EraseBytes-
+#13173934	REDUCE cov: 135 ft: 685 corp: 206/13229b lim: 4096 exec/s: 36798 rss: 518Mb L: 1110/2338 MS: 3 InsertByte-InsertByte-EraseBytes-
+#13646760	REDUCE cov: 135 ft: 685 corp: 206/13228b lim: 4096 exec/s: 36684 rss: 518Mb L: 210/2338 MS: 1 EraseBytes-
+#13684306	REDUCE cov: 135 ft: 685 corp: 206/13226b lim: 4096 exec/s: 36687 rss: 518Mb L: 608/2338 MS: 1 EraseBytes-
+#13990797	REDUCE cov: 135 ft: 685 corp: 206/13225b lim: 4096 exec/s: 36625 rss: 518Mb L: 200/2338 MS: 1 EraseBytes-
+#14140238	REDUCE cov: 135 ft: 685 corp: 206/13224b lim: 4096 exec/s: 36632 rss: 518Mb L: 309/2338 MS: 1 EraseBytes-
+#14261894	REDUCE cov: 135 ft: 685 corp: 206/13223b lim: 4096 exec/s: 36568 rss: 518Mb L: 128/2338 MS: 1 EraseBytes-
+#14301396	REDUCE cov: 135 ft: 685 corp: 206/13221b lim: 4096 exec/s: 36576 rss: 518Mb L: 67/2338 MS: 2 EraseBytes-CopyPart-
+#14565397	REDUCE cov: 135 ft: 685 corp: 206/13220b lim: 4096 exec/s: 36596 rss: 518Mb L: 261/2338 MS: 1 EraseBytes-
+#14574052	REDUCE cov: 135 ft: 685 corp: 206/13217b lim: 4096 exec/s: 36526 rss: 518Mb L: 605/2338 MS: 5 CopyPart-InsertByte-CopyPart-ChangeByte-EraseBytes-
+#14668318	REDUCE cov: 135 ft: 685 corp: 206/13212b lim: 4096 exec/s: 36579 rss: 518Mb L: 2333/2333 MS: 1 EraseBytes-
+#14715714	REDUCE cov: 135 ft: 685 corp: 206/13210b lim: 4096 exec/s: 36606 rss: 518Mb L: 198/2333 MS: 1 CrossOver-
+#14907759	REDUCE cov: 135 ft: 685 corp: 206/13203b lim: 4096 exec/s: 36538 rss: 518Mb L: 191/2333 MS: 5 CrossOver-CopyPart-InsertByte-InsertByte-EraseBytes-
+#14984792	REDUCE cov: 135 ft: 685 corp: 206/13164b lim: 4096 exec/s: 36548 rss: 518Mb L: 2294/2294 MS: 2 EraseBytes-CopyPart-
+#14991628	REDUCE cov: 135 ft: 685 corp: 206/13163b lim: 4096 exec/s: 36475 rss: 518Mb L: 228/2294 MS: 1 EraseBytes-
+#15419189	REDUCE cov: 135 ft: 685 corp: 206/13162b lim: 4096 exec/s: 36625 rss: 520Mb L: 190/2294 MS: 1 EraseBytes-
+#15672700	REDUCE cov: 135 ft: 685 corp: 206/13161b lim: 4096 exec/s: 36704 rss: 520Mb L: 132/2294 MS: 1 EraseBytes-
+#15748141	REDUCE cov: 135 ft: 685 corp: 206/13160b lim: 4096 exec/s: 36794 rss: 520Mb L: 227/2294 MS: 1 EraseBytes-
+#15772412	REDUCE cov: 135 ft: 685 corp: 206/13150b lim: 4096 exec/s: 36765 rss: 520Mb L: 2284/2284 MS: 1 EraseBytes-
+#15900464	REDUCE cov: 135 ft: 685 corp: 206/13149b lim: 4096 exec/s: 36806 rss: 520Mb L: 189/2284 MS: 2 CMP-EraseBytes- DE: "\377\377"-
+#16356971	REDUCE cov: 135 ft: 685 corp: 206/13147b lim: 4096 exec/s: 37006 rss: 520Mb L: 202/2284 MS: 2 EraseBytes-CopyPart-
+#16777216	pulse  cov: 135 ft: 685 corp: 206/13147b lim: 4096 exec/s: 37200 rss: 520Mb
+#16997672	REDUCE cov: 135 ft: 685 corp: 206/13145b lim: 4096 exec/s: 37194 rss: 520Mb L: 200/2284 MS: 1 EraseBytes-
+#18044608	REDUCE cov: 135 ft: 685 corp: 206/13144b lim: 4096 exec/s: 37205 rss: 520Mb L: 13/2284 MS: 5 CrossOver-EraseBytes-ChangeByte-EraseBytes-CopyPart-
+#18126344	REDUCE cov: 135 ft: 685 corp: 206/13143b lim: 4096 exec/s: 37144 rss: 520Mb L: 218/2284 MS: 1 EraseBytes-
+#18194740	REDUCE cov: 135 ft: 685 corp: 206/13142b lim: 4096 exec/s: 37132 rss: 520Mb L: 209/2284 MS: 1 EraseBytes-
+#18258466	REDUCE cov: 135 ft: 685 corp: 206/13140b lim: 4096 exec/s: 37110 rss: 520Mb L: 198/2284 MS: 1 EraseBytes-
+#18528284	REDUCE cov: 135 ft: 685 corp: 206/13139b lim: 4096 exec/s: 37205 rss: 520Mb L: 308/2284 MS: 3 EraseBytes-ChangeByte-CopyPart-
+#18640751	REDUCE cov: 135 ft: 685 corp: 206/13136b lim: 4096 exec/s: 37207 rss: 520Mb L: 186/2284 MS: 2 EraseBytes-CopyPart-
+#18674373	REDUCE cov: 135 ft: 685 corp: 206/13135b lim: 4096 exec/s: 37199 rss: 520Mb L: 54/2284 MS: 2 CopyPart-EraseBytes-
+#18709121	REDUCE cov: 135 ft: 685 corp: 206/13134b lim: 4096 exec/s: 37269 rss: 520Mb L: 307/2284 MS: 3 ChangeASCIIInt-InsertByte-EraseBytes-
+#18744978	REDUCE cov: 135 ft: 685 corp: 206/13131b lim: 4096 exec/s: 37266 rss: 520Mb L: 183/2284 MS: 2 ChangeBit-EraseBytes-
+#18944534	REDUCE cov: 135 ft: 685 corp: 206/13128b lim: 4096 exec/s: 37219 rss: 520Mb L: 1066/2284 MS: 1 EraseBytes-
+#19119765	REDUCE cov: 135 ft: 685 corp: 206/13127b lim: 4096 exec/s: 37270 rss: 520Mb L: 182/2284 MS: 1 EraseBytes-
+#19734431	REDUCE cov: 135 ft: 685 corp: 206/13125b lim: 4096 exec/s: 37164 rss: 520Mb L: 305/2284 MS: 1 EraseBytes-
+#19978602	REDUCE cov: 135 ft: 685 corp: 206/13124b lim: 4096 exec/s: 37134 rss: 520Mb L: 273/2284 MS: 1 EraseBytes-
+#20009863	REDUCE cov: 135 ft: 685 corp: 206/13122b lim: 4096 exec/s: 37124 rss: 520Mb L: 2282/2282 MS: 1 EraseBytes-
+#20026914	REDUCE cov: 135 ft: 685 corp: 206/13121b lim: 4096 exec/s: 37155 rss: 520Mb L: 197/2282 MS: 1 EraseBytes-
+#20077693	REDUCE cov: 135 ft: 685 corp: 206/13086b lim: 4096 exec/s: 37112 rss: 520Mb L: 2247/2247 MS: 4 InsertByte-EraseBytes-ChangeBit-CopyPart-
+#20106939	REDUCE cov: 135 ft: 685 corp: 206/13083b lim: 4096 exec/s: 37097 rss: 520Mb L: 179/2247 MS: 1 EraseBytes-
+#20378141	REDUCE cov: 135 ft: 685 corp: 206/13081b lim: 4096 exec/s: 37051 rss: 520Mb L: 65/2247 MS: 2 EraseBytes-CopyPart-
+#20741757	REDUCE cov: 135 ft: 685 corp: 206/13080b lim: 4096 exec/s: 36907 rss: 520Mb L: 604/2247 MS: 1 EraseBytes-
+#20835529	REDUCE cov: 135 ft: 685 corp: 206/13079b lim: 4096 exec/s: 36877 rss: 520Mb L: 1065/2247 MS: 2 EraseBytes-CopyPart-
+#20854825	REDUCE cov: 135 ft: 685 corp: 206/13078b lim: 4096 exec/s: 36845 rss: 520Mb L: 1064/2247 MS: 1 EraseBytes-
+#20909815	REDUCE cov: 135 ft: 685 corp: 206/13077b lim: 4096 exec/s: 36877 rss: 520Mb L: 75/2247 MS: 4 CopyPart-EraseBytes-EraseBytes-ShuffleBytes-
+#20929316	REDUCE cov: 135 ft: 685 corp: 206/13076b lim: 4096 exec/s: 36847 rss: 520Mb L: 603/2247 MS: 1 EraseBytes-
+#20945992	REDUCE cov: 135 ft: 685 corp: 206/13075b lim: 4096 exec/s: 36811 rss: 520Mb L: 178/2247 MS: 1 EraseBytes-
+#21039007	REDUCE cov: 135 ft: 685 corp: 206/13042b lim: 4096 exec/s: 36845 rss: 520Mb L: 2214/2214 MS: 5 ChangeBit-ChangeBinInt-EraseBytes-ShuffleBytes-CopyPart-
+#21392903	REDUCE cov: 135 ft: 685 corp: 206/13041b lim: 4096 exec/s: 36757 rss: 520Mb L: 198/2214 MS: 1 EraseBytes-
+#21446949	REDUCE cov: 135 ft: 685 corp: 206/13040b lim: 4096 exec/s: 36724 rss: 520Mb L: 177/2214 MS: 1 EraseBytes-
+#21641750	REDUCE cov: 135 ft: 685 corp: 206/13037b lim: 4096 exec/s: 36618 rss: 520Mb L: 2211/2211 MS: 1 EraseBytes-
+#21708737	REDUCE cov: 135 ft: 685 corp: 206/13036b lim: 4096 exec/s: 36608 rss: 520Mb L: 208/2211 MS: 2 EraseBytes-CopyPart-
+#21708798	REDUCE cov: 135 ft: 685 corp: 206/13035b lim: 4096 exec/s: 36608 rss: 520Mb L: 304/2211 MS: 1 EraseBytes-
+#22095489	REDUCE cov: 135 ft: 685 corp: 206/13034b lim: 4096 exec/s: 36581 rss: 520Mb L: 199/2211 MS: 1 EraseBytes-
+#22104750	REDUCE cov: 135 ft: 685 corp: 206/13033b lim: 4096 exec/s: 36597 rss: 520Mb L: 207/2211 MS: 1 EraseBytes-
+#22176619	REDUCE cov: 135 ft: 685 corp: 206/13013b lim: 4096 exec/s: 36595 rss: 520Mb L: 2191/2191 MS: 4 InsertByte-CrossOver-CrossOver-CopyPart-
+#22288235	REDUCE cov: 135 ft: 685 corp: 206/13012b lim: 4096 exec/s: 36598 rss: 520Mb L: 206/2191 MS: 1 EraseBytes-
+#22797692	REDUCE cov: 135 ft: 685 corp: 206/13011b lim: 4096 exec/s: 36593 rss: 520Mb L: 53/2191 MS: 2 ChangeByte-EraseBytes-
+#23275309	REDUCE cov: 135 ft: 685 corp: 206/13010b lim: 4096 exec/s: 36654 rss: 520Mb L: 60/2191 MS: 2 ChangeBit-EraseBytes-
+#23305322	REDUCE cov: 135 ft: 685 corp: 206/13008b lim: 4096 exec/s: 36701 rss: 520Mb L: 63/2191 MS: 3 ChangeBit-EraseBytes-ChangeByte-
+#23369599	REDUCE cov: 135 ft: 685 corp: 206/13007b lim: 4096 exec/s: 36686 rss: 520Mb L: 52/2191 MS: 2 ChangeBinInt-EraseBytes-
+#23419141	REDUCE cov: 135 ft: 685 corp: 206/13002b lim: 4096 exec/s: 36707 rss: 520Mb L: 2186/2186 MS: 2 ChangeASCIIInt-EraseBytes-
+#23470968	REDUCE cov: 135 ft: 685 corp: 206/13001b lim: 4096 exec/s: 36730 rss: 520Mb L: 303/2186 MS: 2 PersAutoDict-EraseBytes- DE: "\377\377"-
+#23502961	REDUCE cov: 135 ft: 685 corp: 206/13000b lim: 4096 exec/s: 36723 rss: 520Mb L: 62/2186 MS: 3 CopyPart-ChangeBit-EraseBytes-
+#23567787	REDUCE cov: 135 ft: 685 corp: 206/12998b lim: 4096 exec/s: 36709 rss: 520Mb L: 2184/2184 MS: 1 EraseBytes-
+#23662138	REDUCE cov: 135 ft: 685 corp: 206/12997b lim: 4096 exec/s: 36742 rss: 520Mb L: 176/2184 MS: 1 EraseBytes-
+#23703850	REDUCE cov: 135 ft: 685 corp: 206/12996b lim: 4096 exec/s: 36750 rss: 520Mb L: 175/2184 MS: 2 CopyPart-EraseBytes-
+#23759237	REDUCE cov: 135 ft: 685 corp: 206/12995b lim: 4096 exec/s: 36722 rss: 520Mb L: 174/2184 MS: 1 EraseBytes-
+#24040560	REDUCE cov: 135 ft: 685 corp: 206/12991b lim: 4096 exec/s: 36703 rss: 520Mb L: 1060/2184 MS: 2 PersAutoDict-EraseBytes- DE: "\377\377"-
+#24047979	REDUCE cov: 135 ft: 685 corp: 206/12989b lim: 4096 exec/s: 36714 rss: 520Mb L: 260/2184 MS: 4 ChangeBit-CrossOver-ChangeBinInt-EraseBytes-
+#24135590	REDUCE cov: 135 ft: 685 corp: 206/12988b lim: 4096 exec/s: 36736 rss: 520Mb L: 173/2184 MS: 1 EraseBytes-
+#24299736	REDUCE cov: 135 ft: 685 corp: 206/12987b lim: 4096 exec/s: 36762 rss: 520Mb L: 51/2184 MS: 1 EraseBytes-
+#24339338	REDUCE cov: 135 ft: 685 corp: 206/12986b lim: 4096 exec/s: 36766 rss: 520Mb L: 260/2184 MS: 2 ChangeBinInt-EraseBytes-
+#24446404	REDUCE cov: 135 ft: 685 corp: 206/12985b lim: 4096 exec/s: 36761 rss: 520Mb L: 302/2184 MS: 1 EraseBytes-
+#24713984	REDUCE cov: 135 ft: 685 corp: 206/12962b lim: 4096 exec/s: 36831 rss: 520Mb L: 1087/2184 MS: 5 ChangeBit-ChangeBinInt-CrossOver-PersAutoDict-EraseBytes- DE: "\001\000"-
+#25060087	REDUCE cov: 135 ft: 685 corp: 206/12951b lim: 4096 exec/s: 36798 rss: 520Mb L: 1076/2184 MS: 3 ShuffleBytes-EraseBytes-CopyPart-
+#25061924	REDUCE cov: 135 ft: 685 corp: 206/12950b lim: 4096 exec/s: 36801 rss: 520Mb L: 1059/2184 MS: 1 EraseBytes-
+#25188270	REDUCE cov: 135 ft: 685 corp: 206/12949b lim: 4096 exec/s: 36824 rss: 520Mb L: 217/2184 MS: 1 EraseBytes-
+#25403969	REDUCE cov: 135 ft: 685 corp: 206/12946b lim: 4096 exec/s: 36817 rss: 520Mb L: 1073/2184 MS: 4 CopyPart-ShuffleBytes-InsertRepeatedBytes-EraseBytes-
+#25476125	REDUCE cov: 135 ft: 685 corp: 206/12944b lim: 4096 exec/s: 36815 rss: 520Mb L: 300/2184 MS: 1 EraseBytes-
+#25493767	REDUCE cov: 135 ft: 685 corp: 206/12943b lim: 4096 exec/s: 36787 rss: 520Mb L: 519/2184 MS: 2 CopyPart-EraseBytes-
+#25669053	REDUCE cov: 135 ft: 685 corp: 206/12942b lim: 4096 exec/s: 36775 rss: 520Mb L: 132/2184 MS: 1 EraseBytes-
+#25678351	REDUCE cov: 135 ft: 685 corp: 206/12938b lim: 4096 exec/s: 36788 rss: 520Mb L: 1069/2184 MS: 3 CopyPart-InsertByte-EraseBytes-
+#25730830	REDUCE cov: 135 ft: 685 corp: 206/12936b lim: 4096 exec/s: 36810 rss: 520Mb L: 206/2184 MS: 4 ChangeASCIIInt-EraseBytes-ChangeBit-CopyPart-
+#26261646	REDUCE cov: 135 ft: 685 corp: 206/12935b lim: 4096 exec/s: 36832 rss: 520Mb L: 518/2184 MS: 1 EraseBytes-
+#26622960	REDUCE cov: 135 ft: 685 corp: 206/12934b lim: 4096 exec/s: 36822 rss: 520Mb L: 602/2184 MS: 4 ChangeBit-ChangeBit-EraseBytes-CopyPart-
+#26996117	REDUCE cov: 135 ft: 685 corp: 206/12933b lim: 4096 exec/s: 36879 rss: 520Mb L: 128/2184 MS: 2 CopyPart-EraseBytes-
+#27182873	REDUCE cov: 135 ft: 685 corp: 206/12928b lim: 4096 exec/s: 36883 rss: 520Mb L: 1054/2184 MS: 1 EraseBytes-
+#27395759	REDUCE cov: 135 ft: 685 corp: 206/12927b lim: 4096 exec/s: 36871 rss: 520Mb L: 131/2184 MS: 1 EraseBytes-
+#27546120	REDUCE cov: 135 ft: 685 corp: 206/12926b lim: 4096 exec/s: 36875 rss: 520Mb L: 172/2184 MS: 1 EraseBytes-
+#27595471	REDUCE cov: 135 ft: 685 corp: 206/12925b lim: 4096 exec/s: 36892 rss: 520Mb L: 216/2184 MS: 1 EraseBytes-
+#27650348	REDUCE cov: 135 ft: 685 corp: 206/12924b lim: 4096 exec/s: 36867 rss: 520Mb L: 52/2184 MS: 2 EraseBytes-InsertRepeatedBytes-
+#27657449	REDUCE cov: 135 ft: 685 corp: 206/12923b lim: 4096 exec/s: 36876 rss: 520Mb L: 1053/2184 MS: 1 EraseBytes-
+#27759380	REDUCE cov: 135 ft: 685 corp: 206/12922b lim: 4096 exec/s: 36865 rss: 520Mb L: 205/2184 MS: 1 EraseBytes-
+#27787711	REDUCE cov: 135 ft: 685 corp: 206/12921b lim: 4096 exec/s: 36853 rss: 520Mb L: 127/2184 MS: 1 EraseBytes-
+#27849313	REDUCE cov: 135 ft: 685 corp: 206/12920b lim: 4096 exec/s: 36837 rss: 520Mb L: 2183/2183 MS: 2 CopyPart-CrossOver-
+#27906174	REDUCE cov: 135 ft: 685 corp: 206/12919b lim: 4096 exec/s: 36815 rss: 520Mb L: 205/2183 MS: 1 EraseBytes-
+#27936362	REDUCE cov: 135 ft: 685 corp: 206/12918b lim: 4096 exec/s: 36806 rss: 520Mb L: 171/2183 MS: 3 CopyPart-PersAutoDict-EraseBytes- DE: "\377\377"-
+#28532714	REDUCE cov: 135 ft: 685 corp: 206/12916b lim: 4096 exec/s: 36627 rss: 520Mb L: 516/2183 MS: 2 EraseBytes-CopyPart-
+#28810373	REDUCE cov: 135 ft: 685 corp: 206/12911b lim: 4096 exec/s: 36561 rss: 520Mb L: 1048/2183 MS: 4 CopyPart-ShuffleBytes-ChangeBit-EraseBytes-
+#29079309	REDUCE cov: 135 ft: 685 corp: 206/12910b lim: 4096 exec/s: 36485 rss: 520Mb L: 211/2183 MS: 1 EraseBytes-
+#29103953	REDUCE cov: 135 ft: 685 corp: 206/12909b lim: 4096 exec/s: 36471 rss: 520Mb L: 170/2183 MS: 4 CopyPart-EraseBytes-ChangeBinInt-CopyPart-
+#29180284	REDUCE cov: 135 ft: 685 corp: 206/12908b lim: 4096 exec/s: 36429 rss: 520Mb L: 215/2183 MS: 1 EraseBytes-
+#29221880	REDUCE cov: 135 ft: 685 corp: 206/12907b lim: 4096 exec/s: 36436 rss: 520Mb L: 601/2183 MS: 1 EraseBytes-
+#29436427	REDUCE cov: 135 ft: 685 corp: 206/12893b lim: 4096 exec/s: 36386 rss: 520Mb L: 2169/2169 MS: 2 EraseBytes-CopyPart-
+#29677348	REDUCE cov: 135 ft: 685 corp: 206/12892b lim: 4096 exec/s: 36236 rss: 520Mb L: 169/2169 MS: 1 EraseBytes-
+#29728799	REDUCE cov: 135 ft: 685 corp: 206/12888b lim: 4096 exec/s: 36166 rss: 520Mb L: 1044/2169 MS: 1 EraseBytes-
+#29850470	REDUCE cov: 135 ft: 685 corp: 206/12886b lim: 4096 exec/s: 36138 rss: 520Mb L: 298/2169 MS: 1 EraseBytes-
+#30221541	REDUCE cov: 135 ft: 685 corp: 206/12884b lim: 4096 exec/s: 36106 rss: 520Mb L: 1042/2169 MS: 1 EraseBytes-
+#30286681	REDUCE cov: 135 ft: 685 corp: 206/12873b lim: 4096 exec/s: 36098 rss: 520Mb L: 590/2169 MS: 5 EraseBytes-ShuffleBytes-CopyPart-CMP-EraseBytes- DE: "\001\000"-
+#30487407	REDUCE cov: 135 ft: 685 corp: 206/12872b lim: 4096 exec/s: 36079 rss: 520Mb L: 210/2169 MS: 1 EraseBytes-
+#30510711	REDUCE cov: 135 ft: 685 corp: 206/12871b lim: 4096 exec/s: 36064 rss: 520Mb L: 168/2169 MS: 4 PersAutoDict-CrossOver-EraseBytes-CopyPart- DE: "\377\377\377\377\377\377\002i"-
+#30910422	REDUCE cov: 135 ft: 685 corp: 206/12870b lim: 4096 exec/s: 36110 rss: 520Mb L: 589/2169 MS: 1 EraseBytes-
+#31583858	REDUCE cov: 135 ft: 685 corp: 206/12868b lim: 4096 exec/s: 36137 rss: 520Mb L: 296/2169 MS: 1 EraseBytes-
+#32246570	REDUCE cov: 135 ft: 685 corp: 206/12867b lim: 4096 exec/s: 36150 rss: 520Mb L: 515/2169 MS: 2 CopyPart-EraseBytes-
+#32474064	REDUCE cov: 135 ft: 685 corp: 206/12816b lim: 4096 exec/s: 36162 rss: 520Mb L: 2118/2118 MS: 4 ChangeBit-EraseBytes-ChangeBit-CopyPart-
+#32550579	DONE   cov: 135 ft: 685 corp: 206/12816b lim: 4096 exec/s: 36127 rss: 520Mb
+###### Recommended dictionary. ######
+"\000\000" # Uses: 506137
+"\207\012\000\000\000\000\000\000" # Uses: 435667
+"\377\377\377\377\377\377\002i" # Uses: 425125
+"\000\000\000\000\000\000\014\323" # Uses: 368223
+"\001\000" # Uses: 427287
+"\030\012\000\000\000\000\000\000" # Uses: 321544
+"\377\377" # Uses: 225989
+###### End of recommended dictionary. ######
+Done 32550579 runs in 901 second(s)
+stat::number_of_executed_units: 32550579
+stat::average_exec_per_sec:     36127
+stat::new_units_added:          223
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              520

@@ -1,0 +1,57 @@
+warning: unused workspace dependency `q-bench-support`
+  --> Cargo.toml:43:1
+   |
+43 | q-bench-support = { path = "crates/q-bench-support" }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_workspace_dependencies` is set to `warn` by default
+help: consider removing the workspace dependency `q-bench-support`
+warning: unused workspace dependency `q-runtime`
+  --> Cargo.toml:32:1
+   |
+32 | q-runtime = { path = "crates/q-runtime" }
+   | ^^^^^^^^^
+   |
+help: consider removing the workspace dependency `q-runtime`
+warning: unused workspace dependency `tokio-postgres`
+  --> Cargo.toml:52:1
+   |
+52 | tokio-postgres = { version = "0.7", features = ["runtime"] }
+   | ^^^^^^^^^^^^^^
+   |
+help: consider removing the workspace dependency `tokio-postgres`
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+
+running 15 tests
+...............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 207.56s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

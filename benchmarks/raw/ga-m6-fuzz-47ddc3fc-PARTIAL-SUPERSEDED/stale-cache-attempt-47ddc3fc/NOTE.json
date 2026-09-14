@@ -1,0 +1,1 @@
+{"reason": "first miri run on 47ddc3fc aborted: cargo-miri panicked on a stale target-dir cache referencing the deleted velqu-miri-fix worktree path (harness environment issue, not a Miri finding). Cache rebuilt from the main checkout; rerun follows.", "archivedAt": "2026-09-13T12:01:33Z"}

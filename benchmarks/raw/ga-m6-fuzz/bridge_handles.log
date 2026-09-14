@@ -1,0 +1,239 @@
+warning: binary `bridge_handles` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
+   |                                                        ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::non_kebab_case_bins` is set to `warn` by default
+help: to change the binary name to `bridge-handles`, convert `bin.name`
+  --> Cargo.toml:60:8
+   |
+60 - name = "bridge_handles"
+60 + name = "bridge-handles"
+   |
+warning: binary `capabilities_policy` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
+   |                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `capabilities-policy`, convert `bin.name`
+  --> Cargo.toml:74:8
+   |
+74 - name = "capabilities_policy"
+74 + name = "capabilities-policy"
+   |
+warning: binary `codec_encoders` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
+   |                                                        ^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `codec-encoders`, convert `bin.name`
+  --> Cargo.toml:67:8
+   |
+67 - name = "codec_encoders"
+67 + name = "codec-encoders"
+   |
+warning: binary `http_decode` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `http-decode`, convert `bin.name`
+  --> Cargo.toml:46:8
+   |
+46 - name = "http_decode"
+46 + name = "http-decode"
+   |
+warning: binary `pack_verify` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `pack-verify`, convert `bin.name`
+  --> Cargo.toml:32:8
+   |
+32 - name = "pack_verify"
+32 + name = "pack-verify"
+   |
+warning: binary `router_match` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
+   |                                                        ^^^^^^^^^^^^
+   |
+help: to change the binary name to `router-match`, convert `bin.name`
+  --> Cargo.toml:39:8
+   |
+39 - name = "router_match"
+39 + name = "router-match"
+   |
+warning: binary `schema_validate` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
+   |                                                        ^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `schema-validate`, convert `bin.name`
+  --> Cargo.toml:53:8
+   |
+53 - name = "schema_validate"
+53 + name = "schema-validate"
+   |
+warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
+   Compiling velqu-runtime-fuzz v0.0.0 (/home/ther12k/Workspace/Learning/velqu/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.10s
+warning: binary `bridge_handles` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
+   |                                                        ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::non_kebab_case_bins` is set to `warn` by default
+help: to change the binary name to `bridge-handles`, convert `bin.name`
+  --> Cargo.toml:60:8
+   |
+60 - name = "bridge_handles"
+60 + name = "bridge-handles"
+   |
+warning: binary `capabilities_policy` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
+   |                                                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `capabilities-policy`, convert `bin.name`
+  --> Cargo.toml:74:8
+   |
+74 - name = "capabilities_policy"
+74 + name = "capabilities-policy"
+   |
+warning: binary `codec_encoders` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
+   |                                                        ^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `codec-encoders`, convert `bin.name`
+  --> Cargo.toml:67:8
+   |
+67 - name = "codec_encoders"
+67 + name = "codec-encoders"
+   |
+warning: binary `http_decode` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `http-decode`, convert `bin.name`
+  --> Cargo.toml:46:8
+   |
+46 - name = "http_decode"
+46 + name = "http-decode"
+   |
+warning: binary `pack_verify` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
+   |                                                        ^^^^^^^^^^^
+   |
+help: to change the binary name to `pack-verify`, convert `bin.name`
+  --> Cargo.toml:32:8
+   |
+32 - name = "pack_verify"
+32 + name = "pack-verify"
+   |
+warning: binary `router_match` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
+   |                                                        ^^^^^^^^^^^^
+   |
+help: to change the binary name to `router-match`, convert `bin.name`
+  --> Cargo.toml:39:8
+   |
+39 - name = "router_match"
+39 + name = "router-match"
+   |
+warning: binary `schema_validate` should have a kebab-case name
+   |
+ 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
+   |                                                        ^^^^^^^^^^^^^^^
+   |
+help: to change the binary name to `schema-validate`, convert `bin.name`
+  --> Cargo.toml:53:8
+   |
+53 - name = "schema_validate"
+53 + name = "schema-validate"
+   |
+warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+   |
+77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+help: replace the use of the deprecated method
+   |
+77 -                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+77 +                 .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
+   |
+
+warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
+   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+    |
+199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |              ^^^^^^^^^^^^
+    |
+help: replace the use of the deprecated method
+    |
+199 -             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+199 +             .try_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+    |
+
+warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.16s
+     Running `fuzz/target/x86_64-unknown-linux-gnu/release/bridge_handles -artifact_prefix=/home/ther12k/Workspace/Learning/velqu/fuzz/artifacts/bridge_handles/ -max_total_time=900 -rss_limit_mb=4096 -seed=1789338807 -print_final_stats=1 /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/bridge_handles`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1789338807
+INFO: Loaded 1 modules   (1322 inline 8-bit counters): 1322 [0x5e166ba24a90, 0x5e166ba24fba), 
+INFO: Loaded 1 PC tables (1322 PCs): 1322 [0x5e166ba24fc0,0x5e166ba2a260), 
+INFO:      145 files found in /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/bridge_handles
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 145 min: 1b max: 406b total: 21005b rss: 37Mb
+#150	INITED cov: 125 ft: 538 corp: 63/3170b exec/s: 0 rss: 38Mb
+#65536	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 903 exec/s: 21845 rss: 605Mb
+#131072	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 1559 exec/s: 18724 rss: 606Mb
+#262144	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 2863 exec/s: 18724 rss: 606Mb
+#524288	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 4096 exec/s: 18078 rss: 606Mb
+#1048576	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 4096 exec/s: 18078 rss: 606Mb
+#2097152	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 4096 exec/s: 18558 rss: 607Mb
+#4194304	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 4096 exec/s: 18893 rss: 607Mb
+#8388608	pulse  cov: 125 ft: 538 corp: 63/3170b lim: 4096 exec/s: 19021 rss: 607Mb
+#11894458	REDUCE cov: 125 ft: 538 corp: 63/3166b lim: 4096 exec/s: 18850 rss: 607Mb L: 256/258 MS: 3 ShuffleBytes-ChangeBit-EraseBytes-
+#16777216	pulse  cov: 125 ft: 538 corp: 63/3166b lim: 4096 exec/s: 18703 rss: 608Mb
+#16848253	DONE   cov: 125 ft: 538 corp: 63/3166b lim: 4096 exec/s: 18699 rss: 608Mb
+Done 16848253 runs in 901 second(s)
+stat::number_of_executed_units: 16848253
+stat::average_exec_per_sec:     18699
+stat::new_units_added:          1
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              608
