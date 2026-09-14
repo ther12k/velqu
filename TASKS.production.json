@@ -4044,7 +4044,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "02113265220fff1ab94a7e3436965a5fa0edb2a5",
+    "source": [
+     "benchmarks/real-world/SPEC.md",
+     "benchmarks/real-world/compose.yaml",
+     "benchmarks/real-world/load.ts"
+    ],
+    "rawEvidence": [
+     "benchmarks/real-world/postgres/schema.sql",
+     "benchmarks/real-world/postgres/reset.sql",
+     "docs/beta/program/tasks/08_public_beta/BETA-001-Z-package-evidence-for-make-the-real-world-benchmark-harness-executable.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-001-V-verify-make-the-real-world-benchmark-harness-executable.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/BETA-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test benchmarks/real-world/fairness.test.ts",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-002",
@@ -4068,7 +4091,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "30c1903f97edabdd31b78ee5f3c0845ed31ed215",
+    "source": [
+     "benchmarks/real-world/candidates/matched.ts",
+     "benchmarks/real-world/candidates/parity.test.ts",
+     "benchmarks/real-world/fairness.ts"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/real-world/concurrency",
+     "docs/beta/program/tasks/08_public_beta/BETA-002-Z-package-evidence-for-implement-matched-competitor-candidates.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-002-V-verify-implement-matched-competitor-candidates.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/BETA-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test benchmarks/real-world/candidates/parity.test.ts",
+     "bun test benchmarks/real-world/fairness.test.ts"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-003",
@@ -4093,7 +4138,32 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "6e72738cc40e3570fd8b541ac7b22bb7aaac2f7c",
+    "source": [
+     "benchmarks/real-world/compare-concurrency.ts",
+     "benchmarks/real-world/compare-fanout.ts",
+     "benchmarks/real-world/compare-mixed.ts",
+     "benchmarks/real-world/compare-w4.ts"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/real-world",
+     "docs/beta/program/tasks/08_public_beta/BETA-003-Z-package-evidence-for-run-controlled-i-o-and-cpu-jit-crossover-suites.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-003-V-verify-run-controlled-i-o-and-cpu-jit-crossover-suites.md"
+    ],
+    "report": [
+     "docs/reports/beta-003-a-crossover-matrices.md",
+     "docs/reports/beta-003-b-first-request-steady-state.md",
+     "docs/reports/beta-003-c-crossover-counts.md",
+     "docs/reports/beta-003-d-honest-losses.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-004",
@@ -4118,7 +4188,34 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ad4a26ef71ec2c4f1b46d70ac7def73520c8a51c",
+    "source": [
+     "crates/q-capability-postgres/src/lib.rs",
+     "packages/capability-postgres/src/index.ts",
+     "crates/q-capabilities/src/postgres.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-004-Z-package-evidence-for-implement-optional-first-party-postgres-capability.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-004-V-verify-implement-optional-first-party-postgres-capability.md"
+    ],
+    "report": [
+     "docs/reports/beta-004-a-capability-abi-costs.md",
+     "docs/reports/beta-004-b-lazy-pool.md",
+     "docs/reports/beta-004-c-parameterized-queries-transactions.md",
+     "docs/reports/beta-004-d-deadline-cancellation-shutdown.md",
+     "docs/reports/beta-004-e-pool-limits-observability.md",
+     "docs/reports/beta-004-f-no-orm.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-capability-postgres",
+     "cargo test -p q-capabilities",
+     "bun test packages/capability-postgres"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-005",
@@ -4143,7 +4240,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "2d68033aba8c24264520b9640339f1b0d83ea4b5",
+    "source": [
+     "packages/capability-auth-jwt/src/index.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-005-Z-package-evidence-for-implement-jwt-auth-reference-package.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-005-V-verify-implement-jwt-auth-reference-package.md"
+    ],
+    "report": [
+     "docs/reports/beta-005-a-jwt-algorithm-profile.md",
+     "docs/reports/beta-005-b-key-loading-rotation-hooks.md",
+     "docs/reports/beta-005-c-expiry-audience-issuer-checks.md",
+     "docs/reports/beta-005-d-typed-401-403-problems.md",
+     "docs/reports/beta-005-e-no-secret-logging.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "bun test packages/capability-auth-jwt",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-006",
@@ -4168,7 +4288,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "d052c09804ae66a07ccff329e85cda3350c3e42f",
+    "source": [
+     "crates/q-runtime/src/config.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-007-Z-package-evidence-for-implement-configuration-and-secret-handling.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-007-V-verify-implement-configuration-and-secret-handling.md"
+    ],
+    "report": [
+     "docs/reports/beta-007-a-environment-file-configuration.md",
+     "docs/reports/beta-007-b-validation-at-startup.md",
+     "docs/reports/beta-007-c-secret-value-wrapper-redaction.md",
+     "docs/reports/beta-007-d-profile-specific-settings.md",
+     "docs/reports/beta-007-e-no-dynamic-code-execution.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-007",
@@ -4193,7 +4335,31 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "8608d94c29edcf7871a94bc79a00f771b9d63303",
+    "source": [
+     "crates/q-bench-support/src/bin/metrics_overhead.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-006-Z-package-evidence-for-implement-beta-observability-baseline.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-006-V-verify-implement-beta-observability-baseline.md"
+    ],
+    "report": [
+     "docs/reports/beta-006-a-request-route-status-duration.md",
+     "docs/reports/beta-006-b-worker-ops-status.md",
+     "docs/reports/beta-006-c-fetch-and-db-pools.md",
+     "docs/reports/beta-006-d-memory-tasks-slots.md",
+     "docs/reports/beta-006-e-trace-ids.md",
+     "docs/reports/beta-006-f-redaction.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-008",
@@ -4218,7 +4384,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "5049eb21f81b0b5c0918ed34f5dc3e3ca482fd24",
+    "source": [
+     "crates/q-runtime/src/serve.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-008-Z-package-evidence-for-implement-reverse-proxy-drain-and-deployment-semantics.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-008-V-verify-implement-reverse-proxy-drain-and-deployment-semantics.md"
+    ],
+    "report": [
+     "docs/reports/beta-008-a-trusted-proxy-configuration.md",
+     "docs/reports/beta-008-b-forwarded-header-policy.md",
+     "docs/reports/beta-008-c-liveness-readiness-startup-endpoints.md",
+     "docs/reports/beta-008-d-graceful-drain-and-termination.md",
+     "docs/reports/beta-008-e-container-example.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-009",
@@ -4243,7 +4431,31 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "cad68b02596b10b4942292dbc52284fd5cfa39a6",
+    "source": [
+     "crates/q-bench-support/src/bin/soak.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-013-Z-package-evidence-for-run-beta-soak-and-leak-qualification.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-013-V-verify-run-beta-soak-and-leak-qualification.md",
+     "benchmarks/raw/real-world"
+    ],
+    "report": [
+     "docs/reports/beta-013-a-soak-qualification.md",
+     "docs/reports/beta-013-b-soak-coverage.md",
+     "docs/reports/beta-013-c-resource-tracking.md",
+     "docs/reports/beta-013-d-retained-growth-analysis.md",
+     "docs/reports/beta-014-a-canonical-benchmark-report.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves. Canary clause honestly NOT covered: BETA-013 covers real-world load, leak, and recovery evidence; the controlled production-like canary is owner-gated at RC and tracked in #1321. This row must not flip to PASS on load/leak evidence alone; the canary disposition is required."
   },
   {
    "id": "M5-GATE",
@@ -4268,7 +4480,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "65da9edafe4860f55a5480d9f87750fe11c61da2",
+    "source": [
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/08_public_beta/BETA-017-Z-package-evidence-for-resolve-beta-owner-decisions.md",
+     "docs/beta/program/tasks/08_public_beta/BETA-017-V-verify-resolve-beta-owner-decisions.md",
+     "benchmarks/manifest.json"
+    ],
+    "report": [
+     "docs/reports/beta-014-a-canonical-benchmark-report.md",
+     "docs/reports/beta-014-b-pin-candidates-artifacts.md",
+     "docs/beta/program/gates/BETA-GATE.md"
+    ],
+    "tests": [
+     "bun test",
+     "bun run typecheck",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves. Gate acceptance maps to the beta program (BETA-GATE, all 17 parents PASS at 65da9ed); M5-009 canary residual (#1321) and the RC-time owner items it tracks remain outside this evidence."
   },
   {
    "id": "M6-001",
