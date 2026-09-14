@@ -4526,7 +4526,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ae7cc763ae39ddae9bd867846737cd8fa7b7b619",
+    "source": [
+     "docs/production/THREAT_MODEL.md",
+     "docs/okf/decisions/0033-native-fetch-security-policy.md",
+     "docs/okf/decisions/0034-reverse-proxy-and-outbound-trust.md",
+     "docs/okf/decisions/0035-same-process-trusted-code-assumption.md"
+    ],
+    "rawEvidence": [
+     "docs/browser-wasm/evidence/q-003/threat-model-verification.md",
+     "docs/reports/beta-009-c-threat-model-review.md"
+    ],
+    "report": [
+     "docs/production/THREAT_MODEL.md"
+    ],
+    "tests": [
+     "scripts/validate-okf",
+     "bun run verify"
+    ]
+   },
+   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
   },
   {
    "id": "M6-002",
@@ -4551,7 +4572,43 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ec16cdc411325377463c55a94de1c6afa33f31f4",
+    "source": [
+     "fuzz/fuzz_targets/bridge_handles.rs",
+     "fuzz/fuzz_targets/capabilities_policy.rs",
+     "fuzz/fuzz_targets/codec_encoders.rs",
+     "fuzz/fuzz_targets/http_decode.rs",
+     "fuzz/fuzz_targets/pack_verify.rs",
+     "fuzz/fuzz_targets/router_match.rs",
+     "fuzz/fuzz_targets/schema_validate.rs",
+     "fuzz/COVERAGE.md"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/ga-m6-fuzz/campaign-ledger.json",
+     "benchmarks/raw/ga-m6-fuzz/ts-treaty-ledger.json",
+     "benchmarks/raw/ga-m6-fuzz/PROVENANCE.md",
+     "benchmarks/raw/ga-m6-fuzz/bridge_handles.log",
+     "benchmarks/raw/ga-m6-fuzz/capabilities_policy.log",
+     "benchmarks/raw/ga-m6-fuzz/codec_encoders.log",
+     "benchmarks/raw/ga-m6-fuzz/http_decode.log",
+     "benchmarks/raw/ga-m6-fuzz/pack_verify.log",
+     "benchmarks/raw/ga-m6-fuzz/router_match.log",
+     "benchmarks/raw/ga-m6-fuzz/schema_validate.log",
+     "benchmarks/raw/ga-m6-fuzz/ts-treaty.log"
+    ],
+    "report": [
+     "docs/production/evidence/m6-002-sustained-fuzz.md"
+    ],
+    "tests": [
+     "cargo fuzz run bridge_handles --release -- -max_total_time=900",
+     "cargo fuzz run capabilities_policy --release -- -max_total_time=900",
+     "cargo fuzz run schema_validate --release -- -max_total_time=900",
+     "bun test conformance/treaty/treaty.differential.test.ts"
+    ]
+   },
+   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
   },
   {
    "id": "M6-003",
@@ -4576,7 +4633,40 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ec16cdc411325377463c55a94de1c6afa33f31f4",
+    "source": [
+     "fuzz/fuzz_targets/bridge_handles.rs",
+     "fuzz/fuzz_targets/capabilities_policy.rs",
+     "fuzz/fuzz_targets/codec_encoders.rs",
+     "fuzz/fuzz_targets/http_decode.rs",
+     "fuzz/fuzz_targets/pack_verify.rs",
+     "fuzz/fuzz_targets/router_match.rs",
+     "fuzz/fuzz_targets/schema_validate.rs",
+     "crates/q-engine-quickjs/src/worker.rs"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/ga-m6-fuzz/asan-workspace.log",
+     "benchmarks/raw/ga-m6-fuzz/ubsan-quickjs-ffi.log",
+     "benchmarks/raw/ga-m6-fuzz/miri-ledger.json",
+     "benchmarks/raw/ga-m6-fuzz/miri-q-bridge.log",
+     "benchmarks/raw/ga-m6-fuzz/miri-q-pack.log",
+     "benchmarks/raw/ga-m6-fuzz/miri-q-router.log",
+     "benchmarks/raw/ga-m6-fuzz/miri-q-runtime-model.log",
+     "benchmarks/raw/ga-m6-fuzz/miri-q-schema-runtime.log"
+    ],
+    "report": [
+     "docs/production/evidence/m6-003-sanitizers-miri.md",
+     "docs/production/evidence/m6-unsafe-audit.md"
+    ],
+    "tests": [
+     "cargo +nightly miri test -p q-schema-runtime",
+     "RUSTFLAGS=\"-Zsanitizer=address\" cargo test --workspace",
+     "cargo fuzz run pack_verify --release -- -max_total_time=900"
+    ]
+   },
+   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
   },
   {
    "id": "M6-004",
