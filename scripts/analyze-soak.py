@@ -3,37 +3,53 @@
 
 The soak harness (crates/q-bench-support/src/bin/soak.rs) writes its own
 soak-summary.json at completion. This script is the independent
-raw-to-report recomputation: it reads only soak.jsonl and re-derives the
-totals and leak statistics, then applies the M6-009 numeric tolerances.
+raw-to-report recomputation: it reads soak.jsonl, re-derives the totals
+and leak statistics, cross-checks them against the harness summary, and
+applies the M6-009 numeric tolerances.
 
-M6-009 tolerance (defined here, derived from precedent — beta-013-d and
+M6-009 tolerances (defined here, derived from precedent — beta-013-d and
 m3-010-c observed ~0.30 B/request allocator retention with flat QuickJS
-heaps; the bound below gives >3x headroom):
+heaps; the bounds give >3x headroom):
 
   T1  RSS drift <= 1.0 B per completed request
-  T2  no sustained end-of-run climb: final-quarter mean RSS <=
-      full-run peak RSS (the run must not finish at a new high)
+  T2  terminal rise: linear RSS slope over the final quarter of windows
+      <= 250 KiB/h (a sustained late climb is a leak signal even when the
+      full-run drift is small; plateaus and declining series pass)
   T3  largest single window-to-window RSS step <= 2048 KiB (no jump)
-  T4  >= 10,000,000 completed requests (representative-workload clause)
-  T5  peak live queue slots <= configured capacity; ownership pending
-      slots never exceed the worker count
+  T4  >= 10,000,000 completed requests AND the run meets the minimum
+      duration (--min-hours, default 24 per M6-009; pass 72 for the
+      selected 72-hour qualification)
+  T5  ownership pending slots never exceed the configured worker count;
+      queue peak vs capacity is evaluated only when --capacity is given
+      (never inferred from the observed peak, never assumed by default)
 
-On a completed run the script prints the verdict and exits 0 (all
-tolerances met) or 1 (any failed). On a partial run (`--partial`, or
-auto-detected while soak-summary.json is absent) it prints progress
-statistics only and never a verdict — a 72h run cannot be judged from
-15h of data.
+Completion is NOT inferred from soak-summary.json existing: the summary
+must carry the velqu-soak-v2 measurement schema (workers,
+totalCompletedVerified, retainedMemory.processRssGrowthKib,
+configuredDurationSecs, actualDurationSecs, windowSecs), must not carry a
+retained/interrupted status marker, and both configured and observed
+duration must cover --min-hours with raw-window backing. Missing or
+malformed summary measurements are INVALID EVIDENCE — they are never
+replaced with raw-log substitutes or zeros.
 
-Usage: analyze-soak.py <soak.jsonl> [--partial] [--capacity N]
+Exit codes: 0 = qualified (verdict PASS) or progress-only output;
+1 = verdict FAIL (a tolerance, agreement, or bound was violated);
+2 = invalid evidence (summary missing required measurements, wrong
+schema, or an explicitly retained/interrupted record submitted for
+qualification).
+
+Usage: analyze-soak.py <soak.jsonl> [--partial] [--min-hours H]
+                       [--capacity N] [--expected-workers N]
 """
 import json
 import sys
 from pathlib import Path
 
-# M6-009 numeric tolerances (see module docstring).
 MAX_DRIFT_BYTES_PER_REQUEST = 1.0
+MAX_TERMINAL_SLOPE_KIB_PER_HOUR = 250.0
 MAX_WINDOW_STEP_KIB = 2048.0
 MIN_COMPLETED_REQUESTS = 10_000_000
+RETAINED_STATUSES = {"retained-evidence", "interrupted", "partial", "in-progress"}
 
 
 def lin_slope_kib_per_hour(xs_secs, ys_kib):
@@ -46,8 +62,47 @@ def lin_slope_kib_per_hour(xs_secs, ys_kib):
     if sxx == 0:
         return 0.0
     sxy = sum((x - mx) * (y - my) for x, y in zip(xs_secs, ys_kib))
-    slope_per_sec = sxy / sxx
-    return slope_per_sec * 3600.0
+    return (sxy / sxx) * 3600.0
+
+
+def fail_invalid(msg):
+    print(f"INVALID EVIDENCE: {msg}")
+    return 2
+
+
+def validate_summary_schema(summary):
+    """Return (error, normalized); required measurements must be present and typed."""
+    if not isinstance(summary, dict):
+        return "summary is not a JSON object", None
+    fmt = summary.get("format")
+    if fmt != "velqu-soak-v2":
+        return f"unsupported summary format {fmt!r} (need velqu-soak-v2)", None
+    required = [
+        ("workers", int),
+        ("totalCompletedVerified", int),
+        ("configuredDurationSecs", (int, float)),
+        ("actualDurationSecs", (int, float)),
+        ("windowSecs", (int, float)),
+    ]
+    norm = {}
+    for key, types in required:
+        value = summary.get(key)
+        if isinstance(value, bool) or not isinstance(value, types):
+            return f"missing or malformed summary field {key!r}", None
+        norm[key] = value
+    retained = summary.get("retainedMemory")
+    if not isinstance(retained, dict):
+        return "missing retainedMemory block", None
+    growth = retained.get("processRssGrowthKib")
+    if isinstance(growth, bool) or not isinstance(growth, int):
+        return "missing or malformed retainedMemory.processRssGrowthKib", None
+    norm["rssGrowthKib"] = growth
+    workers = norm["workers"]
+    if workers < 1:
+        return "workers must be >= 1", None
+    if norm["totalCompletedVerified"] < 0 or norm["actualDurationSecs"] <= 0:
+        return "summary totals/duration out of range", None
+    return None, norm
 
 
 def main():
@@ -57,16 +112,23 @@ def main():
         return 2
     jsonl = Path(args[0])
     partial = "--partial" in args
-    capacity = 2048
+    min_hours = 24.0
+    if "--min-hours" in args:
+        min_hours = float(args[args.index("--min-hours") + 1])
+    capacity = None
     if "--capacity" in args:
         capacity = int(args[args.index("--capacity") + 1])
+    expected_workers = None
+    if "--expected-workers" in args:
+        expected_workers = int(args[args.index("--expected-workers") + 1])
 
+    if not jsonl.exists():
+        return fail_invalid(f"raw log not found: {jsonl}")
     rows = [json.loads(line) for line in jsonl.read_text().splitlines() if line.strip()]
     if not rows:
-        print("no samples")
-        return 2
+        return fail_invalid("raw log has no samples")
 
-    total_completed = sum(r["requests"] for r in rows)
+    total_completed_raw = sum(r["requests"] for r in rows)
     elapsed = rows[-1]["elapsedSecs"]
     tputs = [r["throughputOpsPerSec"] for r in rows]
     rss = [r["processRssKib"] for r in rows]
@@ -74,66 +136,103 @@ def main():
     steps = [b - a for a, b in zip(rss, rss[1:])]
     peak_q = max(r["queueTotal"] for r in rows)
     peak_pending = max(r["ownershipPendingSlots"] for r in rows)
-    final_pending = rows[-1]["ownershipPendingSlots"]
-
     growth = rss[-1] - rss[0]
-    drift = (growth * 1024.0) / total_completed if total_completed else float("nan")
-    quarter = max(1, len(rows) // 4)
-    final_quarter_mean = sum(rss[-quarter:]) / quarter
-    run_peak = max(rss)
-    slope = lin_slope_kib_per_hour(secs, rss)
     rejected = rows[-1]["queueRejectedTotal"]
-    offered = total_completed + rejected
+    offered = total_completed_raw + rejected
+    quarter = max(1, len(rows) // 4)
+    terminal_slope = lin_slope_kib_per_hour(secs[-quarter:], rss[-quarter:])
 
     print(f"samples                : {len(rows)} windows")
     print(f"elapsed                : {elapsed/3600:.2f} h")
-    print(f"completed requests     : {total_completed:,}")
-    print(f"offered (incl. reject) : {offered:,} (completion {100*total_completed/offered:.1f}%)")
-    print(f"throughput overall     : {total_completed/elapsed:.0f} ops/s "
+    print(f"completed (window sum) : {total_completed_raw:,}")
+    print(f"offered (incl. reject) : {offered:,} (completion {100*total_completed_raw/offered:.1f}%)")
+    print(f"throughput overall     : {total_completed_raw/elapsed:.0f} ops/s "
           f"(window min/mean/max: {min(tputs):.0f}/{sum(tputs)/len(tputs):.0f}/{max(tputs):.0f})")
-    print(f"RSS initial/final/peak : {rss[0]} / {rss[-1]} / {run_peak} KiB")
-    print(f"RSS growth             : {growth:+d} KiB over the analyzed span")
-    print(f"RSS drift              : {drift:.3f} B/completed-request")
-    print(f"RSS lin. slope         : {slope:+.1f} KiB/h")
-    print(f"max window step        : {max(steps):+d} KiB (min step {min(steps):+d})")
-    print(f"final-quarter mean RSS : {final_quarter_mean:.0f} KiB (run peak {run_peak})")
-    print(f"peak queue slots       : {peak_q} (capacity {capacity})")
-    print(f"ownership pending      : peak {peak_pending}, final {final_pending}")
+    print(f"RSS initial/final/peak : {rss[0]} / {rss[-1]} / {max(rss)} KiB")
+    print(f"RSS growth (raw span)  : {growth:+d} KiB")
+    print(f"max window step        : {max(steps):+d} KiB")
+    print(f"terminal-quarter slope : {terminal_slope:+.1f} KiB/h (last {quarter} windows)")
+    print(f"peak queue slots       : {peak_q}"
+          + (f" (configured capacity {capacity})" if capacity is not None else " (capacity not configured; bound not evaluated)"))
+    print(f"ownership pending      : peak {peak_pending}")
 
-    complete = jsonl.parent.joinpath("soak-summary.json").exists()
-    if partial or not complete:
+    # ---- completion and summary validation -------------------------------
+    summary_path = jsonl.parent / "soak-summary.json"
+    if partial or not summary_path.exists():
         print("\nPARTIAL RUN: progress statistics only — no verdict "
               "(soak-summary.json absent or --partial given).")
         return 0
 
-    # The harness summary is authoritative for the exact totals (window sums
-    # slightly undercount boundary in-flight completions); the recomputation
-    # above must agree with it closely.
-    summary = json.loads(jsonl.parent.joinpath("soak-summary.json").read_text())
-    s_total = summary.get("totalCompletedVerified", total_completed)
-    s_growth = (summary.get("retainedMemory", {}) or {}).get("processRssGrowthKib")
-    delta_total = total_completed - s_total
-    # 5%: boundary in-flight completions plus any historical snapshot
-    # truncation (the committed m3-010 file shows ~3.3%); RSS must match
-    # within 512 KiB regardless.
-    agree = abs(delta_total) <= 0.05 * s_total and (s_growth is None or abs(growth - s_growth) <= 512)
+    try:
+        summary = json.loads(summary_path.read_text())
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return fail_invalid(f"summary is not valid JSON: {exc}")
+
+    status = summary.get("status")
+    if isinstance(status, str) and status in RETAINED_STATUSES:
+        print(f"\nPARTIAL RUN: summary carries status {status!r} — explicitly retained "
+              "or interrupted evidence stays progress-only regardless of filename.")
+        return 0
+
+    err, s = validate_summary_schema(summary)
+    if err:
+        return fail_invalid(err)
+
+    if expected_workers is not None and s["workers"] != expected_workers:
+        return fail_invalid(f"summary workers {s['workers']} != expected {expected_workers}")
+
+    # Duration completion: configured AND observed must both cover the
+    # minimum; raw windows must back the observed span (allow the documented
+    # sampling interval of slack, never a wholesale gap).
+    configured_h = s["configuredDurationSecs"] / 3600.0
+    actual_h = s["actualDurationSecs"] / 3600.0
+    window_h = s["windowSecs"] / 3600.0
+    if configured_h < min_hours:
+        return fail_invalid(
+            f"configured duration {configured_h:.2f} h < required minimum {min_hours:g} h")
+    if actual_h < min_hours:
+        return fail_invalid(
+            f"observed duration {actual_h:.2f} h < required minimum {min_hours:g} h "
+            "(a retained partial run does not substitute for duration)")
+    if elapsed < s["configuredDurationSecs"] - 2 * s["windowSecs"]:
+        return fail_invalid(
+            "raw windows do not cover the configured duration "
+            f"(last window at {elapsed/3600:.2f} h vs configured {configured_h:.2f} h)")
+
+    # ---- agreement with the authoritative summary ------------------------
+    s_total = s["totalCompletedVerified"]
+    s_growth = s["rssGrowthKib"]
+    delta_total = total_completed_raw - s_total
+    agree = abs(delta_total) <= 0.05 * s_total and abs(growth - s_growth) <= 512
     print(f"\nharness summary total : {s_total:,} (window-sum delta {delta_total:+,})")
     print(f"summary RSS growth    : {s_growth} KiB (recomputed {growth:+d})")
     if not agree:
-        print("FAIL  recomputation disagrees with harness summary (>2% requests or >512 KiB RSS)")
+        print("FAIL  recomputation disagrees with harness summary (>5% requests or >512 KiB RSS)")
         return 1
     print("PASS  recomputation agrees with harness summary")
 
-    # Tolerances evaluated against the authoritative totals.
-    drift = ((s_growth or 0) * 1024.0) / s_total if s_total else float("nan")
+    drift = (s_growth * 1024.0) / s_total if s_total else float("nan")
     print(f"drift (authoritative) : {drift:.3f} B/completed-request")
 
+    t5_notes = [f"ownership pending peak {peak_pending} <= workers {s['workers']}"]
+    t5_ok = peak_pending <= s["workers"]
+    if capacity is not None:
+        t5_notes.append(f"queue peak {peak_q} <= capacity {capacity}")
+        t5_ok = t5_ok and peak_q <= capacity
+    else:
+        t5_notes.append("queue-capacity bound not evaluated (no --capacity given)")
+
     checks = [
-        ("T1 drift <= %.1f B/request" % MAX_DRIFT_BYTES_PER_REQUEST, drift <= MAX_DRIFT_BYTES_PER_REQUEST),
-        ("T2 final-quarter mean <= run peak", final_quarter_mean <= run_peak),
-        ("T3 max window step <= %d KiB" % MAX_WINDOW_STEP_KIB, max(steps) <= MAX_WINDOW_STEP_KIB),
-        ("T4 >= %d completed requests" % MIN_COMPLETED_REQUESTS, s_total >= MIN_COMPLETED_REQUESTS),
-        ("T5 queue/slot bounds", peak_q <= capacity and peak_pending <= 64),
+        ("T1 drift <= %.1f B/request" % MAX_DRIFT_BYTES_PER_REQUEST,
+         drift <= MAX_DRIFT_BYTES_PER_REQUEST),
+        ("T2 terminal slope <= %.0f KiB/h over final quarter" % MAX_TERMINAL_SLOPE_KIB_PER_HOUR,
+         terminal_slope <= MAX_TERMINAL_SLOPE_KIB_PER_HOUR),
+        ("T3 max window step <= %d KiB" % MAX_WINDOW_STEP_KIB,
+         max(steps) <= MAX_WINDOW_STEP_KIB),
+        ("T4 >= %d completed requests and >= %g h duration"
+         % (MIN_COMPLETED_REQUESTS, min_hours),
+         s_total >= MIN_COMPLETED_REQUESTS and actual_h >= min_hours),
+        ("T5 config-derived slot bounds: " + "; ".join(t5_notes), t5_ok),
     ]
     print()
     ok = True
