@@ -3131,7 +3131,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "4b0535c1bc966c1d9eca3b14bf7fc046dfb6c027",
+    "source": [
+     "docs/okf/decisions/0036-multi-worker-state-ownership.md",
+     "crates/q-capabilities/src/shared_handles.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-001-Z-package-evidence-for-freeze-independent-worker-state-semantics.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-001-V-verify-freeze-independent-worker-state-semantics.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-engine-quickjs",
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-002",
@@ -3156,7 +3177,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "3f7be5f45b6ed1181fba8cdd75d5e0489eb46ae8",
+    "source": [
+     "crates/q-capabilities/src/dispatch.rs",
+     "crates/q-capabilities/src/fairness.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-002-Z-package-evidence-for-implement-bounded-worker-dispatcher.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-002-V-verify-implement-bounded-worker-dispatcher.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-003",
@@ -3181,7 +3222,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "bc795a287b8ee9585aaf49334beca99c70089043",
+    "source": [
+     "crates/q-runtime/src/config.rs",
+     "crates/q-runtime/src/serve.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-003-Z-package-evidence-for-implement-serverless-service-and-throughput-profiles.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-003-V-verify-implement-serverless-service-and-throughput-profiles.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-004",
@@ -3206,7 +3266,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "1f35c9e81483849d7b0e89d354a7635713daa09e",
+    "source": [
+     "crates/q-engine-quickjs/src/worker.rs",
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-004-Z-package-evidence-for-implement-deterministic-worker-initialization-and-artifact.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-004-V-verify-implement-deterministic-worker-initialization-and-artifact-sharing.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-engine-quickjs",
+     "cargo test -p q-pack",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-005",
@@ -3231,7 +3312,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "008335e11eb80fbee48845e69be6a26771487de5",
+    "source": [
+     "crates/q-capabilities/src/dispatch.rs",
+     "crates/q-runtime/src/serve.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-005-Z-package-evidence-for-implement-quarantine-replacement-and-readiness-aggregation.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-005-V-verify-implement-quarantine-replacement-and-readiness-aggregation.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-006",
@@ -3256,7 +3357,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "a1963df593ca0a4646ac5f8328b91fd2aa73ebd9",
+    "source": [
+     "crates/q-runtime/src/serve.rs",
+     "crates/q-runtime/src/config.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-006-Z-package-evidence-for-implement-adaptive-scale-up-and-scale-down.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-006-V-verify-implement-adaptive-scale-up-and-scale-down.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-007",
@@ -3281,7 +3401,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "9c3b9377421ee054888774ab84591b25c07923b5",
+    "source": [
+     "crates/q-capabilities/src/drain.rs",
+     "crates/q-capabilities/src/shutdown.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-007-Z-package-evidence-for-implement-multi-worker-cancellation-and-graceful-shutdown.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-007-V-verify-implement-multi-worker-cancellation-and-graceful-shutdown.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-008",
@@ -3306,7 +3446,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "5415b344082028bfba3892f376af1a60f23adfc3",
+    "source": [
+     "crates/q-capabilities/src/load_shed.rs",
+     "crates/q-capabilities/src/long_running.rs",
+     "crates/q-capabilities/src/fairness.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-008-Z-package-evidence-for-add-fairness-and-overload-controls.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-008-V-verify-add-fairness-and-overload-controls.md"
+    ],
+    "report": [
+     "docs/reports/m3-010-b-chaos.md",
+     "docs/beta/program/gates/M3-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-009",
@@ -3331,7 +3492,31 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ba77906386e5046d571dd4b8933f1024d841c987",
+    "source": [
+     "crates/q-bench-support/src/bin/worker_scaling.rs",
+     "crates/q-runtime/src/serve.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-009-Z-package-evidence-for-close-multi-worker-scaling-and-memory-evidence.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-009-V-verify-close-multi-worker-scaling-and-memory-evidence.md",
+     "benchmarks/raw/worker-scaling"
+    ],
+    "report": [
+     "docs/reports/m3-009-a-worker-scaling.md",
+     "docs/reports/m3-009-b-multiworker-metrics.md",
+     "docs/reports/m3-009-c-controlled-workloads.md",
+     "docs/reports/m3-009-d-host-topology.md",
+     "docs/beta/program/gates/M3-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M3-GATE",
@@ -3357,7 +3542,32 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "8b36acc878fdae3db04409a2d9f247cd83f63572",
+    "source": [
+     "docs/beta/program/gates/M3-GATE.md",
+     "crates/q-capabilities/src/dispatch.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-010-Z-package-evidence-for-run-multi-worker-soak-and-recovery.md",
+     "docs/beta/program/tasks/06_m3_multi_worker/M3-010-V-verify-run-multi-worker-soak-and-recovery.md",
+     "benchmarks/raw/worker-scaling"
+    ],
+    "report": [
+     "docs/reports/m3-gate-review.md",
+     "docs/reports/m3-010-a-soak.md",
+     "docs/reports/m3-010-b-chaos.md",
+     "docs/reports/m3-010-c-retained-memory-and-slots.md",
+     "docs/reports/m3-010-d-recovery.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 6 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M3-GATE PASS at 8b36acc with closure M3-001-Z..M3-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-001",
