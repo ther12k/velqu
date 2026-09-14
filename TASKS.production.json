@@ -1742,7 +1742,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "17121ea1d2c949e0846e14ad56539f149e297477",
+    "source": [
+     "docs/okf/decisions/0024-qpack-v2-numeric-mode-and-legacy-v1-adapter.md",
+     "docs/okf/decisions/0025-qpack-v2-section-directory-and-bounds.md",
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-001-Z-package-evidence-for-accept-qpack-v2-format-and-compatibility-adr.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-001-V-verify-accept-qpack-v2-format-and-compatibility-adr.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-002",
@@ -1766,7 +1788,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "0c5509c2bff5e1e607c1863eda0908845fac56ec",
+    "source": [
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-002-Z-package-evidence-for-define-strict-runtime-and-bytecode-fingerprint.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-002-V-verify-define-strict-runtime-and-bytecode-fingerprint.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-003",
@@ -1791,7 +1833,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "39f35526882108f0f41836b7695723805aec9800",
+    "source": [
+     "crates/q-pack/src/lib.rs",
+     "packages/compiler/src/emit.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-003-Z-package-evidence-for-encode-compiled-router-routeplans-schemas-policies-and-func.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-003-V-verify-encode-compiled-router-routeplans-schemas-policies-and-functions-as-secti.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p q-router",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-004",
@@ -1816,7 +1880,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "e898645debfac74a63d8ebe7333e54ee14c9a299",
+    "source": [
+     "crates/q-bytecode-tool/src/main.rs",
+     "crates/q-pack/src/lib.rs",
+     "docs/okf/decisions/0027-debug-source-sidecar-policy.md"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/packs/app-1000-bc.qpack",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-004-Z-package-evidence-for-embed-raw-quickjs-bytecode-without-base64.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-004-V-verify-embed-raw-quickjs-bytecode-without-base64.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p q-engine-quickjs",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-005",
@@ -1841,7 +1928,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "29a8f0f6abf1d13bdc22ab1b88f704fe14e8bc89",
+    "source": [
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "crates/q-pack/tests/fixtures",
+     "fuzz/fuzz_targets/pack_verify.rs",
+     "fuzz/COVERAGE.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-005-Z-package-evidence-for-implement-zero-copy-or-bounded-copy-pack-reader.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-005-V-verify-implement-zero-copy-or-bounded-copy-pack-reader.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p q-engine-quickjs",
+     "crates/q-pack/tests/fuzz_pack.rs"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-006",
@@ -1865,7 +1975,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "66a28be30a9df19c1945ef5f52d5ce846daf60a6",
+    "source": [
+     "docs/okf/decisions/0026-integrity-is-not-authenticity.md",
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-006-Z-package-evidence-for-implement-execution-integrity-and-authenticity-hooks.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-006-V-verify-implement-execution-integrity-and-authenticity-hooks.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p q-http",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-007",
@@ -1890,7 +2021,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "951b3fa913bb8aeda502ccd12023cb2a82f49aba",
+    "source": [
+     "scripts/compare-builds"
+    ],
+    "rawEvidence": [
+     "benchmarks/manifest.json",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-007-Z-package-evidence-for-guarantee-reproducible-release-packs.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-007-V-verify-guarantee-reproducible-release-packs.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "scripts/compare-builds",
+     "cargo test -p q-pack",
+     "bun run verify"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-008",
@@ -1915,7 +2067,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "908d171ae9bde33146ec71c4aef48dfa744b454d",
+    "source": [
+     "crates/q-pack/src/legacy_v1.rs"
+    ],
+    "rawEvidence": [
+     "crates/q-pack/tests/fixtures",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-008-Z-package-evidence-for-provide-explicit-v1-compatibility-and-migration-tool.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-008-V-verify-provide-explicit-v1-compatibility-and-migration-tool.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-009",
@@ -1940,7 +2113,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "55d806f83e2b845d8b97d92f03fb4b42561e3cd4",
+    "source": [
+     "crates/q-runtime/src/main.rs",
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/packs",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-009-Z-package-evidence-for-build-shared-runtime-and-standalone-deployment-artifacts.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-009-V-verify-build-shared-runtime-and-standalone-deployment-artifacts.md"
+    ],
+    "report": [
+     "docs/reports/m26-009-a-shared-mode-artifacts.md",
+     "docs/reports/m26-009-b-standalone-mode.md",
+     "docs/beta/program/gates/M26-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p velqu-runtime",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M26-GATE",
@@ -1967,7 +2163,32 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "9aa16bed8755ae24bfb311e308dcb50484a1b9b9",
+    "source": [
+     "docs/beta/program/gates/M26-GATE.md",
+     "crates/q-pack/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/packs",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-010-Z-package-evidence-for-close-route-count-cold-start-evidence.md",
+     "docs/beta/program/tasks/03_m26_qpack_v2/M26-010-V-verify-close-route-count-cold-start-evidence.md"
+    ],
+    "report": [
+     "docs/reports/m26-gate-review.md",
+     "docs/reports/m26-010-a-route-count-ladder.md",
+     "docs/reports/m26-009-a-shared-mode-artifacts.md",
+     "docs/reports/m26-009-b-standalone-mode.md"
+    ],
+    "tests": [
+     "cargo test -p q-pack",
+     "cargo test -p q-engine-quickjs",
+     "bun test",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 3 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M26-GATE PASS at 9aa16be with closure M26-001-Z..M26-010-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-001",
