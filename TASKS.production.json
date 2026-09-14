@@ -23,7 +23,7 @@
   },
   {
    "id": "M23R2",
-   "name": "M2.3-r2 \u2014 Exact Numeric Runtime IR and Compiled Router Closure",
+   "name": "M2.3-r2 — Exact Numeric Runtime IR and Compiled Router Closure",
    "outcome": "Current-pack execution is fully numeric, fail-before-ready, route plans are exact, schema identities are operational, and the router resolves directly to a numeric RoutePlan.",
    "gate": "M23R2-GATE",
    "depends_on": [
@@ -32,7 +32,7 @@
   },
   {
    "id": "M24",
-   "name": "M2.4 \u2014 Zero-Copy Ingress and Worker-Local Request Bridge",
+   "name": "M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge",
    "outcome": "Requests route before decoding, unread fields are never materialized, and request state is owned by the QuickJS worker without a process-wide request-store mutex.",
    "gate": "M24-GATE",
    "depends_on": [
@@ -41,7 +41,7 @@
   },
   {
    "id": "M25",
-   "name": "M2.5 \u2014 Schema-Specialized Input and JSON Output Pipeline",
+   "name": "M2.5 — Schema-Specialized Input and JSON Output Pipeline",
    "outcome": "The compiler selects measured, schema-aware decoders and encoders while maintaining exact Treaty/OpenAPI/runtime semantics.",
    "gate": "M25-GATE",
    "depends_on": [
@@ -50,7 +50,7 @@
   },
   {
    "id": "M26",
-   "name": "M2.6 \u2014 Binary QPack v2 and Reproducible Artifact ABI",
+   "name": "M2.6 — Binary QPack v2 and Reproducible Artifact ABI",
    "outcome": "Production startup maps a deterministic binary pack with raw bytecode, precompiled router/runtime IR, strict ABI fingerprinting, and no JSON/base64 reconstruction.",
    "gate": "M26-GATE",
    "depends_on": [
@@ -59,7 +59,7 @@
   },
   {
    "id": "M27",
-   "name": "M2.7 \u2014 Capability Linker and Minimal Web Runtime",
+   "name": "M2.7 — Capability Linker and Minimal Web Runtime",
    "outcome": "Only declared native capabilities are linked, lifecycle and cancellation are standardized, and a small WinterTC-aligned Web API subset is conformant.",
    "gate": "M27-GATE",
    "depends_on": [
@@ -68,7 +68,7 @@
   },
   {
    "id": "M28",
-   "name": "M2.8 \u2014 Native Outbound Fetch",
+   "name": "M2.8 — Native Outbound Fetch",
    "outcome": "Velqu provides bounded, cancellable, pooled Web fetch with TLS/DNS correctness, streaming backpressure, and explicit SSRF policy.",
    "gate": "M28-GATE",
    "depends_on": [
@@ -77,7 +77,7 @@
   },
   {
    "id": "M3",
-   "name": "M3 \u2014 Multi-Worker Service Runtime",
+   "name": "M3 — Multi-Worker Service Runtime",
    "outcome": "Independent QuickJS workers scale across cores with bounded queues, quarantine/replacement, and distinct serverless/service/throughput profiles.",
    "gate": "M3-GATE",
    "depends_on": [
@@ -86,7 +86,7 @@
   },
   {
    "id": "M4",
-   "name": "M4 \u2014 Developer Experience and Private Alpha",
+   "name": "M4 — Developer Experience and Private Alpha",
    "outcome": "The actual Rust/QuickJS runtime is pleasant to develop against, Treaty modes are complete, Linux release artifacts exist, and a realistic proof service is private-alpha ready.",
    "gate": "M4-GATE",
    "depends_on": [
@@ -95,7 +95,7 @@
   },
   {
    "id": "M5",
-   "name": "M5 \u2014 Production Operations and Real-World Proof",
+   "name": "M5 — Production Operations and Real-World Proof",
    "outcome": "Operational controls, observability, optional Postgres integration, executable cross-framework workloads, and a controlled production canary establish technical production candidacy.",
    "gate": "M5-GATE",
    "depends_on": [
@@ -104,7 +104,7 @@
   },
   {
    "id": "M6",
-   "name": "M6 \u2014 Security, Reliability, Platform, and Supply-Chain Hardening",
+   "name": "M6 — Security, Reliability, Platform, and Supply-Chain Hardening",
    "outcome": "The runtime passes fuzzing, sanitizers, chaos, soak, supported-platform, vulnerability, reproducibility, and artifact-integrity gates.",
    "gate": "M6-GATE",
    "depends_on": [
@@ -113,7 +113,7 @@
   },
   {
    "id": "M7",
-   "name": "M7 \u2014 API/ABI Stabilization and Release Candidate",
+   "name": "M7 — API/ABI Stabilization and Release Candidate",
    "outcome": "Public APIs, QPack/runtime/capability ABIs, SemVer behavior, migration rules, publishing automation, and RC canaries are stable.",
    "gate": "M7-GATE",
    "depends_on": [
@@ -122,7 +122,7 @@
   },
   {
    "id": "M8",
-   "name": "M8 \u2014 Production-Ready GA Gate",
+   "name": "M8 — Production-Ready GA Gate",
    "outcome": "All technical and owner gates are closed, signed reproducible artifacts are released, operations and rollback are documented, and the production-readiness review is approved.",
    "gate": "M8-GATE",
    "depends_on": [
@@ -820,7 +820,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "d1aa375c27fae840f434f1500727750d85c769d3",
+    "source": [
+     "docs/okf/decisions/0021-m24-zero-copy-ingress-ownership.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md",
+     "crates/q-bridge/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-001-Z-package-evidence-for-freeze-ingress-ownership-and-backpressure-design.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-001-C-define-no-copy-and-bounded-copy-boundaries.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-001-D-define-overload-responses-and-metrics.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-001-V-verify-freeze-ingress-ownership-and-backpressure-design.md"
+    ],
+    "tests": [
+     "crates/q-engine-quickjs/tests/engine.rs",
+     "crates/q-runtime/tests/runtime_conformance.rs",
+     "conformance/security/security.conformance.test.ts"
+    ]
+   }
   },
   {
    "id": "M24-002",
@@ -845,7 +866,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "01843b214b1429f30ada041d2f73fb8baed393b4",
+    "source": [
+     "crates/q-http/src/lib.rs",
+     "crates/q-runtime/src/serve.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-002-Z-package-evidence-for-route-before-request-materialization.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-002-C-read-fieldneeds-from-routeplan.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-002-D-bypass-request-object-creation-for-policy-free-routes-that-need-no-request-field.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-002-V-verify-route-before-request-materialization.md"
+    ],
+    "tests": [
+     "crates/q-engine-quickjs/tests/engine.rs",
+     "crates/q-runtime/tests/runtime_conformance.rs",
+     "conformance/routing/routing.conformance.test.ts"
+    ]
+   }
   },
   {
    "id": "M24-003",
@@ -870,7 +912,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "19f6493e98202324275ad403f0b54b52fd576d44",
+    "source": [
+     "crates/q-bridge/src/lib.rs",
+     "crates/q-engine-quickjs/src/worker.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-003-Z-package-evidence-for-implement-worker-local-generation-checked-request-slab.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-003-B-use-slot-plus-generation-handles.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-003-D-reject-stale-or-cross-worker-handles-deterministically.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-003-V-verify-implement-worker-local-generation-checked-request-slab.md"
+    ],
+    "tests": [
+     "crates/q-engine-quickjs/tests/engine.rs",
+     "crates/q-runtime/tests/runtime_conformance.rs"
+    ]
+   }
   },
   {
    "id": "M24-004",
@@ -895,7 +957,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "4907d9e9f21e2895aca74ec0c824930c8f4f3afa",
+    "source": [
+     "crates/q-router/src/lib.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-004-Z-package-evidence-for-capture-path-parameters-as-byte-ranges.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-004-A-store-capture-start-end-ranges-against-the-uri-path.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-004-B-bind-route-specific-parameter-names-after-routeid-selection.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-004-V-verify-capture-path-parameters-as-byte-ranges.md"
+    ],
+    "tests": [
+     "crates/q-schema-runtime/tests/fuzz_validator.rs",
+     "conformance/schema/schema.conformance.test.ts",
+     "crates/q-runtime/tests/runtime_conformance.rs"
+    ]
+   }
   },
   {
    "id": "M24-005",
@@ -920,7 +1002,24 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "48c1ed232095b60faaf99e44fd22df82a88de6fc",
+    "source": [
+     "crates/q-http/src/lib.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-005-Z-package-evidence-for-implement-declared-header-lazy-access.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-005-V-verify-implement-declared-header-lazy-access.md"
+    ],
+    "tests": [
+     "crates/q-runtime/tests/runtime_conformance.rs",
+     "conformance/treaty/treaty.conformance.test.ts"
+    ]
+   }
   },
   {
    "id": "M24-006",
@@ -945,7 +1044,25 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "8b596cca7d4eda9911a3f9bbe8fa9a8fd4737917",
+    "source": [
+     "crates/q-http/src/lib.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-006-V-verify-implement-lazy-query-and-cookie-decoding.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-006-Z-package-evidence-for-implement-lazy-query-and-cookie-decoding.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-006-V-verify-implement-lazy-query-and-cookie-decoding.md"
+    ],
+    "tests": [
+     "crates/q-http/tests/fuzz_parsers.rs",
+     "crates/q-http/tests/regression_corpus.rs",
+     "crates/q-engine-quickjs/tests/engine.rs"
+    ]
+   }
   },
   {
    "id": "M24-007",
@@ -970,7 +1087,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "975b56821ca7906e41f98a8c9e59a8fbc60645c8",
+    "source": [
+     "crates/q-http/src/lib.rs",
+     "crates/q-runtime/src/serve.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-007-V-verify-implement-bounded-read-once-body-admission.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-007-Z-package-evidence-for-implement-bounded-read-once-body-admission.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-007-V-verify-implement-bounded-read-once-body-admission.md"
+    ],
+    "tests": [
+     "crates/q-http/tests/fuzz_parsers.rs",
+     "crates/q-runtime/tests/runtime_conformance.rs",
+     "conformance/treaty/treaty.conformance.test.ts"
+    ]
+   }
   },
   {
    "id": "M24-008",
@@ -995,7 +1131,24 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "5b4a76cacd42258d1f13cb3621226d1578821437",
+    "source": [
+     "crates/q-engine-quickjs/src/worker.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-008-V-verify-replace-per-request-js-closures-with-native-backed-prototypes.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-008-Z-package-evidence-for-replace-per-request-js-closures-with-native-backed-prototyp.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-008-V-verify-replace-per-request-js-closures-with-native-backed-prototypes.md"
+    ],
+    "tests": [
+     "crates/q-engine-quickjs/tests/engine.rs",
+     "crates/q-runtime/tests/runtime_conformance.rs"
+    ]
+   }
   },
   {
    "id": "M24-009",
@@ -1020,7 +1173,25 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "PASS",
+   "evidence_refs": {
+    "commit": "229cd6aab830762a6d6ab500c91e9ee1a6c085db",
+    "source": [
+     "crates/q-runtime/src/serve.rs",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-009-V-verify-add-ingress-and-bridge-observability.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-009-Z-package-evidence-for-add-ingress-and-bridge-observability.md",
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-010-Z-package-evidence-for-complete-ingress-bridge-fuzzing-and-conformance.md"
+    ],
+    "report": [
+     "docs/beta/program/tasks/01_m24_zero_copy_ingress/M24-009-V-verify-add-ingress-and-bridge-observability.md"
+    ],
+    "tests": [
+     "crates/q-runtime/tests/runtime_conformance.rs",
+     "conformance/routing/routing.conformance.test.ts"
+    ]
+   }
   },
   {
    "id": "M24-GATE",
@@ -1047,7 +1218,8 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "binding_note": "#1343 binding pass 2026-09-14: rows M24-001..009 are PASS (beta program packets, per-row evidence_refs). This gate row stays TODO: the acceptance clause \"C1/C3 p95 do not regress\" has no contemporaneous pre/post-M2.4 same-protocol measurement pair in committed artifacts — the gate-time warm run (g0-warm-1787214167, 2026-08-20T08:27Z) predates all 68 m24 implementation commits (first ~10:04Z), and the only later five-repetition run (2026-09-10) spans M25/M26/M3 changes. The C0>=90%-of-raw-Rust clause IS satisfied by committed measured evidence (gate-time: 98.2/90.3/105.3% at c=1/10/50; current: 98.4/122.1/100.0%). Resolution: a same-protocol A/B against the pre-M24 commit after the 72h soak frees the host, or an explicit owner disposition. See docs/production/evidence/m24-ledger-binding.md."
   },
   {
    "id": "M25-001",
@@ -2504,7 +2676,7 @@
    "lane": "critical-path",
    "priority": "P1",
    "title": "Build realistic private-alpha proof service",
-   "objective": "Exercise 30\u201350 routes, auth, pagination, typed errors, fetch, lifecycle, observability, and deployment.",
+   "objective": "Exercise 30–50 routes, auth, pagination, typed errors, fetch, lifecycle, observability, and deployment.",
    "depends_on": [
     "M4-008"
    ],
@@ -2561,7 +2733,7 @@
    ],
    "deliverables": [],
    "acceptance": [
-    "W1\u2013W4 run from one command.",
+    "W1–W4 run from one command.",
     "Dataset reset is deterministic.",
     "CPU/RSS/pool wait/queue wait/p50/p95/p99/errors are captured."
    ],
@@ -2754,7 +2926,7 @@
    "lane": "critical-path",
    "priority": "P1",
    "title": "Run real-world load, leak, and canary evidence",
-   "objective": "Validate W1\u2013W4, controlled I/O, CPU crossover, 1M+ requests, fault recovery, and one controlled production-like canary.",
+   "objective": "Validate W1–W4, controlled I/O, CPU crossover, 1M+ requests, fault recovery, and one controlled production-like canary.",
    "depends_on": [
     "M5-008"
    ],
@@ -3380,7 +3552,7 @@
    "lane": "critical-path",
    "priority": "P0",
    "title": "Approve production-ready GA",
-   "objective": "Use \u201cproduction ready\u201d only after technical, owner, release, and operational gates are all satisfied.",
+   "objective": "Use “production ready” only after technical, owner, release, and operational gates are all satisfied.",
    "depends_on": [
     "M8-005"
    ],
