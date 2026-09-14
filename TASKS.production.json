@@ -2213,7 +2213,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "998a995381a4bdf21086c44a81b4095a3df1133c",
+    "source": [
+     "docs/okf/decisions/0028-capability-abi-and-lifecycle.md",
+     "docs/okf/decisions/0029-capability-identity-versioning-and-requirements.md",
+     "crates/q-capabilities/src/identity.rs",
+     "crates/q-capabilities/src/shutdown.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-001-Z-package-evidence-for-define-capability-abi-and-lifecycle-state-machine.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-001-V-verify-define-capability-abi-and-lifecycle-state-machine.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-002",
@@ -2238,7 +2260,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "511e813dbf88d0beba9b66b2e480da2454ea9e85",
+    "source": [
+     "crates/q-capabilities/src/resolver.rs",
+     "crates/q-capabilities/src/inventory.rs",
+     "packages/compiler/src/emit.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-002-Z-package-evidence-for-implement-compile-time-capability-dependency-resolver.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-002-V-verify-implement-compile-time-capability-dependency-resolver.md"
+    ],
+    "report": [
+     "docs/reports/m27-002-d-prune-deltas.md",
+     "docs/beta/program/gates/M27-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p q-pack",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-003",
@@ -2263,7 +2307,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "8717dbc9b6796aeca1921f5500e50259c072e383",
+    "source": [
+     "crates/q-capabilities/src/compat.rs",
+     "crates/q-engine-quickjs/src/worker.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-003-Z-package-evidence-for-introduce-custom-quickjs-context-profiles.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-003-V-verify-introduce-custom-quickjs-context-profiles.md"
+    ],
+    "report": [
+     "docs/reports/m27-003-context-profiles-compat.md",
+     "docs/beta/program/gates/M27-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-engine-quickjs",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-004",
@@ -2286,7 +2350,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "f0cd4bfe7d224ee9b44842cf3276892b25888607",
+    "source": [
+     "crates/q-capabilities/src/console.rs",
+     "crates/q-capabilities/src/operations.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-004-Z-package-evidence-for-implement-console-and-timer-core-capabilities.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-004-V-verify-implement-console-and-timer-core-capabilities.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p q-engine-quickjs"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-005",
@@ -2311,7 +2395,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "4c81073c709a9726126afcedb97ed1cd7991185a",
+    "source": [
+     "crates/q-capabilities/src/url_model.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-005-Z-package-evidence-for-implement-url-and-urlsearchparams.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-005-V-verify-implement-url-and-urlsearchparams.md",
+     "conformance/web-api"
+    ],
+    "report": [
+     "docs/reports/m27-005-wpt-url-report.md",
+     "docs/beta/program/gates/M27-GATE.md"
+    ],
+    "tests": [
+     "bun test conformance/web-api",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-006",
@@ -2334,7 +2438,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "b66fa4c2c825b94890a667642616f40317d90156",
+    "source": [
+     "crates/q-capabilities/src/text_encoding.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-006-Z-package-evidence-for-implement-textencoder-and-textdecoder.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-006-V-verify-implement-textencoder-and-textdecoder.md",
+     "conformance/web-api"
+    ],
+    "report": [
+     "docs/reports/m27-006-wpt-text-encoding-report.md",
+     "docs/beta/program/gates/M27-GATE.md"
+    ],
+    "tests": [
+     "bun test conformance/web-api",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-007",
@@ -2359,7 +2483,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "dced7be11723f027bcc9b44d97da787f5552437d",
+    "source": [
+     "crates/q-capabilities/src/abort.rs",
+     "crates/q-http/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-007-Z-package-evidence-for-implement-abortcontroller-and-abortsignal.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-007-V-verify-implement-abortcontroller-and-abortsignal.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p q-http"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-008",
@@ -2384,7 +2528,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "27fdf8236a63c02d9463906ceb3bcafecf1a04fc",
+    "source": [
+     "crates/q-capabilities/src/crypto.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-008-Z-package-evidence-for-implement-crypto-random-subset.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-008-V-verify-implement-crypto-random-subset.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p q-engine-quickjs"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-009",
@@ -2409,7 +2572,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "a751d65c6e3263c3421fe4f8260db1907fcad078",
+    "source": [
+     "crates/q-capabilities/src/sdk.rs",
+     "docs/okf/decisions/0032-capability-semver-abi-compatibility.md",
+     "packages/cli/src/capability-inspect.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-009-Z-package-evidence-for-publish-capability-sdk-and-inspection-surface.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-009-V-verify-publish-capability-sdk-and-inspection-surface.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M27-GATE",
@@ -2436,7 +2620,33 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "2b7d00f1b9f574d9f1689b4532c15a737b9c79ef",
+    "source": [
+     "docs/beta/program/gates/M27-GATE.md",
+     "crates/q-capabilities/src/lib.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-010-Z-package-evidence-for-establish-web-api-conformance-program.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-010-V-verify-establish-web-api-conformance-program.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-011-Z-package-evidence-for-close-capability-cost-budgets.md",
+     "docs/beta/program/tasks/04_m27_capability_linker/M27-011-V-verify-close-capability-cost-budgets.md",
+     "conformance/web-api"
+    ],
+    "report": [
+     "docs/reports/m27-gate-review.md",
+     "docs/reports/m27-010-wpt-wintertc-conformance.md",
+     "docs/reports/m27-011-capability-cost-budget-report.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p q-engine-quickjs",
+     "bun test conformance/web-api",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 4 pre-binding 2026-09-14: the work is complete and verified in the beta program (docs/beta/04_TASK_LEDGER.md marks this row PASS; beta M27-GATE PASS at 2b7d00f with closure M27-001-Z..M27-011-Z all PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M28-001",
