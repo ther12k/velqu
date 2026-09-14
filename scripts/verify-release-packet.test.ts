@@ -346,6 +346,49 @@ describe("verify-release-packet verification suite (#1321 / M8-003)", () => {
     }
   });
 
+  test("no-fallback end-to-end: with --trusted-key revoked, a valid signature from a DIFFERENT active registry publisher is still rejected", () => {
+    // The reviewer's exact scenario (2026-09-13 closing review of
+    // 5fb98538): registry has A revoked and B active; the packet is
+    // signed by B — a signature that is cryptographically valid AND
+    // allowlisted — while the caller named only A via --trusted-key.
+    // The explicit-key contract must fail the run BEFORE B's signature
+    // can satisfy the allowlist.
+    const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-b-signed-"));
+    const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-bsigned-")) + "/registry.json";
+    try {
+      createMockPacket(packetDir);
+      // Signed by the OTHER key — active in the registry and valid in the
+      // keyring (GOODSIG + VALIDSIG). If the verifier fell back to the
+      // registry allowlist, this packet would verify.
+      signManifest(packetDir, untrustedFingerprint);
+
+      writeFileSync(
+        registryCopy,
+        JSON.stringify({
+          format: "velqu-trusted-publishers-v1",
+          version: 1,
+          publishers: [
+            { id: "explicit-revoked", name: "Explicit Key (revoked)", email: "trusted@velqu.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: trustedFingerprint, status: "revoked" },
+            { id: "fallback-active", name: "Other Active Publisher", email: "untrusted@attacker.test", type: "openpgp-ed25519", fingerprintType: "primary", fingerprint: untrustedFingerprint, status: "active" },
+          ],
+          revokedKeys: [trustedFingerprint],
+        }, null, 2),
+      );
+
+      const proc = Bun.spawnSync(
+        ["bash", verifierBin, "--packet-dir", packetDir, "--require-signature", "--trusted-keys-file", registryCopy, "--trusted-key", trustedFingerprint],
+        { env: { ...process.env, GNUPGHOME: testGpgHome }, stdout: "pipe", stderr: "pipe" },
+      );
+      const stderr = new TextDecoder().decode(proc.stderr);
+      expect(proc.exitCode).toBe(1);
+      expect(stderr).toContain("every key named via --trusted-key is revoked");
+      expect(stderr).toContain("refusing to fall back");
+    } finally {
+      rmSync(packetDir, { recursive: true, force: true });
+      rmSync(registryCopy, { force: true });
+    }
+  });
+
   test("registry with a duplicate revoked entry still accepts a packet from an untouched active publisher", () => {
     const packetDir = mkdtempSync(join(tmpdir(), "mock-packet-active-publisher-"));
     const registryCopy = mkdtempSync(join(tmpdir(), "mock-registry-active-")) + "/registry.json";
