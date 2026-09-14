@@ -4455,7 +4455,7 @@
      "bun run typecheck"
     ]
    },
-   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves. Canary clause honestly NOT covered: BETA-013 covers real-world load, leak, and recovery evidence; the controlled production-like canary is owner-gated at RC and tracked in #1321. This row must not flip to PASS on load/leak evidence alone; the canary disposition is required."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. This row carries two independent blockers: (1) its dependency M24-GATE is TODO pending Path A (post-soak same-protocol A/B, pre-M24 3bcb6302 vs M24-complete 87adf2c5/75bda51f) or Path B (owner disposition); and (2) the controlled production-like canary acceptance clause is NOT covered by committed evidence — owner-gated at RC and tracked in #1321. The row flips to PASS only when both are resolved (canary evidence, or an explicit authorized disposition recorded as a disposition, not as proof an unmeasured comparison passed); real-world load/leak evidence alone is insufficient."
   },
   {
    "id": "M5-GATE",
@@ -4502,7 +4502,7 @@
      "cargo test -p velqu-runtime"
     ]
    },
-   "binding_note": "#1343 packet 8 pre-binding 2026-09-14: the work is complete and verified in the beta program as the mapped BETA row (see PR body table; beta BETA-GATE PASS at 65da9ed with all 17 parents PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves. Gate acceptance maps to the beta program (BETA-GATE, all 17 parents PASS at 65da9ed); M5-009 canary residual (#1321) and the RC-time owner items it tracks remain outside this evidence."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. Gate acceptance maps to the beta program (BETA-GATE, all 17 parents PASS at 65da9ed). Beyond the M24-GATE blocker inherited through M4-GATE, this row depends on M5-009, whose controlled-canary residual (#1321) must also be resolved (evidence or explicit authorized disposition). Resolving M24-GATE alone does not make this row eligible for PASS."
   },
   {
    "id": "M6-001",
@@ -4547,7 +4547,7 @@
      "bun run verify"
     ]
    },
-   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. The row work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Beyond the M24-GATE blocker inherited transitively through M4-GATE, the dependency chain includes M5-GATE and M5-009, so the M5-009 controlled-canary residual (#1321) is inherited and must also be resolved (evidence or explicit authorized disposition). Resolving M24-GATE alone does not make this row eligible for PASS."
   },
   {
    "id": "M6-002",
@@ -4608,7 +4608,7 @@
      "bun test conformance/treaty/treaty.differential.test.ts"
     ]
    },
-   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. The row work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Beyond the M24-GATE blocker inherited transitively through M4-GATE, the dependency chain includes M5-GATE and M5-009, so the M5-009 controlled-canary residual (#1321) is inherited and must also be resolved (evidence or explicit authorized disposition). Resolving M24-GATE alone does not make this row eligible for PASS."
   },
   {
    "id": "M6-003",
@@ -4666,7 +4666,7 @@
      "cargo fuzz run pack_verify --release -- -max_total_time=900"
     ]
    },
-   "binding_note": "#1343 packet 9 pre-binding 2026-09-14: the work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Ledger status stays TODO solely because its dependency M5-GATE is TODO behind the M24-GATE blocker (post-soak A/B Path A or owner disposition Path B); the row flips to PASS with these refs unchanged when the chain resolves."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. The row work is complete and merged to master (M6-002/M6-003 evidence ec16cdc4, #1341; M6-001 consolidated threat model ae7cc763, #1342). Beyond the M24-GATE blocker inherited transitively through M4-GATE, the dependency chain includes M5-GATE and M5-009, so the M5-009 controlled-canary residual (#1321) is inherited and must also be resolved (evidence or explicit authorized disposition). Resolving M24-GATE alone does not make this row eligible for PASS."
   },
   {
    "id": "M6-004",
