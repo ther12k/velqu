@@ -3592,7 +3592,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "9b6ba1bd242cfd3b30262dc008ed01dfc32d1469",
+    "source": [
+     "packages/cli/src/index.ts",
+     "packages/compiler/src/emit.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-001-Z-package-evidence-for-implement-actual-runtime-velqu-dev-loop.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-001-V-verify-implement-actual-runtime-velqu-dev-loop.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test packages/cli",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-002",
@@ -3617,7 +3637,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "76dd6f77cc3cd81a22eaabb5a00b99779d04a04c",
+    "source": [
+     "packages/cli/src/index.ts",
+     "packages/cli/src/pack-inspect.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-002-Z-package-evidence-for-complete-cli-command-surface.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-002-V-verify-complete-cli-command-surface.md"
+    ],
+    "report": [
+     "docs/beta/08_CLI_REFERENCE.md",
+     "docs/beta/program/gates/M4A-GATE.md"
+    ],
+    "tests": [
+     "bun test packages/cli",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-003",
@@ -3642,7 +3682,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "ed4b0696cdfe13d4c1fc873096cbf92c505ccb9a",
+    "source": [
+     "packages/cli/src/index.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-003-Z-package-evidence-for-implement-project-scaffolding.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-003-V-verify-implement-project-scaffolding.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test packages/cli",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-004",
@@ -3667,7 +3726,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "646e069177d5893341ea21286e00a81e87ce8fd1",
+    "source": [
+     "packages/treaty/src/index.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-004-Z-package-evidence-for-complete-treaty-unit-local-runtime-local-and-remote-modes.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-004-V-verify-complete-treaty-unit-local-runtime-local-and-remote-modes.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test packages/treaty",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-005",
@@ -3691,7 +3769,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "9be542bfc1013a093082f1c994543c1fc57b894f",
+    "source": [
+     "packages/contract/src/index.ts",
+     "packages/compiler/src/emit.ts"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-005-Z-package-evidence-for-publish-compact-contract-and-sdk-artifacts.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-005-V-verify-publish-compact-contract-and-sdk-artifacts.md",
+     "conformance/browser/fixture-app/dist/contract.lock.json"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun test packages/contract",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-006",
@@ -3716,7 +3815,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "5bdc2beccc5088de1210c501ef40bf0670f5c483",
+    "source": [
+     "crates/q-runtime/src/source_map.rs",
+     "crates/q-capabilities/src/diagnostics.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-006-Z-package-evidence-for-finalize-diagnostics-source-maps-and-inspect-output.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-006-V-verify-finalize-diagnostics-source-maps-and-inspect-output.md",
+     "packages/cli/src/inspect-output.test.ts"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p velqu-runtime",
+     "bun test packages/cli"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-007",
@@ -3741,7 +3861,28 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "0a8c87b81b53a4a982e0c8d40a7bfc39ff9459fe",
+    "source": [
+     "docs/specs/defer-api.md",
+     "crates/q-engine-quickjs/src/prelude.rs",
+     "crates/q-capabilities/src/long_running.rs"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-007-Z-package-evidence-for-implement-bounded-defer-and-lifecycle-hooks.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-007-V-verify-implement-bounded-defer-and-lifecycle-hooks.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "cargo test -p q-engine-quickjs",
+     "cargo test -p q-capabilities"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves. Stale beta-ledger note: docs/beta/04_TASK_LEDGER.md still shows M4A-007 TODO; the M4A-GATE record (candidate 936e1f0) explicitly lists all ten parents PASS, and this row cites the M4A-007 V/Z packet evidence directly."
   },
   {
    "id": "M4-008",
@@ -3766,7 +3907,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "387c0a3e5523e2b5c6963f050c559ed9f901ef3b",
+    "source": [
+     "docs/beta/QUICKSTART.md",
+     "examples/proof/package.json"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-008-Z-package-evidence-for-build-documentation-and-examples.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-008-V-verify-build-documentation-and-examples.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun run typecheck",
+     "bun test"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-009",
@@ -3791,7 +3952,26 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "58fedb6783ac1cfa946d38463efdfb9c3438f2e3",
+    "source": [
+     "examples/proof/src"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-009-Z-package-evidence-for-build-realistic-private-alpha-proof-service.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-009-V-verify-build-realistic-private-alpha-proof-service.md"
+    ],
+    "report": [
+     "docs/beta/program/gates/M4A-GATE.md",
+     "docs/beta/04_TASK_LEDGER.md"
+    ],
+    "tests": [
+     "bun run typecheck",
+     "cargo test -p velqu-runtime"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M4-GATE",
@@ -3817,7 +3997,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "936e1f0256f3611a400f9088dea0ea58eaacdfae",
+    "source": [
+     "docs/beta/program/gates/M4A-GATE.md"
+    ],
+    "rawEvidence": [
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-010-Z-package-evidence-for-run-invited-developer-alpha-and-close-p0-p1-feedback.md",
+     "docs/beta/program/tasks/07_m4a_developer_preview/M4A-010-V-verify-run-invited-developer-alpha-and-close-p0-p1-feedback.md",
+     "benchmarks/manifest.json"
+    ],
+    "report": [
+     "docs/reports/m4a-gate-review.md",
+     "docs/beta/program/gates/M4A-GATE.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities",
+     "cargo test -p velqu-runtime",
+     "bun test",
+     "bun run typecheck"
+    ]
+   },
+   "binding_note": "#1343 packet 7 pre-binding 2026-09-14: the work is complete and verified in the beta program as M4A (docs/beta/04_TASK_LEDGER.md; beta M4A-GATE PASS at 936e1f0 verifying all ten parents M4A-001..M4A-010 V+Z PASS). Ledger status stays TODO solely because its transitive dependency M24-GATE is TODO pending the post-soak A/B (Path A) or owner disposition (Path B); the row flips to PASS with these refs unchanged when that blocker resolves."
   },
   {
    "id": "M5-001",
