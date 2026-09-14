@@ -1599,7 +1599,7 @@
      "crates/q-schema-runtime/src/lib.rs"
     ],
     "rawEvidence": [
-     "examples/proof/dist/contract.lock.json",
+     "conformance/browser/fixture-app/dist/contract.lock.json",
      "docs/beta/program/tasks/02_m25_schema_codecs/M25-008-Z-package-evidence-for-unify-treaty-openapi-lock-and-runtime-schema-projection.md",
      "docs/beta/program/tasks/02_m25_schema_codecs/M25-008-V-verify-unify-treaty-openapi-lock-and-runtime-schema-projection.md"
     ],
@@ -1648,8 +1648,8 @@
      "crates/q-schema-runtime/src/lib.rs"
     ],
     "rawEvidence": [
-     "fuzz/corpus/codec_encoders",
-     "fuzz/corpus/schema_validate",
+     "fuzz/fuzz_targets/codec_encoders.rs",
+     "fuzz/fuzz_targets/schema_validate.rs",
      "docs/beta/program/tasks/02_m25_schema_codecs/M25-009-Z-package-evidence-for-add-codec-fuzzing-and-differential-tests.md",
      "docs/beta/program/tasks/02_m25_schema_codecs/M25-009-V-verify-add-codec-fuzzing-and-differential-tests.md"
     ],
