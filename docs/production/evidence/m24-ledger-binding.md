@@ -46,34 +46,41 @@ Clause-by-clause against the production row's acceptance:
    by M24-009's counters + the M24-002 field-free invocation test.
 4. **"C0 >= 90% of matched raw Rust; C1/C3 p95 do not regress; bridge
    safety suites pass"** — split:
-   - **C0 ≥ 90% of matched raw Rust: satisfied by committed measured
-     evidence.** Gate-time five-repetition protocol run
-     (`benchmarks/raw/warm/g0-warm-1787214167.jsonl`, 5 reps, c=1/10/50,
-     zero errors): velqu C0 median p50 28.4/85.8/326.5 μs vs matched
-     raw-rust 27.9/77.5/343.9 μs → **98.2% / 90.3% / 105.3%**. Current
-     five-repetition run on today's runtime (2026-09-10,
-     `warm-1789054920075.jsonl`): 48.3/129.5/490.9 vs 47.5/158.0/490.8 →
-     **98.4% / 122.1% / 100.0%**. Both artifacts are committed.
-     *Lineage fact discovered during this binding pass, recorded for
-     honesty:* the gate-time warm run was generated 2026-08-20T08:27Z —
-     about two hours BEFORE the first of the 68 `m24-*` implementation
-     commits (~10:04Z) — so it measured the pre-M2.4 runtime; the
-     post-M2.4 contemporaneous C0-vs-raw number was never committed at
-     gate time. The clause is nonetheless established on the post-M2.4
-     runtime by the 2026-09-10 five-repetition run above.
+   - **C0 ≥ 90% of matched raw Rust: status under throughput vs latency metrics.**
+     The clause in `TASKS.production.json` does not specify whether the 90% threshold
+     applies to throughput (requests/sec) or inverse latency (p50). Both metrics
+     calculated from the committed five-repetition runs exceed 90%:
+     - **Measured throughput share (`Velqu median rps / raw-Rust median rps`)**:
+       - Gate-time run (`g0-warm-1787214167.jsonl`, 1s cells):
+         - c=1: 25,616 vs 26,920 req/s → **95.2%**
+         - c=10: 97,129 vs 102,119 req/s → **95.1%**
+         - c=50: 128,086 vs 127,382 req/s → **100.6%**
+       - Current run (`warm-1789054920075.jsonl`, 10s cells, post-M2.5/M2.6/M3 runtime):
+         - c=1: 15,195 vs 14,948 req/s → **101.7%**
+         - c=10: 60,959 vs 48,183 req/s → **126.5%**
+         - c=50: 82,106 vs 83,739 req/s → **98.0%**
+     - **Inverse latency ratio (`raw-Rust median p50 / Velqu median p50`)**:
+       - Gate-time run: 28.4 vs 27.9 μs (c=1, **98.2%**); 85.8 vs 77.5 μs (c=10, **90.3%**); 326.5 vs 343.9 μs (c=50, **105.3%**).
+       - Current run: 48.3 vs 47.5 μs (c=1, **98.3%**); 129.5 vs 158.0 μs (c=10, **122.0%**); 490.9 vs 490.8 μs (c=50, **100.0%**).
+     *Metric interpretation and lineage fact:* Under the canonical throughput metric (`req/s`), C0 throughput share is 95.1%–100.6% at gate-time and 98.0%–126.5% on the current runtime. The gate-time warm run was generated 2026-08-20T08:27Z — about two hours BEFORE the first of the 68 `m24-*` implementation commits (~10:04Z) — so it measured the pre-M2.4 runtime; the post-M2.4 contemporaneous C0-vs-raw number was never committed at gate time.
    - **C1/C3 p95 do not regress: NOT bindable from existing evidence.**
      The natural reading (post-M2.4 vs pre-M2.4, same protocol) has no
-     committed measurement pair: the gate accepted the pre-M2.4 run, and
-     the only later five-repetition run (2026-09-10) spans the M2.5/M2.6/
-     M3 milestones, so any delta is not attributable to M2.4. The raw
+     committed measurement pair: the gate accepted the pre-M2.4 run (1s cells), and
+     the only later five-repetition run (2026-09-10, 10s cells) spans the M2.5/M2.6/
+     M3 milestones, so any delta is not attributable to M2.4 alone. The raw
      numbers (velqu C1 p95 c=1: 290.3 μs pre-M2.4 → 339.3 μs today; C3:
      276.2 → 553.8) are recorded here as an observation across the whole
-     later stack, NOT as an M2.4 regression finding. Two resolution
-     paths: (a) a same-protocol A/B against the pre-M24 commit
-     (`e5acd462^`), scheduled after the in-flight 72 h soak frees the
-     benchmark host; (b) an explicit owner disposition that the clause is
-     superseded by the current evidence regime. Until one lands, the gate
-     row stays TODO.
+     later stack, NOT as an M2.4 regression finding.
+
+     **Proposed resolution paths and explicit questions/endpoints:**
+     - **Path A: Retrospective Matched A/B Benchmark** (to be scheduled after the in-flight 72 h soak completes):
+       - *Specific Question:* Did the M2.4 zero-copy ingress implementation specifically introduce a regression in C1 or C3 p95 latency?
+       - *Baseline Endpoint (Pre-M24):* Commit `3bcb6302` (`e5acd462^`), which has been verified to build cleanly under the pinned Rust 1.96.0 toolchain.
+       - *Target Endpoint (M24-complete):* Commit `87adf2c5` (the M24 gate close commit) or `75bda51f` (the reviewed candidate commit `M24-001-Z`..`010-Z`), isolating M2.4 changes from subsequent M2.5/M2.6/M3 architectural additions.
+       - *Protocol:* Standardized 5-repetition randomized load run across both endpoints under identical host conditions. (Note: A comparison of `3bcb6302` against current `b8fee349` answers an entirely different question — whole-stack drift vs historical baseline — and does not isolate M2.4).
+     - **Path B: Explicit Owner Disposition:**
+       - The repository owner formally disposes the historical milestone gate clause (e.g. ratifying that C0 throughput/latency parity and subsequent GA-track perf gates supersede the historical isolated M2.4 C1/C3 check).
+     Until Path A or Path B is executed, the gate row stays TODO.
    - **Bridge safety suites pass** — gate review: clean `./scripts/verify`
      at candidate `75bda51f` (workspace tests, Clippy, Bun 36/36,
      benchmark artifact parity); M24-010-Z closes fuzz/conformance.
