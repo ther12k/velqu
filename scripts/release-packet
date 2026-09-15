@@ -110,6 +110,12 @@ done
 ./scripts/sbom.sh "$OUT/sbom.cdx.json" >/dev/null
 ./scripts/npm-package-tarballs.sh "$OUT/npm-tarballs" >/dev/null
 
+# M6-005: provenance statement (source/builder/toolchain/parameters +
+# artifact hashes) inside the packet, so one checksum manifest — and the
+# optional signature — covers it too. provenance.json itself is excluded
+# from its own artifact list by the generator.
+python3 scripts/generate-provenance.py --out "$OUT/provenance.json" --artifacts "$OUT"
+
 # BETA-015-G: single top-level checksum manifest over every shipped file
 # (packet artifacts, SBOM, and npm tarballs). Nested SHA256SUMS.txt files
 # (e.g. npm-tarballs/SHA256SUMS.txt) ARE checksummed into the top-level manifest,
