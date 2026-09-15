@@ -1,0 +1,12 @@
+instance=capture-host
+commit=b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+rustc=rustc 1.96.0 (ac68faa20 2026-05-25)
+uname=Linux 7.0.0-28-generic x86_64
+kernel=7.0.0-28-generic
+cpu=12th Gen Intel(R) Core(TM) i7-12650H
+linker=GNU ld (GNU Binutils for Ubuntu) 2.42
+os=Ubuntu 24.04.4 LTS
+c-compiler=x86_64-linux-gnu-gcc-12 (Debian 12.2.0-14+deb12u1) 12.2.0 (user-space toolchain at ~/Workspace/.toolchain, assembled from Debian .deb extraction after an environment rollback — NOT the stock distro gcc)
+note=workstation reference build; hash differs from the two clean CI builders because rquickjs-sys compiles QuickJS C sources with this gcc 12.2 instead of the runners' Ubuntu gcc 13.3.0 (same rustc 1.96.0, same remap flags). Explained environment difference per M6-006 acceptance; the qualification pair is CI-vs-CI (byte-identical).
+930357da5a20897167c53c1d9f91a9fc811a48e1053ea4aa58644bcdd202c709  target/release/velqu-runtime
+a2e538f666db028293f2f475107f37509f25bd65631be22279a8f9d6b51460cc  target/release/velqu-bytecode
