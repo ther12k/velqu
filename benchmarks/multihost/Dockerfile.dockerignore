@@ -1,0 +1,15 @@
+# build context for the multihost benchmark image — keep it small; only what
+# the image build needs (per-Dockerfile ignore, used when building with
+# -f benchmarks/multihost/Dockerfile)
+.git
+target
+release
+docs
+node_modules
+**/node_modules
+benchmarks/raw
+benchmarks/multihost/out
+history
+tasks
+.github
+scripts/__pycache__

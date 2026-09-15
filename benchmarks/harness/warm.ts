@@ -49,6 +49,14 @@ const CANDIDATES: Candidate[] = [
       env: { PORT: String(port) },
     }),
   },
+  {
+    id: "lugas",
+    spawn: (port) => ({
+      cmd: "bun",
+      args: [`${ROOT}/baselines/lugas/server.ts`],
+      env: { PORT: String(port) },
+    }),
+  },
 ];
 
 const ROUTES = [
