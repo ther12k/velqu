@@ -1,0 +1,103 @@
+name: ga-native-repro
+
+# M6-006: native-binary reproducibility on independent builders.
+# Two separate GitHub-hosted runners (genuinely independent environments —
+# different machines, fresh caches) build the SAME pinned commit with the
+# same pinned toolchain and identical remap flags; a third job compares
+# the artifact hashes byte-exactly. Any difference fails the workflow and
+# the raw hashes are retained as artifacts for the difference report.
+#
+# Triggered manually with the candidate commit (default: the tested
+# runtime identity b8fee349). This lane produces evidence, not promotion:
+# the ledger row's remaining dependencies govern PASS independently.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "40-hex candidate commit to build"
+        required: true
+        default: "b8fee34909c0d6a4b3b9f76aebe9665cf3192c99"
+      expected_runtime_sha:
+        description: "Optional capture-host velqu-runtime sha256 for cross-environment comparison"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    name: build (${{ matrix.instance }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [a, b]
+    steps:
+      - name: Checkout pinned candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit }}
+      - name: Install Rust toolchain (pinned)
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal
+          rustup default 1.96.0
+      - name: Build release runtime with reproducibility remaps
+        run: |
+          export RUSTFLAGS="--remap-path-prefix=$(pwd)=/velqu-src"
+          export CFLAGS="-ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src"
+          cargo build --release -p velqu-runtime -p q-bytecode-tool
+      - name: Record builder identity and hashes
+        run: |
+          {
+            echo "instance=${{ matrix.instance }}"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "rustc=$(rustc --version)"
+            echo "uname=$(uname -srm)"
+            echo "kernel=$(uname -r)"
+            echo "cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | xargs)"
+            echo "linker=$(ld --version | head -1)"
+            sha256sum target/release/velqu-runtime target/release/velqu-bytecode
+          } > hashes-${{ matrix.instance }}.txt
+          cat hashes-${{ matrix.instance }}.txt
+      - name: Upload hashes
+        uses: actions/upload-artifact@v4
+        with:
+          name: hashes-${{ matrix.instance }}
+          path: hashes-${{ matrix.instance }}.txt
+
+  compare:
+    name: compare independent build hashes
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both hash sets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: hashes-*
+          path: hashes
+          merge-multiple: false
+      - name: Compare artifacts byte-exactly
+        run: |
+          a=$(find hashes -name 'hashes-a.txt' | head -1)
+          b=$(find hashes -name 'hashes-b.txt' | head -1)
+          echo "--- builder A"; cat "$a"
+          echo "--- builder B"; cat "$b"
+          ha=$(grep velqu-runtime "$a" | awk '{print $1}')
+          hb=$(grep velqu-runtime "$b" | awk '{print $1}')
+          ba=$(grep velqu-bytecode "$a" | awk '{print $1}')
+          bb=$(grep velqu-bytecode "$b" | awk '{print $1}')
+          fail=0
+          [ "$ha" = "$hb" ] || { echo "MISMATCH velqu-runtime: $ha vs $hb"; fail=1; }
+          [ "$ba" = "$bb" ] || { echo "MISMATCH velqu-bytecode: $ba vs $bb"; fail=1; }
+          if [ -n "${{ github.event.inputs.expected_runtime_sha }}" ]; then
+            if [ "$ha" = "${{ github.event.inputs.expected_runtime_sha }}" ]; then
+              echo "capture-host parity: MATCH"
+            else
+              echo "capture-host parity: DIFFERS ($ha vs ${{ github.event.inputs.expected_runtime_sha }}) — recorded for the difference report"
+            fi
+          fi
+          if [ "$fail" = 0 ]; then
+            echo "REPRODUCIBLE: both independent builders produced identical native binaries"
+          else
+            echo "NOT reproducible across independent builders — difference report required"
+          fi
+          exit $fail
