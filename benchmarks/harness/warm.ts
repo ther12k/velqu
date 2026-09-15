@@ -175,12 +175,18 @@ async function main() {
   const runId = process.env.WARM_RUN_ID ?? `warm-${Date.now()}`;
   let seed = Number(process.env.WARM_SEED ?? Date.now()) >>> 0;
 
+  // M24 A/B (matched endpoints): optionally restrict the candidate set so a
+  // velqu-vs-velqu revision comparison runs the identical cell protocol on
+  // both endpoints without spending cells on baselines. The full default
+  // (all candidates) is unchanged when the variable is not set.
+  const candidateFilter = process.env.WARM_CANDIDATES?.split(",").map((c) => c.trim());
+
   console.log(`Warm-load benchmark (repetitions=${repetitions}, duration=${durationSec}s, concurrency=[${concurrencyLevels.join(", ")}], seed=${seed})`);
   const results: Array<Record<string, unknown>> = [];
   let executionOrder = 0;
 
   for (let repetition = 1; repetition <= repetitions; repetition++) {
-    const jobs = CANDIDATES.flatMap((cand) => ROUTES.flatMap((route) =>
+    const jobs = CANDIDATES.filter((c) => !candidateFilter || candidateFilter.includes(c.id)).flatMap((cand) => ROUTES.flatMap((route) =>
       concurrencyLevels.map((concurrency) => ({ cand, route, concurrency }))));
     const shuffled = shuffle(jobs, seed);
     seed = shuffled.seed;
