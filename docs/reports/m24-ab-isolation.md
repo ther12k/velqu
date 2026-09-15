@@ -70,10 +70,10 @@ Paired-repetition ratios (13 pairs, the drift-robust statistic):
 
 ## Conclusion (bounded to what was measured)
 
-**No M2.4-introduced regression is detected on C1 or C3.** C1 improved on
+**No material M2.4-introduced C1/C3 p95 regression was detected within the disclosed measurement resolution.** C1 improved on
 every metric at every concurrency (p95 ratios 0.89–0.92 pooled). C3 is
-flat-to-better at c=1 and c=50 (p95 0.910/0.954) and statistically flat
-at c=10 (paired median 1.037, identical p50). This addresses the
+flat-to-better at c=1 and c=50 (p95 0.910/0.954); at c=10 the paired p95
+median ratio is 1.037 (p50 ratio 1.036 with IQR 0.015). This addresses the
 gate-time observation that motivated the clause (gate-time C1 inverse
 ratio 90.3% at c=10 vs ~98% elsewhere): the matched A/B shows the M24
 revision **faster** than pre-M24 on that exact cell.

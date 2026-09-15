@@ -1218,8 +1218,33 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
-   "binding_note": "#1343 binding pass 2026-09-14: rows M24-001..009 are PASS (beta program packets, per-row evidence_refs). This gate row stays TODO: the acceptance clause \"C1/C3 p95 do not regress\" has no contemporaneous pre/post-M2.4 same-protocol measurement pair in committed artifacts — the gate-time warm run (g0-warm-1787214167, 2026-08-20T08:27Z) predates all 68 m24 implementation commits (first ~10:04Z), and the only later five-repetition run (2026-09-10) spans M25/M26/M3 changes. The C0>=90%-of-raw-Rust clause IS satisfied by committed measured evidence under both canonical throughput share (gate-time: 95.2/95.1/100.6%; current: 101.7/126.5/98.0% at c=1/10/50) and inverse p50 latency (gate-time: 98.2/90.3/105.3%; current: 98.3/122.0/100.0%). Resolution: a same-protocol A/B isolating M2.4 (pre-M24 3bcb6302 vs M24-complete 87adf2c5/75bda51f) after the 72h soak frees the host, or an explicit owner disposition. See docs/production/evidence/m24-ledger-binding.md. PATH A UPDATE 2026-09-15 (#M24-AB packet): the matched same-protocol A/B was executed per the refined report — pre-M24 3bcb6302 vs M24-complete 75bda51f (the gate candidate; NOT b8fee349), identical seed/protocol, round-interleaved + 13 paired repetitions under recorded (non-quiet) ambient. Result: no detectable C1/C3 p95 regression — C1 improved at every concurrency (pooled p95 ratios 0.89-0.92; C1 c=10 paired median 0.829), C3 flat-to-better (c=1/c=50 p95 0.910/0.954; c=10 paired median 1.037 with identical p50). Power limit disclosed: ±25% at c<=10 tails on this host. Evidence: docs/reports/m24-ab-isolation.md + benchmarks/raw/warm/m24ab-*.jsonl (30 runs, zero errors). The C1/C3 no-regress clause is now evidence-backed pending owner review; M24-GATE stays TODO until the dependency chain and owner sign-off on this evidence complete."
+   "status": "PASS",
+   "binding_note": "Owner-accepted 2026-09-15 per review of Path A evidence (#1363, 465abfab): C0 >= 90% raw Rust throughput share is met under both gate-time (95.2/95.1/100.6%) and current (101.7/126.5/98.0%) runs. Path A matched A/B isolating M2.4 (pre-M24 3bcb6302 vs M24-complete 75bda51f, the gate candidate) shows no material M2.4-introduced C1/C3 p95 regression was detected within the disclosed measurement resolution (C1 improved across all c; C3 c=1/c=50 p95 0.910/0.954; C3 c=10 paired p95 median 1.037, p50 ratio 1.036 with IQR 0.015; host power limit ±25% at c<=10 tails). Bridge safety suites pass (clean ./scripts/verify at candidate 75bda51f; M24-010-Z closes fuzz/conformance). M24-GATE is PASS.",
+   "evidence_refs": {
+    "commit": "465abfab96c615721a131f733d5909e60c68ff08",
+    "source": [
+     "docs/reports/m24-gate-review.md",
+     "docs/reports/m24-ab-isolation.md",
+     "crates/q-bridge/src/lib.rs",
+     "crates/q-runtime/src/serve.rs"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/warm/g0-warm-1787214167.jsonl",
+     "benchmarks/raw/warm/m24ab-r1-pre.jsonl",
+     "benchmarks/raw/warm/m24ab-p1-pre.jsonl"
+    ],
+    "report": [
+     "docs/reports/m24-gate-review.md",
+     "docs/reports/m24-ab-isolation.md",
+     "docs/production/evidence/m24-ledger-binding.md"
+    ],
+    "tests": [
+     "bun test packages/compiler",
+     "cargo test -p q-bridge",
+     "cargo test -p velqu-runtime",
+     "bun run verify"
+    ]
+   }
   },
   {
    "id": "M25-001",
@@ -1244,7 +1269,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "8efb6e27a45f171c20c956b299b7ebe8e7233bf1",
     "source": [
@@ -1295,7 +1320,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "60caa3176cbe5360e7da9a17fb5f4ca2f32efcb1",
     "source": [
@@ -1349,7 +1374,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "f0f70ef3b57db3c9bcb53b54041f8c0ba7685708",
     "source": [
@@ -1397,7 +1422,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "5dd765a4f5e57364a3b9d72dda4405849c325098",
     "source": [
@@ -1446,7 +1471,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2a9783cf6223f4165520b810a8d41c673aa8d47a",
     "source": [
@@ -1494,7 +1519,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "7770310b150cbf02a72a275e3a2f53fbe10e3caf",
     "source": [
@@ -1541,7 +1566,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "3290f5a820b527523cb67d965b2adc4f61c8eb78",
     "source": [
@@ -1590,7 +1615,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "f245f70d10cd85dc95a2babbc88c21b7beaab4ca",
     "source": [
@@ -1639,7 +1664,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2520030e54a6670a21f8debdf43df5ed9209e647",
     "source": [
@@ -1690,7 +1715,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "d61096c660189bf0b5899251ee34730f7e2271fc",
     "source": [
@@ -1742,7 +1767,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "17121ea1d2c949e0846e14ad56539f149e297477",
     "source": [
@@ -1788,7 +1813,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "0c5509c2bff5e1e607c1863eda0908845fac56ec",
     "source": [
@@ -1833,7 +1858,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "39f35526882108f0f41836b7695723805aec9800",
     "source": [
@@ -1880,7 +1905,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "e898645debfac74a63d8ebe7333e54ee14c9a299",
     "source": [
@@ -1928,7 +1953,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "29a8f0f6abf1d13bdc22ab1b88f704fe14e8bc89",
     "source": [
@@ -1975,7 +2000,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "66a28be30a9df19c1945ef5f52d5ce846daf60a6",
     "source": [
@@ -2021,7 +2046,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "951b3fa913bb8aeda502ccd12023cb2a82f49aba",
     "source": [
@@ -2067,7 +2092,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "908d171ae9bde33146ec71c4aef48dfa744b454d",
     "source": [
@@ -2113,7 +2138,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "55d806f83e2b845d8b97d92f03fb4b42561e3cd4",
     "source": [
@@ -2163,7 +2188,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "9aa16bed8755ae24bfb311e308dcb50484a1b9b9",
     "source": [
@@ -2213,7 +2238,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "998a995381a4bdf21086c44a81b4095a3df1133c",
     "source": [
@@ -2260,7 +2285,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "511e813dbf88d0beba9b66b2e480da2454ea9e85",
     "source": [
@@ -2307,7 +2332,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "8717dbc9b6796aeca1921f5500e50259c072e383",
     "source": [
@@ -2350,7 +2375,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "f0cd4bfe7d224ee9b44842cf3276892b25888607",
     "source": [
@@ -2395,7 +2420,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "4c81073c709a9726126afcedb97ed1cd7991185a",
     "source": [
@@ -2438,7 +2463,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "b66fa4c2c825b94890a667642616f40317d90156",
     "source": [
@@ -2483,7 +2508,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "dced7be11723f027bcc9b44d97da787f5552437d",
     "source": [
@@ -2528,7 +2553,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "27fdf8236a63c02d9463906ceb3bcafecf1a04fc",
     "source": [
@@ -2572,7 +2597,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "a751d65c6e3263c3421fe4f8260db1907fcad078",
     "source": [
@@ -2620,7 +2645,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2b7d00f1b9f574d9f1689b4532c15a737b9c79ef",
     "source": [
@@ -2671,7 +2696,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "e8d9888e0159f765a02e77709020a5bf378ced85",
     "source": [
@@ -2718,7 +2743,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "306350d7e754b325dde9ce82c0ac25d353f22620",
     "source": [
@@ -2765,7 +2790,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2adab46eb5f6a15985adf05eda7dd37683e89776",
     "source": [
@@ -2810,7 +2835,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2306d59dbca694f6d1414b24a68f5b113eca6a41",
     "source": [
@@ -2854,7 +2879,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "efeac29b4bb88f63597dbb7c90f45d9816468e2a",
     "source": [
@@ -2899,7 +2924,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "edacae5caf5c3b9495ea527e759cf40cbb17a65e",
     "source": [
@@ -2944,7 +2969,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "e594f9a7bd72c7ccfb232021493f4dfac68e57fe",
     "source": [
@@ -2987,7 +3012,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "8a015dd7de865a0f2525e5376f159280ab1925ac",
     "source": [
@@ -3032,7 +3057,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "f3c0c268983d9ad51cabc838d2b6e571659ac3f4",
     "source": [
@@ -3081,7 +3106,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "1cd63fcc2a3653bd0fd7fc05f02b226165e01716",
     "source": [
@@ -3131,7 +3156,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "4b0535c1bc966c1d9eca3b14bf7fc046dfb6c027",
     "source": [
@@ -3177,7 +3202,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "3f7be5f45b6ed1181fba8cdd75d5e0489eb46ae8",
     "source": [
@@ -3222,7 +3247,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "bc795a287b8ee9585aaf49334beca99c70089043",
     "source": [
@@ -3266,7 +3291,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "1f35c9e81483849d7b0e89d354a7635713daa09e",
     "source": [
@@ -3312,7 +3337,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "008335e11eb80fbee48845e69be6a26771487de5",
     "source": [
@@ -3357,7 +3382,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "a1963df593ca0a4646ac5f8328b91fd2aa73ebd9",
     "source": [
@@ -3401,7 +3426,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "9c3b9377421ee054888774ab84591b25c07923b5",
     "source": [
@@ -3446,7 +3471,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "5415b344082028bfba3892f376af1a60f23adfc3",
     "source": [
@@ -3492,7 +3517,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "ba77906386e5046d571dd4b8933f1024d841c987",
     "source": [
@@ -3542,7 +3567,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "8b36acc878fdae3db04409a2d9f247cd83f63572",
     "source": [
@@ -3592,7 +3617,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "9b6ba1bd242cfd3b30262dc008ed01dfc32d1469",
     "source": [
@@ -3637,7 +3662,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "76dd6f77cc3cd81a22eaabb5a00b99779d04a04c",
     "source": [
@@ -3682,7 +3707,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "ed4b0696cdfe13d4c1fc873096cbf92c505ccb9a",
     "source": [
@@ -3726,7 +3751,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "646e069177d5893341ea21286e00a81e87ce8fd1",
     "source": [
@@ -3769,7 +3794,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "9be542bfc1013a093082f1c994543c1fc57b894f",
     "source": [
@@ -3815,7 +3840,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "5bdc2beccc5088de1210c501ef40bf0670f5c483",
     "source": [
@@ -3861,7 +3886,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "0a8c87b81b53a4a982e0c8d40a7bfc39ff9459fe",
     "source": [
@@ -3907,7 +3932,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "387c0a3e5523e2b5c6963f050c559ed9f901ef3b",
     "source": [
@@ -3952,7 +3977,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "58fedb6783ac1cfa946d38463efdfb9c3438f2e3",
     "source": [
@@ -3997,7 +4022,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "936e1f0256f3611a400f9088dea0ea58eaacdfae",
     "source": [
@@ -4044,7 +4069,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "02113265220fff1ab94a7e3436965a5fa0edb2a5",
     "source": [
@@ -4091,7 +4116,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "30c1903f97edabdd31b78ee5f3c0845ed31ed215",
     "source": [
@@ -4138,7 +4163,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "6e72738cc40e3570fd8b541ac7b22bb7aaac2f7c",
     "source": [
@@ -4188,7 +4213,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "ad4a26ef71ec2c4f1b46d70ac7def73520c8a51c",
     "source": [
@@ -4240,7 +4265,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "2d68033aba8c24264520b9640339f1b0d83ea4b5",
     "source": [
@@ -4288,7 +4313,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "d052c09804ae66a07ccff329e85cda3350c3e42f",
     "source": [
@@ -4335,7 +4360,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "8608d94c29edcf7871a94bc79a00f771b9d63303",
     "source": [
@@ -4384,7 +4409,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO",
+   "status": "PASS",
    "evidence_refs": {
     "commit": "5049eb21f81b0b5c0918ed34f5dc3e3ca482fd24",
     "source": [

@@ -63,33 +63,15 @@ Clause-by-clause against the production row's acceptance:
        - Gate-time run: 28.4 vs 27.9 μs (c=1, **98.2%**); 85.8 vs 77.5 μs (c=10, **90.3%**); 326.5 vs 343.9 μs (c=50, **105.3%**).
        - Current run: 48.3 vs 47.5 μs (c=1, **98.3%**); 129.5 vs 158.0 μs (c=10, **122.0%**); 490.9 vs 490.8 μs (c=50, **100.0%**).
      *Metric interpretation and lineage fact:* Under the canonical throughput metric (`req/s`), C0 throughput share is 95.1%–100.6% at gate-time and 98.0%–126.5% on the current runtime. The gate-time warm run was generated 2026-08-20T08:27Z — about two hours BEFORE the first of the 68 `m24-*` implementation commits (~10:04Z) — so it measured the pre-M2.4 runtime; the post-M2.4 contemporaneous C0-vs-raw number was never committed at gate time.
-   - **C1/C3 p95 do not regress: NOT bindable from existing evidence.**
-     The natural reading (post-M2.4 vs pre-M2.4, same protocol) has no
-     committed measurement pair: the gate accepted the pre-M2.4 run (1s cells), and
-     the only later five-repetition run (2026-09-10, 10s cells) spans the M2.5/M2.6/
-     M3 milestones, so any delta is not attributable to M2.4 alone. The raw
-     numbers (velqu C1 p95 c=1: 290.3 μs pre-M2.4 → 339.3 μs today; C3:
-     276.2 → 553.8) are recorded here as an observation across the whole
-     later stack, NOT as an M2.4 regression finding.
-
-     **Proposed resolution paths and explicit questions/endpoints:**
-     - **Path A: Retrospective Matched A/B Benchmark** (to be scheduled after the in-flight 72 h soak completes):
-       - *Specific Question:* Did the M2.4 zero-copy ingress implementation specifically introduce a regression in C1 or C3 p95 latency?
-       - *Baseline Endpoint (Pre-M24):* Commit `3bcb6302` (`e5acd462^`), which has been verified to build cleanly under the pinned Rust 1.96.0 toolchain.
-       - *Target Endpoint (M24-complete):* Commit `87adf2c5` (the M24 gate close commit) or `75bda51f` (the reviewed candidate commit `M24-001-Z`..`010-Z`), isolating M2.4 changes from subsequent M2.5/M2.6/M3 architectural additions.
-       - *Protocol:* Standardized 5-repetition randomized load run across both endpoints under identical host conditions. (Note: A comparison of `3bcb6302` against current `b8fee349` answers an entirely different question — whole-stack drift vs historical baseline — and does not isolate M2.4).
-     - **Path B: Explicit Owner Disposition:**
-       - The repository owner formally disposes the historical milestone gate clause (e.g. ratifying that C0 throughput/latency parity and subsequent GA-track perf gates supersede the historical isolated M2.4 C1/C3 check).
-     Until Path A or Path B is executed, the gate row stays TODO.
+   - **C1/C3 p95 do not regress: SATISFIED via Path A execution and owner acceptance.**
+     Path A (retrospective matched A/B isolating M2.4, pre-M24 `3bcb6302` vs M24-complete `75bda51f` under identical protocol and seed, PR #1363, `465abfab`) was executed and reviewed. Result: no material M2.4-introduced C1/C3 p95 regression was detected within the disclosed measurement resolution (C1 improved across all concurrency levels, pooled p95 ratios 0.89–0.92, c=10 paired median 0.829; C3 c=1/c=50 p95 0.910/0.954; C3 c=10 paired p95 median 1.037, p50 ratio 1.036 with IQR 0.015; host power limit ±25% at c<=10 tails). Owner accepted the gate on 2026-09-15.
    - **Bridge safety suites pass** — gate review: clean `./scripts/verify`
      at candidate `75bda51f` (workspace tests, Clippy, Bun 36/36,
      benchmark artifact parity); M24-010-Z closes fuzz/conformance.
 5. The gate's original blocker (recorded at `ce751fe8`) was benchmark
    artifact hash parity, resolved before close — not a perf clause.
 
-Consequence: the M25 block (M25-001 depends on M24-GATE) cannot be bound
-until the gate resolves. This is the intended honesty cost of not
-bulk-promoting.
+Conclusion: M24-GATE moves to PASS with evidence_refs citing candidate `75bda51f` / PR #1363 (`465abfab`), `docs/reports/m24-gate-review.md`, and `docs/reports/m24-ab-isolation.md`. This unblocks the downstream pre-bound milestone rows (M25..M4 blocks and M5-001..008) whose dependencies now pass. Rows inheriting the separate M5-009 canary requirement (#1321) remain TODO.
 
 ## Provenance correction carried in this packet
 
