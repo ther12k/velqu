@@ -7,6 +7,14 @@ name: ga-native-repro
 # the artifact hashes byte-exactly. Any difference fails the workflow and
 # the raw hashes are retained as artifacts for the difference report.
 #
+# Pinned build environment (M6-006 acceptance "Build images/toolchains are
+# pinned"): the build runs inside a digest-pinned ubuntu:24.04 container
+# with explicitly pinned apt versions of the C compiler and binutils, plus
+# pinned rustc. A mutable `ubuntu-latest` label plus whatever GCC the image
+# happens to carry does not satisfy this lane; every environment component
+# that reaches the output bytes is pinned below and re-recorded in the raw
+# hashes file of every run.
+#
 # Triggered manually with the candidate commit (default: the tested
 # runtime identity b8fee349). This lane produces evidence, not promotion:
 # the ledger row's remaining dependencies govern PASS independently.
@@ -23,23 +31,45 @@ on:
         required: false
         default: ""
 
+env:
+  BUILDER_IMAGE: "ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254"
+  GCC13_PIN: "13.3.0-6ubuntu2~24.04.1"
+  BINUTILS_PIN: "2.42-4ubuntu2.10"
+  RUSTC_PIN: "1.96.0"
+
 jobs:
   build:
     name: build (${{ matrix.instance }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254
     strategy:
       fail-fast: false
       matrix:
         instance: [a, b]
     steps:
+      - name: Install pinned native toolchain (apt versions exact)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git \
+            "gcc-13=${GCC13_PIN}" \
+            "binutils=${BINUTILS_PIN}"
+          # /usr/bin/cc + /usr/bin/gcc symlinks -> the pinned gcc-13
+          apt-get install -y --no-install-recommends gcc
+          gcc --version | head -1
+          cc --version | head -1
+          ld --version | head -1
       - name: Checkout pinned candidate
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Install Rust toolchain (pinned)
         run: |
-          rustup toolchain install 1.96.0 --profile minimal
-          rustup default 1.96.0
+          # the pinned container has no rustup preinstalled — bootstrap it
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+            sh -s -- -y --default-toolchain "${RUSTC_PIN}" --profile minimal --no-modify-path
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: Build release runtime with reproducibility remaps
         run: |
           export RUSTFLAGS="--remap-path-prefix=$(pwd)=/velqu-src"
@@ -50,6 +80,9 @@ jobs:
           {
             echo "instance=${{ matrix.instance }}"
             echo "commit=$(git rev-parse HEAD)"
+            echo "builder-image=${BUILDER_IMAGE}"
+            echo "gcc=$(gcc --version | head -1)"
+            echo "cc=$(cc --version | head -1)"
             echo "rustc=$(rustc --version)"
             echo "uname=$(uname -srm)"
             echo "kernel=$(uname -r)"
@@ -67,7 +100,7 @@ jobs:
   compare:
     name: compare independent build hashes
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download both hash sets
         uses: actions/download-artifact@v4

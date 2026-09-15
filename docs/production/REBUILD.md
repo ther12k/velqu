@@ -28,11 +28,24 @@ different working directories and requires byte-identical outputs
 | Rust | 1.96.0 | `rust-toolchain.toml` (rustup honors it automatically) |
 | Bun | 1.4.0 | CI setup (`oven-sh/setup-bun@v2`, `bun-version: 1.4.0`) |
 | Engine | quickjs-ng 0.15.1 via rquickjs =0.12.2 | `Cargo.lock` (AGENTS.md constraint 1) |
+| C compiler | gcc-13 13.3.0 (`13.3.0-6ubuntu2~24.04.1`) | ga-native-repro lane (apt version pin inside a digest-pinned `ubuntu:24.04` builder container) |
+| Linker/binutils | GNU ld 2.42 (`binutils 2.42-4ubuntu2.10`) | ga-native-repro lane (same) |
 | Lockfiles | `Cargo.lock`, `bun.lock` committed; installs frozen | CI + scripts |
 
 Install: `rustup toolchain install 1.96.0`, `rustup default 1.96.0`, Bun
-1.4.0 per vendor instructions. No other toolchain component is required to
-rebuild the shipped artifacts.
+1.4.0 per vendor instructions.
+
+The C toolchain is a build input, not an afterthought: rquickjs-sys
+compiles the vendored QuickJS C sources with `cc`, and different `cc`
+versions produce different binary bytes. This is demonstrated, not
+hypothetical — the M6-006 capture host (user-space gcc 12.2.0) produces a
+different `velqu-runtime` hash than the CI builders (gcc 13.3.0) from the
+same source commit and the same rustc. Rebuilds that must match the
+independent-builder evidence therefore use the pinned native environment
+of the ga-native-repro lane
+(`.github/workflows/ga-native-repro.yml`: digest-pinned `ubuntu:24.04`
+builder container, gcc-13 and binutils installed at the exact apt versions
+recorded in every run's `hashes-*.txt`).
 
 ## 2. Rebuild steps (exact)
 
