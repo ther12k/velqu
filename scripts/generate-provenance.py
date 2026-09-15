@@ -66,22 +66,34 @@ def collect_toolchain():
     # Pinned toolchain file, when present, is normative — record it verbatim.
     pinned = ROOT / "rust-toolchain.toml"
     toolchain["rustToolchainFile"] = pinned.read_text().strip() if pinned.exists() else "ABSENT"
-    # Pinned engine + binding from the lock (normative per AGENTS.md constraint 1).
+    # Binding versions resolve from the lock (AGENTS.md constraint 1). The
+    # engine itself is vendored inside rquickjs-sys, so its identity is the
+    # committed pin in benchmarks/manifest.json, recorded as such.
     lock = (ROOT / "Cargo.lock").read_text()
-    engine = binding = None
-    blocks = lock.split("[[package]]")
-    for b in blocks:
-        if '\nname = "quickjs-ng"' in b or b.startswith('name = "quickjs-ng"'):
+    def lock_version(pkg):
+        blocks = lock.split("[[package]]")
+        for b in blocks:
+            m_name = None
             for line in b.splitlines():
-                if line.startswith("version = "):
-                    engine = line.split('"')[1]
-        if 'name = "rquickjs-core"' in b or b.startswith('name = "rquickjs-core"'):
-            for line in b.splitlines():
-                if line.startswith("version = "):
-                    binding = line.split('"')[1]
+                if line.startswith("name = "):
+                    m_name = line.split('"')[1]
+                elif m_name == pkg and line.startswith("version = "):
+                    return line.split('"')[1]
+        return None
+    rquickjs = lock_version("rquickjs")
+    sys_ver = lock_version("rquickjs-sys")
+    engine_pin = None
+    manifest = ROOT / "benchmarks" / "manifest.json"
+    if manifest.is_file():
+        try:
+            engine_pin = json.loads(manifest.read_text()).get("environment", {}).get("pinnedEngine")
+        except json.JSONDecodeError:
+            engine_pin = None
     toolchain["pinnedEngine"] = {
-        "engine": f"quickjs-ng {engine}" if engine else "quickjs-ng (version unresolved)",
-        "binding": f"rquickjs-core {binding}" if binding else "rquickjs-core (version unresolved)",
+        "declared": engine_pin or "UNRESOLVED (benchmarks/manifest.json environment.pinnedEngine missing)",
+        "declaredSource": "benchmarks/manifest.json (committed pin; the engine is vendored inside rquickjs-sys and has no lock entry of its own)",
+        "rquickjs": f"rquickjs {rquickjs}" if rquickjs else "rquickjs (version unresolved)",
+        "rquickjs-sys": f"rquickjs-sys {sys_ver}" if sys_ver else "rquickjs-sys (version unresolved)",
     }
     return toolchain
 
