@@ -17,8 +17,11 @@ ARG RUSTC_VERSION=1.96.0
 ARG GCC13_PIN=13.3.0-6ubuntu2~24.04.1
 ARG BINUTILS_PIN=2.42-4ubuntu2.10
 ARG LIBC6_DEV_PIN=2.39-0ubuntu8.9
-# 0 = cargo default (all cores); set lower on busy/shared hosts
-ARG CARGO_BUILD_JOBS=0
+# 0 = cargo default (all cores); set lower on busy/shared hosts.
+# Named BENCH_CARGO_JOBS because ARG values are auto-exported into RUN
+# steps — an ARG literally named CARGO_BUILD_JOBS would hand cargo a
+# literal 0, which cargo rejects ("jobs may not be 0").
+ARG BENCH_CARGO_JOBS=0
 ENV BUN_VERSION=${BUN_VERSION} RUSTC_VERSION=${RUSTC_VERSION}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -28,8 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Bun (pinned); arch from the build host itself (same-host build/run — works
-# on both real docker and podman/buildah, no BuildKit TARGETARCH dependency)
-RUN ARCH=$(uname -m | grep -q aarch64 && echo arm64 || echo x64) \
+# on both real docker and podman/buildah, no BuildKit TARGETARCH dependency).
+# NOTE: bun's arm64 asset is named "aarch64", not "arm64".
+RUN ARCH=$(uname -m | grep -q aarch64 && echo aarch64 || echo x64) \
  && curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${ARCH}.zip" -o /tmp/bun.zip \
  && unzip -q /tmp/bun.zip -d /tmp/buninstall \
  && mv "/tmp/buninstall/bun-linux-${ARCH}/bun" /usr/local/bin/bun \
@@ -52,7 +56,7 @@ RUN cd baselines/elysia2 && bun install --frozen-lockfile \
 # proof QPack + release binaries with the canonical reproducibility remaps
 RUN export RUSTFLAGS="--remap-path-prefix=/bench=/velqu-src" \
  && export CFLAGS="-ffile-prefix-map=/bench=/velqu-src -fdebug-prefix-map=/bench=/velqu-src" \
- && [ "$CARGO_BUILD_JOBS" = 0 ] || export CARGO_BUILD_JOBS="$CARGO_BUILD_JOBS" \
+ && [ "$BENCH_CARGO_JOBS" = 0 ] || export CARGO_BUILD_JOBS="$BENCH_CARGO_JOBS" \
  && bun packages/cli/src/index.ts build --project examples/proof \
  && cargo build --release -p velqu-runtime -p q-bytecode-tool \
  && cd baselines/raw-rust && cargo build --release

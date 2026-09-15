@@ -31,7 +31,7 @@ Nothing here feeds gate thresholds or ledger claims.
 # measured run at 5 candidates x 4 routes x 3 concurrency x 5 reps
 benchmarks/multihost/run.sh local 2     # or halotec / oracle
 # busy or tiny hosts: cap the build's parallelism —
-BENCH_BUILD_ARGS="--build-arg CARGO_BUILD_JOBS=2" benchmarks/multihost/run.sh halotec 2
+BENCH_BUILD_ARGS="--build-arg BENCH_CARGO_JOBS=2" benchmarks/multihost/run.sh halotec 2
 # podman-only host without the docker shim:
 DOCKER=podman benchmarks/multihost/run.sh oracle 2
 ```
