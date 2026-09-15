@@ -1,0 +1,12 @@
+workflow=ga-native-repro.yml
+run-url=https://github.com/ther12k/velqu/actions/runs/34964344973
+run-id=34964344973
+dispatched=2026-09-15T11:38:10Z from m6-006-pin-toolchain 68eaf0a0 (completed 11:41:01Z)
+input-commit=b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+environment=PINNED — digest-pinned ubuntu:24.04 container (sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254), gcc-13=13.3.0-6ubuntu2~24.04.1, binutils=2.42-4ubuntu2.10, libc6-dev=2.39-0ubuntu8.9, rustc 1.96.0 (all recorded verbatim in hashes-a/b.txt)
+conclusion=success (build a + build b + compare, all green)
+verdict=REPRODUCIBLE: both independent builders produced identical native binaries
+velqu-runtime  = 75c0120d555779eded3713386a42ac724854b1e7e6d59b8e20bfd42b109bf669 (a == b; genuinely different hosts: Intel Xeon Platinum 8370C vs AMD EPYC 7763)
+velqu-bytecode = 5fe55267b9d37e41e3fbdef15bd77a77ee6e97a48164cbf12da334c5d04ffbd6 (a == b)
+capture-host-parity=DIFFERS (75c0120d… vs 930357da5a20897167c53c1d9f91a9fc811a48e1053ea4aa58644bcdd202c709): the capture host compiles the QuickJS C sources with a user-space gcc 12.2 instead of the lane's pinned gcc 13.3 — the explained difference recorded in ../capture-host.txt; it is an environment difference, not a lane defect
+prior-unpinned-vm-pair=run 34938409719 (2026-09-15 ~06:45Z, runner-VM image environment before builder pinning) produced b5cd700c…/616f8cd0…, also byte-identical a-vs-b; retained under ../ for provenance. The pinned-container pair above is the canonical M6-006 evidence: unlike the VM pair, every environment component that reaches output bytes is pinned and re-recorded per run.
