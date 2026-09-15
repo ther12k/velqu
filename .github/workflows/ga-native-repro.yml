@@ -35,6 +35,7 @@ env:
   BUILDER_IMAGE: "ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254"
   GCC13_PIN: "13.3.0-6ubuntu2~24.04.1"
   BINUTILS_PIN: "2.42-4ubuntu2.10"
+  LIBC6_DEV_PIN: "2.39-0ubuntu8.9"
   RUSTC_PIN: "1.96.0"
 
 jobs:
@@ -51,15 +52,19 @@ jobs:
       - name: Install pinned native toolchain (apt versions exact)
         run: |
           apt-get update
+          # libc6-dev: crt objects (Scrt1.o/crti.o/crtn.o) + glibc dev libs
+          # for linking — the minimal container ships only the runtime.
           apt-get install -y --no-install-recommends \
             ca-certificates curl git \
             "gcc-13=${GCC13_PIN}" \
-            "binutils=${BINUTILS_PIN}"
+            "binutils=${BINUTILS_PIN}" \
+            "libc6-dev=${LIBC6_DEV_PIN}"
           # /usr/bin/cc + /usr/bin/gcc symlinks -> the pinned gcc-13
           apt-get install -y --no-install-recommends gcc
           gcc --version | head -1
           cc --version | head -1
           ld --version | head -1
+          ldd --version | head -1
       - name: Checkout pinned candidate
         uses: actions/checkout@v4
         with:
@@ -88,6 +93,7 @@ jobs:
             echo "kernel=$(uname -r)"
             echo "cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | xargs)"
             echo "linker=$(ld --version | head -1)"
+            echo "libc=$(ldd --version | head -1)"
             sha256sum target/release/velqu-runtime target/release/velqu-bytecode
           } > hashes-${{ matrix.instance }}.txt
           cat hashes-${{ matrix.instance }}.txt
