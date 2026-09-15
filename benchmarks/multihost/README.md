@@ -26,10 +26,19 @@ Nothing here feeds gate thresholds or ledger claims.
 ## Run on a host
 
 ```bash
-# docker required on the host; ~10-20 min build (release Rust build), then
-# a ~20 min measured run at 5 candidates x 4 routes x 3 concurrency x 5 reps
+# docker (or podman's docker shim) required on the host; ~10-40 min build
+# (release Rust build, single-threaded on 1-core hosts), then a ~20 min
+# measured run at 5 candidates x 4 routes x 3 concurrency x 5 reps
 benchmarks/multihost/run.sh local 2     # or halotec / oracle
+# busy or tiny hosts: cap the build's parallelism —
+BENCH_BUILD_ARGS="--build-arg CARGO_BUILD_JOBS=2" benchmarks/multihost/run.sh halotec 2
+# podman-only host without the docker shim:
+DOCKER=podman benchmarks/multihost/run.sh oracle 2
 ```
+
+The build context is a clean `git archive HEAD` export (the tree itself
+when transferred as an archive), so committed raw evidence never enters
+the image and every host builds from identical inputs.
 
 Artifacts: `benchmarks/raw/multihost/<run-id>/` — raw JSONL, summary,
 `hashes-<label>.txt` (image digest, toolchain versions, CPU, binary
