@@ -1,0 +1,11 @@
+b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+q-soak binary sha256: 6497fb16bc9e42ff85fc7726e602638a70461f4e3d74094e5851f6c9fdc6794d
+built from: exact b8fee349 worktree (not later master)
+rustc: 1.96.0 (ac68faa20 2026-05-25)
+flags: RUSTFLAGS --remap-path-prefix=<repo>=/velqu-src; CFLAGS -ffile-prefix-map/-fdebug-prefix-map
+run: replacement run r3 (r1 environment-interrupted at 25.22h; r2 environment-interrupted at 0.2h by
+     the second 2026-09-15 reboot — see ../ga-m6-soak-72h-r2/REBOOT-INCIDENT-2026-09-15-R2.md)
+     binary rebuild after the reboot reproduced the r2-recorded sha256 exactly
+args: --workers 2 --duration-secs 259200 --window-secs 120 (chaos disabled: defaults --chaos-secs 0
+      --disconnect-permille 0 --timeout-permille 0)
+launched: 2026-09-15T12:09Z (PID recorded in launch log)
