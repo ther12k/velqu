@@ -4785,7 +4785,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "d70019f0c54aad152ff05eab41d27aeb553f305f",
+    "source": [
+     ".github/workflows/ga-native-repro.yml",
+     "scripts/compare-builds",
+     "docs/production/REBUILD.md"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/native-repro/b8fee349/hashes-a.txt",
+     "benchmarks/raw/native-repro/b8fee349/hashes-b.txt",
+     "benchmarks/raw/native-repro/b8fee349/capture-host.txt",
+     "benchmarks/raw/native-repro/b8fee349/run.txt"
+    ],
+    "report": [
+     "docs/reports/m6-006-native-reproducibility.md"
+    ],
+    "tests": [
+     "ga-native-repro workflow run 34938409719 (build a + build b + compare, all green)",
+     "scripts/compare-builds (QPack byte-identity, every ./scripts/verify run)"
+    ]
+   },
+   "binding_note": "#1343 packet 11 pre-binding 2026-09-15: the native-binary reproducibility evidence EXISTS and is committed — two independent GitHub-hosted runners (clean environments, pinned rustc 1.96.0, canonical remaps) built b8fee349 byte-identically (velqu-runtime b5cd700c..., velqu-bytecode 616f8cd0...); the capture-host hash difference is explained (user-space gcc 12.2 vs runners gcc 13.3 for the QuickJS C sources; same rustc). QPack byte-reproducibility was already enforced per-verify via scripts/compare-builds. Ledger status stays TODO solely because its dependency M6-005 is TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row flips to PASS with these refs unchanged when the chain resolves."
   },
   {
    "id": "M6-007",

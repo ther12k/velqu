@@ -1,0 +1,9 @@
+workflow=ga-native-repro.yml
+run-url=https://github.com/ther12k/velqu/actions/runs/34938409719
+run-id=34938409719
+dispatched=2026-09-15 ~06:40Z from master d70019f0
+input-commit=b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+conclusion=success (build a, build b, compare — all green)
+verdict=REPRODUCIBLE: both independent builders produced identical native binaries
+velqu-runtime  = b5cd700c0f564b9931b606d604ef62a4db2ccbb314067e5ac6972686655b1c1c (a == b)
+velqu-bytecode = 616f8cd09102454d7fe26d973a80476d906c132f2b112296c8b8c3ddfcd85fe1 (a == b)
