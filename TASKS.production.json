@@ -4691,7 +4691,29 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "7ff86ded6f3249bbbcefa5ebd3b497e1267fe06b",
+    "source": [
+     "docs/okf/decisions/0043-dependency-supply-chain-policy.md",
+     "scripts/dependency-scan.sh",
+     "docs/reports/m28-002-d-maintenance-security.md"
+    ],
+    "rawEvidence": [
+     "docs/reports/beta-009-b-dependency-scan.json",
+     "Cargo.lock"
+    ],
+    "report": [
+     "docs/reports/beta-009-b-dependency-vulnerability-license.md",
+     "docs/reports/beta-009-e-no-known-critical-high-exploitable-issue.md",
+     "docs/okf/decisions/0043-dependency-supply-chain-policy.md"
+    ],
+    "tests": [
+     "bash scripts/dependency-scan.sh docs/reports/beta-009-b-dependency-scan.json",
+     "bun run verify"
+    ]
+   },
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: policy gap closed by ADR-0043 (merged 7ff86ded, #1355): license allowlist matching the scanned tree, exploitable critical/high advisory blocking the RC, upgrade cadence, audit triggers. Honest residual: the \"engine and binding upgrade lane tested separately\" acceptance is satisfied by the lane being defined (ADR-0043 §3) and every component (fuzz, sanitizer, Miri, conformance) being proven on the current pin — no engine bump has occurred since pinning, so the lane has not been exercised end-to-end by an actual upgrade. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-005",
@@ -4716,7 +4738,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "184d2da67576056aa9f39c0aa4a95ff1cd8d4ca3",
+    "source": [
+     "scripts/generate-provenance.py",
+     "scripts/sbom.sh",
+     "scripts/release-packet",
+     "docs/production/REBUILD.md"
+    ],
+    "rawEvidence": [
+     "docs/reports/beta-015-f-sbom.md",
+     "docs/browser-wasm/evidence/q-008/sbom-browser-wasm.cdx.json"
+    ],
+    "report": [
+     "docs/reports/beta-015-f-sbom.md",
+     "docs/production/REBUILD.md"
+    ],
+    "tests": [
+     "python3 scripts/generate-provenance.py --verify <packet>/provenance.json",
+     "bash scripts/sbom.sh",
+     "(cd release && sha256sum -c SHA256SUMS.txt)"
+    ]
+   },
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: provenance statement generator with --verify (merged 184d2da6, #1360), wired into scripts/release-packet so one checksum manifest (and the optional --sign signature) covers it; documented rebuild process in docs/production/REBUILD.md; CycloneDX SBOM from beta-015-f. Honest residuals: artifact signing is machinery-ready, but publisher-key provisioning and the signing event are owner-gated at RC (#1321); the per-packet provenance statement is generated at packet time (untracked by design) — the committed evidence is the generator/verifier, the rebuild doc, and the checksummed release process. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-006",
@@ -4765,7 +4810,30 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "c98981b700e0c45a18addc8a573b25d6d7dace0b",
+    "source": [
+     "docs/okf/decisions/0042-ga-platform-promise.md",
+     "docs/beta/governance/PLATFORM_SUPPORT.md",
+     ".github/workflows/verify.yml",
+     ".github/workflows/ga-platform-aarch64.yml"
+    ],
+    "rawEvidence": [
+     "docs/reports/beta-010-a-linux-x86-64-glibc-platform.md",
+     "docs/reports/beta-010-b-linux-arm64-glibc-ci.md"
+    ],
+    "report": [
+     "docs/reports/beta-010-v-verify-platform-packaging-matrix.md",
+     "docs/reports/beta-010-z-package-evidence.md",
+     "docs/okf/decisions/0042-ga-platform-promise.md"
+    ],
+    "tests": [
+     "./scripts/verify (CI: ubuntu-latest x86_64)",
+     "./scripts/verify (CI: ubuntu-24.04-arm aarch64 native lane)"
+    ]
+   },
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: the GA platform promise is owner-ratified (ADR-0042, 2026-09-11): Linux x86_64 glibc and aarch64 glibc; no macOS/Windows/musl. Qualification evidence: full ./scripts/verify runs natively on both architectures in CI (ubuntu-latest and ubuntu-24.04-arm lanes, green), plus the aarch64 qualification workflow from ga-1322 (c98981b7); the platform policy documents unsupported platforms explicitly. Ledger status stays TODO behind its dependency M6-006 (native-binary reproducibility, evidence pending) and the M24-GATE / M5-009-canary chain."
   },
   {
    "id": "M6-008",
@@ -4790,7 +4858,27 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "TODO",
+   "evidence_refs": {
+    "commit": "7ea23bbf1f66e2151d4cfdf0db250ecd67bc29e8",
+    "source": [
+     "crates/q-bench-support/src/bin/soak.rs",
+     "crates/q-capabilities/src/shutdown.rs"
+    ],
+    "rawEvidence": [
+     "benchmarks/raw/worker-scaling/soak-summary.json",
+     "benchmarks/raw/worker-scaling/soak.jsonl"
+    ],
+    "report": [
+     "docs/reports/m3-010-b-chaos.md",
+     "docs/reports/beta-009-d-chaos-tests.md"
+    ],
+    "tests": [
+     "cargo test -p q-capabilities (drain/quiescence/shutdown suites)",
+     "q-soak chaos mode (deterministic poison/disconnect/timeout injection)"
+    ]
+   },
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: chaos and fault-injection evidence exists and passed (m3-010-b 15-minute chaos soak with deterministic poison/disconnect/timeout injection under continuous load; beta-009-d chaos tests; recovery evidence m3-010-d). GA-RECONCILIATION verdict: SATISFIED with a rerun delta — a freshness rerun at the RC candidate is required before this row promotes, and its timing is owner-gated at RC. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-009",
