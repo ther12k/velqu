@@ -43,12 +43,27 @@ import urllib.request
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLI = os.path.join(REPO, "packages", "cli", "src", "index.ts")
 DEMO = os.path.join(REPO, "examples", "browser-demo")
-CHROME = os.environ.get(
-    "VELQU_CHROME",
-    os.path.expanduser(
-        "~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome"
-    ),
-)
+
+def _velqu_chromium() -> str:
+    """VELQU_CHROME override, else the newest playwright-installed chromium.
+
+    The chromium build number in ~/.cache/ms-playwright/chromium-N moves with
+    the (unpinned) playwright version — resolve dynamically instead of
+    hardcoding one build.
+    """
+    override = os.environ.get("VELQU_CHROME")
+    if override and os.path.exists(override):
+        return override
+    import glob
+
+    base = os.path.expanduser("~/.cache/ms-playwright")
+    found = sorted(
+        glob.glob(os.path.join(base, "chromium-*", "chrome-linux*", "chrome")),
+        reverse=True,
+    )
+    return found[0] if found else ""
+
+CHROME = _velqu_chromium()
 
 REPORT: list[dict] = []
 
