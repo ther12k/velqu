@@ -1,6 +1,6 @@
 # Baselines — matched benchmark candidates
 
-All three implement the SAME frozen observable behavior
+All candidates implement the SAME frozen observable behavior
 (`benchmarks/fixtures/fixture-contract.json`), verified by the canonical
 checker `benchmarks/harness/check-server.ts` (27 assertions each, all PASS):
 
@@ -8,6 +8,7 @@ checker `benchmarks/harness/check-server.ts` (27 assertions each, all PASS):
 |---|---|---|---|
 | raw-bun | Bun.serve, zero deps | Bun 1.3.4 | 27/27 PASS |
 | elysia2 | Elysia AOT on Bun | elysia 2.0.0-beta.4 (npm `next`) | 27/27 PASS |
+| lugas | LugasJS on Bun (Standard Schema/zod) | lugas 0.1.0-beta.5, zod 3.25.76 | 27/27 PASS |
 | raw-rust | hyper 1 + tokio, hand-rolled routing | rustc 1.96.0, hyper 1.11, tokio 1.53 | 27/27 PASS |
 
 ## Commands
@@ -20,17 +21,38 @@ PORT=3000 bun baselines/raw-bun/server.ts
 cd baselines/elysia2 && bun install
 PORT=3000 bun server.ts
 
+# lugas (own lockfile at baselines/lugas/bun.lock)
+cd baselines/lugas && bun install
+PORT=3000 bun baselines/lugas/server.ts
+
 # raw-rust (own Cargo.lock — excluded from the workspace)
 cd baselines/raw-rust && cargo build --release
 PORT=3000 ./target/release/velqu-baseline-raw-rust
 
 # verify any candidate
-bun benchmarks/harness/check-server.ts 3000 --candidate <bun|elysia|rust|velqu>
+bun benchmarks/harness/check-server.ts 3000 --candidate <bun|elysia|lugas|rust|velqu>
 ```
 
 All candidates honor `PORT` and `N_ROUTES` (absent/0 = canonical fixture;
 25|1000 = generated `GET /res{i}/item/:id` item routes, measured route
-`GET /res7/item/7` → `{"id":7,"n":N}`).
+`GET /res7/item/7` → `{"id":7,"n":N}`); `N_ROUTES` is not yet implemented
+on lugas (fixture-only).
+
+## Lugas notes (honest recording)
+
+- Pinned `lugas@0.1.0-beta.5` (npm dist-tag `beta`), zod `3.25.76` for
+  Standard Schema validation (lugas is zero-runtime-dep; validators are
+  consumer-supplied — its idiomatic path per the project README).
+- Timed routes (C0–C3) use lugas's declared-schema fast path
+  (`params`/`query` schemas); the C3 422 body is lugas's native Problem
+  Details with `issues` identifying the failing field (semantic match).
+- POST /users parses the body manually: the fixture requires malformed
+  JSON → 422, while lugas's built-in body pipeline answers 400
+  (MALFORMED_JSON). Disclosed mapping, same as the elysia2 400→422 note.
+- Error redaction via `defineApp({ onError })`: every handler throw
+  returns a fixed internal problem (no message, no stack) — contract SEC-004.
+- `N_ROUTES` generation is not implemented on this baseline yet (fixture
+  routes only).
 
 ## Elysia 2 AOT notes (honest recording)
 

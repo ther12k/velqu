@@ -1,0 +1,18 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "velqu-baseline-lugas",
+      "dependencies": {
+        "lugas": "0.1.0-beta.5",
+        "zod": "3.25.76",
+      },
+    },
+  },
+  "packages": {
+    "lugas": ["lugas@0.1.0-beta.5", "", { "bin": { "lugas": "dist/cli/main.js" } }, "sha512-hfJmQrE45QVO2YaYA4VpIzoGmtjm+VG4Vdk6uhudwBJzJF7x0i39VU85L1c90zUyU7XchyZWf4Jbe4vZhTd67Q=="],
+
+    "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+  }
+}

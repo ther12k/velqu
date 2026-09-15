@@ -1,0 +1,10 @@
+{
+  "name": "velqu-baseline-lugas",
+  "private": true,
+  "description": "lugas baseline: LugasJS on Bun, implementing the frozen fixture contract (benchmarks/fixtures/fixture-contract.json).",
+  "type": "module",
+  "dependencies": {
+    "lugas": "0.1.0-beta.5",
+    "zod": "3.25.76"
+  }
+}
