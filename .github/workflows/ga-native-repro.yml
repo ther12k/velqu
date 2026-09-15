@@ -84,7 +84,7 @@ jobs:
         run: |
           {
             echo "instance=${{ matrix.instance }}"
-            echo "commit=$(git rev-parse HEAD)"
+            echo "commit=$(git -c safe.directory='*' rev-parse HEAD)"
             echo "builder-image=${BUILDER_IMAGE}"
             echo "gcc=$(gcc --version | head -1)"
             echo "cc=$(cc --version | head -1)"
