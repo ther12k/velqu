@@ -1,0 +1,9 @@
+{
+  "candidate": "velqu",
+  "pass": 29,
+  "fail": 2,
+  "failures": [
+    "POST /users bytes: {\"email\":\"ada@example.org\",\"id\":\"usr_1\",\"name\":\"Ada\"}",
+    "C4 bytes: {\"email\":\"ada@example.org\",\"id\":\"usr_1\",\"name\":\"Ada\"}"
+  ]
+}
