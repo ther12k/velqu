@@ -23,7 +23,7 @@
   },
   {
    "id": "M23R2",
-   "name": "M2.3-r2 — Exact Numeric Runtime IR and Compiled Router Closure",
+   "name": "M2.3-r2 \u2014 Exact Numeric Runtime IR and Compiled Router Closure",
    "outcome": "Current-pack execution is fully numeric, fail-before-ready, route plans are exact, schema identities are operational, and the router resolves directly to a numeric RoutePlan.",
    "gate": "M23R2-GATE",
    "depends_on": [
@@ -32,7 +32,7 @@
   },
   {
    "id": "M24",
-   "name": "M2.4 — Zero-Copy Ingress and Worker-Local Request Bridge",
+   "name": "M2.4 \u2014 Zero-Copy Ingress and Worker-Local Request Bridge",
    "outcome": "Requests route before decoding, unread fields are never materialized, and request state is owned by the QuickJS worker without a process-wide request-store mutex.",
    "gate": "M24-GATE",
    "depends_on": [
@@ -41,7 +41,7 @@
   },
   {
    "id": "M25",
-   "name": "M2.5 — Schema-Specialized Input and JSON Output Pipeline",
+   "name": "M2.5 \u2014 Schema-Specialized Input and JSON Output Pipeline",
    "outcome": "The compiler selects measured, schema-aware decoders and encoders while maintaining exact Treaty/OpenAPI/runtime semantics.",
    "gate": "M25-GATE",
    "depends_on": [
@@ -50,7 +50,7 @@
   },
   {
    "id": "M26",
-   "name": "M2.6 — Binary QPack v2 and Reproducible Artifact ABI",
+   "name": "M2.6 \u2014 Binary QPack v2 and Reproducible Artifact ABI",
    "outcome": "Production startup maps a deterministic binary pack with raw bytecode, precompiled router/runtime IR, strict ABI fingerprinting, and no JSON/base64 reconstruction.",
    "gate": "M26-GATE",
    "depends_on": [
@@ -59,7 +59,7 @@
   },
   {
    "id": "M27",
-   "name": "M2.7 — Capability Linker and Minimal Web Runtime",
+   "name": "M2.7 \u2014 Capability Linker and Minimal Web Runtime",
    "outcome": "Only declared native capabilities are linked, lifecycle and cancellation are standardized, and a small WinterTC-aligned Web API subset is conformant.",
    "gate": "M27-GATE",
    "depends_on": [
@@ -68,7 +68,7 @@
   },
   {
    "id": "M28",
-   "name": "M2.8 — Native Outbound Fetch",
+   "name": "M2.8 \u2014 Native Outbound Fetch",
    "outcome": "Velqu provides bounded, cancellable, pooled Web fetch with TLS/DNS correctness, streaming backpressure, and explicit SSRF policy.",
    "gate": "M28-GATE",
    "depends_on": [
@@ -77,7 +77,7 @@
   },
   {
    "id": "M3",
-   "name": "M3 — Multi-Worker Service Runtime",
+   "name": "M3 \u2014 Multi-Worker Service Runtime",
    "outcome": "Independent QuickJS workers scale across cores with bounded queues, quarantine/replacement, and distinct serverless/service/throughput profiles.",
    "gate": "M3-GATE",
    "depends_on": [
@@ -86,7 +86,7 @@
   },
   {
    "id": "M4",
-   "name": "M4 — Developer Experience and Private Alpha",
+   "name": "M4 \u2014 Developer Experience and Private Alpha",
    "outcome": "The actual Rust/QuickJS runtime is pleasant to develop against, Treaty modes are complete, Linux release artifacts exist, and a realistic proof service is private-alpha ready.",
    "gate": "M4-GATE",
    "depends_on": [
@@ -95,7 +95,7 @@
   },
   {
    "id": "M5",
-   "name": "M5 — Production Operations and Real-World Proof",
+   "name": "M5 \u2014 Production Operations and Real-World Proof",
    "outcome": "Operational controls, observability, optional Postgres integration, executable cross-framework workloads, and a controlled production canary establish technical production candidacy.",
    "gate": "M5-GATE",
    "depends_on": [
@@ -104,7 +104,7 @@
   },
   {
    "id": "M6",
-   "name": "M6 — Security, Reliability, Platform, and Supply-Chain Hardening",
+   "name": "M6 \u2014 Security, Reliability, Platform, and Supply-Chain Hardening",
    "outcome": "The runtime passes fuzzing, sanitizers, chaos, soak, supported-platform, vulnerability, reproducibility, and artifact-integrity gates.",
    "gate": "M6-GATE",
    "depends_on": [
@@ -113,7 +113,7 @@
   },
   {
    "id": "M7",
-   "name": "M7 — API/ABI Stabilization and Release Candidate",
+   "name": "M7 \u2014 API/ABI Stabilization and Release Candidate",
    "outcome": "Public APIs, QPack/runtime/capability ABIs, SemVer behavior, migration rules, publishing automation, and RC canaries are stable.",
    "gate": "M7-GATE",
    "depends_on": [
@@ -122,7 +122,7 @@
   },
   {
    "id": "M8",
-   "name": "M8 — Production-Ready GA Gate",
+   "name": "M8 \u2014 Production-Ready GA Gate",
    "outcome": "All technical and owner gates are closed, signed reproducible artifacts are released, operations and rollback are documented, and the production-readiness review is approved.",
    "gate": "M8-GATE",
    "depends_on": [
@@ -1219,7 +1219,7 @@
    "files_hint": [],
    "owner": "implementation-agent",
    "status": "PASS",
-   "binding_note": "Owner-accepted 2026-09-15 per review of Path A evidence (#1363, 465abfab): C0 >= 90% raw Rust throughput share is met under both gate-time (95.2/95.1/100.6%) and current (101.7/126.5/98.0%) runs. Path A matched A/B isolating M2.4 (pre-M24 3bcb6302 vs M24-complete 75bda51f, the gate candidate) shows no material M2.4-introduced C1/C3 p95 regression was detected within the disclosed measurement resolution (C1 improved across all c; C3 c=1/c=50 p95 0.910/0.954; C3 c=10 paired p95 median 1.037, p50 ratio 1.036 with IQR 0.015; host power limit ±25% at c<=10 tails). Bridge safety suites pass (clean ./scripts/verify at candidate 75bda51f; M24-010-Z closes fuzz/conformance). M24-GATE is PASS.",
+   "binding_note": "Owner-accepted 2026-09-15 per review of Path A evidence (#1363, 465abfab): C0 >= 90% raw Rust throughput share is met under both gate-time (95.2/95.1/100.6%) and current (101.7/126.5/98.0%) runs. Path A matched A/B isolating M2.4 (pre-M24 3bcb6302 vs M24-complete 75bda51f, the gate candidate) shows no material M2.4-introduced C1/C3 p95 regression was detected within the disclosed measurement resolution (C1 improved across all c; C3 c=1/c=50 p95 0.910/0.954; C3 c=10 paired p95 median 1.037, p50 ratio 1.036 with IQR 0.015; host power limit \u00b125% at c<=10 tails). Bridge safety suites pass (clean ./scripts/verify at candidate 75bda51f; M24-010-Z closes fuzz/conformance). M24-GATE is PASS.",
    "evidence_refs": {
     "commit": "465abfab96c615721a131f733d5909e60c68ff08",
     "source": [
@@ -3960,7 +3960,7 @@
    "lane": "critical-path",
    "priority": "P1",
    "title": "Build realistic private-alpha proof service",
-   "objective": "Exercise 30–50 routes, auth, pagination, typed errors, fetch, lifecycle, observability, and deployment.",
+   "objective": "Exercise 30\u201350 routes, auth, pagination, typed errors, fetch, lifecycle, observability, and deployment.",
    "depends_on": [
     "M4-008"
    ],
@@ -4058,7 +4058,7 @@
    ],
    "deliverables": [],
    "acceptance": [
-    "W1–W4 run from one command.",
+    "W1\u2013W4 run from one command.",
     "Dataset reset is deterministic.",
     "CPU/RSS/pool wait/queue wait/p50/p95/p99/errors are captured."
    ],
@@ -4439,7 +4439,7 @@
    "lane": "critical-path",
    "priority": "P1",
    "title": "Run real-world load, leak, and canary evidence",
-   "objective": "Validate W1–W4, controlled I/O, CPU crossover, 1M+ requests, fault recovery, and one controlled production-like canary.",
+   "objective": "Validate W1\u2013W4, controlled I/O, CPU crossover, 1M+ requests, fault recovery, and one controlled production-like canary.",
    "depends_on": [
     "M5-008"
    ],
@@ -4480,7 +4480,7 @@
      "bun run typecheck"
     ]
    },
-   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. This row carries two independent blockers: (1) its dependency M24-GATE is TODO pending Path A (post-soak same-protocol A/B, pre-M24 3bcb6302 vs M24-complete 87adf2c5/75bda51f) or Path B (owner disposition); and (2) the controlled production-like canary acceptance clause is NOT covered by committed evidence — owner-gated at RC and tracked in #1321. The row flips to PASS only when both are resolved (canary evidence, or an explicit authorized disposition recorded as a disposition, not as proof an unmeasured comparison passed); real-world load/leak evidence alone is insufficient."
+   "binding_note": "#1343 note correction 2026-09-14 (post-review of 7ff86ded): the evidence references are prepared, but promotion is not a single M24-GATE flip. Promotion requires all dependencies to pass and any row-specific residual requirements to be resolved. This row carries two independent blockers: (1) its dependency M24-GATE is TODO pending Path A (post-soak same-protocol A/B, pre-M24 3bcb6302 vs M24-complete 87adf2c5/75bda51f) or Path B (owner disposition); and (2) the controlled production-like canary acceptance clause is NOT covered by committed evidence \u2014 owner-gated at RC and tracked in #1321. The row flips to PASS only when both are resolved (canary evidence, or an explicit authorized disposition recorded as a disposition, not as proof an unmeasured comparison passed); real-world load/leak evidence alone is insufficient."
   },
   {
    "id": "M5-GATE",
@@ -4738,7 +4738,7 @@
      "bun run verify"
     ]
    },
-   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: policy gap closed by ADR-0043 (merged 7ff86ded, #1355): license allowlist matching the scanned tree, exploitable critical/high advisory blocking the RC, upgrade cadence, audit triggers. Honest residual: the \"engine and binding upgrade lane tested separately\" acceptance is satisfied by the lane being defined (ADR-0043 §3) and every component (fuzz, sanitizer, Miri, conformance) being proven on the current pin — no engine bump has occurred since pinning, so the lane has not been exercised end-to-end by an actual upgrade. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: policy gap closed by ADR-0043 (merged 7ff86ded, #1355): license allowlist matching the scanned tree, exploitable critical/high advisory blocking the RC, upgrade cadence, audit triggers. Honest residual: the \"engine and binding upgrade lane tested separately\" acceptance is satisfied by the lane being defined (ADR-0043 \u00a73) and every component (fuzz, sanitizer, Miri, conformance) being proven on the current pin \u2014 no engine bump has occurred since pinning, so the lane has not been exercised end-to-end by an actual upgrade. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-005",
@@ -4786,7 +4786,7 @@
      "(cd release && sha256sum -c SHA256SUMS.txt)"
     ]
    },
-   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: provenance statement generator with --verify (merged 184d2da6, #1360), wired into scripts/release-packet so one checksum manifest (and the optional --sign signature) covers it; documented rebuild process in docs/production/REBUILD.md; CycloneDX SBOM from beta-015-f. Honest residuals: artifact signing is machinery-ready, but publisher-key provisioning and the signing event are owner-gated at RC (#1321); the per-packet provenance statement is generated at packet time (untracked by design) — the committed evidence is the generator/verifier, the rebuild doc, and the checksummed release process. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: provenance statement generator with --verify (merged 184d2da6, #1360), wired into scripts/release-packet so one checksum manifest (and the optional --sign signature) covers it; documented rebuild process in docs/production/REBUILD.md; CycloneDX SBOM from beta-015-f. Honest residuals: artifact signing is machinery-ready, but publisher-key provisioning and the signing event are owner-gated at RC (#1321); the per-packet provenance statement is generated at packet time (untracked by design) \u2014 the committed evidence is the generator/verifier, the rebuild doc, and the checksummed release process. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-006",
@@ -4822,17 +4822,21 @@
      "benchmarks/raw/native-repro/b8fee349/hashes-a.txt",
      "benchmarks/raw/native-repro/b8fee349/hashes-b.txt",
      "benchmarks/raw/native-repro/b8fee349/capture-host.txt",
-     "benchmarks/raw/native-repro/b8fee349/run.txt"
+     "benchmarks/raw/native-repro/b8fee349/run.txt",
+     "benchmarks/raw/native-repro/b8fee349/pinned/hashes-a.txt",
+     "benchmarks/raw/native-repro/b8fee349/pinned/hashes-b.txt",
+     "benchmarks/raw/native-repro/b8fee349/pinned/run.txt"
     ],
     "report": [
      "docs/reports/m6-006-native-reproducibility.md"
     ],
     "tests": [
-     "ga-native-repro workflow run 34938409719 (build a + build b + compare, all green)",
+     "ga-native-repro workflow run 34964344973 (pinned environment: build a + build b + compare, all green)",
+     "ga-native-repro workflow run 34938409719 (runner-VM pair, superseded but retained)",
      "scripts/compare-builds (QPack byte-identity, every ./scripts/verify run)"
     ]
    },
-   "binding_note": "#1343 packet 11 pre-binding 2026-09-15: the native-binary reproducibility evidence EXISTS and is committed — two independent GitHub-hosted runners (clean environments, pinned rustc 1.96.0, canonical remaps) built b8fee349 byte-identically (velqu-runtime b5cd700c..., velqu-bytecode 616f8cd0...); the capture-host hash difference is explained (user-space gcc 12.2 vs runners gcc 13.3 for the QuickJS C sources; same rustc). QPack byte-reproducibility was already enforced per-verify via scripts/compare-builds. Ledger status stays TODO solely because its dependency M6-005 is TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row flips to PASS with these refs unchanged when the chain resolves."
+   "binding_note": "#1343 packet 11 pre-binding 2026-09-15: the native-binary reproducibility evidence EXISTS and is committed \u2014 two independent GitHub-hosted runners (clean environments, pinned rustc 1.96.0, canonical remaps) built b8fee349 byte-identically (velqu-runtime b5cd700c..., velqu-bytecode 616f8cd0...); the capture-host hash difference is explained (user-space gcc 12.2 vs runners gcc 13.3 for the QuickJS C sources; same rustc). QPack byte-reproducibility was already enforced per-verify via scripts/compare-builds. Ledger status stays TODO solely because its dependency M6-005 is TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row flips to PASS with these refs unchanged when the chain resolves. M6-006 pinning correction 2026-09-15: acceptance 'Build images/toolchains are pinned' now met \u2014 the lane builds inside a digest-pinned ubuntu:24.04 container with exact apt versions (gcc-13 13.3.0-6ubuntu2~24.04.1, binutils 2.42-4ubuntu2.10, libc6-dev 2.39-0ubuntu8.9) plus pinned rustc 1.96.0; run 34964344973 rebuilt b8fee349 byte-identically on two different physical hosts (Xeon 8370C vs EPYC 7763; velqu-runtime 75c0120d, velqu-bytecode 5fe55267) with full cc/gcc/ld/glibc/image identity recorded in pinned/hashes-*.txt. The earlier VM-image pair (34938409719, b5cd700c/616f8cd0) is retained for provenance; its hashes differ from the pinned pair because the VM's environment components were unpinned \u2014 exactly the gap this correction closes. REBUILD.md corrected: the C toolchain is a build input (capture-host gcc 12.2 difference is reproduced by the pinned lane's explicit parity line). Ledger status stays TODO behind its dependency chain (M6-005 and upstream blockers). "
   },
   {
    "id": "M6-007",
@@ -4925,7 +4929,7 @@
      "q-soak chaos mode (deterministic poison/disconnect/timeout injection)"
     ]
    },
-   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: chaos and fault-injection evidence exists and passed (m3-010-b 15-minute chaos soak with deterministic poison/disconnect/timeout injection under continuous load; beta-009-d chaos tests; recovery evidence m3-010-d). GA-RECONCILIATION verdict: SATISFIED with a rerun delta — a freshness rerun at the RC candidate is required before this row promotes, and its timing is owner-gated at RC. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
+   "binding_note": "#1343 packet 10 pre-binding 2026-09-15: chaos and fault-injection evidence exists and passed (m3-010-b 15-minute chaos soak with deterministic poison/disconnect/timeout injection under continuous load; beta-009-d chaos tests; recovery evidence m3-010-d). GA-RECONCILIATION verdict: SATISFIED with a rerun delta \u2014 a freshness rerun at the RC candidate is required before this row promotes, and its timing is owner-gated at RC. Ledger status stays TODO behind the M24-GATE / M5-009-canary chain per the corrected closure sequence on #1343; the row promotes only when its actual conditions are met."
   },
   {
    "id": "M6-009",
@@ -5311,7 +5315,7 @@
    "lane": "critical-path",
    "priority": "P0",
    "title": "Approve production-ready GA",
-   "objective": "Use “production ready” only after technical, owner, release, and operational gates are all satisfied.",
+   "objective": "Use \u201cproduction ready\u201d only after technical, owner, release, and operational gates are all satisfied.",
    "depends_on": [
     "M8-005"
    ],

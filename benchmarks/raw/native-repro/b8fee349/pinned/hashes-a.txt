@@ -1,0 +1,13 @@
+instance=a
+commit=b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+builder-image=ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254
+gcc=gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+cc=cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+rustc=rustc 1.96.0 (ac68faa20 2026-05-25)
+uname=Linux 6.17.0-1022-azure x86_64
+kernel=6.17.0-1022-azure
+cpu=AMD EPYC 7763 64-Core Processor
+linker=GNU ld (GNU Binutils for Ubuntu) 2.42
+libc=ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39
+75c0120d555779eded3713386a42ac724854b1e7e6d59b8e20bfd42b109bf669  target/release/velqu-runtime
+5fe55267b9d37e41e3fbdef15bd77a77ee6e97a48164cbf12da334c5d04ffbd6  target/release/velqu-bytecode
