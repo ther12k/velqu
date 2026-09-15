@@ -28,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Bun (pinned); arch from the build host itself (same-host build/run — works
-# on both real docker and podman/buildah, no BuildKit TARGETARCH dependency)
-RUN ARCH=$(uname -m | grep -q aarch64 && echo arm64 || echo x64) \
+# on both real docker and podman/buildah, no BuildKit TARGETARCH dependency).
+# NOTE: bun's arm64 asset is named "aarch64", not "arm64".
+RUN ARCH=$(uname -m | grep -q aarch64 && echo aarch64 || echo x64) \
  && curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${ARCH}.zip" -o /tmp/bun.zip \
  && unzip -q /tmp/bun.zip -d /tmp/buninstall \
  && mv "/tmp/buninstall/bun-linux-${ARCH}/bun" /usr/local/bin/bun \
