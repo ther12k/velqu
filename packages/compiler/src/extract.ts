@@ -334,6 +334,51 @@ function strip(o: Ir): Ir {
 
 // ---------------------------------------------------------------- static handler eval
 
+/**
+ * RUN-009 extension: detect a handler that references no ctx and returns a
+ * string literal, foldable ONLY when the route declares a status-200
+ * response whose schema is a plain constraint-free string — then the wire
+ * semantics (text/plain; charset=utf-8) are known and the constant can be
+ * served natively. Anything ambiguous keeps the engine path (fail closed).
+ */
+function tryStaticStringHandler(
+  handleProp: ts.PropertyAssignment | ts.MethodDeclaration,
+  file: string,
+  responseIr: Record<string, unknown> | undefined,
+): string | null {
+  if (!responseIr || responseIr.kind !== "string") return null;
+  // constraint-free only: constrained constant strings keep the engine path
+  // (where the direct text plan validates them cheaply) rather than folding
+  // past validation
+  for (const k of ["minLength", "maxLength", "pattern", "format"]) {
+    if (responseIr[k] !== undefined) return null;
+  }
+  let body: ts.Node | null = null;
+  if (ts.isPropertyAssignment(handleProp)) {
+    const init = handleProp.initializer;
+    if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) body = init.body;
+  } else if (ts.isMethodDeclaration(handleProp) && handleProp.body) {
+    if (handleProp.parameters.length === 0) body = handleProp.body;
+  }
+  if (!body) return null;
+  const fn = ts.isPropertyAssignment(handleProp) ? handleProp.initializer : handleProp;
+  const params = ts.isArrowFunction(fn) || ts.isFunctionExpression(fn) || ts.isFunctionDeclaration(fn) ? fn.parameters : [];
+  if (params.length > 0) return null;
+  const unwrap = (n: ts.Node): ts.Node =>
+    ts.isParenthesizedExpression(n) ? unwrap(n.expression) : n;
+  const rawExpr = ts.isBlock(body)
+    ? body.statements.length === 1 && ts.isReturnStatement(body.statements[0])
+      ? body.statements[0].expression
+      : null
+    : body;
+  if (!rawExpr) return null;
+  const expr = unwrap(rawExpr);
+  if (!expr) return null;
+  if (ts.isStringLiteral(expr)) return expr.text;
+  if (ts.isNoSubstitutionTemplateLiteral(expr)) return expr.text;
+  return null;
+}
+
 /** Detect a handler that references no ctx and returns a literal object/array → native liveness. */
 function tryStaticHandler(handleProp: ts.PropertyAssignment | ts.MethodDeclaration, file: string): string | null {
   let body: ts.Node | null = null;
@@ -502,11 +547,27 @@ function routeFromCall(
     policyId = init.text; // resolved to policy id by the extractor pass
   }
 
-  // native liveness from statically evaluable handler
-  const livenessBody = tryStaticHandler(handleProp, file);
-  const liveness = livenessBody
-    ? { status: 200, contentType: "application/json", body: livenessBody }
-    : null;
+  // native liveness from statically evaluable handler — SCHEMA-DRIVEN:
+  // the constant folds only when the declared 200 response kind matches the
+  // folded expression kind (object → application/json, string →
+  // text/plain). A handler whose constant contradicts the declared schema
+  // keeps the engine path, where it fails its contract like any dynamic
+  // value (the old object-only fold bypassed that check).
+  const responseIr200 = responses["200"]?.ir;
+  const objectBody = tryStaticHandler(handleProp, file);
+  const livenessBody =
+    objectBody !== null && responseIr200?.kind === "object" ? objectBody : null;
+  let liveness: { status: number; contentType: string; body: string } | null = null;
+  if (livenessBody !== null) {
+    liveness = { status: 200, contentType: "application/json", body: livenessBody };
+  } else {
+    // RUN-009 extension: constant string + declared constraint-free
+    // s.string() 200 response → native text/plain (wire semantics known)
+    const textBody = tryStaticStringHandler(handleProp, file, responses["200"]?.ir);
+    if (textBody !== null) {
+      liveness = { status: 200, contentType: "text/plain; charset=utf-8", body: textBody };
+    }
+  }
 
   // capabilities used inside the handler
   const handleNode = ts.isPropertyAssignment(handleProp) ? handleProp.initializer : handleProp;

@@ -14,7 +14,7 @@ mod decoder;
 pub use decoder::{DecoderProgram, DecoderTable, FieldSpec, PropertyDecoder};
 
 mod encoder;
-pub use encoder::{EncoderProgram, EncoderTable, ProblemProgram};
+pub use encoder::{DirectTextResponsePlan, EncoderProgram, EncoderTable, ProblemProgram};
 
 use std::collections::BTreeMap;
 

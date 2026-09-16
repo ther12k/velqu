@@ -9,7 +9,7 @@
       "moduleId": "src",
       "policy": null,
       "capabilities": [],
-      "nativeStage": "engine",
+      "nativeStage": "native-liveness",
       "validationStrategy": "native",
       "validationFallbackReason": null,
       "responseStrategy": "native",
@@ -26,7 +26,7 @@
       "moduleId": "src",
       "policy": null,
       "capabilities": [],
-      "nativeStage": "engine",
+      "nativeStage": "native-liveness",
       "validationStrategy": "native",
       "validationFallbackReason": null,
       "responseStrategy": "native",
@@ -61,6 +61,23 @@
       "policy": null,
       "capabilities": [],
       "nativeStage": "native-liveness",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "examples/c1-probe/src/app.ts"
+    },
+    {
+      "id": "diag.text.engine",
+      "method": "GET",
+      "path": "/diag/text-engine",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
       "validationStrategy": "native",
       "validationFallbackReason": null,
       "responseStrategy": "native",
@@ -107,6 +124,9 @@
         "required": [
           "ok"
         ]
+      },
+      "sch:diag.text.engine.200": {
+        "kind": "string"
       }
     }
   },
@@ -116,7 +136,8 @@
       "diag.text.sync": [],
       "diag.text.async": [],
       "diag.json.sync": [],
-      "diag.json.async": []
+      "diag.json.async": [],
+      "diag.text.engine": []
     },
     "portability": {},
     "nativeOps": {
@@ -175,6 +196,12 @@
         "validationStrategy": "native",
         "responseStrategy": "native",
         "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "diag.text.engine",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
       }
     ],
     "evidenceSummary": {
@@ -201,6 +228,14 @@
   },
   "nativeStages": [
     {
+      "route": "diag.text.sync",
+      "stage": "native-liveness"
+    },
+    {
+      "route": "diag.text.async",
+      "stage": "native-liveness"
+    },
+    {
       "route": "diag.json.sync",
       "stage": "native-liveness"
     },
@@ -211,8 +246,8 @@
   ],
   "integrity": {
     "algorithm": "sha256",
-    "bundleSha256": "859d752bd9963634364220579870d6cb115f5037632597eec6da747717a23e87",
-    "routesSha256": "30513e7ae991552d5778a1d1daecc43f7b8df87dca1ea3857f6ed3336488476a"
+    "bundleSha256": "99130f8584e1e39310a4c34d090f43eecc134c357299acdd7b4d3118be3f969d",
+    "routesSha256": "95631054427a71aff3c47156a92e45420d5cb6a3661ad8ed4a0f362e3deb47b4"
   },
   "versions": {
     "name": "quickjs-ng",

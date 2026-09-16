@@ -72,6 +72,23 @@
           }
         }
       }
+    },
+    "/diag/text-engine": {
+      "get": {
+        "operationId": "diag.text.engine",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/diag.text.engine.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -105,6 +122,9 @@
           "ok"
         ],
         "additionalProperties": false
+      },
+      "diag.text.engine.resp200": {
+        "type": "string"
       }
     }
   }

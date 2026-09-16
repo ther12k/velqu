@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "appId": "app",
-  "contractHash": "d3d6056f3bc6d36da6e901d7b2d4fb99",
+  "contractHash": "65ec39930d1b6fa46562c06c6eebaaec",
   "routes": {
     "diag.text.sync": {
       "method": "GET",
@@ -30,6 +30,14 @@
     "diag.json.async": {
       "method": "GET",
       "path": "/diag/json-async",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "diag.text.engine": {
+      "method": "GET",
+      "path": "/diag/text-engine",
       "statuses": [
         "200"
       ],

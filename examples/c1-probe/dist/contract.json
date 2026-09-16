@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "appId": "app",
-  "contractHash": "d3d6056f3bc6d36da6e901d7b2d4fb99",
+  "contractHash": "65ec39930d1b6fa46562c06c6eebaaec",
   "routes": {
     "diag.text.sync": {
       "path": "/diag/text-sync",
@@ -73,6 +73,19 @@
           "required": [
             "ok"
           ]
+        }
+      },
+      "security": null
+    },
+    "diag.text.engine": {
+      "path": "/diag/text-engine",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "string"
         }
       },
       "security": null

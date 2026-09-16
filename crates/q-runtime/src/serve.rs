@@ -1225,7 +1225,57 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             }
                         }
                         if encoded_response.is_none() {
-                            if let Some(ir) = state.pack.schemas.get(key) {
+                            if let Some(sid) = state
+                                .response_schema_ids
+                                .get(route_index)
+                                .and_then(|m| m.get(status))
+                                .and_then(|sid| {
+                                    if matches!(body, BodyOut::Text(_)) {
+                                        state.encoder_table.text_plan(*sid)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .and_then(|p| match body {
+                                    BodyOut::Text(t) => Some((p, t)),
+                                    _ => None,
+                                })
+                            {
+                                // C1-B: borrowed direct text validation — no
+                                // clone, no Value::String, no generic walk.
+                                #[cfg(feature = "bench-instrumentation")]
+                                let __validate_t = q_bridge::stage_timing::timer();
+                                let validation = sid.0.validate(sid.1);
+                                #[cfg(feature = "bench-instrumentation")]
+                                q_bridge::stage_timing::record(4, __validate_t.elapsed());
+                                if let Err(errors) = validation {
+                                    let detail = format!(
+                                        "route {} response failed its declared schema ({}): {:?}",
+                                        route.id, key, errors
+                                    );
+                                    eprintln!(
+                                        "{}",
+                                        serde_json::json!({
+                                            "level":"error","event":"contract.violation.response",
+                                            "requestId": ctx.request_id, "routeId": route.id, "detail": detail,
+                                        })
+                                    );
+                                    let problem = problems::body(
+                                        "internal",
+                                        None,
+                                        None,
+                                        &[],
+                                        &[],
+                                        &ctx.request_id,
+                                    );
+                                    let mapped = (
+                                        Ok(problem_response(500, &problem)),
+                                        route_id.clone(),
+                                        "engine.response-validation",
+                                    );
+                                    return mapped;
+                                }
+                            } else if let Some(ir) = state.pack.schemas.get(key) {
                                 #[cfg(feature = "bench-instrumentation")]
                                 let __validate_t = q_bridge::stage_timing::timer();
                                 let candidate = match body {

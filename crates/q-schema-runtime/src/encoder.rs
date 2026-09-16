@@ -561,6 +561,98 @@ fn encode_spec(
 pub struct EncoderTable {
     programs: Vec<Option<EncoderProgram>>,
     problems: Vec<Option<ProblemProgram>>,
+    /// C1-B: borrowed direct text-response validators, same dense ordering.
+    text_plans: Vec<Option<DirectTextResponsePlan>>,
+}
+
+/// A compiled direct validator for STRING-kind response schemas (C1-B).
+///
+/// Validates the already-extracted `&str` in place — no `String` clone, no
+/// `serde_json::Value::String` construction, no generic recursive walk.
+/// Error semantics are exactly the reference validator's string branch
+/// (same codes, same messages, same check order). Compiles ONLY from
+/// `SchemaIr::String`; every other kind returns `None` (fail closed to the
+/// reference path — never guessed).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DirectTextResponsePlan {
+    min_length: Option<u64>,
+    max_length: Option<u64>,
+    pattern: Option<String>,
+    format: Option<String>,
+}
+
+impl DirectTextResponsePlan {
+    /// Compile from a response SchemaIr. `None` for anything that is not a
+    /// plain string schema.
+    pub fn compile(ir: &SchemaIr) -> Option<Self> {
+        let SchemaIr::String {
+            min_length,
+            max_length,
+            pattern,
+            format,
+        } = ir
+        else {
+            return None;
+        };
+        Some(DirectTextResponsePlan {
+            min_length: *min_length,
+            max_length: *max_length,
+            pattern: pattern.clone(),
+            format: format.clone(),
+        })
+    }
+
+    /// Borrowed validation with reference-identical error semantics.
+    pub fn validate(&self, s: &str) -> Result<(), Vec<FieldError>> {
+        if let Some(min) = self.min_length {
+            if (s.len() as u64) < min {
+                return Err(vec![FieldError::new(
+                    "",
+                    "minLength",
+                    format!("must be at least {} characters", min),
+                )]);
+            }
+        }
+        if let Some(max) = self.max_length {
+            if (s.len() as u64) > max {
+                return Err(vec![FieldError::new(
+                    "",
+                    "maxLength",
+                    format!("must be at most {} characters", max),
+                )]);
+            }
+        }
+        if let Some(p) = &self.pattern {
+            if !crate::simple_pattern_match(p, s) {
+                return Err(vec![FieldError::new(
+                    "",
+                    "pattern",
+                    format!("must match {p}"),
+                )]);
+            }
+        }
+        if let Some(f) = &self.format {
+            let ok = match f.as_str() {
+                "email" => crate::is_email(s),
+                "uuid" => crate::is_uuid(s),
+                other => {
+                    return Err(vec![FieldError::new(
+                        "",
+                        "format",
+                        format!("unknown format {other}"),
+                    )])
+                }
+            };
+            if !ok {
+                return Err(vec![FieldError::new(
+                    "",
+                    "format",
+                    format!("must be a valid {f}"),
+                )]);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl EncoderTable {
@@ -581,7 +673,15 @@ impl EncoderTable {
                 _ => None,
             })
             .collect();
-        EncoderTable { programs, problems }
+        let text_plans = schemas
+            .iter()
+            .map(DirectTextResponsePlan::compile)
+            .collect();
+        EncoderTable {
+            programs,
+            problems,
+            text_plans,
+        }
     }
 
     /// Access the compiled encoder program for a schema id. `None` means
@@ -598,6 +698,15 @@ impl EncoderTable {
             .get(schema_id as usize)
             .and_then(|o| o.as_ref())
     }
+
+    /// Access the compiled direct text validator for a schema id. `None`
+    /// means the schema is not a plain string schema — keep the reference
+    /// path (fail closed).
+    pub fn text_plan(&self, schema_id: u32) -> Option<&DirectTextResponsePlan> {
+        self.text_plans
+            .get(schema_id as usize)
+            .and_then(|o| o.as_ref())
+    }
 }
 
 #[cfg(test)]
@@ -606,6 +715,191 @@ mod m25_005_a_tests {
     use crate::{validate, Source};
     use serde_json::json;
     use std::collections::BTreeMap;
+
+    /// C1-B: the direct text plan's borrowed validation produces
+    /// reference-identical verdicts AND reference-identical typed errors
+    /// (same code, same message, same early-return order) for every
+    /// constraint combination — it is an optimization of the contract,
+    /// never a parallel contract.
+    #[test]
+    fn direct_text_plan_matches_reference_validator() {
+        let cases: Vec<(SchemaIr, String)> = vec![
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                },
+                "plain".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: Some(1),
+                    max_length: Some(60),
+                    pattern: None,
+                    format: None,
+                },
+                "a".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: Some(2),
+                    max_length: None,
+                    pattern: None,
+                    format: None,
+                },
+                "a".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: Some(3),
+                    pattern: None,
+                    format: None,
+                },
+                "abcd".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: Some("^usr_[0-9]+$".into()),
+                    format: None,
+                },
+                "usr_1".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: Some("^usr_[0-9]+$".into()),
+                    format: None,
+                },
+                "usr_x".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: Some("email".into()),
+                },
+                "ada@example.org".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: Some("email".into()),
+                },
+                "not-an-email".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: Some("uuid".into()),
+                },
+                "123e4567-e89b-12d3-a456-426614174000".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: Some("uuid".into()),
+                },
+                "nope".into(),
+            ),
+            (
+                SchemaIr::String {
+                    min_length: None,
+                    max_length: None,
+                    pattern: None,
+                    format: Some("date".into()),
+                },
+                "x".into(),
+            ),
+        ];
+        for (ir, value) in cases {
+            let reference = validate(&ir, &Value::String(value.clone()), Source::Body);
+            let plan = DirectTextResponsePlan::compile(&ir)
+                .unwrap_or_else(|| panic!("string-kind IR must compile: {ir:?}"));
+            let direct = plan.validate(&value);
+            match (reference, direct) {
+                (Ok(_), Ok(())) => {}
+                (Err(r), Err(d)) => {
+                    assert_eq!(r.len(), d.len(), "error count drift for {value:?}");
+                    for (re, de) in r.iter().zip(d.iter()) {
+                        assert_eq!(re.path, de.path, "path drift for {value:?}");
+                        assert_eq!(re.code, de.code, "code drift for {value:?}");
+                        assert_eq!(re.message, de.message, "message drift for {value:?}");
+                    }
+                }
+                (r, d) => panic!("verdict drift for {value:?}: reference={r:?} direct={d:?}"),
+            }
+        }
+    }
+
+    /// C1-B: fail-closed compilation — only plain string schemas compile;
+    /// everything else keeps the reference path.
+    #[test]
+    fn direct_text_plan_compiles_only_string_kind() {
+        assert!(DirectTextResponsePlan::compile(&SchemaIr::String {
+            min_length: None,
+            max_length: None,
+            pattern: None,
+            format: None,
+        })
+        .is_some());
+        let table = EncoderTable::from_schemas(&[
+            SchemaIr::String {
+                min_length: None,
+                max_length: None,
+                pattern: None,
+                format: None,
+            },
+            obj(vec![("ok", SchemaIr::Boolean)], vec!["ok"]),
+            SchemaIr::Boolean,
+            SchemaIr::Integer {
+                minimum: None,
+                maximum: None,
+            },
+        ]);
+        assert!(table.text_plan(0).is_some());
+        assert!(table.text_plan(1).is_none());
+        assert!(table.text_plan(2).is_none());
+        assert!(table.text_plan(3).is_none());
+        assert!(table.text_plan(99).is_none());
+    }
+
+    /// C1-B: constrained text responses keep reference-identical typed
+    /// errors end to end (compile() accepts the constrained string schema
+    /// and the plan rejects the same values with the same shape).
+    #[test]
+    fn direct_text_plan_enforces_constraints_in_order() {
+        let ir = SchemaIr::String {
+            min_length: Some(2),
+            max_length: Some(5),
+            pattern: Some("^[a-z]+$".into()),
+            format: None,
+        };
+        let plan = DirectTextResponsePlan::compile(&ir).unwrap();
+        // first failing constraint wins, matching the reference order
+        let err = plan.validate("a").unwrap_err();
+        assert_eq!(
+            (err[0].code.as_str(), err[0].message.as_str()),
+            ("minLength", "must be at least 2 characters")
+        );
+        let err = plan.validate("abcdef").unwrap_err();
+        assert_eq!(err[0].code.as_str(), "maxLength");
+        let err = plan.validate("abc1").unwrap_err();
+        assert_eq!(err[0].code.as_str(), "pattern");
+        assert!(plan.validate("abcd").is_ok());
+    }
 
     /// Declaration order follows the argument vector order (the way the
     /// TS compiler captures source order into propertyOrder).
