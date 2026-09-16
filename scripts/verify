@@ -60,6 +60,9 @@ if ! bun run typecheck; then fail "tsc"; fi
 step "Build proof app"
 if ! bun packages/cli/src/index.ts build --project examples/proof; then fail "proof app build"; fi
 
+step "Fixture conformance (frozen contract, fail-closed)"
+./scripts/fixture-conformance || fail "fixture-conformance"
+
 step "Independent-build reproducibility (M26-007-D)"
 ./scripts/compare-builds || fail "compare-builds"
 

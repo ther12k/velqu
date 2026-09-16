@@ -935,6 +935,7 @@ impl DecoderProgram {
             SchemaIr::Object {
                 properties,
                 required,
+                ..
             } => {
                 let allow_unknown = matches!(source, Source::Query);
                 let decoders = properties
@@ -1389,6 +1390,7 @@ mod tests {
                 ),
             ]),
             required: vec!["id".into(), "slug".into()],
+        property_order: None,
         }
     }
 
@@ -1527,6 +1529,7 @@ mod tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec!["x-api-key".into()],
         };
 
@@ -1569,6 +1572,7 @@ mod tests {
                     maximum: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["count".into()],
         };
         let table = DecoderTable::from_schemas(&[ir1, ir2]);
@@ -1642,6 +1646,7 @@ mod tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec!["tags".into()],
         };
 
@@ -1738,6 +1743,7 @@ mod tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec![
                 "b".into(),
                 "i".into(),
@@ -1842,6 +1848,7 @@ mod tests {
                     }),
                 ),
             ]),
+            property_order: Some(vec!["name".into(), "email".into()]),
             required: vec!["name".into(), "email".into()],
         };
 
@@ -1939,6 +1946,7 @@ mod tests {
                     inner: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["payload".into()],
         };
         let prog = DecoderProgram::compile(&ir, Source::Body);
@@ -1969,6 +1977,7 @@ mod tests {
                     name: "parse-count".into(),
                 }),
             )]),
+            property_order: None,
             required: vec!["count".into()],
         };
         let prog_t = DecoderProgram::compile(&ir_t, Source::Body);
@@ -1996,6 +2005,7 @@ mod tests {
                         maximum: None,
                     }),
                 )]),
+                property_order: None,
                 required: vec!["n".into()],
             })),
         };
@@ -2037,6 +2047,7 @@ mod tests {
                 "deep".to_string(),
                 Box::new(nested_array_schema(levels)),
             )]),
+            property_order: None,
             required: vec!["deep".into()],
         }
     }
@@ -2086,6 +2097,7 @@ mod tests {
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["s".into()],
         };
         let prog = DecoderProgram::compile(&ir, Source::Body);
@@ -2107,6 +2119,7 @@ mod tests {
                     max_items: Some(3),
                 }),
             )]),
+            property_order: None,
             required: vec!["a".into()],
         };
         let prog = DecoderProgram::compile(&ir, Source::Body);
@@ -2128,6 +2141,7 @@ mod tests {
                     maximum: Some(10.5),
                 }),
             )]),
+            property_order: None,
             required: vec!["n".into()],
         };
         let prog = DecoderProgram::compile(&ir, Source::Body);

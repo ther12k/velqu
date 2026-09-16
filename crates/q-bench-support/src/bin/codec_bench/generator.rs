@@ -157,6 +157,7 @@ impl Generator {
             SchemaIr::Object {
                 properties,
                 required,
+                ..
             } => {
                 self.emit_object(&r, val, path, indent, properties, required);
             }

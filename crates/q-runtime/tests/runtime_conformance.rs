@@ -54,6 +54,7 @@ fn fixture_pack() -> q_pack::QPack {
                     format: None,
                 }),
             )]),
+            property_order: Some(vec!["name".into()]),
             required: vec!["name".into()],
         },
     );
@@ -80,6 +81,7 @@ fn fixture_pack() -> q_pack::QPack {
                     }),
                 ),
             ]),
+            property_order: Some(vec!["name".into(), "email".into()]),
             required: vec!["name".into(), "email".into()],
         },
     );
@@ -95,6 +97,7 @@ fn fixture_pack() -> q_pack::QPack {
                     format: None,
                 }),
             )]),
+            property_order: Some(vec!["id".into()]),
             required: vec!["id".into()],
         },
     );
@@ -111,6 +114,7 @@ fn fixture_pack() -> q_pack::QPack {
                     default: Some(json!(10)),
                 }),
             )]),
+            property_order: None,
             required: vec![],
         },
     );
@@ -565,6 +569,7 @@ fn fixture_pack() -> q_pack::QPack {
                     default: Some(json!(1000)),
                 }),
             )]),
+            property_order: None,
             required: vec![],
         },
     );
@@ -583,6 +588,7 @@ fn fixture_pack() -> q_pack::QPack {
                     default: Some(json!(1000)),
                 }),
             )]),
+            property_order: None,
             required: vec![],
         },
     );
@@ -2579,6 +2585,7 @@ globalThis.__velquFunctions = [bad_shape];
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["expected".into()],
         },
     );
@@ -2791,6 +2798,12 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
                     }),
                 ),
             ]),
+            property_order: Some(vec![
+                "zeta".into(),
+                "mid".into(),
+                "alpha".into(),
+                "uni".into(),
+            ]),
             required: vec!["zeta".into(), "mid".into(), "alpha".into(), "uni".into()],
         },
     );
@@ -2823,15 +2836,15 @@ globalThis.__velquFunctions = [ordered_shape, bad_shape2];
         .unwrap();
     wait_tcp(port, Duration::from_secs(10));
 
-    // valid response: wire bytes arrive in declared (byte-sorted) property
-    // order — the one-traversal encoder engaged, output JSON-equal to the
-    // handler's value
+    // valid response: wire bytes arrive in DECLARED property order
+    // (source declaration: zeta, mid, alpha, uni) — the one-traversal
+    // encoder engaged with provable order metadata
     let r = http(port, "GET /ordered HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(r.status, 200, "body: {}", r.text());
     assert_eq!(r.header("content-type"), Some("application/json"));
     assert_eq!(
         r.text(),
-        "{\"alpha\":7,\"mid\":[1,2],\"uni\":\"text\",\"zeta\":\"z\"}",
+        "{\"zeta\":\"z\",\"mid\":[1,2],\"alpha\":7,\"uni\":\"text\"}",
         "encoder must emit declared property order"
     );
 
@@ -4062,6 +4075,7 @@ globalThis.__velquFunctions = [twin_shape];
                     }),
                 ),
             ]),
+            property_order: Some(vec!["zeta".into(), "alpha".into()]),
             required: vec!["zeta".into(), "alpha".into()],
         },
     );
@@ -4095,9 +4109,10 @@ globalThis.__velquFunctions = [twin_shape];
     wait_tcp(port, Duration::from_secs(10));
 
     // native twin: one-traversal encoder, declared property order
+    // (schema declares zeta then alpha)
     let native_resp = http(port, "GET /twin-native HTTP/1.1\r\nhost: t\r\n", None);
     assert_eq!(native_resp.status, 200, "body: {}", native_resp.text());
-    assert_eq!(native_resp.text(), "{\"alpha\":7,\"zeta\":\"z\"}");
+    assert_eq!(native_resp.text(), "{\"zeta\":\"z\",\"alpha\":7}");
 
     // js twin: QuickJS stringify fallback retained — handler insertion
     // order crosses unvalidated (disclosed per-route in the build report)

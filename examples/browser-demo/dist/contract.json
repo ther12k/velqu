@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "appId": "app",
-  "contractHash": "b26439f208395252f7dd7af593aac691",
+  "contractHash": "5bc4c8c3c283fbb0aa51e0ee268d49fe",
   "routes": {
     "hello.get": {
       "path": "/hello/:name",
@@ -15,6 +15,9 @@
             "maxLength": 60
           }
         },
+        "propertyOrder": [
+          "name"
+        ],
         "required": [
           "name"
         ]
@@ -29,6 +32,9 @@
               "kind": "string"
             }
           },
+          "propertyOrder": [
+            "message"
+          ],
           "required": [
             "message"
           ]
@@ -49,6 +55,9 @@
             "maxLength": 200
           }
         },
+        "propertyOrder": [
+          "text"
+        ],
         "required": [
           "text"
         ]
@@ -61,6 +70,9 @@
               "kind": "string"
             }
           },
+          "propertyOrder": [
+            "echoed"
+          ],
           "required": [
             "echoed"
           ]
@@ -72,6 +84,9 @@
               "kind": "boolean"
             }
           },
+          "propertyOrder": [
+            "missing"
+          ],
           "required": [
             "missing"
           ]

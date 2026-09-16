@@ -78,6 +78,20 @@ pub enum SchemaIr {
     },
     Object {
         properties: BTreeMap<String, Box<SchemaIr>>,
+        /// Source declaration order of `properties` — an ENCODING concern,
+        /// carried from the compiler so response serialization can emit
+        /// declared order. The `properties` map itself stays canonical
+        /// (byte-sorted) for hashing/fingerprints; `property_order` is
+        /// metadata, never a substitute for the map. Absent on
+        /// programmatically built or legacy IR — response encoders treat
+        /// absent/malformed order as "cannot prove declaration order" and
+        /// fail closed to the reference path.
+        #[serde(
+            rename = "propertyOrder",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        property_order: Option<Vec<String>>,
         #[serde(default)]
         required: Vec<String>,
     },
@@ -672,6 +686,7 @@ fn validate_node(
         SchemaIr::Object {
             properties,
             required,
+            ..
         } => {
             let obj = match value.as_object() {
                 Some(o) => o,
@@ -922,6 +937,7 @@ mod tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec!["name".into(), "email".into()],
         }
     }
@@ -974,6 +990,7 @@ mod tests {
                     maximum: Some(25),
                 }),
             )]),
+            property_order: None,
             required: vec!["id".into()],
         };
         let ok = validate_params(&ir, &[("id".into(), "7".into())]).unwrap();
@@ -997,6 +1014,7 @@ mod tests {
                     default: Some(json!(10)),
                 }),
             )]),
+            property_order: None,
             required: vec![],
         };
         let v = validate_query(&ir, &[("unrelated".into(), "1".into())]).unwrap();
@@ -1019,6 +1037,7 @@ mod tests {
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["id".into()],
         };
         assert!(validate_params(&ir, &[("id".into(), "usr_1".into())]).is_ok());
@@ -1043,6 +1062,7 @@ mod tests {
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["name".into()],
         };
         let long = "x".repeat(61);
@@ -1061,6 +1081,7 @@ mod m24_004_c_tests {
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), Box::new(v)))
                 .collect(),
+            property_order: None,
             required: required.into_iter().map(String::from).collect(),
         }
     }
@@ -1273,6 +1294,7 @@ mod m25_001_a_tests {
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["name".into()],
         };
         // present-but-null on a non-nullable member is a type error
@@ -1307,6 +1329,7 @@ mod m25_001_a_tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec!["nick".into()],
         };
         let out = validate(&ir, &json!({ "nick": null, "page": null }), Source::Body).unwrap();
@@ -1328,6 +1351,7 @@ mod m25_001_a_tests {
                     max_items: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["ids".into()],
         };
         // query values arrive as strings; nested array items coerce like scalars
@@ -1487,6 +1511,7 @@ mod m25_001_b_tests {
                         maximum: None,
                     }),
                 )]),
+                property_order: None,
                 required: vec!["n".into()],
             })),
         };
@@ -1540,6 +1565,7 @@ mod m25_001_b_tests {
                     format: None,
                 }),
             )]),
+            property_order: None,
             required: vec!["a".into()],
         };
         assert_eq!(features_of(&plain), Vec::<String>::new());
@@ -1583,6 +1609,7 @@ mod m25_001_b_tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec![],
         };
         assert_eq!(
@@ -1625,6 +1652,7 @@ mod m25_001_c_tests {
                     }),
                 ),
             ]),
+            property_order: None,
             required: vec!["zeta".into()],
         };
         assert_eq!(

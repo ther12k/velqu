@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Frozen fixture conformance gate — the CANONICAL protected lane.
+#
+# The release runtime with the freshly built proof pack must pass EVERY
+# assertion of the canonical checker (benchmarks/harness/check-server.ts):
+# byte-exact bodies (C0-C4 in contract declaration order), validation
+# cases, C4 auth, async, throw/redaction, 404/405/HEAD, abort stability.
+#
+# Fail-closed: any checker failure fails the gate. The measure-only mode
+# used for the disclosed 2026-09-15 diagnostic runs (benchmarks/multihost)
+# is NOT valid here — measurement is only allowed after the checker passes.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+PORT="${FIXTURE_PORT:-39177}"
+RUNTIME="${FIXTURE_RUNTIME:-target/release/velqu-runtime}"
+PACK="${FIXTURE_PACK:-examples/proof/dist/app.qpack}"
+
+if [ ! -x "$RUNTIME" ]; then
+  echo "fixture-conformance: runtime not built at $RUNTIME" >&2
+  exit 1
+fi
+if [ ! -f "$PACK" ]; then
+  echo "fixture-conformance: pack not built at $PACK" >&2
+  exit 1
+fi
+
+LOG=$(mktemp)
+./"$RUNTIME" --pack "$PACK" --port "$PORT" --log off >"$LOG" 2>&1 &
+PID=$!
+trap 'kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; rm -f "$LOG"' EXIT
+
+for _ in $(seq 1 100); do
+  if bash -c "exec 3<>/dev/tcp/127.0.0.1/$PORT" 2>/dev/null; then break; fi
+  if ! kill -0 "$PID" 2>/dev/null; then
+    echo "fixture-conformance: runtime exited during startup" >&2
+    tail -5 "$LOG" >&2
+    exit 1
+  fi
+  sleep 0.1
+done
+
+bun benchmarks/harness/check-server.ts "$PORT" --candidate velqu
