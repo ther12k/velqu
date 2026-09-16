@@ -1,0 +1,81 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "d3d6056f3bc6d36da6e901d7b2d4fb99",
+  "routes": {
+    "diag.text.sync": {
+      "path": "/diag/text-sync",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "string"
+        }
+      },
+      "security": null
+    },
+    "diag.text.async": {
+      "path": "/diag/text-async",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "string"
+        }
+      },
+      "security": null
+    },
+    "diag.json.sync": {
+      "path": "/diag/json-sync",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "ok": {
+              "kind": "boolean"
+            }
+          },
+          "propertyOrder": [
+            "ok"
+          ],
+          "required": [
+            "ok"
+          ]
+        }
+      },
+      "security": null
+    },
+    "diag.json.async": {
+      "path": "/diag/json-async",
+      "method": "GET",
+      "params": null,
+      "query": null,
+      "body": null,
+      "responses": {
+        "200": {
+          "kind": "object",
+          "properties": {
+            "ok": {
+              "kind": "boolean"
+            }
+          },
+          "propertyOrder": [
+            "ok"
+          ],
+          "required": [
+            "ok"
+          ]
+        }
+      },
+      "security": null
+    }
+  }
+}

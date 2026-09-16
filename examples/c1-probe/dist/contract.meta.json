@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "contractHash": "d3d6056f3bc6d36da6e901d7b2d4fb99",
+  "routes": {
+    "diag.text.sync": {
+      "method": "GET",
+      "path": "/diag/text-sync",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "diag.text.async": {
+      "method": "GET",
+      "path": "/diag/text-async",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "diag.json.sync": {
+      "method": "GET",
+      "path": "/diag/json-sync",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    },
+    "diag.json.async": {
+      "method": "GET",
+      "path": "/diag/json-async",
+      "statuses": [
+        "200"
+      ],
+      "secured": false
+    }
+  }
+}

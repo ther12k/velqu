@@ -1186,7 +1186,12 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             {
                                 if let BodyOut::Json(v) = body {
                                     let mut buf = Vec::new();
-                                    match program.encode(v, &mut buf) {
+                                    #[cfg(feature = "bench-instrumentation")]
+                                    let __encode_t = q_bridge::stage_timing::timer();
+                                    let encoded = program.encode(v, &mut buf);
+                                    #[cfg(feature = "bench-instrumentation")]
+                                    q_bridge::stage_timing::record(5, __encode_t.elapsed());
+                                    match encoded {
                                         Ok(()) => encoded_response = Some(buf),
                                         Err(errors) => {
                                             let detail = format!(
@@ -1221,6 +1226,8 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                         }
                         if encoded_response.is_none() {
                             if let Some(ir) = state.pack.schemas.get(key) {
+                                #[cfg(feature = "bench-instrumentation")]
+                                let __validate_t = q_bridge::stage_timing::timer();
                                 let candidate = match body {
                                     BodyOut::Json(v) => Some(v.clone()),
                                     BodyOut::Text(t) => {
@@ -1230,9 +1237,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                     _ => None,
                                 };
                                 if let Some(v) = candidate {
-                                    if let Err(errors) =
-                                        q_schema_runtime::validate(ir, &v, Source::Body)
-                                    {
+                                    let validation =
+                                        q_schema_runtime::validate(ir, &v, Source::Body);
+                                    #[cfg(feature = "bench-instrumentation")]
+                                    q_bridge::stage_timing::record(4, __validate_t.elapsed());
+                                    if let Err(errors) = validation {
                                         let detail = format!(
                                             "route {} response failed its declared schema ({}): {:?}",
                                             route.id, key, errors
@@ -1299,15 +1308,22 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                                 resp
                             }
                         }
-                        BodyOut::Text(t) => PlainResponse {
-                            status,
-                            headers: vec![(
-                                "content-type".into(),
-                                "text/plain; charset=utf-8".into(),
-                            )],
-                            body: t.into_bytes(),
-                            head_only: head,
-                        },
+                        BodyOut::Text(t) => {
+                            #[cfg(feature = "bench-instrumentation")]
+                            let __text_t = q_bridge::stage_timing::timer();
+                            let body = t.into_bytes();
+                            #[cfg(feature = "bench-instrumentation")]
+                            q_bridge::stage_timing::record(6, __text_t.elapsed());
+                            PlainResponse {
+                                status,
+                                headers: vec![(
+                                    "content-type".into(),
+                                    "text/plain; charset=utf-8".into(),
+                                )],
+                                body,
+                                head_only: head,
+                            }
+                        }
                         BodyOut::Bytes(b) => PlainResponse {
                             status,
                             headers: vec![(
@@ -1350,15 +1366,22 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                             r.head_only = head;
                             r
                         }
-                        BodyOut::Text(t) => PlainResponse {
-                            status,
-                            headers: vec![(
-                                "content-type".into(),
-                                "text/plain; charset=utf-8".into(),
-                            )],
-                            body: t.into_bytes(),
-                            head_only: head,
-                        },
+                        BodyOut::Text(t) => {
+                            #[cfg(feature = "bench-instrumentation")]
+                            let __text_t = q_bridge::stage_timing::timer();
+                            let body = t.into_bytes();
+                            #[cfg(feature = "bench-instrumentation")]
+                            q_bridge::stage_timing::record(6, __text_t.elapsed());
+                            PlainResponse {
+                                status,
+                                headers: vec![(
+                                    "content-type".into(),
+                                    "text/plain; charset=utf-8".into(),
+                                )],
+                                body,
+                                head_only: head,
+                            }
+                        }
                         BodyOut::Bytes(b) => PlainResponse {
                             status,
                             headers: vec![(

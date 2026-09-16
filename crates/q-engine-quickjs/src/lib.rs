@@ -232,6 +232,8 @@ impl QuickJsEngine {
         let shared = Arc::new(WorkerShared::new());
         let last_error = Arc::new(Mutex::new(None));
         let bridge_counters = Arc::new(BridgeCounters::default());
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::start_dumper("qengine");
         let handle = std::thread::Builder::new()
             .name("velqu-quickjs".into())
             .spawn({

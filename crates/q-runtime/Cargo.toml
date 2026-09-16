@@ -22,6 +22,7 @@ required-features = ["standalone"]
 
 [features]
 standalone = []
+bench-instrumentation = ["q-engine-quickjs/bench-instrumentation"]
 
 [dependencies]
 q-pack = { workspace = true }

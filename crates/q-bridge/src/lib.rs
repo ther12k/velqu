@@ -11,6 +11,99 @@ use std::sync::Arc;
 
 pub use q_engine::RequestMeta;
 
+/// C1-A diagnostic stage timing (bench-instrumentation feature ONLY).
+///
+/// Fixed-slot, lock-free nanosecond accumulators for the request hot path.
+/// Production builds never touch these (all call sites are cfg-gated); the
+/// dumper thread only starts when `BENCH_STAGE_DIR` is set, rewriting one
+/// JSON file every 2 s so the harness can kill the process without losing
+/// more than the last ~2 s of samples (totals are monotonic).
+#[cfg(feature = "bench-instrumentation")]
+pub mod stage_timing {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Once;
+    use std::time::{Duration, Instant};
+
+    pub const STAGE_NAMES: [&str; 8] = [
+        "handler_sync",       // call_runner -> Step (Immediate path; includes conversion)
+        "handler_async_call", // call_runner -> Step::Watched (promise creation only)
+        "settle_async",       // settled wake -> outcome (value_to_outcome on watch path)
+        "text_extract",       // QuickJS string -> Rust String inside value_to_outcome
+        "resp_validate",      // serve: candidate Value construction + generic validate
+        "resp_encode_direct", // serve: generated EncoderProgram traversal
+        "resp_text_bytes",    // serve: BodyOut::Text -> PlainResponse (into_bytes)
+        "unused7",
+    ];
+
+    pub static STAGE_NS: [AtomicU64; 8] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+    ];
+    pub static STAGE_N: [AtomicU64; 8] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+    ];
+
+    pub fn record(stage: usize, d: Duration) {
+        STAGE_NS[stage].fetch_add(d.as_nanos().min(u64::MAX as u128) as u64, Ordering::Relaxed);
+        STAGE_N[stage].fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Start the periodic dumper (once per tag per process). `tag`
+    /// distinguishes the two instrumented crates writing into the same
+    /// `BENCH_STAGE_DIR`.
+    pub fn start_dumper(tag: &'static str) {
+        static STARTED_QENGINE: Once = Once::new();
+        static STARTED_SERVE: Once = Once::new();
+        let started = match tag {
+            "qengine" => &STARTED_QENGINE,
+            _ => &STARTED_SERVE,
+        };
+        started.call_once(|| {
+            let Some(dir) = std::env::var_os("BENCH_STAGE_DIR") else {
+                return;
+            };
+            std::thread::spawn(move || loop {
+                std::thread::sleep(Duration::from_secs(2));
+                let mut body = format!("{{\"tag\":\"{tag}\",\"stages\":{{");
+                for (i, name) in STAGE_NAMES.iter().enumerate() {
+                    if i > 0 {
+                        body.push(',');
+                    }
+                    body.push_str(&format!(
+                        "\"{}\":{{\"ns\":{},\"n\":{}}}",
+                        name,
+                        STAGE_NS[i].load(Ordering::Relaxed),
+                        STAGE_N[i].load(Ordering::Relaxed),
+                    ));
+                }
+                body.push_str("}}\n");
+                let path = std::path::Path::new(&dir).join(format!("stage-timing-{tag}.json"));
+                let tmp = std::path::Path::new(&dir).join(format!("stage-timing-{tag}.tmp"));
+                if std::fs::write(&tmp, body).is_ok() {
+                    let _ = std::fs::rename(&tmp, &path);
+                }
+            });
+        });
+    }
+
+    pub fn timer() -> Instant {
+        Instant::now()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SlotState {
     Active,
