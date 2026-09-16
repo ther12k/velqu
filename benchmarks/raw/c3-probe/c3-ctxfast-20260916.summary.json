@@ -1,0 +1,4566 @@
+{
+  "format": "velqu-c3-matched-diagnostic-v2-interleaved",
+  "diagnosticOnly": true,
+  "runId": "c3-ctxfast-20260916",
+  "route": {
+    "id": "C3",
+    "path": "/hello/Rafi",
+    "dynamicJsHandler": true
+  },
+  "pack": "/tmp/c3-proof-old/dist/app.qpack",
+  "durationSec": 10,
+  "repetitions": 5,
+  "concurrency": [
+    1,
+    10,
+    50
+  ],
+  "pairing": "interleaved (old/new alternate per cell within each repetition)",
+  "candidates": [
+    {
+      "id": "pre-c3-request-store",
+      "binary": "/home/ther12k/Workspace/Learning/velqu/target/c3-new-final/release/velqu-runtime",
+      "commit": "11e27a6b-pre"
+    },
+    {
+      "id": "c3-slotless-prevalidated",
+      "binary": "/home/ther12k/Workspace/Learning/velqu/target/c3-ctxfast/release/velqu-runtime",
+      "commit": "working-tree"
+    }
+  ],
+  "raw": "benchmarks/raw/c3-probe/c3-ctxfast-20260916.jsonl",
+  "aggregate": [
+    {
+      "candidate": "pre-c3-request-store",
+      "concurrency": 1,
+      "reps": 5,
+      "medianRps": 4494,
+      "medianP50Us": 153.1,
+      "medianP95Us": 559.5,
+      "medianP99Us": 1892.8,
+      "totalErrors": 0
+    },
+    {
+      "candidate": "pre-c3-request-store",
+      "concurrency": 10,
+      "reps": 5,
+      "medianRps": 14931,
+      "medianP50Us": 556.2,
+      "medianP95Us": 1459.8,
+      "medianP99Us": 2865,
+      "totalErrors": 0
+    },
+    {
+      "candidate": "pre-c3-request-store",
+      "concurrency": 50,
+      "reps": 5,
+      "medianRps": 19788,
+      "medianP50Us": 2360.7,
+      "medianP95Us": 4553.7,
+      "medianP99Us": 6425,
+      "totalErrors": 0
+    },
+    {
+      "candidate": "c3-slotless-prevalidated",
+      "concurrency": 1,
+      "reps": 5,
+      "medianRps": 4260,
+      "medianP50Us": 159.1,
+      "medianP95Us": 597.6,
+      "medianP99Us": 2018.9,
+      "totalErrors": 0
+    },
+    {
+      "candidate": "c3-slotless-prevalidated",
+      "concurrency": 10,
+      "reps": 5,
+      "medianRps": 15396,
+      "medianP50Us": 550.3,
+      "medianP95Us": 1471.6,
+      "medianP99Us": 2984.2,
+      "totalErrors": 0
+    },
+    {
+      "candidate": "c3-slotless-prevalidated",
+      "concurrency": 50,
+      "reps": 5,
+      "medianRps": 18189,
+      "medianP50Us": 2384.2,
+      "medianP95Us": 5721.3,
+      "medianP99Us": 8551.7,
+      "totalErrors": 0
+    }
+  ],
+  "results": [
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 4551,
+      "p50Us": 145.1,
+      "p95Us": 537.5,
+      "p99Us": 1832.8,
+      "errors": 0,
+      "totalRequests": 45514,
+      "rssKb": 9580,
+      "stages": {
+        "handler_sync": {
+          "ns": 624522878,
+          "n": 45814
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75073847,
+          "n": 45814
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 64122169,
+          "n": 45814
+        },
+        "request_meta": {
+          "ns": 1632191,
+          "n": 45814
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52262002,
+          "n": 45814
+        },
+        "context_construct": {
+          "ns": 334949117,
+          "n": 45814
+        },
+        "fn_restore": {
+          "ns": 9183787,
+          "n": 45814
+        },
+        "pre_object_total": {
+          "ns": 168666539,
+          "n": 45814
+        },
+        "handler_invoke": {
+          "ns": 87783585,
+          "n": 45814
+        },
+        "resp_convert": {
+          "ns": 132931808,
+          "n": 45814
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 624522878,
+          "n": 45814
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75073847,
+          "n": 45814
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 64122169,
+          "n": 45814
+        },
+        "request_meta": {
+          "ns": 1632191,
+          "n": 45814
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52262002,
+          "n": 45814
+        },
+        "context_construct": {
+          "ns": 334949117,
+          "n": 45814
+        },
+        "fn_restore": {
+          "ns": 9183787,
+          "n": 45814
+        },
+        "pre_object_total": {
+          "ns": 168666539,
+          "n": 45814
+        },
+        "handler_invoke": {
+          "ns": 87783585,
+          "n": 45814
+        },
+        "resp_convert": {
+          "ns": 132931808,
+          "n": 45814
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 3916,
+      "p50Us": 161.5,
+      "p95Us": 723.7,
+      "p99Us": 2134,
+      "errors": 0,
+      "totalRequests": 39158,
+      "rssKb": 10336,
+      "stages": {
+        "handler_sync": {
+          "ns": 440687171,
+          "n": 39458
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 79239408,
+          "n": 39458
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61466819,
+          "n": 39458
+        },
+        "request_meta": {
+          "ns": 1713694,
+          "n": 39458
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52981499,
+          "n": 39458
+        },
+        "context_construct": {
+          "ns": 148969850,
+          "n": 39458
+        },
+        "fn_restore": {
+          "ns": 8056134,
+          "n": 39458
+        },
+        "pre_object_total": {
+          "ns": 168576399,
+          "n": 39458
+        },
+        "handler_invoke": {
+          "ns": 93211189,
+          "n": 39458
+        },
+        "resp_convert": {
+          "ns": 139931115,
+          "n": 39458
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 440687171,
+          "n": 39458
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 79239408,
+          "n": 39458
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61466819,
+          "n": 39458
+        },
+        "request_meta": {
+          "ns": 1713694,
+          "n": 39458
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52981499,
+          "n": 39458
+        },
+        "context_construct": {
+          "ns": 148969850,
+          "n": 39458
+        },
+        "fn_restore": {
+          "ns": 8056134,
+          "n": 39458
+        },
+        "pre_object_total": {
+          "ns": 168576399,
+          "n": 39458
+        },
+        "handler_invoke": {
+          "ns": 93211189,
+          "n": 39458
+        },
+        "resp_convert": {
+          "ns": 139931115,
+          "n": 39458
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 14256,
+      "p50Us": 574.9,
+      "p95Us": 1613.1,
+      "p99Us": 2865,
+      "errors": 0,
+      "totalRequests": 142567,
+      "rssKb": 10280,
+      "stages": {
+        "handler_sync": {
+          "ns": 1673871479,
+          "n": 142867
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 163250902,
+          "n": 142867
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 164707322,
+          "n": 142867
+        },
+        "request_meta": {
+          "ns": 4978378,
+          "n": 142867
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103370656,
+          "n": 142867
+        },
+        "context_construct": {
+          "ns": 902948949,
+          "n": 142867
+        },
+        "fn_restore": {
+          "ns": 19331153,
+          "n": 142867
+        },
+        "pre_object_total": {
+          "ns": 458413668,
+          "n": 142867
+        },
+        "handler_invoke": {
+          "ns": 230923669,
+          "n": 142867
+        },
+        "resp_convert": {
+          "ns": 287788982,
+          "n": 142867
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1673871479,
+          "n": 142867
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 163250902,
+          "n": 142867
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 164707322,
+          "n": 142867
+        },
+        "request_meta": {
+          "ns": 4978378,
+          "n": 142867
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103370656,
+          "n": 142867
+        },
+        "context_construct": {
+          "ns": 902948949,
+          "n": 142867
+        },
+        "fn_restore": {
+          "ns": 19331153,
+          "n": 142867
+        },
+        "pre_object_total": {
+          "ns": 458413668,
+          "n": 142867
+        },
+        "handler_invoke": {
+          "ns": 230923669,
+          "n": 142867
+        },
+        "resp_convert": {
+          "ns": 287788982,
+          "n": 142867
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 15502,
+      "p50Us": 528.3,
+      "p95Us": 1439.1,
+      "p99Us": 2628.8,
+      "errors": 0,
+      "totalRequests": 155023,
+      "rssKb": 10772,
+      "stages": {
+        "handler_sync": {
+          "ns": 1116070909,
+          "n": 155323
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 170916265,
+          "n": 155323
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 168398818,
+          "n": 155323
+        },
+        "request_meta": {
+          "ns": 4989719,
+          "n": 155323
+        },
+        "prevalidated_json_to_js": {
+          "ns": 105210068,
+          "n": 155323
+        },
+        "context_construct": {
+          "ns": 318181529,
+          "n": 155323
+        },
+        "fn_restore": {
+          "ns": 16904321,
+          "n": 155323
+        },
+        "pre_object_total": {
+          "ns": 477618860,
+          "n": 155323
+        },
+        "handler_invoke": {
+          "ns": 239133310,
+          "n": 155323
+        },
+        "resp_convert": {
+          "ns": 288317783,
+          "n": 155323
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1116070909,
+          "n": 155323
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 170916265,
+          "n": 155323
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 168398818,
+          "n": 155323
+        },
+        "request_meta": {
+          "ns": 4989719,
+          "n": 155323
+        },
+        "prevalidated_json_to_js": {
+          "ns": 105210068,
+          "n": 155323
+        },
+        "context_construct": {
+          "ns": 318181529,
+          "n": 155323
+        },
+        "fn_restore": {
+          "ns": 16904321,
+          "n": 155323
+        },
+        "pre_object_total": {
+          "ns": 477618860,
+          "n": 155323
+        },
+        "handler_invoke": {
+          "ns": 239133310,
+          "n": 155323
+        },
+        "resp_convert": {
+          "ns": 288317783,
+          "n": 155323
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 19975,
+      "p50Us": 2302.5,
+      "p95Us": 4553.7,
+      "p99Us": 6425,
+      "errors": 0,
+      "totalRequests": 199808,
+      "rssKb": 12496,
+      "stages": {
+        "handler_sync": {
+          "ns": 2328215379,
+          "n": 200108
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 203165996,
+          "n": 200108
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 226174047,
+          "n": 200108
+        },
+        "request_meta": {
+          "ns": 8414821,
+          "n": 200108
+        },
+        "prevalidated_json_to_js": {
+          "ns": 129950581,
+          "n": 200108
+        },
+        "context_construct": {
+          "ns": 1261291517,
+          "n": 200108
+        },
+        "fn_restore": {
+          "ns": 23694896,
+          "n": 200108
+        },
+        "pre_object_total": {
+          "ns": 663917049,
+          "n": 200108
+        },
+        "handler_invoke": {
+          "ns": 288662709,
+          "n": 200108
+        },
+        "resp_convert": {
+          "ns": 367459239,
+          "n": 200108
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 2328215379,
+          "n": 200108
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 203165996,
+          "n": 200108
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 226174047,
+          "n": 200108
+        },
+        "request_meta": {
+          "ns": 8414821,
+          "n": 200108
+        },
+        "prevalidated_json_to_js": {
+          "ns": 129950581,
+          "n": 200108
+        },
+        "context_construct": {
+          "ns": 1261291517,
+          "n": 200108
+        },
+        "fn_restore": {
+          "ns": 23694896,
+          "n": 200108
+        },
+        "pre_object_total": {
+          "ns": 663917049,
+          "n": 200108
+        },
+        "handler_invoke": {
+          "ns": 288662709,
+          "n": 200108
+        },
+        "resp_convert": {
+          "ns": 367459239,
+          "n": 200108
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 1,
+      "durationSec": 10,
+      "rps": 21276,
+      "p50Us": 2186,
+      "p95Us": 4336.9,
+      "p99Us": 5777,
+      "errors": 0,
+      "totalRequests": 212795,
+      "rssKb": 12848,
+      "stages": {
+        "handler_sync": {
+          "ns": 1588103558,
+          "n": 213095
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 227501006,
+          "n": 213095
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 262295796,
+          "n": 213095
+        },
+        "request_meta": {
+          "ns": 6640436,
+          "n": 213095
+        },
+        "prevalidated_json_to_js": {
+          "ns": 131964505,
+          "n": 213095
+        },
+        "context_construct": {
+          "ns": 428023044,
+          "n": 213095
+        },
+        "fn_restore": {
+          "ns": 24434243,
+          "n": 213095
+        },
+        "pre_object_total": {
+          "ns": 739478817,
+          "n": 213095
+        },
+        "handler_invoke": {
+          "ns": 307443851,
+          "n": 213095
+        },
+        "resp_convert": {
+          "ns": 388642024,
+          "n": 213095
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1588103558,
+          "n": 213095
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 227501006,
+          "n": 213095
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 262295796,
+          "n": 213095
+        },
+        "request_meta": {
+          "ns": 6640436,
+          "n": 213095
+        },
+        "prevalidated_json_to_js": {
+          "ns": 131964505,
+          "n": 213095
+        },
+        "context_construct": {
+          "ns": 428023044,
+          "n": 213095
+        },
+        "fn_restore": {
+          "ns": 24434243,
+          "n": 213095
+        },
+        "pre_object_total": {
+          "ns": 739478817,
+          "n": 213095
+        },
+        "handler_invoke": {
+          "ns": 307443851,
+          "n": 213095
+        },
+        "resp_convert": {
+          "ns": 388642024,
+          "n": 213095
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 4568,
+      "p50Us": 150.7,
+      "p95Us": 559.5,
+      "p99Us": 1701.5,
+      "errors": 0,
+      "totalRequests": 45679,
+      "rssKb": 9724,
+      "stages": {
+        "handler_sync": {
+          "ns": 662403626,
+          "n": 45979
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 80016993,
+          "n": 45979
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 66778446,
+          "n": 45979
+        },
+        "request_meta": {
+          "ns": 1790339,
+          "n": 45979
+        },
+        "prevalidated_json_to_js": {
+          "ns": 53476371,
+          "n": 45979
+        },
+        "context_construct": {
+          "ns": 354224733,
+          "n": 45979
+        },
+        "fn_restore": {
+          "ns": 8870407,
+          "n": 45979
+        },
+        "pre_object_total": {
+          "ns": 182995260,
+          "n": 45979
+        },
+        "handler_invoke": {
+          "ns": 91554543,
+          "n": 45979
+        },
+        "resp_convert": {
+          "ns": 140947194,
+          "n": 45979
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 662403626,
+          "n": 45979
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 80016993,
+          "n": 45979
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 66778446,
+          "n": 45979
+        },
+        "request_meta": {
+          "ns": 1790339,
+          "n": 45979
+        },
+        "prevalidated_json_to_js": {
+          "ns": 53476371,
+          "n": 45979
+        },
+        "context_construct": {
+          "ns": 354224733,
+          "n": 45979
+        },
+        "fn_restore": {
+          "ns": 8870407,
+          "n": 45979
+        },
+        "pre_object_total": {
+          "ns": 182995260,
+          "n": 45979
+        },
+        "handler_invoke": {
+          "ns": 91554543,
+          "n": 45979
+        },
+        "resp_convert": {
+          "ns": 140947194,
+          "n": 45979
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 4466,
+      "p50Us": 152.6,
+      "p95Us": 586.2,
+      "p99Us": 1794.8,
+      "errors": 0,
+      "totalRequests": 44659,
+      "rssKb": 10184,
+      "stages": {
+        "handler_sync": {
+          "ns": 456394622,
+          "n": 44959
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 76824649,
+          "n": 44959
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63005805,
+          "n": 44959
+        },
+        "request_meta": {
+          "ns": 1572975,
+          "n": 44959
+        },
+        "prevalidated_json_to_js": {
+          "ns": 54369988,
+          "n": 44959
+        },
+        "context_construct": {
+          "ns": 151209503,
+          "n": 44959
+        },
+        "fn_restore": {
+          "ns": 10996077,
+          "n": 44959
+        },
+        "pre_object_total": {
+          "ns": 174289222,
+          "n": 44959
+        },
+        "handler_invoke": {
+          "ns": 95200139,
+          "n": 44959
+        },
+        "resp_convert": {
+          "ns": 139926395,
+          "n": 44959
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 456394622,
+          "n": 44959
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 76824649,
+          "n": 44959
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63005805,
+          "n": 44959
+        },
+        "request_meta": {
+          "ns": 1572975,
+          "n": 44959
+        },
+        "prevalidated_json_to_js": {
+          "ns": 54369988,
+          "n": 44959
+        },
+        "context_construct": {
+          "ns": 151209503,
+          "n": 44959
+        },
+        "fn_restore": {
+          "ns": 10996077,
+          "n": 44959
+        },
+        "pre_object_total": {
+          "ns": 174289222,
+          "n": 44959
+        },
+        "handler_invoke": {
+          "ns": 95200139,
+          "n": 44959
+        },
+        "resp_convert": {
+          "ns": 139926395,
+          "n": 44959
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 15322,
+      "p50Us": 541.9,
+      "p95Us": 1362.3,
+      "p99Us": 2668.2,
+      "errors": 0,
+      "totalRequests": 153224,
+      "rssKb": 10204,
+      "stages": {
+        "handler_sync": {
+          "ns": 1497044529,
+          "n": 153524
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 157979295,
+          "n": 153524
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 160506776,
+          "n": 153524
+        },
+        "request_meta": {
+          "ns": 4735981,
+          "n": 153524
+        },
+        "prevalidated_json_to_js": {
+          "ns": 100421622,
+          "n": 153524
+        },
+        "context_construct": {
+          "ns": 823092344,
+          "n": 153524
+        },
+        "fn_restore": {
+          "ns": 20487941,
+          "n": 153524
+        },
+        "pre_object_total": {
+          "ns": 370609687,
+          "n": 153524
+        },
+        "handler_invoke": {
+          "ns": 216205976,
+          "n": 153524
+        },
+        "resp_convert": {
+          "ns": 289639971,
+          "n": 153524
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1497044529,
+          "n": 153524
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 157979295,
+          "n": 153524
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 160506776,
+          "n": 153524
+        },
+        "request_meta": {
+          "ns": 4735981,
+          "n": 153524
+        },
+        "prevalidated_json_to_js": {
+          "ns": 100421622,
+          "n": 153524
+        },
+        "context_construct": {
+          "ns": 823092344,
+          "n": 153524
+        },
+        "fn_restore": {
+          "ns": 20487941,
+          "n": 153524
+        },
+        "pre_object_total": {
+          "ns": 370609687,
+          "n": 153524
+        },
+        "handler_invoke": {
+          "ns": 216205976,
+          "n": 153524
+        },
+        "resp_convert": {
+          "ns": 289639971,
+          "n": 153524
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 15472,
+      "p50Us": 550.3,
+      "p95Us": 1331.9,
+      "p99Us": 2633.5,
+      "errors": 0,
+      "totalRequests": 154725,
+      "rssKb": 10868,
+      "stages": {
+        "handler_sync": {
+          "ns": 1109792295,
+          "n": 155025
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 169043387,
+          "n": 155025
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 178544538,
+          "n": 155025
+        },
+        "request_meta": {
+          "ns": 5867918,
+          "n": 155025
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103729369,
+          "n": 155025
+        },
+        "context_construct": {
+          "ns": 325863607,
+          "n": 155025
+        },
+        "fn_restore": {
+          "ns": 18463958,
+          "n": 155025
+        },
+        "pre_object_total": {
+          "ns": 461622506,
+          "n": 155025
+        },
+        "handler_invoke": {
+          "ns": 236980347,
+          "n": 155025
+        },
+        "resp_convert": {
+          "ns": 294867469,
+          "n": 155025
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1109792295,
+          "n": 155025
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 169043387,
+          "n": 155025
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 178544538,
+          "n": 155025
+        },
+        "request_meta": {
+          "ns": 5867918,
+          "n": 155025
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103729369,
+          "n": 155025
+        },
+        "context_construct": {
+          "ns": 325863607,
+          "n": 155025
+        },
+        "fn_restore": {
+          "ns": 18463958,
+          "n": 155025
+        },
+        "pre_object_total": {
+          "ns": 461622506,
+          "n": 155025
+        },
+        "handler_invoke": {
+          "ns": 236980347,
+          "n": 155025
+        },
+        "resp_convert": {
+          "ns": 294867469,
+          "n": 155025
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 19788,
+      "p50Us": 2360.7,
+      "p95Us": 4473.2,
+      "p99Us": 6088.3,
+      "errors": 0,
+      "totalRequests": 197904,
+      "rssKb": 12252,
+      "stages": {
+        "handler_sync": {
+          "ns": 2023087581,
+          "n": 198204
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 206608935,
+          "n": 198204
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 213977434,
+          "n": 198204
+        },
+        "request_meta": {
+          "ns": 6255840,
+          "n": 198204
+        },
+        "prevalidated_json_to_js": {
+          "ns": 121858542,
+          "n": 198204
+        },
+        "context_construct": {
+          "ns": 1102803637,
+          "n": 198204
+        },
+        "fn_restore": {
+          "ns": 23891403,
+          "n": 198204
+        },
+        "pre_object_total": {
+          "ns": 533546253,
+          "n": 198204
+        },
+        "handler_invoke": {
+          "ns": 275042852,
+          "n": 198204
+        },
+        "resp_convert": {
+          "ns": 370928264,
+          "n": 198204
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 2023087581,
+          "n": 198204
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 206608935,
+          "n": 198204
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 213977434,
+          "n": 198204
+        },
+        "request_meta": {
+          "ns": 6255840,
+          "n": 198204
+        },
+        "prevalidated_json_to_js": {
+          "ns": 121858542,
+          "n": 198204
+        },
+        "context_construct": {
+          "ns": 1102803637,
+          "n": 198204
+        },
+        "fn_restore": {
+          "ns": 23891403,
+          "n": 198204
+        },
+        "pre_object_total": {
+          "ns": 533546253,
+          "n": 198204
+        },
+        "handler_invoke": {
+          "ns": 275042852,
+          "n": 198204
+        },
+        "resp_convert": {
+          "ns": 370928264,
+          "n": 198204
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 2,
+      "durationSec": 10,
+      "rps": 15560,
+      "p50Us": 2927.8,
+      "p95Us": 5986.6,
+      "p99Us": 9689,
+      "errors": 0,
+      "totalRequests": 155667,
+      "rssKb": 13140,
+      "stages": {
+        "handler_sync": {
+          "ns": 1180231386,
+          "n": 155967
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 171115684,
+          "n": 155967
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 183866783,
+          "n": 155967
+        },
+        "request_meta": {
+          "ns": 6148642,
+          "n": 155967
+        },
+        "prevalidated_json_to_js": {
+          "ns": 107054109,
+          "n": 155967
+        },
+        "context_construct": {
+          "ns": 333623250,
+          "n": 155967
+        },
+        "fn_restore": {
+          "ns": 17664395,
+          "n": 155967
+        },
+        "pre_object_total": {
+          "ns": 511096345,
+          "n": 155967
+        },
+        "handler_invoke": {
+          "ns": 250432640,
+          "n": 155967
+        },
+        "resp_convert": {
+          "ns": 310579674,
+          "n": 155967
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1180231386,
+          "n": 155967
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 171115684,
+          "n": 155967
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 183866783,
+          "n": 155967
+        },
+        "request_meta": {
+          "ns": 6148642,
+          "n": 155967
+        },
+        "prevalidated_json_to_js": {
+          "ns": 107054109,
+          "n": 155967
+        },
+        "context_construct": {
+          "ns": 333623250,
+          "n": 155967
+        },
+        "fn_restore": {
+          "ns": 17664395,
+          "n": 155967
+        },
+        "pre_object_total": {
+          "ns": 511096345,
+          "n": 155967
+        },
+        "handler_invoke": {
+          "ns": 250432640,
+          "n": 155967
+        },
+        "resp_convert": {
+          "ns": 310579674,
+          "n": 155967
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 3968,
+      "p50Us": 160.6,
+      "p95Us": 680.4,
+      "p99Us": 2208.1,
+      "errors": 0,
+      "totalRequests": 39683,
+      "rssKb": 9708,
+      "stages": {
+        "handler_sync": {
+          "ns": 602015189,
+          "n": 39983
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 76370830,
+          "n": 39983
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61953324,
+          "n": 39983
+        },
+        "request_meta": {
+          "ns": 1576066,
+          "n": 39983
+        },
+        "prevalidated_json_to_js": {
+          "ns": 49635886,
+          "n": 39983
+        },
+        "context_construct": {
+          "ns": 324000951,
+          "n": 39983
+        },
+        "fn_restore": {
+          "ns": 9058470,
+          "n": 39983
+        },
+        "pre_object_total": {
+          "ns": 164249867,
+          "n": 39983
+        },
+        "handler_invoke": {
+          "ns": 82840831,
+          "n": 39983
+        },
+        "resp_convert": {
+          "ns": 134739540,
+          "n": 39983
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 602015189,
+          "n": 39983
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 76370830,
+          "n": 39983
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61953324,
+          "n": 39983
+        },
+        "request_meta": {
+          "ns": 1576066,
+          "n": 39983
+        },
+        "prevalidated_json_to_js": {
+          "ns": 49635886,
+          "n": 39983
+        },
+        "context_construct": {
+          "ns": 324000951,
+          "n": 39983
+        },
+        "fn_restore": {
+          "ns": 9058470,
+          "n": 39983
+        },
+        "pre_object_total": {
+          "ns": 164249867,
+          "n": 39983
+        },
+        "handler_invoke": {
+          "ns": 82840831,
+          "n": 39983
+        },
+        "resp_convert": {
+          "ns": 134739540,
+          "n": 39983
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 3945,
+      "p50Us": 163.7,
+      "p95Us": 694.1,
+      "p99Us": 2069.6,
+      "errors": 0,
+      "totalRequests": 39451,
+      "rssKb": 10204,
+      "stages": {
+        "handler_sync": {
+          "ns": 439171433,
+          "n": 39751
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75412653,
+          "n": 39751
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63777558,
+          "n": 39751
+        },
+        "request_meta": {
+          "ns": 1537917,
+          "n": 39751
+        },
+        "prevalidated_json_to_js": {
+          "ns": 51371217,
+          "n": 39751
+        },
+        "context_construct": {
+          "ns": 146559577,
+          "n": 39751
+        },
+        "fn_restore": {
+          "ns": 8977280,
+          "n": 39751
+        },
+        "pre_object_total": {
+          "ns": 165732840,
+          "n": 39751
+        },
+        "handler_invoke": {
+          "ns": 94912789,
+          "n": 39751
+        },
+        "resp_convert": {
+          "ns": 135683842,
+          "n": 39751
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 439171433,
+          "n": 39751
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75412653,
+          "n": 39751
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63777558,
+          "n": 39751
+        },
+        "request_meta": {
+          "ns": 1537917,
+          "n": 39751
+        },
+        "prevalidated_json_to_js": {
+          "ns": 51371217,
+          "n": 39751
+        },
+        "context_construct": {
+          "ns": 146559577,
+          "n": 39751
+        },
+        "fn_restore": {
+          "ns": 8977280,
+          "n": 39751
+        },
+        "pre_object_total": {
+          "ns": 165732840,
+          "n": 39751
+        },
+        "handler_invoke": {
+          "ns": 94912789,
+          "n": 39751
+        },
+        "resp_convert": {
+          "ns": 135683842,
+          "n": 39751
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 11795,
+      "p50Us": 733.7,
+      "p95Us": 1901.7,
+      "p99Us": 3669,
+      "errors": 0,
+      "totalRequests": 117953,
+      "rssKb": 10164,
+      "stages": {
+        "handler_sync": {
+          "ns": 1351725230,
+          "n": 118253
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 142925540,
+          "n": 118253
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 139737768,
+          "n": 118253
+        },
+        "request_meta": {
+          "ns": 4140202,
+          "n": 118253
+        },
+        "prevalidated_json_to_js": {
+          "ns": 88466186,
+          "n": 118253
+        },
+        "context_construct": {
+          "ns": 735429743,
+          "n": 118253
+        },
+        "fn_restore": {
+          "ns": 16724059,
+          "n": 118253
+        },
+        "pre_object_total": {
+          "ns": 358317457,
+          "n": 118253
+        },
+        "handler_invoke": {
+          "ns": 186635122,
+          "n": 118253
+        },
+        "resp_convert": {
+          "ns": 254552809,
+          "n": 118253
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1351725230,
+          "n": 118253
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 142925540,
+          "n": 118253
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 139737768,
+          "n": 118253
+        },
+        "request_meta": {
+          "ns": 4140202,
+          "n": 118253
+        },
+        "prevalidated_json_to_js": {
+          "ns": 88466186,
+          "n": 118253
+        },
+        "context_construct": {
+          "ns": 735429743,
+          "n": 118253
+        },
+        "fn_restore": {
+          "ns": 16724059,
+          "n": 118253
+        },
+        "pre_object_total": {
+          "ns": 358317457,
+          "n": 118253
+        },
+        "handler_invoke": {
+          "ns": 186635122,
+          "n": 118253
+        },
+        "resp_convert": {
+          "ns": 254552809,
+          "n": 118253
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 11617,
+      "p50Us": 733.3,
+      "p95Us": 1919.5,
+      "p99Us": 4177.2,
+      "errors": 0,
+      "totalRequests": 116240,
+      "rssKb": 10796,
+      "stages": {
+        "handler_sync": {
+          "ns": 883429419,
+          "n": 116540
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 130644526,
+          "n": 116540
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 139111798,
+          "n": 116540
+        },
+        "request_meta": {
+          "ns": 4618928,
+          "n": 116540
+        },
+        "prevalidated_json_to_js": {
+          "ns": 86207877,
+          "n": 116540
+        },
+        "context_construct": {
+          "ns": 274153882,
+          "n": 116540
+        },
+        "fn_restore": {
+          "ns": 15889016,
+          "n": 116540
+        },
+        "pre_object_total": {
+          "ns": 352444630,
+          "n": 116540
+        },
+        "handler_invoke": {
+          "ns": 190023506,
+          "n": 116540
+        },
+        "resp_convert": {
+          "ns": 253174660,
+          "n": 116540
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 883429419,
+          "n": 116540
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 130644526,
+          "n": 116540
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 139111798,
+          "n": 116540
+        },
+        "request_meta": {
+          "ns": 4618928,
+          "n": 116540
+        },
+        "prevalidated_json_to_js": {
+          "ns": 86207877,
+          "n": 116540
+        },
+        "context_construct": {
+          "ns": 274153882,
+          "n": 116540
+        },
+        "fn_restore": {
+          "ns": 15889016,
+          "n": 116540
+        },
+        "pre_object_total": {
+          "ns": 352444630,
+          "n": 116540
+        },
+        "handler_invoke": {
+          "ns": 190023506,
+          "n": 116540
+        },
+        "resp_convert": {
+          "ns": 253174660,
+          "n": 116540
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 17097,
+      "p50Us": 2683.8,
+      "p95Us": 5525,
+      "p99Us": 8064.2,
+      "errors": 0,
+      "totalRequests": 171051,
+      "rssKb": 12280,
+      "stages": {
+        "handler_sync": {
+          "ns": 1837205756,
+          "n": 171351
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 177909738,
+          "n": 171351
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 201437757,
+          "n": 171351
+        },
+        "request_meta": {
+          "ns": 5704670,
+          "n": 171351
+        },
+        "prevalidated_json_to_js": {
+          "ns": 111708965,
+          "n": 171351
+        },
+        "context_construct": {
+          "ns": 992043900,
+          "n": 171351
+        },
+        "fn_restore": {
+          "ns": 21058561,
+          "n": 171351
+        },
+        "pre_object_total": {
+          "ns": 489772448,
+          "n": 171351
+        },
+        "handler_invoke": {
+          "ns": 255958577,
+          "n": 171351
+        },
+        "resp_convert": {
+          "ns": 352151522,
+          "n": 171351
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1837205756,
+          "n": 171351
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 177909738,
+          "n": 171351
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 201437757,
+          "n": 171351
+        },
+        "request_meta": {
+          "ns": 5704670,
+          "n": 171351
+        },
+        "prevalidated_json_to_js": {
+          "ns": 111708965,
+          "n": 171351
+        },
+        "context_construct": {
+          "ns": 992043900,
+          "n": 171351
+        },
+        "fn_restore": {
+          "ns": 21058561,
+          "n": 171351
+        },
+        "pre_object_total": {
+          "ns": 489772448,
+          "n": 171351
+        },
+        "handler_invoke": {
+          "ns": 255958577,
+          "n": 171351
+        },
+        "resp_convert": {
+          "ns": 352151522,
+          "n": 171351
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 3,
+      "durationSec": 10,
+      "rps": 20210,
+      "p50Us": 2227.6,
+      "p95Us": 4722.3,
+      "p99Us": 6861.6,
+      "errors": 0,
+      "totalRequests": 202110,
+      "rssKb": 12792,
+      "stages": {
+        "handler_sync": {
+          "ns": 1511921299,
+          "n": 202410
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 205289083,
+          "n": 202410
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 239304150,
+          "n": 202410
+        },
+        "request_meta": {
+          "ns": 7129610,
+          "n": 202410
+        },
+        "prevalidated_json_to_js": {
+          "ns": 123159154,
+          "n": 202410
+        },
+        "context_construct": {
+          "ns": 394010432,
+          "n": 202410
+        },
+        "fn_restore": {
+          "ns": 23587971,
+          "n": 202410
+        },
+        "pre_object_total": {
+          "ns": 712971555,
+          "n": 202410
+        },
+        "handler_invoke": {
+          "ns": 290967164,
+          "n": 202410
+        },
+        "resp_convert": {
+          "ns": 358215475,
+          "n": 202410
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1511921299,
+          "n": 202410
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 205289083,
+          "n": 202410
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 239304150,
+          "n": 202410
+        },
+        "request_meta": {
+          "ns": 7129610,
+          "n": 202410
+        },
+        "prevalidated_json_to_js": {
+          "ns": 123159154,
+          "n": 202410
+        },
+        "context_construct": {
+          "ns": 394010432,
+          "n": 202410
+        },
+        "fn_restore": {
+          "ns": 23587971,
+          "n": 202410
+        },
+        "pre_object_total": {
+          "ns": 712971555,
+          "n": 202410
+        },
+        "handler_invoke": {
+          "ns": 290967164,
+          "n": 202410
+        },
+        "resp_convert": {
+          "ns": 358215475,
+          "n": 202410
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 4494,
+      "p50Us": 153.1,
+      "p95Us": 550.8,
+      "p99Us": 1892.8,
+      "errors": 0,
+      "totalRequests": 44941,
+      "rssKb": 9676,
+      "stages": {
+        "handler_sync": {
+          "ns": 620971512,
+          "n": 45241
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75252849,
+          "n": 45241
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 59575768,
+          "n": 45241
+        },
+        "request_meta": {
+          "ns": 2003836,
+          "n": 45241
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52686903,
+          "n": 45241
+        },
+        "context_construct": {
+          "ns": 330172810,
+          "n": 45241
+        },
+        "fn_restore": {
+          "ns": 8549433,
+          "n": 45241
+        },
+        "pre_object_total": {
+          "ns": 171292039,
+          "n": 45241
+        },
+        "handler_invoke": {
+          "ns": 87530172,
+          "n": 45241
+        },
+        "resp_convert": {
+          "ns": 135214723,
+          "n": 45241
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 620971512,
+          "n": 45241
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 75252849,
+          "n": 45241
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 59575768,
+          "n": 45241
+        },
+        "request_meta": {
+          "ns": 2003836,
+          "n": 45241
+        },
+        "prevalidated_json_to_js": {
+          "ns": 52686903,
+          "n": 45241
+        },
+        "context_construct": {
+          "ns": 330172810,
+          "n": 45241
+        },
+        "fn_restore": {
+          "ns": 8549433,
+          "n": 45241
+        },
+        "pre_object_total": {
+          "ns": 171292039,
+          "n": 45241
+        },
+        "handler_invoke": {
+          "ns": 87530172,
+          "n": 45241
+        },
+        "resp_convert": {
+          "ns": 135214723,
+          "n": 45241
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 4692,
+      "p50Us": 145.7,
+      "p95Us": 552.2,
+      "p99Us": 1729.7,
+      "errors": 0,
+      "totalRequests": 46925,
+      "rssKb": 9984,
+      "stages": {
+        "handler_sync": {
+          "ns": 455992313,
+          "n": 47225
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 80781386,
+          "n": 47225
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 59101741,
+          "n": 47225
+        },
+        "request_meta": {
+          "ns": 1724814,
+          "n": 47225
+        },
+        "prevalidated_json_to_js": {
+          "ns": 53842600,
+          "n": 47225
+        },
+        "context_construct": {
+          "ns": 152428344,
+          "n": 47225
+        },
+        "fn_restore": {
+          "ns": 9006995,
+          "n": 47225
+        },
+        "pre_object_total": {
+          "ns": 170977476,
+          "n": 47225
+        },
+        "handler_invoke": {
+          "ns": 98211372,
+          "n": 47225
+        },
+        "resp_convert": {
+          "ns": 135725630,
+          "n": 47225
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 455992313,
+          "n": 47225
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 80781386,
+          "n": 47225
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 59101741,
+          "n": 47225
+        },
+        "request_meta": {
+          "ns": 1724814,
+          "n": 47225
+        },
+        "prevalidated_json_to_js": {
+          "ns": 53842600,
+          "n": 47225
+        },
+        "context_construct": {
+          "ns": 152428344,
+          "n": 47225
+        },
+        "fn_restore": {
+          "ns": 9006995,
+          "n": 47225
+        },
+        "pre_object_total": {
+          "ns": 170977476,
+          "n": 47225
+        },
+        "handler_invoke": {
+          "ns": 98211372,
+          "n": 47225
+        },
+        "resp_convert": {
+          "ns": 135725630,
+          "n": 47225
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 14931,
+      "p50Us": 556.2,
+      "p95Us": 1402,
+      "p99Us": 2880.7,
+      "errors": 0,
+      "totalRequests": 149307,
+      "rssKb": 10384,
+      "stages": {
+        "handler_sync": {
+          "ns": 1602924118,
+          "n": 149607
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 161834459,
+          "n": 149607
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 163107734,
+          "n": 149607
+        },
+        "request_meta": {
+          "ns": 5587845,
+          "n": 149607
+        },
+        "prevalidated_json_to_js": {
+          "ns": 98092769,
+          "n": 149607
+        },
+        "context_construct": {
+          "ns": 861500717,
+          "n": 149607
+        },
+        "fn_restore": {
+          "ns": 18593862,
+          "n": 149607
+        },
+        "pre_object_total": {
+          "ns": 442380961,
+          "n": 149607
+        },
+        "handler_invoke": {
+          "ns": 216987744,
+          "n": 149607
+        },
+        "resp_convert": {
+          "ns": 289223106,
+          "n": 149607
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1602924118,
+          "n": 149607
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 161834459,
+          "n": 149607
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 163107734,
+          "n": 149607
+        },
+        "request_meta": {
+          "ns": 5587845,
+          "n": 149607
+        },
+        "prevalidated_json_to_js": {
+          "ns": 98092769,
+          "n": 149607
+        },
+        "context_construct": {
+          "ns": 861500717,
+          "n": 149607
+        },
+        "fn_restore": {
+          "ns": 18593862,
+          "n": 149607
+        },
+        "pre_object_total": {
+          "ns": 442380961,
+          "n": 149607
+        },
+        "handler_invoke": {
+          "ns": 216987744,
+          "n": 149607
+        },
+        "resp_convert": {
+          "ns": 289223106,
+          "n": 149607
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 14483,
+      "p50Us": 574.9,
+      "p95Us": 1513,
+      "p99Us": 2984.2,
+      "errors": 0,
+      "totalRequests": 144840,
+      "rssKb": 10532,
+      "stages": {
+        "handler_sync": {
+          "ns": 1018745317,
+          "n": 145140
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 151831391,
+          "n": 145140
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 156986849,
+          "n": 145140
+        },
+        "request_meta": {
+          "ns": 4540022,
+          "n": 145140
+        },
+        "prevalidated_json_to_js": {
+          "ns": 95318083,
+          "n": 145140
+        },
+        "context_construct": {
+          "ns": 303220251,
+          "n": 145140
+        },
+        "fn_restore": {
+          "ns": 16916234,
+          "n": 145140
+        },
+        "pre_object_total": {
+          "ns": 416088913,
+          "n": 145140
+        },
+        "handler_invoke": {
+          "ns": 223888188,
+          "n": 145140
+        },
+        "resp_convert": {
+          "ns": 269276376,
+          "n": 145140
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1018745317,
+          "n": 145140
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 151831391,
+          "n": 145140
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 156986849,
+          "n": 145140
+        },
+        "request_meta": {
+          "ns": 4540022,
+          "n": 145140
+        },
+        "prevalidated_json_to_js": {
+          "ns": 95318083,
+          "n": 145140
+        },
+        "context_construct": {
+          "ns": 303220251,
+          "n": 145140
+        },
+        "fn_restore": {
+          "ns": 16916234,
+          "n": 145140
+        },
+        "pre_object_total": {
+          "ns": 416088913,
+          "n": 145140
+        },
+        "handler_invoke": {
+          "ns": 223888188,
+          "n": 145140
+        },
+        "resp_convert": {
+          "ns": 269276376,
+          "n": 145140
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 16354,
+      "p50Us": 2749.7,
+      "p95Us": 6078.9,
+      "p99Us": 8800.2,
+      "errors": 0,
+      "totalRequests": 163574,
+      "rssKb": 12300,
+      "stages": {
+        "handler_sync": {
+          "ns": 1784452306,
+          "n": 163874
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 180364361,
+          "n": 163874
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 189720831,
+          "n": 163874
+        },
+        "request_meta": {
+          "ns": 5654426,
+          "n": 163874
+        },
+        "prevalidated_json_to_js": {
+          "ns": 117580633,
+          "n": 163874
+        },
+        "context_construct": {
+          "ns": 978232599,
+          "n": 163874
+        },
+        "fn_restore": {
+          "ns": 24030100,
+          "n": 163874
+        },
+        "pre_object_total": {
+          "ns": 444413876,
+          "n": 163874
+        },
+        "handler_invoke": {
+          "ns": 258783178,
+          "n": 163874
+        },
+        "resp_convert": {
+          "ns": 345997573,
+          "n": 163874
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1784452306,
+          "n": 163874
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 180364361,
+          "n": 163874
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 189720831,
+          "n": 163874
+        },
+        "request_meta": {
+          "ns": 5654426,
+          "n": 163874
+        },
+        "prevalidated_json_to_js": {
+          "ns": 117580633,
+          "n": 163874
+        },
+        "context_construct": {
+          "ns": 978232599,
+          "n": 163874
+        },
+        "fn_restore": {
+          "ns": 24030100,
+          "n": 163874
+        },
+        "pre_object_total": {
+          "ns": 444413876,
+          "n": 163874
+        },
+        "handler_invoke": {
+          "ns": 258783178,
+          "n": 163874
+        },
+        "resp_convert": {
+          "ns": 345997573,
+          "n": 163874
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 4,
+      "durationSec": 10,
+      "rps": 16353,
+      "p50Us": 2789.3,
+      "p95Us": 5917.5,
+      "p99Us": 8551.7,
+      "errors": 0,
+      "totalRequests": 163578,
+      "rssKb": 13012,
+      "stages": {
+        "handler_sync": {
+          "ns": 1284538319,
+          "n": 163878
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 173366845,
+          "n": 163878
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 196685380,
+          "n": 163878
+        },
+        "request_meta": {
+          "ns": 6460740,
+          "n": 163878
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103469897,
+          "n": 163878
+        },
+        "context_construct": {
+          "ns": 353845623,
+          "n": 163878
+        },
+        "fn_restore": {
+          "ns": 17999458,
+          "n": 163878
+        },
+        "pre_object_total": {
+          "ns": 579683941,
+          "n": 163878
+        },
+        "handler_invoke": {
+          "ns": 261770945,
+          "n": 163878
+        },
+        "resp_convert": {
+          "ns": 318931656,
+          "n": 163878
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1284538319,
+          "n": 163878
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 173366845,
+          "n": 163878
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 196685380,
+          "n": 163878
+        },
+        "request_meta": {
+          "ns": 6460740,
+          "n": 163878
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103469897,
+          "n": 163878
+        },
+        "context_construct": {
+          "ns": 353845623,
+          "n": 163878
+        },
+        "fn_restore": {
+          "ns": 17999458,
+          "n": 163878
+        },
+        "pre_object_total": {
+          "ns": 579683941,
+          "n": 163878
+        },
+        "handler_invoke": {
+          "ns": 261770945,
+          "n": 163878
+        },
+        "resp_convert": {
+          "ns": 318931656,
+          "n": 163878
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 3917,
+      "p50Us": 169.4,
+      "p95Us": 691.9,
+      "p99Us": 1964.7,
+      "errors": 0,
+      "totalRequests": 39167,
+      "rssKb": 9732,
+      "stages": {
+        "handler_sync": {
+          "ns": 636008210,
+          "n": 39467
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 78168962,
+          "n": 39467
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63393233,
+          "n": 39467
+        },
+        "request_meta": {
+          "ns": 1833352,
+          "n": 39467
+        },
+        "prevalidated_json_to_js": {
+          "ns": 56062305,
+          "n": 39467
+        },
+        "context_construct": {
+          "ns": 337181692,
+          "n": 39467
+        },
+        "fn_restore": {
+          "ns": 9059464,
+          "n": 39467
+        },
+        "pre_object_total": {
+          "ns": 179244569,
+          "n": 39467
+        },
+        "handler_invoke": {
+          "ns": 87363887,
+          "n": 39467
+        },
+        "resp_convert": {
+          "ns": 137554205,
+          "n": 39467
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 636008210,
+          "n": 39467
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 78168962,
+          "n": 39467
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 63393233,
+          "n": 39467
+        },
+        "request_meta": {
+          "ns": 1833352,
+          "n": 39467
+        },
+        "prevalidated_json_to_js": {
+          "ns": 56062305,
+          "n": 39467
+        },
+        "context_construct": {
+          "ns": 337181692,
+          "n": 39467
+        },
+        "fn_restore": {
+          "ns": 9059464,
+          "n": 39467
+        },
+        "pre_object_total": {
+          "ns": 179244569,
+          "n": 39467
+        },
+        "handler_invoke": {
+          "ns": 87363887,
+          "n": 39467
+        },
+        "resp_convert": {
+          "ns": 137554205,
+          "n": 39467
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 1,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 4260,
+      "p50Us": 159.1,
+      "p95Us": 597.6,
+      "p99Us": 2018.9,
+      "errors": 0,
+      "totalRequests": 42596,
+      "rssKb": 9976,
+      "stages": {
+        "handler_sync": {
+          "ns": 433645765,
+          "n": 42896
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 71183429,
+          "n": 42896
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61565524,
+          "n": 42896
+        },
+        "request_meta": {
+          "ns": 1733770,
+          "n": 42896
+        },
+        "prevalidated_json_to_js": {
+          "ns": 51672200,
+          "n": 42896
+        },
+        "context_construct": {
+          "ns": 148551782,
+          "n": 42896
+        },
+        "fn_restore": {
+          "ns": 8018149,
+          "n": 42896
+        },
+        "pre_object_total": {
+          "ns": 161330021,
+          "n": 42896
+        },
+        "handler_invoke": {
+          "ns": 92336739,
+          "n": 42896
+        },
+        "resp_convert": {
+          "ns": 136133684,
+          "n": 42896
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 433645765,
+          "n": 42896
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 71183429,
+          "n": 42896
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 61565524,
+          "n": 42896
+        },
+        "request_meta": {
+          "ns": 1733770,
+          "n": 42896
+        },
+        "prevalidated_json_to_js": {
+          "ns": 51672200,
+          "n": 42896
+        },
+        "context_construct": {
+          "ns": 148551782,
+          "n": 42896
+        },
+        "fn_restore": {
+          "ns": 8018149,
+          "n": 42896
+        },
+        "pre_object_total": {
+          "ns": 161330021,
+          "n": 42896
+        },
+        "handler_invoke": {
+          "ns": 92336739,
+          "n": 42896
+        },
+        "resp_convert": {
+          "ns": 136133684,
+          "n": 42896
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 15657,
+      "p50Us": 510,
+      "p95Us": 1459.8,
+      "p99Us": 2826,
+      "errors": 0,
+      "totalRequests": 156575,
+      "rssKb": 10284,
+      "stages": {
+        "handler_sync": {
+          "ns": 1669237464,
+          "n": 156875
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 173662052,
+          "n": 156875
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 167940511,
+          "n": 156875
+        },
+        "request_meta": {
+          "ns": 5571676,
+          "n": 156875
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103481114,
+          "n": 156875
+        },
+        "context_construct": {
+          "ns": 897058184,
+          "n": 156875
+        },
+        "fn_restore": {
+          "ns": 18172751,
+          "n": 156875
+        },
+        "pre_object_total": {
+          "ns": 457071608,
+          "n": 156875
+        },
+        "handler_invoke": {
+          "ns": 231170152,
+          "n": 156875
+        },
+        "resp_convert": {
+          "ns": 299736459,
+          "n": 156875
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1669237464,
+          "n": 156875
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 173662052,
+          "n": 156875
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 167940511,
+          "n": 156875
+        },
+        "request_meta": {
+          "ns": 5571676,
+          "n": 156875
+        },
+        "prevalidated_json_to_js": {
+          "ns": 103481114,
+          "n": 156875
+        },
+        "context_construct": {
+          "ns": 897058184,
+          "n": 156875
+        },
+        "fn_restore": {
+          "ns": 18172751,
+          "n": 156875
+        },
+        "pre_object_total": {
+          "ns": 457071608,
+          "n": 156875
+        },
+        "handler_invoke": {
+          "ns": 231170152,
+          "n": 156875
+        },
+        "resp_convert": {
+          "ns": 299736459,
+          "n": 156875
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 10,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 15396,
+      "p50Us": 519,
+      "p95Us": 1471.6,
+      "p99Us": 3001,
+      "errors": 0,
+      "totalRequests": 153958,
+      "rssKb": 10504,
+      "stages": {
+        "handler_sync": {
+          "ns": 1064361665,
+          "n": 154258
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 162987933,
+          "n": 154258
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 161592328,
+          "n": 154258
+        },
+        "request_meta": {
+          "ns": 4954706,
+          "n": 154258
+        },
+        "prevalidated_json_to_js": {
+          "ns": 97329003,
+          "n": 154258
+        },
+        "context_construct": {
+          "ns": 304493787,
+          "n": 154258
+        },
+        "fn_restore": {
+          "ns": 16756163,
+          "n": 154258
+        },
+        "pre_object_total": {
+          "ns": 452977638,
+          "n": 154258
+        },
+        "handler_invoke": {
+          "ns": 226986216,
+          "n": 154258
+        },
+        "resp_convert": {
+          "ns": 281317497,
+          "n": 154258
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1064361665,
+          "n": 154258
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 162987933,
+          "n": 154258
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 161592328,
+          "n": 154258
+        },
+        "request_meta": {
+          "ns": 4954706,
+          "n": 154258
+        },
+        "prevalidated_json_to_js": {
+          "ns": 97329003,
+          "n": 154258
+        },
+        "context_construct": {
+          "ns": 304493787,
+          "n": 154258
+        },
+        "fn_restore": {
+          "ns": 16756163,
+          "n": 154258
+        },
+        "pre_object_total": {
+          "ns": 452977638,
+          "n": 154258
+        },
+        "handler_invoke": {
+          "ns": 226986216,
+          "n": 154258
+        },
+        "resp_convert": {
+          "ns": 281317497,
+          "n": 154258
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "pre-c3-request-store",
+      "commit": "11e27a6b-pre",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 23072,
+      "p50Us": 1948.9,
+      "p95Us": 4220.7,
+      "p99Us": 6165,
+      "errors": 0,
+      "totalRequests": 230746,
+      "rssKb": 12508,
+      "stages": {
+        "handler_sync": {
+          "ns": 2093084128,
+          "n": 231046
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 206613685,
+          "n": 231046
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 241059643,
+          "n": 231046
+        },
+        "request_meta": {
+          "ns": 7541196,
+          "n": 231046
+        },
+        "prevalidated_json_to_js": {
+          "ns": 133428106,
+          "n": 231046
+        },
+        "context_construct": {
+          "ns": 1144240032,
+          "n": 231046
+        },
+        "fn_restore": {
+          "ns": 24977867,
+          "n": 231046
+        },
+        "pre_object_total": {
+          "ns": 514093362,
+          "n": 231046
+        },
+        "handler_invoke": {
+          "ns": 315432896,
+          "n": 231046
+        },
+        "resp_convert": {
+          "ns": 391221124,
+          "n": 231046
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 2093084128,
+          "n": 231046
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 206613685,
+          "n": 231046
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 241059643,
+          "n": 231046
+        },
+        "request_meta": {
+          "ns": 7541196,
+          "n": 231046
+        },
+        "prevalidated_json_to_js": {
+          "ns": 133428106,
+          "n": 231046
+        },
+        "context_construct": {
+          "ns": 1144240032,
+          "n": 231046
+        },
+        "fn_restore": {
+          "ns": 24977867,
+          "n": 231046
+        },
+        "pre_object_total": {
+          "ns": 514093362,
+          "n": 231046
+        },
+        "handler_invoke": {
+          "ns": 315432896,
+          "n": 231046
+        },
+        "resp_convert": {
+          "ns": 391221124,
+          "n": 231046
+        }
+      }
+    },
+    {
+      "runId": "c3-ctxfast-20260916",
+      "candidate": "c3-slotless-prevalidated",
+      "commit": "working-tree",
+      "routeId": "C3",
+      "path": "/hello/Rafi",
+      "concurrency": 50,
+      "repetition": 5,
+      "durationSec": 10,
+      "rps": 18189,
+      "p50Us": 2384.2,
+      "p95Us": 5721.3,
+      "p99Us": 8566.4,
+      "errors": 0,
+      "totalRequests": 181940,
+      "rssKb": 12636,
+      "stages": {
+        "handler_sync": {
+          "ns": 1430747623,
+          "n": 182240
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 183299316,
+          "n": 182240
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 215431845,
+          "n": 182240
+        },
+        "request_meta": {
+          "ns": 9413181,
+          "n": 182240
+        },
+        "prevalidated_json_to_js": {
+          "ns": 115030536,
+          "n": 182240
+        },
+        "context_construct": {
+          "ns": 389396543,
+          "n": 182240
+        },
+        "fn_restore": {
+          "ns": 19225615,
+          "n": 182240
+        },
+        "pre_object_total": {
+          "ns": 650290594,
+          "n": 182240
+        },
+        "handler_invoke": {
+          "ns": 291543993,
+          "n": 182240
+        },
+        "resp_convert": {
+          "ns": 339244834,
+          "n": 182240
+        }
+      },
+      "serveStages": {
+        "handler_sync": {
+          "ns": 1430747623,
+          "n": 182240
+        },
+        "handler_async_call": {
+          "ns": 0,
+          "n": 0
+        },
+        "settle_async": {
+          "ns": 0,
+          "n": 0
+        },
+        "text_extract": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_validate": {
+          "ns": 183299316,
+          "n": 182240
+        },
+        "resp_encode_direct": {
+          "ns": 0,
+          "n": 0
+        },
+        "resp_text_bytes": {
+          "ns": 0,
+          "n": 0
+        },
+        "unused7": {
+          "ns": 0,
+          "n": 0
+        },
+        "native_params_query_validation": {
+          "ns": 215431845,
+          "n": 182240
+        },
+        "request_meta": {
+          "ns": 9413181,
+          "n": 182240
+        },
+        "prevalidated_json_to_js": {
+          "ns": 115030536,
+          "n": 182240
+        },
+        "context_construct": {
+          "ns": 389396543,
+          "n": 182240
+        },
+        "fn_restore": {
+          "ns": 19225615,
+          "n": 182240
+        },
+        "pre_object_total": {
+          "ns": 650290594,
+          "n": 182240
+        },
+        "handler_invoke": {
+          "ns": 291543993,
+          "n": 182240
+        },
+        "resp_convert": {
+          "ns": 339244834,
+          "n": 182240
+        }
+      }
+    }
+  ]
+}

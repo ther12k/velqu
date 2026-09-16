@@ -778,44 +778,49 @@ globalThis.__velquMakeLazyHeaders = function (slot, gen) {
 };
 
 // ctx: pre.* are host-validated values (native strategy) or undefined for lazy access.
+const __velquHasOwn = Object.prototype.hasOwnProperty;
 globalThis.__velquMakeCtx = function (slot, gen, pre) {
   const c = Object.create(__velquContextPrototype);
+  if (pre.routePlan != null) c.routePlan = pre.routePlan;
+  if (slot === -1) {
+    // Slotless fast path: every field must arrive prevalidated — no lazy
+    // fallback exists, no slot properties are installed (their only reader,
+    // webRequest(), requires a valid slot and still fails closed without
+    // them), and no per-call closures are allocated.
+    if (__velquHasOwn.call(pre, "params")) c.params = pre.params;
+    if (__velquHasOwn.call(pre, "query")) c.query = pre.query;
+    if (__velquHasOwn.call(pre, "headers")) c.headers = pre.headers;
+    if (__velquHasOwn.call(pre, "body")) c.body = pre.body;
+    return c;
+  }
   Object.defineProperty(c, "__velquSlot", { value: slot });
   Object.defineProperty(c, "__velquGeneration", { value: gen });
-  const hasRequestSlot = slot !== -1;
-  const hasPre = (key) => Object.prototype.hasOwnProperty.call(pre, key);
+  const hasPre = (key) => __velquHasOwn.call(pre, key);
   const lazy = (key, fn) => {
     let v, used = false;
     Object.defineProperty(c, key, { enumerable: true, get() { if (!used) { v = fn(); used = true; } return v; } });
   };
-  if (pre.routePlan != null) c.routePlan = pre.routePlan;
-  // Prevalidated values are independent of the request store. They must stay
-  // visible for slotless native invocations; absent values remain absent so a
-  // slotless handler cannot silently fall back to invalid store access. Own
-  // property checks preserve a validated nullable value as distinct from absent.
-  if (hasPre("params")) c.params = pre.params;
-  if (hasPre("query")) c.query = pre.query;
-  if (hasPre("headers")) c.headers = pre.headers;
-  if (hasPre("body")) c.body = pre.body;
-  if (hasRequestSlot) {
-    // M25-007-B: the full request handle — whole-field header/query/param
-    // access through the store (declared set unless the route declared
-    // the full-request capability, which materializes everything)
-    lazy("request", () => globalThis.__velquMakeReq(slot, gen));
-    lazy("signal", () => new AbortController().signal);
-    if (!hasPre("params")) lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
-    if (!hasPre("query")) lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
-    if (!hasPre("headers")) lazy("headers", () => globalThis.__velquMakeLazyHeaders(slot, gen));
-    if (!hasPre("body")) {
-      c.json = () => JSON.parse(globalThis.__velquReqBodyText(slot, gen));
-      c.text = () => globalThis.__velquReqBodyText(slot, gen);
-      c.bytes = () => {
-        const len = globalThis.__velquReqBodyLen(slot, gen);
-        const u = new Uint8Array(len);
-        if (len > 0) globalThis.__velquFillBytes(slot, gen, u);
-        return u;
-      };
-    }
+  // Prevalidated values are independent of the request store; own property
+  // checks preserve a validated nullable value as distinct from absent.
+  // M25-007-B: the full request handle — whole-field header/query/param
+  // access through the store (declared set unless the route declared
+  // the full-request capability, which materializes everything)
+  lazy("request", () => globalThis.__velquMakeReq(slot, gen));
+  lazy("signal", () => new AbortController().signal);
+  if (hasPre("params")) c.params = pre.params; else lazy("params", () => globalThis.__velquMakeLazyParams(slot, gen));
+  if (hasPre("query")) c.query = pre.query; else lazy("query", () => JSON.parse(globalThis.__velquReqRaw(slot, gen, "query")));
+  if (hasPre("headers")) c.headers = pre.headers; else lazy("headers", () => globalThis.__velquMakeLazyHeaders(slot, gen));
+  if (hasPre("body")) {
+    c.body = pre.body; // native body strategy: already parsed + validated
+  } else {
+    c.json = () => JSON.parse(globalThis.__velquReqBodyText(slot, gen));
+    c.text = () => globalThis.__velquReqBodyText(slot, gen);
+    c.bytes = () => {
+      const len = globalThis.__velquReqBodyLen(slot, gen);
+      const u = new Uint8Array(len);
+      if (len > 0) globalThis.__velquFillBytes(slot, gen, u);
+      return u;
+    };
   }
   return c;
 };
