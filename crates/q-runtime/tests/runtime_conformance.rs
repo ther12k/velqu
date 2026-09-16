@@ -3445,6 +3445,115 @@ globalThis.__velquFunctions = [raw_handle, raw_rogue, full_handle];
     );
 }
 
+/// C3 negative invariant: a `full-request` route KEEPS its request-store
+/// slot even when its declared params are natively prevalidated. The escape
+/// hatch owns the slot by declaration; if the slotless classification ever
+/// won here, `ctx.request` (and `req.params`) would hit an invalid slot and
+/// the request would fail instead of serving both access paths.
+#[test]
+fn full_request_stays_request_backed_with_prevalidated_params() {
+    let bundle = r#"
+async function full_params_handle(ctx) {
+    const req = ctx.request;
+    return {
+        name: ctx.params.name,
+        probe: req.headers["x-probe"],
+        viaRequest: req.params ? req.params.name : null,
+    };
+}
+globalThis.__velquFunctionManifest = [["full.params", 0, full_params_handle]];
+globalThis.__velquFunctions = [full_params_handle];
+"#;
+    let dir = temp_dir("fullparams");
+    let mut pack = fixture_pack();
+    pack.bundle = bundle.to_string();
+    pack.functions = vec![FunctionDecl {
+        id: 0,
+        key: "full.params".into(),
+        kind: FunctionKind::RouteHandler,
+    }];
+    pack.handler_table =
+        std::collections::BTreeMap::from([("full.params".to_string(), "full.params".to_string())]);
+    // Clone the hello route shape: same /hello/:name path and the same
+    // natively-validated params binding — then declare full-request on it.
+    let route_pos = pack
+        .routes
+        .iter()
+        .position(|r| r.id == "hello.get")
+        .unwrap();
+    let mut r = pack.routes[route_pos].clone();
+    r.id = "full.params".into();
+    r.handler = "full.params".into();
+    r.capabilities = vec!["full-request".into()];
+    {
+        let mut plan = r.plan.clone().unwrap();
+        plan.route_id = 0;
+        plan.handler_id = 0;
+        plan.field_needs = FieldNeeds {
+            params: true,
+            query: false,
+            headers: false,
+            body: false,
+        };
+        r.plan = Some(plan);
+    }
+    pack.routes = vec![r];
+    pack.policies.clear();
+    finalize_numeric(&mut pack);
+    {
+        use sha2::{Digest, Sha256};
+        pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+        pack.integrity.bundle_sha256 = {
+            let h = Sha256::digest(pack.bundle.as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+        pack.integrity.routes_sha256 = {
+            let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+            h.iter().map(|b| format!("{:02x}", b)).collect()
+        };
+    }
+    let pack_path = dir.join("fullparams.qpack");
+    std::fs::write(&pack_path, serde_json::to_vec(&pack).unwrap()).unwrap();
+
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    // valid request: prevalidated ctx.params AND store-backed ctx.request
+    // (undeclared header reaches the handler) must BOTH answer
+    let resp = http(
+        port,
+        "GET /hello/Rafi HTTP/1.1\r\nhost: t\r\nx-probe: p1\r\n",
+        None,
+    );
+    assert_eq!(resp.status, 200, "body: {}", resp.text());
+    assert_eq!(resp.json()["name"], "Rafi");
+    assert_eq!(resp.json()["probe"], "p1");
+    assert_eq!(resp.json()["viaRequest"], "Rafi");
+
+    // native params validation still rejects before the engine runs
+    let long = "a".repeat(61);
+    let resp = http(
+        port,
+        &format!("GET /hello/{long} HTTP/1.1\r\nhost: t\r\n"),
+        None,
+    );
+    assert_eq!(resp.status, 422, "body: {}", resp.text());
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait_with_output().unwrap();
+}
+
 /// M25-007-C: every fallback path stays bounded and deadline-aware. A
 /// busy handler on a js-validation route, a raw-response route, and a
 /// full-request route each settles 504 at the route deadline (the engine

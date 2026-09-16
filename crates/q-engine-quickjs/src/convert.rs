@@ -7,7 +7,10 @@ use serde_json::{Map, Number, Value as Json};
 /// serde_json::Value -> fresh JS value (recursive object construction).
 pub fn json_to_js<'js>(ctx: &Ctx<'js>, v: &Json) -> rquickjs::Result<Value<'js>> {
     match v {
-        Json::Null => ().into_js(ctx),
+        // JSON null is JS null — never undefined. A validated nullable
+        // field whose value is null must stay distinguishable from an
+        // absent field (`ctx.body === null`, own property present).
+        Json::Null => Ok(Value::new_null(ctx.clone())),
         Json::Bool(b) => b.into_js(ctx),
         Json::Number(n) => {
             if let Some(i) = n.as_i64() {

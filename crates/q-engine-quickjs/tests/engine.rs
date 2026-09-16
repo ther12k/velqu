@@ -68,6 +68,28 @@ function requestless(ctx) {
   };
 }
 function hello(ctx) { return { message: "Hello " + ctx.params.name }; }
+function hello_slotless(ctx) { return { message: "Hello " + ctx.params.name }; }
+function slotless_fields(ctx) {
+  return {
+    param: ctx.params.name,
+    query: ctx.query.page,
+    header: ctx.headers.authorization,
+    body: ctx.body.name,
+  };
+}
+function slotless_null_presence(ctx) {
+  // Presence semantics: a validated null is an OWN property holding JS null;
+  // an absent field has no own property and no lazy fallback (slotless).
+  const own = (k) => Object.prototype.hasOwnProperty.call(ctx, k);
+  return {
+    hasBodyOwn: own("body"),
+    bodyIsNull: ctx.body === null,
+    bodyIsUndefined: ctx.body === undefined,
+    hasParamsOwn: own("params"),
+    paramsNameIsNull: ctx.params.name === null,
+    hasQueryOwn: own("query"),
+  };
+}
 function params_lazy_b(ctx) { return { got: ctx.params.b }; }
 function headers_lazy(ctx) {
   return {
@@ -383,6 +405,9 @@ __velquRegister("js.text", js_text);
 __velquRegister("js.json", js_json);
 __velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
+__velquRegister("hello.slotless", hello_slotless);
+__velquRegister("slotless.fields", slotless_fields);
+__velquRegister("slotless.null_presence", slotless_null_presence);
 __velquRegister("params.lazyb", params_lazy_b);
 __velquRegister("headers.lazy", headers_lazy);
 __velquRegister("lazy.ctx", lazy_ctx);
@@ -506,6 +531,9 @@ fn expected_table() -> BTreeMap<String, String> {
         "js.json",
         "requestless",
         "hello.get",
+        "hello.slotless",
+        "slotless.fields",
+        "slotless.null_presence",
         "params.lazyb",
         "headers.lazy",
         "lazy.ctx",
@@ -591,7 +619,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 69);
+    assert_eq!(stats.handlers_registered, 72);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -604,6 +632,52 @@ async fn load_verifies_handler_table_and_caches() {
             }
         )
         .is_err());
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn slotless_prevalidated_params_flow_into_ctx() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = spec(701, "hello.slotless", &[200], 1000);
+    s.slot = q_engine::NO_REQUEST_SLOT;
+    s.params = Some(serde_json::json!({ "name": "Rafi" }));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(text, r#"{"message":"Hello Rafi"}"#),
+        other => panic!("unexpected slotless outcome: {other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn slotless_prevalidated_fields_flow_into_ctx() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = spec(702, "slotless.fields", &[200], 1000);
+    s.slot = q_engine::NO_REQUEST_SLOT;
+    s.params = Some(serde_json::json!({ "name": "Rafi" }));
+    s.query = Some(serde_json::json!({ "page": 3 }));
+    s.headers = Some(serde_json::json!({ "authorization": "Bearer test" }));
+    s.body = Some(serde_json::json!({ "name": "Ada" }));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(
+            text,
+            r#"{"param":"Rafi","query":3,"header":"Bearer test","body":"Ada"}"#
+        ),
+        other => panic!("unexpected slotless fields outcome: {other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
     eng.shutdown();
 }
 
@@ -1315,6 +1389,33 @@ async fn params_materialize_one_key_per_access() {
         0,
         "slot settled after the lazy access"
     );
+    eng.shutdown();
+}
+
+/// C3 presence semantics: a prevalidated `Some(null)` is an own property
+/// holding JS `null` (validated-and-null), while an absent prevalidated field
+/// has NO own property — `undefined` alone cannot distinguish the two.
+#[tokio::test]
+async fn slotless_validated_null_is_own_property_null() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = spec(703, "slotless.null_presence", &[200], 1000);
+    s.slot = q_engine::NO_REQUEST_SLOT;
+    s.params = Some(serde_json::json!({ "name": null }));
+    s.body = Some(serde_json::Value::Null);
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(
+            text,
+            r#"{"hasBodyOwn":true,"bodyIsNull":true,"bodyIsUndefined":false,"hasParamsOwn":true,"paramsNameIsNull":true,"hasQueryOwn":false}"#
+        ),
+        other => panic!("unexpected null-presence outcome: {other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
     eng.shutdown();
 }
 
