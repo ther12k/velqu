@@ -12,10 +12,10 @@ name: perf-gate
 # check for out-of-scope PRs, and a required status check that never reports
 # blocks merges forever). Path relevance is decided INSIDE by the `changes`
 # job: on runtime-irrelevant PRs the two expensive gate jobs skip, and the
-# always-present `perf-gate` aggregate job reports success ("not applicable").
-# The aggregate FAILS if either real gate failed or was cancelled.
-# Required-check enforcement (owner/admin branch ruleset) should therefore
-# pin exactly one check name: `perf-gate`.
+# always-present `perf-gate` aggregate job applies an explicit state machine
+# (a broken `changes` classification FAILS the aggregate — it can never
+# launder a skip into a pass). Required-check enforcement (owner/admin
+# branch ruleset) should therefore pin exactly one check name: `perf-gate`.
 
 on:
   workflow_dispatch:
@@ -115,26 +115,61 @@ jobs:
         run: bun scripts/throughput-latency-gate.ts --duration-secs 3 --concurrency 10
 
   # M6-009 merge enforcement: ALWAYS-present aggregate check, safe to pin as
-  # a required status check. It reports on every run: failure if either real
-  # gate failed or was cancelled; success when both passed, and success with
-  # an explicit "not applicable" verdict when both were legitimately skipped
-  # for a runtime-irrelevant change.
+  # a required status check. Explicit state machine — there is deliberately
+  # NO outcome that yields success by accident:
+  #   - the `changes` classification itself failed/cancelled → FAIL (a broken
+  #     relevance decision must never become a pass)
+  #   - runtime-relevant PR  → both real gates must be `success`; any skip = FAIL
+  #   - runtime-irrelevant PR → both real gates must be `skipped` → "not applicable"
+  #   - schedule/manual run  → both real gates must be `success` (relevance N/A)
+  #   - any gate `failure`/`cancelled` anywhere → FAIL
   perf-gate:
-    needs: [cold-start, throughput-latency]
+    needs: [changes, cold-start, throughput-latency]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Aggregate performance-gate verdict
         run: |
-          echo "cold-start result:          ${{ needs.cold-start.result }}"
-          echo "throughput-latency result:  ${{ needs.throughput-latency.result }}"
-          if [[ "${{ needs.cold-start.result }}" == "failure" ]] || [[ "${{ needs.throughput-latency.result }}" == "failure" ]]; then
-            echo "::error::performance regression gate FAILED (a real gate failed; merge blocked pending revert or thresholds decision)"
-            exit 1
+          changes="${{ needs.changes.result }}"
+          cold="${{ needs.cold-start.result }}"
+          tput="${{ needs.throughput-latency.result }}"
+          is_pr="${{ github.event_name == 'pull_request' }}"
+          runtime="${{ needs.changes.outputs.runtime }}"
+          echo "event:            ${{ github.event_name }}"
+          echo "changes result:   $changes (runtime=$runtime)"
+          echo "cold-start:       $cold"
+          echo "throughput:       $tput"
+          fail() { echo "::error::perf-gate: $1"; exit 1; }
+          # 0. a failed/cancelled real gate is always a failure
+          if [[ "$cold" == "failure" || "$tput" == "failure" ]]; then
+            fail "a performance gate FAILED (merge blocked pending revert or thresholds decision)"
           fi
-          if [[ "${{ needs.cold-start.result }}" == "cancelled" ]] || [[ "${{ needs.throughput-latency.result }}" == "cancelled" ]]; then
-            echo "::error::a performance gate job was cancelled — inconclusive, treat as failure"
-            exit 1
+          if [[ "$cold" == "cancelled" || "$tput" == "cancelled" ]]; then
+            fail "a performance gate was CANCELLED — inconclusive, treated as failure"
           fi
-          echo "performance gate OK (gates passed or were not applicable to this change's paths)"
+          if [[ "$is_pr" == "true" ]]; then
+            # 1. the relevance classification must have succeeded
+            if [[ "$changes" != "success" ]]; then
+              fail "changes classification is '$changes' (not success) — cannot prove the gates were correctly scheduled; treated as failure"
+            fi
+            if [[ "$runtime" == "true" ]]; then
+              # 2. runtime-relevant PR: both gates MUST have run and passed
+              if [[ "$cold" != "success" || "$tput" != "success" ]]; then
+                fail "runtime-relevant PR but a gate did not succeed (cold=$cold throughput=$tput) — inconclusive, treated as failure"
+              fi
+              echo "performance gate OK (runtime-relevant PR; both gates passed)"
+            else
+              # 3. runtime-irrelevant PR: gates must have been skipped
+              if [[ "$cold" != "skipped" || "$tput" != "skipped" ]]; then
+                fail "runtime-irrelevant PR but a gate was not skipped (cold=$cold throughput=$tput) — unexpected scheduling; treated as failure"
+              fi
+              echo "performance gate OK (not applicable to this change's paths; both gates skipped as designed)"
+            fi
+          else
+            # 4. schedule/manual: gates run unconditionally and must pass
+            if [[ "$cold" != "success" || "$tput" != "success" ]]; then
+              fail "scheduled/manual run requires both gates to succeed (cold=$cold throughput=$tput)"
+            fi
+            echo "performance gate OK (scheduled/manual run; both gates passed)"
+          fi
