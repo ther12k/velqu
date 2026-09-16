@@ -46,8 +46,8 @@
     "kernelWasm": {
       "role": "kernelWasm",
       "url": "kernel.wasm",
-      "sha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
-      "bytes": 1732433,
+      "sha256": "bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d",
+      "bytes": 1736605,
       "mediaType": "application/wasm"
     },
     "handlerBundle": {
@@ -86,5 +86,5 @@
       "mediaType": "application/json"
     }
   },
-  "buildId": "a848c1172d7db27e671c8e4152b2997743718c4621bd387133badce0ca5bd9c5"
+  "buildId": "b0cea02502101642ea0bfaf2dede8b584674cf2bb589ab32d4956984af813e59"
 }

@@ -1,13 +1,16 @@
 # Digests bound the BWASM-Q-008 candidate at source commit 9c65894.
 # Refreshed 2026-09-11 for two distributed files that legitimately evolved
 # after assembly (docs/beta/BROWSER_WASM.md: doc move #1309; kernel.json:
-# route-binding gate fix #1295 then doc move). All other digests remain
-# the original candidate bytes. See evidence/gate/gate-record.md.
-38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9  conformance/browser/fixture-app/dist/browser/app.qpack
-b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133  conformance/browser/fixture-app/dist/browser/kernel.wasm
-e84274f68e2b14f24889de706f266302a2fc4ed0999c5f8b36847ecf77872ee9  conformance/browser/fixture-app/dist/browser/velqu-artifacts.json
+# route-binding gate fix #1295 then doc move). Refreshed 2026-09-16 for the
+# declaration-order response-encoding fix (schema-runtime propertyOrder):
+# vendored kernel wasm rebuilt from current crates; fixture-app browser set
+# regenerated. All other digests remain the original candidate bytes.
+# See evidence/gate/gate-record.md.
+34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6  conformance/browser/fixture-app/dist/browser/app.qpack
+bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d  conformance/browser/fixture-app/dist/browser/kernel.wasm
+73ccfae78cedea583eb1a94c667ee5b2ae264adf79555a5c38a265803daa873e  conformance/browser/fixture-app/dist/browser/velqu-artifacts.json
 bf64f0a51ac6557459aa7f516b5bdda7425c3a625cf3f0a1df0f917823590dce  docs/beta/BROWSER_WASM.md
 74b892ecbe0e32644155ac9b0885e357cfa480b126d6264225fb86bd270f0390  docs/specs/browser-support-matrix.md
-f032a387373c07fa284672e9f6fcf05adf304f4bc45433cce9c7a46ad10f4aa0  packages/browser-runtime/kernel/kernel.json
-b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133  packages/browser-runtime/kernel/q_browser_kernel_bg.wasm
+10f5a6a177a92a006dc4a1ea7d5ae0f5bc235a1bad0c05315392479d1c7b411b  packages/browser-runtime/kernel/kernel.json
+bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d  packages/browser-runtime/kernel/q_browser_kernel_bg.wasm
 8434c8575f330c8ae666cf7a57afef5c49fd3d02d8f5f3216c0b7eb9d302e5de  packages/browser-runtime/kernel/q_browser_kernel.nodejs-glue.js

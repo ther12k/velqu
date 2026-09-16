@@ -5,7 +5,7 @@
   "target": "browser",
   "ok": true,
   "problems": [],
-  "buildId": "6a8bb6f35f988dc7737492ec4cd1c4098b7a8a36ee9e6dff837e1c3678544307",
+  "buildId": "374a63d0f0af408383bb7f6c5f43d7cc7b7be5292a9602811ea74c357900d36d",
   "browserDir": "examples/browser-demo/dist/browser",
   "declaredCapabilityAdapters": [
     {
@@ -55,38 +55,38 @@
       "echo.post": []
     },
     "nativeOps": {
-      "timer": "cancellable delay (ms) \u2192 Promise<number>"
+      "timer": "cancellable delay (ms) → Promise<number>"
     }
   },
   "deploymentRequirements": [
-    "static hosting only \u2014 no Velqu application server is implied by this artifact set",
+    "static hosting only — no Velqu application server is implied by this artifact set",
     "deployment-required imports were rejected at build time (BWASM-B-003 import policy)",
     "capability adapters declared: runtime:timers@1, runtime:crypto@1, runtime:console@1, runtime:fetch@1, runtime:abort@1, runtime:text@1, runtime:url@1",
-    "pack references native operations (timer) \u2014 the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime"
+    "pack references native operations (timer) — the browser lane provides them through the runtime host; native-only surfaces stay on the native runtime"
   ],
   "artifactInventory": [
     {
       "file": "app.browser.js",
       "bytes": 3680,
-      "sha256": "430ac67cb4ff18e092a1e82a4104bb59b29609185232e3e54cf332c2c584cae1",
+      "sha256": "3c491997801905a2f97fda9cc4cec182d1751642e16b5d93ad760c646d993b93",
       "role": "build-input"
     },
     {
       "file": "app.bundle.js",
       "bytes": 54958,
-      "sha256": "303176279b9d12ecf3dcc91d6b39e7e5380e5c63da2e328c38a53ad3bc9c72df",
+      "sha256": "ced9f50842a3d0bd55ea2625e60c26fb146f087cd3d4332474d156de5cb81aba",
       "role": "handlerBundle"
     },
     {
       "file": "app.qpack",
-      "bytes": 9333,
-      "sha256": "11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd",
+      "bytes": 9599,
+      "sha256": "63acea410c18dd280d940685661612d5c9a43cf29a7f0c30e65aaacc5964b237",
       "role": "pack"
     },
     {
       "file": "browser-manifest.json",
       "bytes": 499,
-      "sha256": "39694342ef0e7c838fd8b8f03abed70a13a2e906d667c28007738519aed4d19d",
+      "sha256": "cce4f5c4dfd717c5e616703dffa216c33a2948a8e69a1103debdbf8d4ad0603b",
       "role": "manifest"
     },
     {
@@ -97,8 +97,8 @@
     },
     {
       "file": "contract.json",
-      "bytes": 1603,
-      "sha256": "be8f2fd060e9947826733256166b66691da5283ededa4c65c911fb1e27e2124e",
+      "bytes": 1904,
+      "sha256": "bb06fbf06fd5d3cc087a78598f6d73edee69e16ae4f4a9812cfd13b4e2bb279a",
       "role": "contract"
     },
     {
@@ -115,38 +115,38 @@
     },
     {
       "file": "kernel.wasm",
-      "bytes": 1732433,
-      "sha256": "db72b8e82da56e7e5752878a8d3cc064ceba368711263bdcfbb04e0f7c8c48de",
+      "bytes": 1736605,
+      "sha256": "bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d",
       "role": "kernelWasm"
     },
     {
       "file": "page.js",
       "bytes": 57863,
-      "sha256": "564db7cf07e3d7a6ebb9133cfdb1f1d5dbdc5fe30ee50bfb13135621c0ce1104",
+      "sha256": "97a1374b3a1aa7b4d66875436b0068187b15bcb4093b7f0a8918ee5286017969",
       "role": "shell"
     },
     {
       "file": "schema-manifest.json",
-      "bytes": 1082,
-      "sha256": "a0bc84783d077115c40b6f0a9ef6336a41ad49ff6d1eff0cf0a95326b5dc2911",
+      "bytes": 1335,
+      "sha256": "edf6421034c896db6fbe3f921ad4c37bd5aa554f35377d378c46396b884a2775",
       "role": "schemas"
     },
     {
       "file": "service-worker.js",
       "bytes": 11152,
-      "sha256": "0639b222af93f33719d6786ddb29ee9529ed11df4e123fed451c5d8bf579d61c",
+      "sha256": "973aabd77696baa03c2990ae12b1c40f49d5d79eb33efc6a241dba5132ec2aa5",
       "role": "shell"
     },
     {
       "file": "velqu-artifacts.json",
       "bytes": 2370,
-      "sha256": "c2060692038323f3698db05b7e32e0122d240c69413d8d7f27427f84fc7f3dba",
+      "sha256": "05e28b1f60d135eb7c2aeb82fcf14f3a74e22c782b461796cf9e8fe55ea60f62",
       "role": "artifact-manifest"
     },
     {
       "file": "worker.js",
       "bytes": 57503,
-      "sha256": "34342da3f31af9dd01d9b943c8d07db759846e309e507a7d5c465c2e423abc06",
+      "sha256": "d94b1fb99d6886e01cfbce24ac71c60a9c5cd0f43c03805e46cb7c2bd768618d",
       "role": "shell"
     }
   ]
