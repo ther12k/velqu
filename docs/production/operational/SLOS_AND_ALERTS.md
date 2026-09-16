@@ -21,6 +21,17 @@ The PromQL expressions below are the **rolling 5-minute service-level indicators
 
 Numerator and denominator are aggregated with `sum(...)` over the whole service scope **before** division. Without the aggregation, vector matching pairs each status-code series with itself (e.g. status=200 numerator over status=200 denominator), yielding a constant 1.0 for every positive-rate series and hiding 5xx traffic entirely.
 
+> **Measurement-source status (validated 2026-09-16, `docs/production/evidence/m8-002-slo-source-validation.md`):**
+> the runtime ships **no Prometheus exposition surface today** — the `velqu_*`
+> series below are the **target specification** for the exporter packet, not
+> currently emitted metrics. Until it lands, the real measurement sources are:
+> the ingress reverse proxy (availability/latency), `/health/ready` polling
+> (readiness), OS `/proc/<pid>/status` RSS polling (memory retention), and the
+> drain-time structured log event `ops.worker.status` (queue depth, load-shed
+> counters per reason, poison events, heap bytes) plus the `shutdown.complete`
+> log stats. Runtime counters are **not scrapeable on demand**; only health
+> probes answer HTTP today.
+
 | Objective | Metric / Indicator (SLI, 5-minute rolling) | SLO Target (30-day window) | Measurement Point |
 |---|---|---|---|
 | **Availability** | `sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))` (aggregate first; per-series division is wrong — see above) | **≥ 99.9%** successful requests | Ingress reverse proxy & runtime metrics |
@@ -33,6 +44,12 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 ---
 
 ## 3. Prometheus Alerting Rules
+
+> **Forward-looking:** these rules reference the `velqu_*` exporter series
+> specified above — they are validated for expression shape (aggregation
+> before division, histogram quantiles) and are intended to be loaded once
+> the exporter packet ships. Loading them against a runtime without the
+> exporter yields empty series (no false alerts, no coverage).
 
 ```yaml
 groups:
@@ -73,7 +90,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Dispatcher task queue depth exceeds 800 slots (capacity 1024)"
+          summary: "Dispatcher task queue depth exceeds 800 slots"
+          detail: "Threshold must be set relative to the configured admission bound (--max-queue, default 256); 800 assumes a raised bound."
           runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-queue-saturation"
 
       - alert: VelquActiveLoadShedding
@@ -102,7 +120,7 @@ groups:
 ### Runbook: Graceful Drain and Deployment
 1. Set instance status to draining by signaling the host process or proxy.
 2. The runtime sets `/health/ready` to `503 Service Unavailable`, prompting the upstream proxy to withdraw traffic.
-3. Existing active request slots settle normally within the bounded request deadline (default 15s).
+3. Existing active request slots settle normally within the bounded request deadline (compiler default 5s per route; a route's declared `deadlineMs` governs).
 4. Send `SIGTERM` to the `velqu-runtime` process. The runtime flushes state and exits `0`.
 
 ### Runbook: High Error Rate
@@ -116,7 +134,7 @@ groups:
 3. Verify garbage collection / memory state: check if QuickJS memory allocations are nearing configured quotas.
 
 ### Runbook: Queue Saturation and Load Shedding
-1. A saturated queue (> 800 slots) indicates ingress arrival rate exceeds single-worker processing capacity.
+1. A queue near its configured bound (`--max-queue`, default 256) indicates ingress arrival rate exceeds processing capacity; sustained saturation ends in load shedding (`loadShed.*` counters in the drain-time `ops.worker.status` event).
 2. Check if downstream capabilities are stalling handlers (e.g., slow database queries holding worker slots).
 3. Scale horizontal instances behind the load balancer to distribute request volume.
 
