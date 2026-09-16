@@ -1191,10 +1191,7 @@ impl WorkerInner {
                             match watch.call::<_, ()>((promise, spec_id as f64)) {
                                 Ok(()) => {
                                     #[cfg(feature = "bench-instrumentation")]
-                                    q_bridge::stage_timing::record(
-                                        1,
-                                        __stage_t.elapsed(),
-                                    );
+                                    q_bridge::stage_timing::record(1, __stage_t.elapsed());
                                     Step::Watched
                                 }
                                 Err(_) => Step::Failed(Outcome::EngineFailure {
