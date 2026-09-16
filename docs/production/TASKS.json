@@ -3297,7 +3297,16 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "IN_PROGRESS",
+   "evidence_refs": {
+    "source": [
+     "docs/production/evidence/m8-002-slo-source-validation.md",
+     "docs/production/operational/SLOS_AND_ALERTS.md"
+    ],
+    "rawEvidence": [
+     "docs/production/evidence/m8-002-slo-source-validation.md"
+    ]
+   }
   },
   {
    "id": "M8-003",
