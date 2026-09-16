@@ -74,6 +74,34 @@ impl LogMode {
     }
 }
 
+/// M8-002: native Prometheus exposition endpoint posture. Off by default;
+/// when On, the host serves `GET /metrics` natively (no JS, no request
+/// slot, no application capability) over lock-free bounded counters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetricsMode {
+    Off,
+    On,
+}
+
+impl MetricsMode {
+    /// Typed parse for configuration surfaces — unknown values are a
+    /// typed rejection, never a silent fallback.
+    pub fn parse_checked(s: &str) -> Result<MetricsMode, String> {
+        match s.to_ascii_lowercase().as_str() {
+            "off" => Ok(MetricsMode::Off),
+            "on" => Ok(MetricsMode::On),
+            other => Err(format!("unknown metrics mode {other:?} (expected on|off)")),
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MetricsMode::Off => "off",
+            MetricsMode::On => "on",
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct StageMetrics {
@@ -218,6 +246,25 @@ impl RouteStatusMetrics {
     pub fn route_entry_count(&self) -> usize {
         self.entries.len() + 1
     }
+
+    /// M8-002: aggregate status-class counters over every route (plus the
+    /// unknown fallback). Lock-free atomic reads; no labels beyond
+    /// status_class, so Prometheus cardinality is fixed at 4 series.
+    pub fn aggregate_status_snapshot(&self) -> RouteStatusCountersSnapshot {
+        let add = |acc: &mut RouteStatusCountersSnapshot, c: &RouteStatusCounters| {
+            acc.total += c.total.load(Ordering::Relaxed);
+            acc.ok_2xx += c.ok_2xx.load(Ordering::Relaxed);
+            acc.redirect_3xx += c.redirect_3xx.load(Ordering::Relaxed);
+            acc.client_error_4xx += c.client_error_4xx.load(Ordering::Relaxed);
+            acc.server_error_5xx += c.server_error_5xx.load(Ordering::Relaxed);
+        };
+        let mut out = RouteStatusCountersSnapshot::default();
+        for c in &self.entries {
+            add(&mut out, c);
+        }
+        add(&mut out, &self.unknown);
+        out
+    }
 }
 
 #[cfg(test)]
@@ -270,8 +317,9 @@ mod route_metrics_tests {
 
 /// BETA-006-B: worker operations status — one bounded structured snapshot
 /// aggregating queue gauges, quarantine state, and replacement policy
-/// position. Rendered at drain/shutdown and available on demand; there is
-/// deliberately no high-frequency emitter (bounded emissions only).
+/// position. Rendered at drain/shutdown only (bounded emissions; there is
+/// deliberately no high-frequency emitter — the M8-002 native `/metrics`
+/// endpoint is the on-demand scrape surface).
 pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
     use q_engine::Engine;
     let stage = state.metrics.snapshot();
@@ -368,6 +416,11 @@ pub struct ServeState {
     pub postgres_dialer: Option<q_capability_postgres::PostgresQueryHandle>,
     /// BETA-006-D: slot capacity gauge ceiling (from admission limits).
     pub request_slot_capacity: u64,
+    /// M8-002: configured admission queue bound (dispatcher queue gauge
+    /// ceiling for the capacity-relative queue-pressure alert).
+    pub dispatcher_queue_capacity: u64,
+    /// M8-002: native `/metrics` posture (typed config; off by default).
+    pub metrics_mode: MetricsMode,
     pub invocation_clock: AtomicU64,
     /// M3-007-A: invocation-to-worker ownership. Admission binds each
     /// invocation to its owning worker exactly once; the terminal
@@ -584,6 +637,31 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
         let mut resp = problem_response(503, &body);
         resp.head_only = method_str == "HEAD";
         return (Ok(resp), "(readiness)".into(), "native");
+    }
+
+    // ---- M8-002: native Prometheus exposition (opt-in via typed config).
+    // Served like readiness — no route match, no JS execution, no request
+    // slot, no application capability. Disabled = the path falls through to
+    // normal routing (an application MAY define its own /metrics route;
+    // when enabled, the native endpoint is reserved and wins).
+    if path == "/metrics" && is_get_or_head {
+        if state.metrics_mode == MetricsMode::Off {
+            // fall through: not ours to serve
+        } else {
+            let resp = PlainResponse {
+                status: 200,
+                headers: vec![
+                    (
+                        "content-type".into(),
+                        "text/plain; version=0.0.4; charset=utf-8".into(),
+                    ),
+                    ("x-velqu-stage".into(), "native".into()),
+                ],
+                body: crate::metrics_export::render(state).into_bytes(),
+                head_only: method_str == "HEAD",
+            };
+            return (Ok(resp), "(metrics)".into(), "native");
+        }
     }
 
     // ---- native routing BEFORE any JavaScript (RUN-002) — M24-002-B: the

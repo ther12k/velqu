@@ -96,3 +96,41 @@ soak harness does exactly this).
   would close most of the GAP column without new runtime semantics;
   until then, the only continuous observability is proxy-side metrics,
   health polling, and OS RSS polling, plus drain/exit-time log events.
+
+## Addendum — native exporter landed (same day, follow-up packet)
+
+The GAP column above is now partially closed by the native, opt-in
+`/metrics` endpoint (`--metrics on` / `VELQU_METRICS=on`; default off):
+
+- **Implemented (lock-free counters, no engine mutex, no QuickJS path):**
+  `velqu_http_requests_total{status_class}` (aggregate 2xx/3xx/4xx/5xx),
+  `velqu_dispatcher_queue_length`, `velqu_dispatcher_queue_capacity`,
+  `velqu_request_slots_live`, `velqu_request_slots_capacity`,
+  `velqu_invocations_pending` (short bookkeeping mutex — not the engine
+  mutex), `velqu_load_shed_total{reason}` (closed 7-reason set),
+  `velqu_drain_refused_total`, `velqu_engine_quarantined`,
+  `velqu_worker_poison_events_total`, `velqu_native_tasks_total{state}`.
+- **Deliberately excluded:** `heapUsedBytes` (engine mutex — stays in the
+  drain-time `ops.worker.status` event until a lock-free cached snapshot
+  is justified); runtime latency histograms (none exist — `record` keeps
+  totals + µs max only; runtime p95 is NOT synthesized; latency remains
+  proxy-side per the original validation).
+- **Queue alert fixed to capacity-relative semantics:**
+  `velqu_dispatcher_queue_length / velqu_dispatcher_queue_capacity > 0.8`
+  — the previous absolute `> 800` target could never fire at the default
+  `--max-queue` 256 (the runtime sheds first).
+- The worker_ops_status doc comment ("available on demand") was
+  corrected; `/metrics` is now the genuine on-demand surface.
+- Label cardinality is fixed: 4 status classes + 7 shed reasons + 3 task
+  states. No URL/request-id/header labels.
+
+## Addendum 2 — live Prometheus validation (raw evidence)
+
+`docs/production/evidence/raw/m8-002-prometheus-scrape-validation.txt`
+(sha256 `b928295f7d3c5b17626cd598b7142f1a40e1b5287593556a444e22af2bfec04d`):
+Prometheus v2.53.1 scraped a live release runtime with `--metrics on`;
+target health `up`; all seven query checks passed (status-class counters
+including scrape self-counting, capacity gauges = configured bounds, shed
+and poison counters, and the capacity-relative queue-pressure expression
+evaluates). The six alert rules in SLOS_AND_ALERTS.md §3 pass
+`promtool check rules` (6 rules found, SUCCESS).

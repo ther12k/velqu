@@ -231,6 +231,18 @@ impl LoadShedCounters {
         }
         map
     }
+
+    /// M8-002: raw per-kind counts in fixed kind_index order (lock-free).
+    /// Index meanings are the closed set above: 0 worker_queue_full,
+    /// 1 all_workers_full, 2 global_admission_full, 3 class_ceiling,
+    /// 4 long_running_slots, 5 drain_in_progress, 6 tracking_full.
+    pub fn snapshot_counts(&self) -> [u64; LOAD_SHED_KINDS] {
+        let mut out = [0u64; LOAD_SHED_KINDS];
+        for (i, slot) in out.iter_mut().enumerate() {
+            *slot = self.counts[i].load(Ordering::Relaxed);
+        }
+        out
+    }
 }
 
 #[cfg(test)]

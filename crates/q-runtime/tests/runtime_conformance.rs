@@ -3554,6 +3554,118 @@ globalThis.__velquFunctions = [full_params_handle];
     let _ = child.wait_with_output().unwrap();
 }
 
+/// M8-002: the native opt-in `/metrics` Prometheus exposition. With
+/// `--metrics on`, the host serves the exposition natively (no JS, no
+/// route match) with the owner-approved metric contract; counters
+/// advance with traffic and the capacity gauges reflect the configured
+/// bound. Without the flag (default off), `/metrics` falls through to
+/// normal routing (404 on this fixture — fail-closed default).
+#[test]
+fn native_metrics_exposition_is_opt_in_and_counts_requests() {
+    let build_pack = |dir: &std::path::Path, name: &str| {
+        let mut pack = fixture_pack();
+        finalize_numeric(&mut pack);
+        {
+            use sha2::{Digest, Sha256};
+            pack.contract_hash = pack.public_contract_sha256()[..32].to_string();
+            pack.integrity.bundle_sha256 = {
+                let h = Sha256::digest(pack.bundle.as_bytes());
+                h.iter().map(|b| format!("{:02x}", b)).collect()
+            };
+            pack.integrity.routes_sha256 = {
+                let h = Sha256::digest(pack.routes_canonical_json().as_bytes());
+                h.iter().map(|b| format!("{:02x}", b)).collect()
+            };
+        }
+        let path = dir.join(name);
+        std::fs::write(&path, serde_json::to_vec(&pack).unwrap()).unwrap();
+        path
+    };
+
+    let dir = temp_dir("metrics");
+    let pack_path = build_pack(&dir, "metrics.qpack");
+
+    // ---- ON: scrape before and after a dynamic JS request
+    let port = free_port();
+    let bin = env!("CARGO_BIN_EXE_velqu-runtime");
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .arg("--metrics")
+        .arg("on")
+        .arg("--log")
+        .arg("off")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+
+    let r = http(port, "GET /metrics HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    assert_eq!(
+        r.header("content-type"),
+        Some("text/plain; version=0.0.4; charset=utf-8")
+    );
+    let before = r.text();
+    assert!(before.contains("# TYPE velqu_http_requests_total counter"));
+    assert!(before.contains("velqu_http_requests_total{status_class=\"2xx\"} 0"));
+    assert!(before.contains("# TYPE velqu_dispatcher_queue_length gauge"));
+    assert!(before.contains("velqu_dispatcher_queue_capacity 256"));
+    assert!(before.contains("velqu_request_slots_capacity 256"));
+    assert!(before.contains("velqu_request_slots_live 0"));
+    assert!(before.contains("# TYPE velqu_load_shed_total counter"));
+    assert!(before.contains("velqu_load_shed_total{reason=\"worker_queue_full\"} 0"));
+    assert!(before.contains("velqu_drain_refused_total 0"));
+    assert!(before.contains("# TYPE velqu_worker_poison_events_total counter"));
+    assert!(before.contains("# TYPE velqu_native_tasks_total counter"));
+    // No invented latency histograms, no dynamic labels.
+    assert!(!before.contains("duration_seconds_bucket"));
+    assert!(!before.contains("route_id="));
+
+    let r = http(port, "GET /hello/Rafi HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200, "body: {}", r.text());
+    let r = http(port, "GET /metrics HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+    let after = r.text();
+    // Every HTTP request through the wrapper is counted — INCLUDING the
+    // scrapes themselves (record happens before the response is
+    // transmitted, so a scrape's body never counts itself): scrape 1
+    // (+1) and /hello/Rafi (+1) => 2xx == 2 in scrape 2's body.
+    assert!(after.contains("velqu_http_requests_total{status_class=\"2xx\"} 2"));
+    assert!(after.contains("velqu_http_requests_total{status_class=\"5xx\"} 0"));
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait_with_output().unwrap();
+
+    // ---- OFF (default): /metrics falls through to routing -> 404
+    let port = free_port();
+    let mut child = Command::new(bin)
+        .arg("--pack")
+        .arg(&pack_path)
+        .arg("--port")
+        .arg(port.to_string())
+        .arg("--log")
+        .arg("off")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_tcp(port, Duration::from_secs(10));
+    let r = http(port, "GET /metrics HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 404, "body: {}", r.text());
+    // readiness probe is unaffected
+    let r = http(port, "GET /health/ready HTTP/1.1\r\nhost: t\r\n", None);
+    assert_eq!(r.status, 200);
+
+    std::thread::sleep(Duration::from_millis(150));
+    child.kill().unwrap();
+    let _ = child.wait_with_output().unwrap();
+}
+
 /// M25-007-C: every fallback path stays bounded and deadline-aware. A
 /// busy handler on a js-validation route, a raw-response route, and a
 /// full-request route each settles 504 at the route deadline (the engine

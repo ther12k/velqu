@@ -21,16 +21,20 @@ The PromQL expressions below are the **rolling 5-minute service-level indicators
 
 Numerator and denominator are aggregated with `sum(...)` over the whole service scope **before** division. Without the aggregation, vector matching pairs each status-code series with itself (e.g. status=200 numerator over status=200 denominator), yielding a constant 1.0 for every positive-rate series and hiding 5xx traffic entirely.
 
-> **Measurement-source status (validated 2026-09-16, `docs/production/evidence/m8-002-slo-source-validation.md`):**
-> the runtime ships **no Prometheus exposition surface today** — the `velqu_*`
-> series below are the **target specification** for the exporter packet, not
-> currently emitted metrics. Until it lands, the real measurement sources are:
-> the ingress reverse proxy (availability/latency), `/health/ready` polling
-> (readiness), OS `/proc/<pid>/status` RSS polling (memory retention), and the
-> drain-time structured log event `ops.worker.status` (queue depth, load-shed
-> counters per reason, poison events, heap bytes) plus the `shutdown.complete`
-> log stats. Runtime counters are **not scrapeable on demand**; only health
-> probes answer HTTP today.
+> **Measurement-source status (validated 2026-09-16, updated by the native exporter packet — `docs/production/evidence/m8-002-slo-source-validation.md`):**
+> the runtime now ships an **opt-in native `/metrics` endpoint**
+> (`--metrics on` / `VELQU_METRICS=on`; default off) exposing the
+> pressure/load-shed/lifecycle series below — `velqu_http_requests_total{status_class}`,
+> `velqu_dispatcher_queue_length`, `velqu_dispatcher_queue_capacity`,
+> `velqu_request_slots_live/capacity`, `velqu_invocations_pending`,
+> `velqu_load_shed_total{reason}`, `velqu_drain_refused_total`,
+> `velqu_engine_quarantined`, `velqu_worker_poison_events_total`,
+> `velqu_native_tasks_total{state}`. **No runtime latency histogram exists**
+> (request durations are totals+max internally, not buckets) — latency p95
+> and end-to-end availability remain **ingress-proxy** measurements, and
+> runtime p95 must not be synthesized from averages. RSS remains an OS
+> `/proc/<pid>/status` poll. Production deployments should restrict
+> `/metrics` at the reverse proxy or network boundary.
 
 | Objective | Metric / Indicator (SLI, 5-minute rolling) | SLO Target (30-day window) | Measurement Point |
 |---|---|---|---|
@@ -45,11 +49,13 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 
 ## 3. Prometheus Alerting Rules
 
-> **Forward-looking:** these rules reference the `velqu_*` exporter series
-> specified above — they are validated for expression shape (aggregation
-> before division, histogram quantiles) and are intended to be loaded once
-> the exporter packet ships. Loading them against a runtime without the
-> exporter yields empty series (no false alerts, no coverage).
+> **Series status:** every series referenced below except the latency
+> histogram is now emitted by the native exporter (when enabled). The
+> latency rules remain **proxy-side targets** — the runtime exports no
+> `velqu_http_request_duration_seconds_bucket` (see the measurement-source
+> status above); load those rules against your proxy's own histogram series.
+> Loading the runtime rules against a runtime with `/metrics` disabled
+> yields empty series (no false alerts, no coverage).
 
 ```yaml
 groups:
@@ -85,13 +91,13 @@ groups:
 
       # Queue & Load Shedding
       - alert: VelquQueueSaturation
-        expr: velqu_dispatcher_queue_length > 800
+        expr: velqu_dispatcher_queue_length / velqu_dispatcher_queue_capacity > 0.8
         for: 1m
         labels:
           severity: warning
         annotations:
-          summary: "Dispatcher task queue depth exceeds 800 slots"
-          detail: "Threshold must be set relative to the configured admission bound (--max-queue, default 256); 800 assumes a raised bound."
+          summary: "Dispatcher queue depth exceeds 80% of its configured capacity"
+          detail: "Capacity-relative by design: the runtime sheds load at its configured bound (--max-queue, default 256), so an absolute threshold would either never fire or fire too late."
           runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-queue-saturation"
 
       - alert: VelquActiveLoadShedding
@@ -134,7 +140,7 @@ groups:
 3. Verify garbage collection / memory state: check if QuickJS memory allocations are nearing configured quotas.
 
 ### Runbook: Queue Saturation and Load Shedding
-1. A queue near its configured bound (`--max-queue`, default 256) indicates ingress arrival rate exceeds processing capacity; sustained saturation ends in load shedding (`loadShed.*` counters in the drain-time `ops.worker.status` event).
+1. A queue near its configured bound (`--max-queue`, default 256) indicates ingress arrival rate exceeds processing capacity; sustained saturation ends in load shedding (`velqu_load_shed_total{reason}` on `/metrics`, or the drain-time `ops.worker.status` event).
 2. Check if downstream capabilities are stalling handlers (e.g., slow database queries holding worker slots).
 3. Scale horizontal instances behind the load balancer to distribute request volume.
 

@@ -3300,11 +3300,13 @@
    "status": "IN_PROGRESS",
    "evidence_refs": {
     "source": [
+     "crates/q-runtime/src/metrics_export.rs",
      "docs/production/evidence/m8-002-slo-source-validation.md",
      "docs/production/operational/SLOS_AND_ALERTS.md"
     ],
     "rawEvidence": [
-     "docs/production/evidence/m8-002-slo-source-validation.md"
+     "docs/production/evidence/m8-002-slo-source-validation.md",
+     "docs/production/evidence/raw/m8-002-prometheus-scrape-validation.txt"
     ]
    }
   },

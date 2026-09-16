@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::serve::LogMode;
+use crate::serve::{LogMode, MetricsMode};
 
 /// The only supported config-file schema version.
 pub const CONFIG_VERSION: u64 = 1;
@@ -48,6 +48,8 @@ pub const ENV_PORT: &str = "VELQU_PORT";
 pub const ENV_LEGACY_PORT: &str = "PORT";
 pub const ENV_LOG: &str = "VELQU_LOG";
 pub const ENV_LOG_SAMPLE: &str = "VELQU_LOG_SAMPLE";
+/// M8-002: native `/metrics` Prometheus exposition posture (`on|off`).
+pub const ENV_METRICS: &str = "VELQU_METRICS";
 pub const ENV_MAX_BODY_BYTES: &str = "VELQU_MAX_BODY_BYTES";
 pub const ENV_MAX_QUEUE: &str = "VELQU_MAX_QUEUE";
 pub const ENV_CONFIG: &str = "VELQU_CONFIG";
@@ -70,6 +72,7 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     ENV_HOST,
     ENV_LOG,
     ENV_LOG_SAMPLE,
+    ENV_METRICS,
     ENV_MAX_BODY_BYTES,
     ENV_MAX_QUEUE,
     ENV_PORT,
@@ -159,6 +162,7 @@ pub struct FieldSources {
     pub max_queue: FieldSource,
     pub log: FieldSource,
     pub log_sample: FieldSource,
+    pub metrics: FieldSource,
 }
 
 /// Versioned, typed config-file schema (`--config` / `VELQU_CONFIG`).
@@ -188,6 +192,7 @@ struct FileConfig {
     log: Option<String>,
     #[serde(rename = "logSample")]
     log_sample: Option<u64>,
+    metrics: Option<String>,
 }
 
 /// BETA-007-D: one profile block. Unknown fields inside a block are
@@ -205,6 +210,7 @@ struct ProfileBlock {
     log: Option<String>,
     #[serde(rename = "logSample")]
     log_sample: Option<u64>,
+    metrics: Option<String>,
 }
 
 /// Explicit CLI layer (already parsed; `None` = flag not given).
@@ -215,6 +221,8 @@ pub struct CliConfig {
     pub config: Option<PathBuf>,
     pub log: Option<String>,
     pub log_sample: Option<u64>,
+    /// M8-002: native /metrics exposition posture override.
+    pub metrics: Option<String>,
     /// BETA-008-A: explicit deployment boundary override.
     pub proxy_mode: Option<String>,
 }
@@ -237,6 +245,8 @@ pub struct Resolved {
     pub max_queue: usize,
     pub log: &'static str,
     pub log_sample: u64,
+    /// M8-002: native /metrics posture (canonical "on"|"off").
+    pub metrics: &'static str,
     /// BETA-007-D: the applied profile, when one is active.
     pub active_profile: Option<String>,
     /// BETA-008-A: listener/deployment boundary posture.
@@ -275,6 +285,8 @@ pub enum ConfigError {
     InvalidHost { source: String, reason: String },
     /// log mode outside the closed off|errors|full set.
     InvalidLogMode { source: String, value: String },
+    /// M8-002: metrics posture value not in the closed on|off set.
+    InvalidMetricsMode { source: String, value: String },
     /// A `VELQU_*` environment name outside the closed namespace. The
     /// variable's VALUE is deliberately never read or echoed.
     UnknownEnvVar { var: String },
@@ -321,6 +333,10 @@ impl std::fmt::Display for ConfigError {
             ConfigError::InvalidLogMode { source, value } => write!(
                 f,
                 "log mode from {source} must be off|errors|full, got {value:?}"
+            ),
+            ConfigError::InvalidMetricsMode { source, value } => write!(
+                f,
+                "metrics mode from {source} must be on|off, got {value:?}"
             ),
             ConfigError::UnknownEnvVar { var } => write!(
                 f,
@@ -511,6 +527,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
     let fl_body: Option<(u64, FieldSource)> = overlay!(max_body_bytes, max_body_bytes);
     let fl_queue: Option<(u64, FieldSource)> = overlay!(max_queue, max_queue);
     let fl_log = overlay!(log, log);
+    let fl_metrics = overlay!(metrics, metrics);
     let fl_sample: Option<(u64, FieldSource)> = match (
         profile.as_ref().and_then(|b| b.log_sample),
         base.and_then(|f| f.log_sample),
@@ -547,6 +564,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         max_queue: FieldSource::Default,
         log: FieldSource::Default,
         log_sample: FieldSource::Default,
+        metrics: FieldSource::Default,
     };
     let host = if let Some(h) = &s.cli.host {
         validate_host(h, "cli")?;
@@ -692,6 +710,23 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         0
     };
 
+    // ---- metrics: cli > env > profile > file > default (closed set, canonicalized)
+    let metrics: &'static str = if let Some(v) = &s.cli.metrics {
+        sources.metrics = FieldSource::Cli;
+        parse_metrics(v, "cli")?
+    } else if let Some(v) = (s.env)(ENV_METRICS) {
+        sources.metrics = FieldSource::Env;
+        parse_metrics(&v, "env:VELQU_METRICS")?
+    } else if let Some((v, layer)) = fl_metrics {
+        sources.metrics = layer;
+        parse_metrics(
+            &v,
+            &layer_source(layer, file_path, active_profile.as_deref()),
+        )?
+    } else {
+        "off"
+    };
+
     Ok(Resolved {
         host,
         port,
@@ -699,6 +734,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         max_queue,
         log,
         log_sample,
+        metrics,
         active_profile,
         proxy_mode,
         proxy_mode_source: proxy_mode_value.1,
@@ -766,6 +802,8 @@ pub fn startup_config_json(r: &Resolved) -> serde_json::Value {
         "logSource": r.sources.log.as_str(),
         "logSample": r.log_sample,
         "logSampleSource": r.sources.log_sample.as_str(),
+        "metrics": r.metrics,
+        "metricsSource": r.sources.metrics.as_str(),
         "activeProfile": r.active_profile,
         "proxyMode": r.proxy_mode.as_str(),
         "proxyModeSource": r.proxy_mode_source.as_str(),
@@ -783,6 +821,16 @@ fn parse_log(v: &str, source: &str) -> Result<&'static str, ConfigError> {
     LogMode::parse_checked(v)
         .map(|m| m.as_str())
         .map_err(|_| ConfigError::InvalidLogMode {
+            source: source.to_string(),
+            value: v.to_string(),
+        })
+}
+
+/// M8-002: closed on|off posture; canonicalized to lowercase.
+fn parse_metrics(v: &str, source: &str) -> Result<&'static str, ConfigError> {
+    MetricsMode::parse_checked(v)
+        .map(|m| m.as_str())
+        .map_err(|_| ConfigError::InvalidMetricsMode {
             source: source.to_string(),
             value: v.to_string(),
         })
@@ -1300,6 +1348,67 @@ mod tests {
     }
 
     #[test]
+    fn metrics_mode_canonicalized_case_insensitively() {
+        // CLI layer, mixed case.
+        let cli = CliConfig {
+            metrics: Some("ON".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli, &no_env, &no_file).unwrap();
+        assert_eq!(r.metrics, "on");
+        // Environment layer, mixed case.
+        let e = env_of(&[("VELQU_METRICS", "Off")]);
+        let r = resolve_with(cli_default(), &e, &no_file).unwrap();
+        assert_eq!(r.metrics, "off");
+        // Default is off (opt-in surface).
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        assert_eq!(r.metrics, "off");
+        assert_eq!(r.sources.metrics, FieldSource::Default);
+    }
+
+    #[test]
+    fn unknown_metrics_mode_fails_closed_everywhere() {
+        let e = env_of(&[("VELQU_METRICS", "verbose")]);
+        let err = resolve_with(cli_default(), &e, &no_file).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidMetricsMode { .. }),
+            "{err}"
+        );
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"metrics":"sometimes"}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidMetricsMode { .. }),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn metrics_layering_cli_beats_env_beats_file() {
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"metrics":"on"}"#,
+        )]);
+        let e = env_of(&[("VELQU_METRICS", "off")]);
+        let r = resolve_with(cli_default(), &e, &read).unwrap();
+        assert_eq!(r.metrics, "off");
+        assert_eq!(r.sources.metrics, FieldSource::Env);
+        let cli = CliConfig {
+            metrics: Some("on".into()),
+            ..cli_default()
+        };
+        let r = resolve_with(cli, &e, &read).unwrap();
+        assert_eq!(r.metrics, "on");
+        assert_eq!(r.sources.metrics, FieldSource::Cli);
+    }
+
+    #[test]
     fn resolved_sources_report_the_winning_layer() {
         // All defaults.
         let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
@@ -1345,6 +1454,8 @@ mod tests {
             "logSource",
             "logSample",
             "logSampleSource",
+            "metrics",
+            "metricsSource",
             "activeProfile",
             "proxyMode",
             "proxyModeSource",

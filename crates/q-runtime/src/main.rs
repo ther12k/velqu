@@ -34,6 +34,11 @@ struct Args {
     /// sampling (default 0, or VELQU_LOG_SAMPLE).
     #[arg(long)]
     log_sample: Option<u64>,
+    /// M8-002: native /metrics Prometheus exposition posture: on | off
+    /// (default off, or VELQU_METRICS). Restrict /metrics at the proxy
+    /// or network boundary in production.
+    #[arg(long)]
+    metrics: Option<String>,
     /// Deployment boundary: reverse-proxy (default, loopback-only) or
     /// direct (explicit operator-owned public boundary; VELQU_PROXY_MODE).
     #[arg(long)]
@@ -112,6 +117,7 @@ fn main() {
             config: args.config,
             log: args.log,
             log_sample: args.log_sample,
+            metrics: args.metrics,
             proxy_mode: args.proxy_mode,
             no_bytecode: args.no_bytecode,
             context_profile: args.context_profile,
