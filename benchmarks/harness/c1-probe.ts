@@ -12,7 +12,7 @@
  * to the same dir; the periodic stage dumps are copied next to the run.
  */
 
-import { mkdirSync, writeFileSync, existsSync, copyFileSync, readdirSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, copyFileSync, readdirSync, readFileSync } from "node:fs";
 
 const ROOT = import.meta.dir + "/../..";
 
@@ -31,7 +31,31 @@ const ROUTES = [
   { id: "text-async", path: "/diag/text-async" },
   { id: "json-sync", path: "/diag/json-sync" },
   { id: "json-async", path: "/diag/json-async" },
+  { id: "text-engine", path: "/diag/text-engine" },
 ];
+
+/**
+ * E1 engine-bound precondition (behavioral, fail-closed): /diag/text-engine
+ * MUST execute the JS handler. Verified against the instrumented runtime's
+ * stage counters — if a future optimizer folds this handler too, the probe
+ * FAILS here instead of silently becoming another AOT test.
+ */
+function assertEngineBound(stageDir: string) {
+  const file = `${stageDir}/stage-timing-qengine.json`;
+  if (!existsSync(file)) {
+    throw new Error(
+      "E1 engine-bound precondition UNVERIFIABLE: no stage dump (run with C1PROBE_STAGE_OUT + bench-instrumentation runtime)",
+    );
+  }
+  const stages = JSON.parse(readFileSync(file, "utf8")).stages;
+  const n = (stages["handler_async_call"]?.n ?? 0) + (stages["handler_sync"]?.n ?? 0);
+  if (n <= 0) {
+    throw new Error(
+      "E1 ENGINE-BOUND PRECONDITION VIOLATED: /diag/text-engine executed zero JS handlers — it has been folded. E1 is no longer a JS-boundary benchmark.",
+    );
+  }
+  console.log(`engine-bound precondition OK (handler invocations: ${n})`);
+}
 
 function freePort(): number {
   const l = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {}, open() {} } });
@@ -156,6 +180,7 @@ const summary = {
 };
 writeFileSync(`${OUT_DIR}/${RUN_ID}.summary.json`, JSON.stringify(summary, null, 2));
 if (STAGE_OUT && existsSync(STAGE_OUT)) {
+  assertEngineBound(STAGE_OUT);
   for (const f of readdirSync(STAGE_OUT)) {
     if (f.endsWith(".json")) {
       try {

@@ -39,6 +39,15 @@ export interface Api {
     {
         200: { ok: boolean },
   }>;
+  "diag.text.engine": RouteContract<
+    "/diag/text-engine",
+    "GET",
+    Record<string, never>,
+    Record<string, never>,
+    undefined,
+    {
+        200: string,
+  }>;
 };
 
-export const contractHash = "d3d6056f3bc6d36da6e901d7b2d4fb99";
+export const contractHash = "65ec39930d1b6fa46562c06c6eebaaec";

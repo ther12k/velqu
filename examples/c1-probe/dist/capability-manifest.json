@@ -4,7 +4,8 @@
     "diag.text.sync": [],
     "diag.text.async": [],
     "diag.json.sync": [],
-    "diag.json.async": []
+    "diag.json.async": [],
+    "diag.text.engine": []
   },
   "portability": {},
   "nativeOps": {

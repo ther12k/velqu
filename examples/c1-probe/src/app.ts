@@ -46,4 +46,25 @@ export const jsonAsync = route({
   handle: async () => ({ ok: true }),
 });
 
-export const app = { routes: [textSync, textAsync, jsonSync, jsonAsync] };
+/**
+ * E1 / JS-TEXT-DYNAMIC — the engine-bound plaintext benchmark.
+ *
+ * Behavioral contract: this route MUST execute the JS handler
+ * (handler_calls > 0). The expression is deliberately non-literal (array
+ * index) so no static fold applies today, and the probe harness VERIFIES
+ * engine entry per run — if a future optimizer folds it too, the probe
+ * fails its engine-bound precondition instead of silently becoming
+ * another AOT test. Output bytes are identical to /diag/text-async so the
+ * measured difference is exactly the engine round-trip.
+ */
+export const textEngineBound = route({
+  id: "diag.text.engine",
+  method: "GET",
+  path: "/diag/text-engine",
+  response: { 200: s.string() },
+  handle: async () => ["plain"][0],
+});
+
+export const app = {
+  routes: [textSync, textAsync, jsonSync, jsonAsync, textEngineBound],
+};

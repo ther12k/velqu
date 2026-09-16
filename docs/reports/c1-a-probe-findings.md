@@ -55,37 +55,39 @@ saturation.
 ## Consequence for DirectTextResponsePlan (Packet C1-B)
 
 The plan's target — eliminating the `Value::String` clone + generic validate —
-is the 0.21-0.26 µs stage: **~2-2.5% of the C1 engine path**. By the agreed
-success criteria ("58k → 61k means stop squeezing this layer"), C1-B is a
-cleanup with a predicted small, honestly-reported effect, not the C1 lever.
-It remains worth doing (removes a pointless allocation + generic traversal on
-every text response, fail-closed like #1374), with expectations set by this
-report.
+was the 0.21-0.26 µs stage: **~2-2.5% of the C1 engine path**. C1-B implemented
+`DirectTextResponsePlan` with borrowed `&str` validation and exact reference error
+semantics. The stage instrumentation confirms the validate stage dropped from
+0.21–0.26 µs to **0.06 µs** (a ~0.15–0.20 µs saving per request).
 
-## The real C1 lever — owner decision required
+As predicted, this is a clean, worthwhile optimization for any dynamic text
+response, but does not move C1 to C2.
 
-The data says the only way Velqu closes C1 toward C2 is to stop running
-constant text handlers through QuickJS — i.e. extend native liveness to
-string literals with an explicit `text/plain; charset=utf-8` content type.
-That is a RUN-009 semantics decision (the exclusion is documented, with the
-content-type reason), and it changes what canonical C1 measures: `/js-text`
-would become another native-constant route like C2, no longer exercising the
-JS boundary. Options:
+## Owner Decision (ADR-0044) and Benchmark Taxonomy Reclassification
 
-1. **Extend the fold to string literals** — C1 throughput moves to ~C2
-   levels; C1 stops measuring the JS boundary; a replacement diagnostic
-   fixture with a non-literal text handler (e.g. template interpolation)
-   would be needed to keep measuring the engine path.
-2. **Keep C1 as the JS-boundary benchmark** — accept the gap as the measured
-   cost of embedded-JS semantics, and optimize the engine path itself
-   (context construction ≈ C3's slotless work; Promise tax) where honest
-   gains exist without changing what C1 measures.
-3. **Do C1-B anyway as cleanup** (predicted ~2%), then decide 1 vs 2 with
-   the measured number on record.
+Per owner review, **Option 1 was adopted**: RUN-009 native liveness is extended to
+statically provable string literals when the route declares a constraint-free
+`s.string()` response. The object fold was also tightened to require declared-kind
+matches.
 
-Reported without a recommendation between 1 and 2 — that is a
-what-should-C1-mean product decision. C1-B proceeds as cleanup regardless
-unless redirected.
+Following this fold, post-fold measurements confirm:
+- `text-async` (now folded): 52.4k req/s at c=10
+- `json-async` (folded C2): 50.4k req/s at c=10
+- Both constant routes now perform identically.
+
+### Benchmark Taxonomy (ADR-0044)
+
+| Class | Route | What it measures |
+|---|---|---|
+| C0 | `/health/live` | Native static liveness |
+| C1 | `/js-text` | AOT-folded constant text (wire frozen) |
+| C2 | `/js-json` | AOT-folded constant JSON (wire frozen) |
+| C3 | `/hello/:name` | Validated dynamic request + QuickJS |
+| E1 | `/diag/text-engine` | **Explicit JS-boundary plaintext benchmark** (behaviorally verified: `handler_calls > 0`) |
+
+Neither C1 nor C2 may ever again be cited as QuickJS interpreter evidence. E1
+serves 27.5k req/s at c=10 under identical conditions, providing the honest,
+un-foldable JS engine boundary baseline.
 
 ## Instrumentation notes
 

@@ -4,10 +4,11 @@
 
 | Route | Method | Path | Stage | Policy | Caps | Validation | Response |
 |---|---|---|---|---|---|---|---|
-| diag.text.sync | GET | /diag/text-sync | engine | — | — | native | native |
-| diag.text.async | GET | /diag/text-async | engine | — | — | native | native |
+| diag.text.sync | GET | /diag/text-sync | native-liveness | — | — | native | native |
+| diag.text.async | GET | /diag/text-async | native-liveness | — | — | native | native |
 | diag.json.sync | GET | /diag/json-sync | native-liveness | — | — | native | native |
 | diag.json.async | GET | /diag/json-async | native-liveness | — | — | native | native |
+| diag.text.engine | GET | /diag/text-engine | engine | — | — | native | native |
 
 ## Strategies
 
@@ -18,15 +19,14 @@
 
 ## Artifacts
 
-- app.qpack: 11368 B
-- route-manifest.json: 2004 B
-- schema-manifest.json: 643 B
-- capability-manifest.json: 534 B
-- contract.json: 1582 B
-- contract.d.ts: 993 B
-- contract.meta.json: 730 B
-- openapi.json: 2418 B
-- contract.lock.json: 1564 B
-- build-report.json: 6312 B
-- app.qpack.sources.json: 34641 B
-- published-manifest.json: 958 B
+- app.qpack: 12986 B
+- route-manifest.json: 2521 B
+- schema-manifest.json: 707 B
+- capability-manifest.json: 562 B
+- contract.json: 1843 B
+- contract.d.ts: 1168 B
+- contract.meta.json: 887 B
+- openapi.json: 2901 B
+- build-report.json: 7376 B
+- app.qpack.sources.json: 36092 B
+- published-manifest.json: 784 B
