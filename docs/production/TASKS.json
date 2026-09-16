@@ -3305,7 +3305,6 @@
      "docs/production/operational/SLOS_AND_ALERTS.md"
     ],
     "rawEvidence": [
-     "docs/production/evidence/m8-002-slo-source-validation.md",
      "docs/production/evidence/raw/m8-002-prometheus-scrape-validation.txt"
     ]
    }
