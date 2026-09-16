@@ -1,37 +1,58 @@
 name: perf-gate
 
 # #1319 / M6-009: merge-blocking performance gates, deliberately SEPARATE
-# from the functional `verify` lane. Two gates:
+# from the functional `verify` lane. Two real gates:
 #   1. cold-start — boot-to-ready p50/p95 against committed bounds.
 #   2. throughput-latency — warm throughput (min rps) & latency (max p50/p95/p99)
 #      across C0 (static liveness), C1 (text), C2 (JSON), and C3 (validated path).
 # Both gates enforce fail-closed regression checks against benchmarks/gate-thresholds.json.
 #
-# Runs on runtime-affecting paths, dependency/toolchain changes, compiler/CLI packages,
-# threshold/gate script updates, weekly, and on demand.
+# MERGE-ENFORCEMENT CONTRACT: the workflow triggers on EVERY pull request
+# (no workflow-level path filter — a filtered trigger would never report a
+# check for out-of-scope PRs, and a required status check that never reports
+# blocks merges forever). Path relevance is decided INSIDE by the `changes`
+# job: on runtime-irrelevant PRs the two expensive gate jobs skip, and the
+# always-present `perf-gate` aggregate job reports success ("not applicable").
+# The aggregate FAILS if either real gate failed or was cancelled.
+# Required-check enforcement (owner/admin branch ruleset) should therefore
+# pin exactly one check name: `perf-gate`.
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 4 * * 1" # weekly, Monday 04:00 UTC
   pull_request:
-    paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "rust-toolchain.toml"
-      - "package.json"
-      - "bun.lock"
-      - "crates/**"
-      - "packages/**"
-      - "examples/proof/**"
-      - "scripts/cold-start-gate.ts"
-      - "scripts/throughput-latency-gate.ts"
-      - "scripts/throughput-latency-gate.test.ts"
-      - "benchmarks/gate-thresholds.json"
-      - ".github/workflows/perf-gate.yml"
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      runtime: ${{ steps.filter.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            runtime:
+              - "Cargo.toml"
+              - "Cargo.lock"
+              - "rust-toolchain.toml"
+              - "package.json"
+              - "bun.lock"
+              - "crates/**"
+              - "packages/**"
+              - "examples/proof/**"
+              - "scripts/cold-start-gate.ts"
+              - "scripts/throughput-latency-gate.ts"
+              - "scripts/throughput-latency-gate.test.ts"
+              - "benchmarks/gate-thresholds.json"
+              - ".github/workflows/perf-gate.yml"
+
   cold-start:
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -60,6 +81,8 @@ jobs:
         run: bun scripts/cold-start-gate.ts --samples 20
 
   throughput-latency:
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -90,3 +113,28 @@ jobs:
         run: bun test scripts/throughput-latency-gate.test.ts
       - name: Throughput and latency regression gate
         run: bun scripts/throughput-latency-gate.ts --duration-secs 3 --concurrency 10
+
+  # M6-009 merge enforcement: ALWAYS-present aggregate check, safe to pin as
+  # a required status check. It reports on every run: failure if either real
+  # gate failed or was cancelled; success when both passed, and success with
+  # an explicit "not applicable" verdict when both were legitimately skipped
+  # for a runtime-irrelevant change.
+  perf-gate:
+    needs: [cold-start, throughput-latency]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate performance-gate verdict
+        run: |
+          echo "cold-start result:          ${{ needs.cold-start.result }}"
+          echo "throughput-latency result:  ${{ needs.throughput-latency.result }}"
+          if [[ "${{ needs.cold-start.result }}" == "failure" ]] || [[ "${{ needs.throughput-latency.result }}" == "failure" ]]; then
+            echo "::error::performance regression gate FAILED (a real gate failed; merge blocked pending revert or thresholds decision)"
+            exit 1
+          fi
+          if [[ "${{ needs.cold-start.result }}" == "cancelled" ]] || [[ "${{ needs.throughput-latency.result }}" == "cancelled" ]]; then
+            echo "::error::a performance gate job was cancelled — inconclusive, treat as failure"
+            exit 1
+          fi
+          echo "performance gate OK (gates passed or were not applicable to this change's paths)"
