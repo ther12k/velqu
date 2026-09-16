@@ -675,7 +675,7 @@ impl EncoderTable {
             .collect();
         let text_plans = schemas
             .iter()
-            .map(|ir| DirectTextResponsePlan::compile(ir))
+            .map(DirectTextResponsePlan::compile)
             .collect();
         EncoderTable {
             programs,
