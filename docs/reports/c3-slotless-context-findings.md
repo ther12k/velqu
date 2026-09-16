@@ -103,9 +103,52 @@ Decision boundary as set by the owner: a direct typed bridge is justified at
 1–2+ us of conversion cost and not justified at 0.2–0.4 us. Measured cost is
 between, nearer the low end at concurrency, and the two stages above it are
 4–15× larger. **Disposition: do not build the ValidatedScalar bridge yet.**
-The next measurement targets should be context construction itself
-(`__velquMakeCtx` object assembly) and the handler round-trip, which now
-dominate the slotless path.
+The next measurement targets are decomposed below.
+
+## Slotless-path decomposition (follow-up probe)
+
+Four additional benchmark-feature timers (`fn_restore`, `pre_object_total`,
+`handler_invoke`, `resp_convert`) split the engine round trip. Run
+`c3-decompose-20260916` (same pack and protocol, 5 s × 3 reps, zero errors);
+`handler_sync` now excludes `resp_convert` (timed separately), and the parts
+reconcile with the whole at c=10/50 (0.12 + 2.75 + 5.65 + 1.53 + ~0.4 glue
+≈ 10.48 us measured).
+
+| stage (us/req) | c=1 | c=10 | c=50 | share of engine round trip (c=10/50) |
+|---|---:|---:|---:|---:|
+| fn restore (3 Persistent restores) | 0.202 | 0.121 | 0.119 | ~1% |
+| pre + routePlan object assembly (incl. Value→JS) | 4.132 | 2.753 | 2.804 | ~26% |
+| — of which Value→JS conversion | 1.232 | 0.694 | 0.646 | ~7% |
+| `__velquMakeCtx` JS execution | 7.829 | 5.652 | 5.625 | **~54%** |
+| handler invocation (`run_fn.call`) | 2.052 | 1.525 | 1.438 | ~14% |
+| response conversion (`value_to_outcome`) | 3.178 | 1.966 | 1.932 | ~18% (separate from handler_sync) |
+| handler_sync total (restore+pre+ctx+invoke+glue) | 14.766 | 10.481 | 10.403 | 100% |
+
+**Reading:** the actual JavaScript handler costs ~1.4–1.5 us, while building
+its invocation context costs ~8.4 us at concurrency (makeCtx 5.6 + pre/plan
+shell ~2.1 + Value→JS 0.65) — roughly 5.6× the handler itself. The dominant
+single stage is `__velquMakeCtx`, which for the slotless case performs
+`Object.create`, two non-enumerable `defineProperty` calls, two closure
+allocations (`lazy`, `hasPre`; `lazy` is unused when slotless), four
+`hasPre` probes, and 1–4 property stores.
+
+Optimization candidates this evidence supports (NOT implemented here;
+each is a separate packet with its own decision):
+
+1. Slotless makeCtx fast path — skip the `lazy` closure and the two
+   `defineProperty` slot/generation writes when `slot === -1` (nothing on
+   the slotless path reads them; `webRequest()` — the only reader — requires
+   a valid slot regardless).
+2. Per-route cached `routePlan` JS object — the plan object is identical
+   for every invocation of a route and is rebuilt per request inside the
+   ~2.1 us pre/plan shell. Caching carries a shared-mutation hazard
+   (handlers could mutate `ctx.routePlan`), so it needs an explicit
+   owner decision on the mutability contract.
+3. Response conversion (1.9 us) is response-path territory (C1 follow-up),
+   not input-path.
+
+Raw: `benchmarks/raw/c3-probe/c3-decompose-20260916.jsonl` /
+`.summary.json` (sha256 below).
 
 ## Clean-install verification disposition
 
@@ -139,6 +182,9 @@ established evidence process once this packet is accepted.
   `00188acbf311369048f033987e0f6bee9f375abd0893d5993463ccc7a82ad6f1`
 - interleaved raw JSONL: `1053e43c588c4b217ad4242b10358e3c48b15407aa1ceb581997f0c4b4cbaaa7`
 - interleaved summary: `968d03b43d82a597246bc028eefe2949f6c8c9496923000ce8bd94c0b3908768`
+- decomposition raw JSONL: see `benchmarks/raw/c3-probe/c3-decompose-20260916.jsonl` (this follow-up probe was captured after the interleaved run; hashes below)
+- decomposition summary: `benchmarks/raw/c3-probe/c3-decompose-20260916.summary.json`
+  - jsonl `2e30dfb8c1caf38752dc1206c90b7525708e66e84873bd769fc5a8cb7d7e59df`, summary `dc632b55fcb0b68914ae8409c0676b66a65a8d2cad566bff49916042b49db8fc`
 - probe raw JSONL (superseded magnitude, retained):
   `464a4e2b0fcce5799c03431bf033b007a98aa9e8321e1b8ffa63cc2b715ce8ba`
 
