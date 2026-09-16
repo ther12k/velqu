@@ -11,6 +11,9 @@
           }
         }
       },
+      "propertyOrder": [
+        "loud"
+      ],
       "required": []
     },
     "sch:greet.get.200": {
@@ -20,6 +23,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "message"
+      ],
       "required": [
         "message"
       ]
@@ -34,6 +40,10 @@
           "kind": "integer"
         }
       },
+      "propertyOrder": [
+        "text",
+        "count"
+      ],
       "required": [
         "text",
         "count"
@@ -49,6 +59,10 @@
           "kind": "integer"
         }
       },
+      "propertyOrder": [
+        "text",
+        "count"
+      ],
       "required": [
         "text",
         "count"
@@ -57,6 +71,7 @@
     "sch:echo.post.422": {
       "kind": "object",
       "properties": {},
+      "propertyOrder": [],
       "required": []
     },
     "sch:maybe.get.200": {
@@ -66,6 +81,9 @@
           "kind": "boolean"
         }
       },
+      "propertyOrder": [
+        "found"
+      ],
       "required": [
         "found"
       ]
@@ -73,6 +91,7 @@
     "sch:absent.get.200": {
       "kind": "object",
       "properties": {},
+      "propertyOrder": [],
       "required": []
     },
     "sch:param.echo.params": {
@@ -82,6 +101,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "name"
+      ],
       "required": [
         "name"
       ]
@@ -93,6 +115,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "name"
+      ],
       "required": [
         "name"
       ]
@@ -107,6 +132,9 @@
           }
         }
       },
+      "propertyOrder": [
+        "loud"
+      ],
       "required": []
     },
     "sch:query.echo.200": {
@@ -116,6 +144,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "loud"
+      ],
       "required": [
         "loud"
       ]
@@ -127,6 +158,9 @@
           "kind": "boolean"
         }
       },
+      "propertyOrder": [
+        "waited"
+      ],
       "required": [
         "waited"
       ]
