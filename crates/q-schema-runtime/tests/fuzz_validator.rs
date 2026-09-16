@@ -393,7 +393,13 @@ fn encoded_decoded_round_trip_matches_reference() {
             ]
             .into_iter()
             .collect(),
-            property_order: Some(vec!["note".into(), "u".into(), "grade".into(), "kind".into(), "fb".into()]),
+            property_order: Some(vec![
+                "note".into(),
+                "u".into(),
+                "grade".into(),
+                "kind".into(),
+                "fb".into(),
+            ]),
             required: vec![],
         },
     ];

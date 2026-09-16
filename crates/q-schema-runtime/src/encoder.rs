@@ -621,9 +621,6 @@ mod m25_005_a_tests {
         }
     }
 
-    /// Same shape, but WITHOUT order metadata (legacy/programmatic IR) —
-    /// the direct encoder must refuse to compile it.
-
     /// Object IR with EXPLICIT order metadata (possibly malformed) for
     /// fail-closed validation tests.
     fn order_variant(
@@ -641,6 +638,8 @@ mod m25_005_a_tests {
         }
     }
 
+    /// Same shape, but WITHOUT order metadata (legacy/programmatic IR) —
+    /// the direct encoder must refuse to compile it.
     fn obj_no_order(props: Vec<(&str, SchemaIr)>, required: Vec<&str>) -> SchemaIr {
         SchemaIr::Object {
             properties: props
@@ -922,7 +921,11 @@ mod m25_005_a_tests {
             // encoder emits DECLARED order by contract.
             let parsed: Value = serde_json::from_slice(&out)
                 .unwrap_or_else(|e| panic!("encoder output must be JSON: {:?}", e));
-            assert_eq!(parsed, reference, "encoder must stay semantically equal to the reference normalization for {:?}", value);
+            assert_eq!(
+                parsed, reference,
+                "encoder must stay semantically equal to the reference normalization for {:?}",
+                value
+            );
             // declared-order parity: each declared key must appear in the
             // emitted bytes strictly in schema declaration order
             if let SchemaIr::Object {
@@ -938,7 +941,12 @@ mod m25_005_a_tests {
                         .position(|w| w == pat.as_slice())
                         .map(|i| i + last)
                     {
-                        assert!(pos >= last, "key {} out of declared order in {:?}", name, String::from_utf8_lossy(&out));
+                        assert!(
+                            pos >= last,
+                            "key {} out of declared order in {:?}",
+                            name,
+                            String::from_utf8_lossy(&out)
+                        );
                         last = pos + pat.len();
                     }
                     // absent optional keys legitimately do not appear

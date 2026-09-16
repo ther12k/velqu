@@ -1390,7 +1390,7 @@ mod tests {
                 ),
             ]),
             required: vec!["id".into(), "slug".into()],
-        property_order: None,
+            property_order: None,
         }
     }
 

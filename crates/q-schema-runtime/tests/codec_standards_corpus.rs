@@ -395,10 +395,7 @@ fn malformed_and_boundary_corpus() {
         // declared-order emission: byte parity with serde's sorted map no
         // longer holds; semantic parity must.
         let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
-        assert_eq!(
-            parsed, reference,
-            "encoder semantic drift at {label}"
-        );
+        assert_eq!(parsed, reference, "encoder semantic drift at {label}");
     }
 }
 

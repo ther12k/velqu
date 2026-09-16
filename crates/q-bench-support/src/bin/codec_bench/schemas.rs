@@ -41,14 +41,10 @@ fn bmap(entries: &[(&'static str, SchemaIr)]) -> BTreeMap<String, Box<SchemaIr>>
         .collect()
 }
 
-
 /// One literal list builds both the canonical (sorted) properties map and
 /// the declaration-order metadata the direct encoder requires — mirroring
 /// what the TS compiler captures from source order.
-fn obj_ir(
-    entries: &[(&'static str, SchemaIr)],
-    required: Vec<String>,
-) -> SchemaIr {
+fn obj_ir(entries: &[(&'static str, SchemaIr)], required: Vec<String>) -> SchemaIr {
     SchemaIr::Object {
         properties: bmap(entries),
         property_order: Some(entries.iter().map(|(k, _)| k.to_string()).collect()),
@@ -117,7 +113,10 @@ fn nested_order() -> BenchSchema {
             (
                 "meta",
                 obj_ir(
-                    &[("page", s_int(Some(0), None)), ("total", s_int(Some(0), None))],
+                    &[
+                        ("page", s_int(Some(0), None)),
+                        ("total", s_int(Some(0), None)),
+                    ],
                     vec!["page".into(), "total".into()],
                 ),
             ),
