@@ -24,7 +24,7 @@ pub mod stage_timing {
     use std::sync::Once;
     use std::time::{Duration, Instant};
 
-    pub const STAGE_NAMES: [&str; 12] = [
+    pub const STAGE_NAMES: [&str; 16] = [
         "handler_sync",       // call_runner -> Step (Immediate path; includes conversion)
         "handler_async_call", // call_runner -> Step::Watched (promise creation only)
         "settle_async",       // settled wake -> outcome (value_to_outcome on watch path)
@@ -37,9 +37,17 @@ pub mod stage_timing {
         "request_meta",
         "prevalidated_json_to_js",
         "context_construct",
+        "fn_restore",       // Persistent -> Function restores in call_runner
+        "pre_object_total", // pre + routePlan object assembly (includes prevalidated_json_to_js)
+        "handler_invoke",   // run_fn.call alone (policy + handler execution)
+        "resp_convert",     // value_to_outcome on the Immediate path
     ];
 
-    pub static STAGE_NS: [AtomicU64; 12] = [
+    pub static STAGE_NS: [AtomicU64; 16] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
@@ -53,7 +61,11 @@ pub mod stage_timing {
         AtomicU64::new(0),
         AtomicU64::new(0),
     ];
-    pub static STAGE_N: [AtomicU64; 12] = [
+    pub static STAGE_N: [AtomicU64; 16] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),

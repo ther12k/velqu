@@ -1202,12 +1202,13 @@ impl WorkerInner {
                         } else {
                             #[cfg(feature = "bench-instrumentation")]
                             q_bridge::stage_timing::record(0, __stage_t.elapsed());
-                            Step::Immediate(value_to_outcome(
-                                &ctx,
-                                &spec,
-                                &value,
-                                stringify_fn.as_ref(),
-                            ))
+                            #[cfg(feature = "bench-instrumentation")]
+                            let __convert_t = q_bridge::stage_timing::timer();
+                            let immediate =
+                                value_to_outcome(&ctx, &spec, &value, stringify_fn.as_ref());
+                            #[cfg(feature = "bench-instrumentation")]
+                            q_bridge::stage_timing::record(15, __convert_t.elapsed());
+                            Step::Immediate(immediate)
                         }
                     }
                 }
@@ -2157,10 +2158,16 @@ fn call_runner<'js>(
     spec: &InvocationSpec,
 ) -> rquickjs::Result<Value<'js>> {
     use rquickjs::IntoJs;
+    #[cfg(feature = "bench-instrumentation")]
+    let __restore_t = q_bridge::stage_timing::timer();
     let handler_fn: Function<'js> = handler.clone().restore(ctx)?;
     let run_fn: Function<'js> = run_fn_persistent.clone().restore(ctx)?;
     let make_ctx: Function<'js> = make_ctx_persistent.clone().restore(ctx)?;
+    #[cfg(feature = "bench-instrumentation")]
+    q_bridge::stage_timing::record(12, __restore_t.elapsed());
 
+    #[cfg(feature = "bench-instrumentation")]
+    let __pre_t = q_bridge::stage_timing::timer();
     let pre = Object::new(ctx.clone())?;
     #[cfg(feature = "bench-instrumentation")]
     let __bridge_t = q_bridge::stage_timing::timer();
@@ -2186,6 +2193,8 @@ fn call_runner<'js>(
     plan.set("headersSchemaId", spec.headers_schema_id.map(|v| v.0))?;
     plan.set("bodySchemaId", spec.body_schema_id.map(|v| v.0))?;
     pre.set("routePlan", plan)?;
+    #[cfg(feature = "bench-instrumentation")]
+    q_bridge::stage_timing::record(13, __pre_t.elapsed());
 
     let slot = if spec.slot == q_engine::NO_REQUEST_SLOT {
         -1.0
@@ -2209,7 +2218,12 @@ fn call_runner<'js>(
         None => (().into_js(ctx)?, Value::new_undefined(ctx.clone())),
     };
 
-    run_fn.call::<_, Value<'js>>((handler_fn, policy_fn, ctx_obj, req_obj))
+    #[cfg(feature = "bench-instrumentation")]
+    let __invoke_t = q_bridge::stage_timing::timer();
+    let out = run_fn.call::<_, Value<'js>>((handler_fn, policy_fn, ctx_obj, req_obj));
+    #[cfg(feature = "bench-instrumentation")]
+    q_bridge::stage_timing::record(14, __invoke_t.elapsed());
+    out
 }
 
 fn value_to_outcome<'js>(
