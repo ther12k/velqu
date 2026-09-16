@@ -34,7 +34,10 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 > and end-to-end availability remain **ingress-proxy** measurements, and
 > runtime p95 must not be synthesized from averages. RSS remains an OS
 > `/proc/<pid>/status` poll. Production deployments should restrict
-> `/metrics` at the reverse proxy or network boundary.
+> `/metrics` at the reverse proxy or network boundary. The same request
+> counter also makes the Queue Health shed ratio (§2) **diagnostic only**
+> — its denominator counts scrape/health traffic — leaving the absolute
+> load-shed and capacity-relative queue alerts as the signals of record.
 
 | Objective | Metric / Indicator (SLI, 5-minute rolling) | SLO Target (30-day window) | Measurement Point |
 |---|---|---|---|
@@ -42,7 +45,7 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 | **P95 Latency (Light/Static)** | P95 duration for C0 (liveness) and C1 (text) requests | **≤ 15 ms** | Host HTTP ingress listener |
 | **P95 Latency (JSON/Validated)** | P95 duration for C2 (JSON) and C3 (schema-validated) | **≤ 35 ms** | Host HTTP ingress listener |
 | **Readiness Recovery** | Time from startup or post-drain to `/health/ready` 200 OK | **≤ 5.0 s** | Health probe poller |
-| **Queue Health** | `sum(rate(velqu_load_shed_total{reason!="draining"}[5m])) / sum(rate(velqu_http_requests_total[5m]))` (aggregated before division) | **≤ 0.01%** of requests shed | Runtime `/metrics` load-shed counters (closed reason set; planned drain excluded) |
+| **Queue Health** | **Runtime-diagnostic ratio:** `sum(rate(velqu_load_shed_total{reason!="draining"}[5m])) / sum(rate(velqu_http_requests_total[5m]))` (aggregated before division). The denominator includes `/metrics` scrapes and native health traffic — the same self-counting documented for Availability — so at low application traffic it dilutes the shed fraction; no authoritative application-ingress denominator exists in the runtime, and none is added for GA. Operational signals of record: `VelquActiveLoadShedding` (absolute shed rate) and `VelquQueueSaturation` (capacity-relative depth) | Diagnostic figure of merit: **≤ 0.01%** of counted requests shed | Runtime `/metrics` load-shed counters (closed reason set; planned drain excluded) |
 | **Memory Retention** | Process RSS drift post-warmup | **Flat (no monotonic growth beyond tolerance over 24h)** | OS `/proc/<pid>/status` / cgroup memory |
 
 ---

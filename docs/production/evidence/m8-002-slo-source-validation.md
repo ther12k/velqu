@@ -165,3 +165,17 @@ earlier hash; current sha256
 `061cda4a5344e71e49c03f5d0b1a73da396a6fc935467e308deb89365c9c4790`).
 A rate()-on-fresh-series extrapolation artifact is documented in the
 transcript as standard Prometheus semantics, not an exporter defect.
+
+## Addendum 4 — Queue Health ratio classified runtime-diagnostic (final owner review)
+
+The §2 Queue Health SLO divides the load-shed rate by
+`velqu_http_requests_total`, which — like the runtime 5xx ratio — counts
+`/metrics` scrapes and native health traffic in the denominator. At low
+application traffic that dilutes the measured shed fraction, so the
+ratio is classified **runtime-diagnostic** the same way: the ≤ 0.01%
+target is kept as a figure of merit over counted requests, the
+operational signals of record are the absolute `VelquActiveLoadShedding`
+and capacity-relative `VelquQueueSaturation` alerts, and no additional
+application-ingress counter is added for GA. Docs-only change
+(SLOS_AND_ALERTS.md §2 Queue Health row + measurement-source callout);
+no runtime packet, no series, rule expression, or threshold changed.
