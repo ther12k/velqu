@@ -13,6 +13,7 @@
 pub mod config;
 pub mod fetch_bridge;
 pub mod fetch_stack;
+pub mod metrics_export;
 pub mod problems;
 pub mod serve;
 pub mod service_profile;
@@ -53,6 +54,8 @@ pub struct RunConfig {
     pub config: Option<PathBuf>,
     pub log: Option<String>,
     pub log_sample: Option<u64>,
+    /// M8-002: native /metrics exposition posture (on | off).
+    pub metrics: Option<String>,
     /// BETA-008-A: deployment boundary (`reverse-proxy` or explicit `direct`).
     pub proxy_mode: Option<String>,
     /// M26-002-C: explicit source-rebuild recovery path.
@@ -179,6 +182,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 config: cfg.config.clone(),
                 log: cfg.log.clone(),
                 log_sample: cfg.log_sample,
+                metrics: cfg.metrics.clone(),
                 proxy_mode: cfg.proxy_mode.clone(),
             },
             env: &|k| std::env::var(k).ok(),
@@ -495,6 +499,9 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             route_metrics: serve::RouteStatusMetrics::from_route_ids(route_metric_ids),
             postgres_dialer: postgres_handle,
             request_slot_capacity: limits.max_queue.max(1) as u64,
+            dispatcher_queue_capacity: limits.max_queue.max(1) as u64,
+            metrics_mode: serve::MetricsMode::parse_checked(resolved.metrics)
+                .unwrap_or(serve::MetricsMode::Off),
         });
         let handler = serve::make_handler(Arc::clone(&state));
         // M3-007-B: the drain gate flips the INSTANT the shutdown signal

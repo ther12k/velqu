@@ -47,6 +47,7 @@ use worker::{WorkerMsg, WorkerShared};
 #[derive(Clone)]
 pub struct EngineHealth {
     shared: Arc<WorkerShared>,
+    bridge: Arc<BridgeCounters>,
 }
 
 impl EngineHealth {
@@ -60,6 +61,46 @@ impl EngineHealth {
     #[inline]
     pub fn is_ready(&self) -> bool {
         !self.is_quarantined()
+    }
+
+    /// M8-002: cumulative worker quarantine/poison events. Lock-free atomic
+    /// on the worker-shared block — a metrics scrape must never contend
+    /// with the engine mutex.
+    #[inline]
+    pub fn poison_events(&self) -> u64 {
+        self.shared
+            .poison_events
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// M8-002: native op lifecycle counters (lock-free atomics).
+    #[inline]
+    pub fn native_tasks_started(&self) -> u64 {
+        self.shared
+            .native_tasks_started
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn native_tasks_completed(&self) -> u64 {
+        self.shared
+            .native_tasks_completed
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn native_tasks_aborted(&self) -> u64 {
+        self.shared
+            .native_tasks_aborted
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// M8-002: live request slots (lock-free bridge counter).
+    #[inline]
+    pub fn live_slots(&self) -> u64 {
+        self.bridge
+            .live_slots
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -332,6 +373,7 @@ impl QuickJsEngine {
     pub fn health(&self) -> EngineHealth {
         EngineHealth {
             shared: Arc::clone(&self.shared),
+            bridge: Arc::clone(&self.bridge_counters),
         }
     }
 
