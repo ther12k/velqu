@@ -34,10 +34,15 @@ struct PropertyEncoder {
 /// A compiled direct encoder program for one declared response schema.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncoderProgram {
-    /// Fixed declared property order, byte-sorted at compile time
-    /// (M25-005-B): every response reads exactly these properties in
-    /// exactly this order, regardless of the handler value's key order.
+    /// Declared property order (source declaration order, carried through
+    /// the pack as `propertyOrder`): every response emits exactly these
+    /// properties in exactly this order, regardless of the handler value's
+    /// key order. Compilation REQUIRES provable order metadata — absent or
+    /// malformed `property_order` fails closed to the reference path.
     properties: Vec<PropertyEncoder>,
+    /// Byte-sorted property names — membership lookup for unknown-field
+    /// detection, independent of the emission order above.
+    property_names_sorted: Vec<String>,
     /// Required names in schema declaration order — the missing-required
     /// pass iterates this list so typed-error ordering matches the
     /// reference validator exactly.
@@ -69,10 +74,14 @@ fn encodable(spec: &FieldSpec) -> bool {
 
 impl EncoderProgram {
     /// Compile an object SchemaIr into a direct encoder program.
-    /// Returns `None` when any declared property is not directly encodable.
+    /// Returns `None` when any declared property is not directly
+    /// encodable, or when declaration order is absent/malformed — the
+    /// direct encoder emits declared order, so unprovable order means no
+    /// direct encoder (fail closed to the reference path).
     pub fn compile(ir: &SchemaIr) -> Option<Self> {
         let SchemaIr::Object {
             properties,
+            property_order,
             required,
         } = ir
         else {
@@ -80,6 +89,20 @@ impl EncoderProgram {
             // reference validate-then-serialize path
             return None;
         };
+        let order = property_order.as_ref()?;
+        // Order metadata must describe exactly the declared property set:
+        // same length, every entry a declared property, no duplicates.
+        // Anything else is malformed → fail closed.
+        if order.len() != properties.len() {
+            return None;
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for name in order {
+            if !properties.contains_key(name) || !seen.insert(name.clone()) {
+                return None;
+            }
+        }
+        debug_assert_eq!(seen.len(), properties.len());
         let mut specs = BTreeMap::new();
         for (key, node) in properties {
             let spec = FieldSpec::compile(node);
@@ -88,27 +111,34 @@ impl EncoderProgram {
             }
             specs.insert(key.clone(), spec);
         }
-        // fixed read order: properties arrive byte-sorted from the BTreeMap
-        // and are frozen into the program as a plain vector — no runtime
-        // map iteration, no per-property required-list scan
-        let fixed: Vec<PropertyEncoder> = specs
-            .into_iter()
-            .map(|(name, spec)| {
-                let default = match &spec {
+        // Emission order is the DECLARED order (order); membership lookup
+        // stays byte-sorted so unknown-field detection keeps its binary
+        // search. No runtime map iteration, no per-property required-list
+        // scan.
+        let fixed: Vec<PropertyEncoder> = order
+            .iter()
+            .map(|name| {
+                let spec = specs
+                    .get(name)
+                    .expect("order validated against properties above");
+                let default = match spec {
                     FieldSpec::Optional {
                         default: Some(d), ..
                     } => Some(d.clone()),
                     _ => None,
                 };
                 PropertyEncoder {
-                    name,
-                    spec,
+                    name: name.clone(),
+                    spec: spec.clone(),
                     default,
                 }
             })
             .collect();
+        let mut property_names_sorted: Vec<String> = order.clone();
+        property_names_sorted.sort_unstable();
         Some(EncoderProgram {
             properties: fixed,
+            property_names_sorted,
             required: required.clone(),
         })
     }
@@ -147,10 +177,11 @@ impl EncoderProgram {
         };
         let mut errors = Vec::new();
         for key in obj.keys() {
-            // self.properties is byte-sorted — binary search, no map
+            // membership lookup is byte-sorted, independent of the
+            // declaration-order emission pass below
             if self
-                .properties
-                .binary_search_by(|probe| probe.name.as_str().cmp(key.as_str()))
+                .property_names_sorted
+                .binary_search_by(|probe| probe.as_str().cmp(key.as_str()))
                 .is_err()
             {
                 errors.push(FieldError::typed(
@@ -173,9 +204,9 @@ impl EncoderProgram {
             return Err(errors);
         }
 
-        // The read pass walks the frozen declared order (byte-sorted,
-        // matching the reference validator's normalized output insertion
-        // order). Absent optional-without-default keys are omitted; absent
+        // The read pass walks the declared order (source declaration
+        // order, carried through the pack as propertyOrder). Absent
+        // optional-without-default keys are omitted; absent
         // optional-with-default keys emit the default.
         out.push(b'{');
         let mut first = true;
@@ -576,12 +607,46 @@ mod m25_005_a_tests {
     use serde_json::json;
     use std::collections::BTreeMap;
 
+    /// Declaration order follows the argument vector order (the way the
+    /// TS compiler captures source order into propertyOrder).
     fn obj(props: Vec<(&str, SchemaIr)>, required: Vec<&str>) -> SchemaIr {
+        let order: Vec<String> = props.iter().map(|(k, _)| k.to_string()).collect();
         SchemaIr::Object {
             properties: props
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), Box::new(v)))
                 .collect::<BTreeMap<_, _>>(),
+            property_order: Some(order),
+            required: required.into_iter().map(String::from).collect(),
+        }
+    }
+
+    /// Object IR with EXPLICIT order metadata (possibly malformed) for
+    /// fail-closed validation tests.
+    fn order_variant(
+        order: &[&str],
+        props: Vec<(&str, SchemaIr)>,
+        required: Vec<&str>,
+    ) -> SchemaIr {
+        SchemaIr::Object {
+            properties: props
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), Box::new(v)))
+                .collect::<BTreeMap<_, _>>(),
+            property_order: Some(order.iter().map(|s| s.to_string()).collect()),
+            required: required.into_iter().map(String::from).collect(),
+        }
+    }
+
+    /// Same shape, but WITHOUT order metadata (legacy/programmatic IR) —
+    /// the direct encoder must refuse to compile it.
+    fn obj_no_order(props: Vec<(&str, SchemaIr)>, required: Vec<&str>) -> SchemaIr {
+        SchemaIr::Object {
+            properties: props
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), Box::new(v)))
+                .collect::<BTreeMap<_, _>>(),
+            property_order: None,
             required: required.into_iter().map(String::from).collect(),
         }
     }
@@ -844,18 +909,49 @@ mod m25_005_a_tests {
         for (ir, value) in corpus {
             let reference = validate(&ir, &value, Source::Body)
                 .unwrap_or_else(|e| panic!("corpus value must be valid: {:?} ({:?})", value, e));
-            let expected = serde_json::to_vec(&reference).unwrap();
             let program = EncoderProgram::compile(&ir)
                 .unwrap_or_else(|| panic!("corpus schema must be encodable: {:?}", ir));
             let mut out = Vec::new();
             program
                 .encode(&value, &mut out)
                 .unwrap_or_else(|e| panic!("encode must succeed: {:?} ({:?})", value, e));
+            // semantic parity: the encoder preserves every normalization
+            // the reference validator applies (defaults, number forms).
+            // Byte parity with serde's sorted map no longer holds — the
+            // encoder emits DECLARED order by contract.
+            let parsed: Value = serde_json::from_slice(&out)
+                .unwrap_or_else(|e| panic!("encoder output must be JSON: {:?}", e));
             assert_eq!(
-                out, expected,
-                "encoder bytes must equal reference serialization for {:?}",
+                parsed, reference,
+                "encoder must stay semantically equal to the reference normalization for {:?}",
                 value
             );
+            // declared-order parity: each declared key must appear in the
+            // emitted bytes strictly in schema declaration order
+            if let SchemaIr::Object {
+                property_order: Some(order),
+                ..
+            } = ir
+            {
+                let mut last = 0usize;
+                for name in order {
+                    let pat = format!("\"{}\":", name).into_bytes();
+                    if let Some(pos) = out[last..]
+                        .windows(pat.len())
+                        .position(|w| w == pat.as_slice())
+                        .map(|i| i + last)
+                    {
+                        assert!(
+                            pos >= last,
+                            "key {} out of declared order in {:?}",
+                            name,
+                            String::from_utf8_lossy(&out)
+                        );
+                        last = pos + pat.len();
+                    }
+                    // absent optional keys legitimately do not appear
+                }
+            }
         }
     }
 
@@ -1124,10 +1220,11 @@ mod m25_005_a_tests {
         assert!(EncoderProgram::compile(&SchemaIr::Boolean).is_none());
     }
 
-    /// M25-005-B: the read pass walks the FIXED declared order. With
-    /// multiple per-property failures the typed-error sequence follows the
-    /// declared (byte-sorted) property order, not the handler value's key
-    /// insertion order — deterministic output contracts.
+    /// M25-005-B: the read pass walks the FIXED declared order (source
+    /// declaration order via propertyOrder). With multiple per-property
+    /// failures the typed-error sequence follows that declared order, not
+    /// the handler value's key insertion order — deterministic output
+    /// contracts.
     #[test]
     fn encoder_reads_properties_in_declared_fixed_order() {
         let ir = obj(
@@ -1164,13 +1261,63 @@ mod m25_005_a_tests {
         let mut out = Vec::new();
         let err = program.encode(&value, &mut out).unwrap_err();
         let paths: Vec<&str> = err.iter().map(|e| e.path.as_str()).collect();
-        assert_eq!(paths, vec!["alpha", "beta", "gamma"]);
+        assert_eq!(paths, vec!["beta", "alpha", "gamma"]);
 
         // valid value with reversed key order encodes in declared order
         let value = json!({"gamma": 3, "beta": 2, "alpha": 1});
         let mut out = Vec::new();
         program.encode(&value, &mut out).unwrap();
-        assert_eq!(out, b"{\"alpha\":1,\"beta\":2,\"gamma\":3}");
+        assert_eq!(out, b"{\"beta\":2,\"alpha\":1,\"gamma\":3}");
+    }
+
+    /// Declaration-order metadata is REQUIRED for a direct encoder:
+    /// absent order (legacy/programmatic IR) means declaration order
+    /// cannot be proven, so compilation fails closed to the reference
+    /// path. Malformed metadata (duplicate, unknown, or missing entries)
+    /// fails closed the same way — never guessed.
+    #[test]
+    fn encoder_requires_provable_declaration_order() {
+        let int = || SchemaIr::Integer {
+            minimum: None,
+            maximum: None,
+        };
+        // absent order → no direct encoder
+        assert!(EncoderProgram::compile(&obj_no_order(
+            vec![("b", int()), ("a", int())],
+            vec!["a"],
+        ))
+        .is_none());
+        // unknown entry
+        assert!(EncoderProgram::compile(&order_variant(
+            &["b", "a", "zzz"],
+            vec![("b", int()), ("a", int())],
+            vec!["a"],
+        ))
+        .is_none());
+        // duplicate entry
+        assert!(EncoderProgram::compile(&order_variant(
+            &["b", "b"],
+            vec![("b", int()), ("a", int())],
+            vec!["a"],
+        ))
+        .is_none());
+        // missing declared property
+        assert!(EncoderProgram::compile(&order_variant(
+            &["b"],
+            vec![("b", int()), ("a", int())],
+            vec!["a"],
+        ))
+        .is_none());
+        // exact set in a NON-sorted order compiles and emits declared order
+        let program = EncoderProgram::compile(&order_variant(
+            &["b", "a"],
+            vec![("b", int()), ("a", int())],
+            vec!["a"],
+        ))
+        .expect("valid declared order must compile");
+        let mut out = Vec::new();
+        program.encode(&json!({"a": 1, "b": 2}), &mut out).unwrap();
+        assert_eq!(out, b"{\"b\":2,\"a\":1}");
     }
 
     /// M25-005-B: compilation is deterministic — the same schema compiles
@@ -1873,6 +2020,7 @@ mod m25_006_a_tests {
             409,
             Some(SchemaIr::Object {
                 properties: BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             }),
         );
@@ -1893,6 +2041,7 @@ mod m25_006_a_tests {
                         maximum: None,
                     }),
                 )]),
+                property_order: Some(vec!["a".to_string()]),
                 required: vec![],
             },
         ];

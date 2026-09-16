@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "appId": "app",
-  "contractHash": "328439b8793ae0d40175e4def159bd50",
+  "contractHash": "e54ff14e1fe37e1d4bb6516ab842d772",
   "routes": {
     "greet.get": {
       "path": "/greet/:name",
@@ -17,6 +17,9 @@
             }
           }
         },
+        "propertyOrder": [
+          "loud"
+        ],
         "required": []
       },
       "body": null,
@@ -28,6 +31,9 @@
               "kind": "string"
             }
           },
+          "propertyOrder": [
+            "message"
+          ],
           "required": [
             "message"
           ]
@@ -50,6 +56,10 @@
             "kind": "integer"
           }
         },
+        "propertyOrder": [
+          "text",
+          "count"
+        ],
         "required": [
           "text",
           "count"
@@ -66,6 +76,10 @@
               "kind": "integer"
             }
           },
+          "propertyOrder": [
+            "text",
+            "count"
+          ],
           "required": [
             "text",
             "count"
@@ -74,6 +88,7 @@
         "422": {
           "kind": "object",
           "properties": {},
+          "propertyOrder": [],
           "required": []
         }
       },
@@ -93,6 +108,9 @@
               "kind": "boolean"
             }
           },
+          "propertyOrder": [
+            "found"
+          ],
           "required": [
             "found"
           ]
@@ -110,11 +128,13 @@
         "200": {
           "kind": "object",
           "properties": {},
+          "propertyOrder": [],
           "required": []
         },
         "404": {
           "kind": "object",
           "properties": {},
+          "propertyOrder": [],
           "required": []
         }
       },
@@ -130,6 +150,9 @@
             "kind": "string"
           }
         },
+        "propertyOrder": [
+          "name"
+        ],
         "required": [
           "name"
         ]
@@ -144,6 +167,9 @@
               "kind": "string"
             }
           },
+          "propertyOrder": [
+            "name"
+          ],
           "required": [
             "name"
           ]
@@ -165,6 +191,9 @@
             }
           }
         },
+        "propertyOrder": [
+          "loud"
+        ],
         "required": []
       },
       "body": null,
@@ -176,6 +205,9 @@
               "kind": "string"
             }
           },
+          "propertyOrder": [
+            "loud"
+          ],
           "required": [
             "loud"
           ]
@@ -197,6 +229,9 @@
               "kind": "boolean"
             }
           },
+          "propertyOrder": [
+            "waited"
+          ],
           "required": [
             "waited"
           ]

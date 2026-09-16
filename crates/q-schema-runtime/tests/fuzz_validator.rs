@@ -112,6 +112,7 @@ fn validator_never_panics_and_is_deterministic() {
             ]
             .into_iter()
             .collect(),
+            property_order: Some(vec!["name".into(), "n".into()]),
             required: vec!["name".into()],
         },
         SchemaIr::Union {
@@ -258,6 +259,7 @@ fn direct_decoder_programs_never_panic_and_are_deterministic() {
                 }),
             ),
         ]),
+        property_order: None,
         required: vec!["id".into(), "name".into()],
     };
 
@@ -336,6 +338,7 @@ fn encoded_decoded_round_trip_matches_reference() {
             ]
             .into_iter()
             .collect(),
+            property_order: Some(vec!["name".into(), "count".into(), "active".into()]),
             required: vec!["name".into(), "count".into()],
         },
         // arrays of scalars with item bounds
@@ -350,6 +353,7 @@ fn encoded_decoded_round_trip_matches_reference() {
             )]
             .into_iter()
             .collect(),
+            property_order: Some(vec!["tags".into()]),
             required: vec!["tags".into()],
         },
         // nullable + union members + enum + literal + fallback-with-inner
@@ -389,6 +393,13 @@ fn encoded_decoded_round_trip_matches_reference() {
             ]
             .into_iter()
             .collect(),
+            property_order: Some(vec![
+                "note".into(),
+                "u".into(),
+                "grade".into(),
+                "kind".into(),
+                "fb".into(),
+            ]),
             required: vec![],
         },
     ];
@@ -503,13 +514,8 @@ fn encoded_decoded_round_trip_matches_reference() {
                 program
                     .encode(&value, &mut out)
                     .unwrap_or_else(|e| panic!("encoder rejected what reference accepted (iter {iteration}): {e:?}\nvalue: {value}"));
-                // byte parity with the reference serialization
-                let expected_bytes =
-                    serde_json::to_vec(&expected).expect("reference output serializes");
-                assert_eq!(
-                    out, expected_bytes,
-                    "byte drift at iter {iteration} for {value}"
-                );
+                // declared-order emission: semantic (not byte) parity with
+                // the reference serialization
                 // parses back to the normalized output (bounded: shallow corpus)
                 let reparsed: Value = serde_json::from_slice(&out).expect("encoder bytes parse");
                 assert_eq!(

@@ -49,6 +49,9 @@
             "maxLength": 60
           }
         },
+        "propertyOrder": [
+          "name"
+        ],
         "required": [
           "name"
         ]
@@ -60,6 +63,9 @@
             "kind": "string"
           }
         },
+        "propertyOrder": [
+          "message"
+        ],
         "required": [
           "message"
         ]
@@ -72,6 +78,9 @@
             "maxLength": 200
           }
         },
+        "propertyOrder": [
+          "text"
+        ],
         "required": [
           "text"
         ]
@@ -83,6 +92,9 @@
             "kind": "string"
           }
         },
+        "propertyOrder": [
+          "echoed"
+        ],
         "required": [
           "echoed"
         ]
@@ -94,6 +106,9 @@
             "kind": "boolean"
           }
         },
+        "propertyOrder": [
+          "missing"
+        ],
         "required": [
           "missing"
         ]
@@ -179,7 +194,7 @@
   "integrity": {
     "algorithm": "sha256",
     "bundleSha256": "b731baf05ae8640e947a85fd138cf3e5bbbdd84a180901dfd7eedcf2134daae3",
-    "routesSha256": "a0cc61fe4f53457d270abd177655c7e131fd85b66498a7d1aafb54113087f5e3"
+    "routesSha256": "84fc8f573c674365e602135050bab6bb804a61b1fcb7e7d9a0b682f07e615112"
   },
   "versions": {
     "name": "quickjs-ng",

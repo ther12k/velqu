@@ -1,17 +1,17 @@
 {
   "kernelAbiVersion": 1,
-  "description": "Vendored q-browser-kernel artifacts (K-005 build, refreshed by BWASM-Q-001) consumed by 'velqu build --target browser-wasm' (BWASM-B-005). Hash-pinned: the build fails closed if these bytes change.",
+  "description": "Vendored q-browser-kernel artifacts (K-005 build, refreshed by BWASM-Q-001, then by the declaration-order response-encoding fix) consumed by 'velqu build --target browser-wasm' (BWASM-B-005). Hash-pinned: the build fails closed if these bytes change.",
   "provenance": {
     "crate": "q-browser-kernel",
     "builtWith": "rustc 1.96.0 (ac68faa20 2026-05-25), wasm-bindgen 0.2.108 (nodejs-target glue)",
     "verifiedAtCommit": "worktree bwasm-q-007 (grant-name authorization + plan.capabilities, D5)",
-    "refreshedBy": "BWASM-Q-007 - kernel plan/authorize accepts grant names (timer/postgres) when the linked module id (runtime:timers/runtime:postgres) is inventoried; see docs/codex-spark-browser-wasm/evidence/q-007/",
+    "refreshedBy": "declaration-order fix 2026-09-16: q-schema-runtime SchemaIr::Object gained propertyOrder (encoder-side declaration order); kernel rebuilt so browser-side encoders match native declared-order response bytes. Same recipe as K-005/Q-007 (cargo build --release -p q-browser-kernel --features bindgen --target wasm32-unknown-unknown; wasm-bindgen --target nodejs).",
     "verificationEvidence": "docs/codex-spark-browser-wasm/evidence/kernel-verification/01-consolidated-runs.txt"
   },
   "wasm": {
     "file": "q_browser_kernel_bg.wasm",
-    "sha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
-    "bytes": 1732433
+    "sha256": "bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d",
+    "bytes": 1736605
   },
   "glue": {
     "file": "q_browser_kernel.nodejs-glue.js",

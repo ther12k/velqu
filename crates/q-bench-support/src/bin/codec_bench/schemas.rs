@@ -41,6 +41,17 @@ fn bmap(entries: &[(&'static str, SchemaIr)]) -> BTreeMap<String, Box<SchemaIr>>
         .collect()
 }
 
+/// One literal list builds both the canonical (sorted) properties map and
+/// the declaration-order metadata the direct encoder requires — mirroring
+/// what the TS compiler captures from source order.
+fn obj_ir(entries: &[(&'static str, SchemaIr)], required: Vec<String>) -> SchemaIr {
+    SchemaIr::Object {
+        properties: bmap(entries),
+        property_order: Some(entries.iter().map(|(k, _)| k.to_string()).collect()),
+        required,
+    }
+}
+
 fn s_string(min: Option<u64>, max: Option<u64>) -> SchemaIr {
     SchemaIr::String {
         min_length: min,
@@ -58,8 +69,8 @@ fn s_int(min: Option<i64>, max: Option<i64>) -> SchemaIr {
 }
 
 fn small_user() -> BenchSchema {
-    let ir = SchemaIr::Object {
-        properties: bmap(&[
+    let ir = obj_ir(
+        &[
             ("active", SchemaIr::Boolean),
             ("id", s_int(Some(0), None)),
             ("name", s_string(Some(1), Some(64))),
@@ -79,9 +90,9 @@ fn small_user() -> BenchSchema {
                     default: Some(json!("none")),
                 },
             ),
-        ]),
-        required: vec!["active".into(), "id".into(), "name".into()],
-    };
+        ],
+        vec!["active".into(), "id".into(), "name".into()],
+    );
     let valid = json!({
         "active": true,
         "id": 42,
@@ -97,47 +108,47 @@ fn small_user() -> BenchSchema {
 }
 
 fn nested_order() -> BenchSchema {
-    let ir = SchemaIr::Object {
-        properties: bmap(&[
+    let ir = obj_ir(
+        &[
             (
                 "meta",
-                SchemaIr::Object {
-                    properties: bmap(&[
+                obj_ir(
+                    &[
                         ("page", s_int(Some(0), None)),
                         ("total", s_int(Some(0), None)),
-                    ]),
-                    required: vec!["page".into(), "total".into()],
-                },
+                    ],
+                    vec!["page".into(), "total".into()],
+                ),
             ),
             (
                 "wrapper",
-                SchemaIr::Object {
-                    properties: bmap(&[(
+                obj_ir(
+                    &[(
                         "inner",
-                        SchemaIr::Object {
-                            properties: bmap(&[(
+                        obj_ir(
+                            &[(
                                 "list",
                                 SchemaIr::Array {
-                                    items: Box::new(SchemaIr::Object {
-                                        properties: bmap(&[
+                                    items: Box::new(obj_ir(
+                                        &[
                                             ("id", s_string(Some(1), Some(32))),
                                             ("qty", s_int(Some(0), Some(1000))),
-                                        ]),
-                                        required: vec!["id".into(), "qty".into()],
-                                    }),
+                                        ],
+                                        vec!["id".into(), "qty".into()],
+                                    )),
                                     min_items: Some(1),
                                     max_items: None,
                                 },
-                            )]),
-                            required: vec!["list".into()],
-                        },
-                    )]),
-                    required: vec!["inner".into()],
-                },
+                            )],
+                            vec!["list".into()],
+                        ),
+                    )],
+                    vec!["inner".into()],
+                ),
             ),
-        ]),
-        required: vec!["meta".into(), "wrapper".into()],
-    };
+        ],
+        vec!["meta".into(), "wrapper".into()],
+    );
     let valid = json!({
         "meta": { "page": 1, "total": 2 },
         "wrapper": {
@@ -154,15 +165,15 @@ fn nested_order() -> BenchSchema {
 }
 
 fn record_item_ir() -> SchemaIr {
-    SchemaIr::Object {
-        properties: bmap(&[
+    obj_ir(
+        &[
             ("active", SchemaIr::Boolean),
             ("id", s_int(Some(0), None)),
             ("name", s_string(Some(1), Some(64))),
             ("qty", s_int(Some(0), None)),
-        ]),
-        required: vec!["active".into(), "id".into(), "name".into(), "qty".into()],
-    }
+        ],
+        vec!["active".into(), "id".into(), "name".into(), "qty".into()],
+    )
 }
 
 fn records_n(name: &'static str, n: usize) -> BenchSchema {
@@ -198,14 +209,14 @@ fn records1000() -> BenchSchema {
 /// near `target` bytes (recorded exactly via `inBytes` in the raw evidence).
 fn sized(name: &'static str, target: u64) -> BenchSchema {
     let blob_len = target.max(64) - 48;
-    let ir = SchemaIr::Object {
-        properties: bmap(&[
+    let ir = obj_ir(
+        &[
             ("blob", s_string(Some(blob_len), Some(blob_len))),
             ("id", s_int(Some(0), None)),
             ("label", s_string(Some(1), Some(32))),
-        ]),
-        required: vec!["blob".into(), "id".into(), "label".into()],
-    };
+        ],
+        vec!["blob".into(), "id".into(), "label".into()],
+    );
     let valid = json!({
         "blob": "x".repeat(blob_len as usize),
         "id": 7,
@@ -238,8 +249,8 @@ fn opt_null() -> BenchSchema {
         inner: Box::new(s_string(None, Some(8))),
         default,
     };
-    let ir = SchemaIr::Object {
-        properties: bmap(&[
+    let ir = obj_ir(
+        &[
             ("a1", opt_str(None)),
             ("a2", opt_str(None)),
             ("b1", opt_str(Some(json!("bd1")))),
@@ -266,9 +277,9 @@ fn opt_null() -> BenchSchema {
                     default: None,
                 },
             ),
-        ]),
-        required: vec!["id".into()],
-    };
+        ],
+        vec!["id".into()],
+    );
     let valid = json!({
         "a1": "aa",       // present, no default
         "b1": null,       // optional null → default "bd1"
@@ -288,8 +299,8 @@ fn opt_null() -> BenchSchema {
 /// RFC 9457 problem-shaped input payload (plain object IR: the Problem IR
 /// node itself stays outside the generated-decoder subset by design).
 fn problem_shape() -> BenchSchema {
-    let ir = SchemaIr::Object {
-        properties: bmap(&[
+    let ir = obj_ir(
+        &[
             (
                 "detail",
                 SchemaIr::Optional {
@@ -307,9 +318,9 @@ fn problem_shape() -> BenchSchema {
             ("status", s_int(Some(400), Some(599))),
             ("title", s_string(Some(1), Some(128))),
             ("type", s_string(Some(1), Some(128))),
-        ]),
-        required: vec!["status".into(), "title".into(), "type".into()],
-    };
+        ],
+        vec!["status".into(), "title".into(), "type".into()],
+    );
     let valid = json!({
         "detail": "The requested resource does not exist.",
         "instance": "/orders/42",

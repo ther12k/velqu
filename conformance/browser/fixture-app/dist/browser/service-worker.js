@@ -227,7 +227,7 @@ async function handleFetchEvent(event, env) {
   })());
 }
 // conformance/browser/fixture-app/dist/browser/service-worker.js
-var DEPLOYMENT_SHA256 = "e84274f68e2b14f24889de706f266302a2fc4ed0999c5f8b36847ecf77872ee9";
+var DEPLOYMENT_SHA256 = "73ccfae78cedea583eb1a94c667ee5b2ae264adf79555a5c38a265803daa873e";
 var APP_ID = "app";
 var SCOPE = "/";
 var BASE_URL = self.registration.scope;

@@ -46,3 +46,4 @@ benchmarks/real-world/fairness.md
 benchmarks/raw/real-world/contracts/upstream.log
 __pycache__/
 *.pyc
+.tmp-*/

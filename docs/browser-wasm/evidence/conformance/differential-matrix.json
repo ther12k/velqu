@@ -1,11 +1,11 @@
 {
  "schemaVersion": 1,
  "suite": "bwasm-q-001-differential",
- "sourceCommit": "a78459bcfe7f107f4c0958c37ae9b999fd455993",
- "nativeBinarySha256": "c52385af2d560538ec7285c445c433eb6429c53b3eb5d6b12c505f6864d855f4",
- "kernelWasmSha256": "b0485be753c93e7763e5d3d93dba4d3d081b8ace1ba238dbb11893334b626133",
- "nativePackSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
- "browserBuildId": "2c6696a749a6695c4ba2910125f4e98eba31f57f8b6477029b16c860b31c0ac6",
+ "sourceCommit": "2e79ae5eb5147e635656d16ca03f9b715b4b3baf",
+ "nativeBinarySha256": "73c32f9e4a686b92dff951bbe608270467fe6ab4c1e527df95b0cda6dab87468",
+ "kernelWasmSha256": "bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d",
+ "nativePackSha256": "34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6",
+ "browserBuildId": "b0cea02502101642ea0bfaf2dede8b584674cf2bb589ab32d4956984af813e59",
  "bunVersion": "1.4.0",
  "fixtures": [
   {
