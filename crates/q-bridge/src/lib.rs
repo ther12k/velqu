@@ -24,7 +24,7 @@ pub mod stage_timing {
     use std::sync::Once;
     use std::time::{Duration, Instant};
 
-    pub const STAGE_NAMES: [&str; 8] = [
+    pub const STAGE_NAMES: [&str; 12] = [
         "handler_sync",       // call_runner -> Step (Immediate path; includes conversion)
         "handler_async_call", // call_runner -> Step::Watched (promise creation only)
         "settle_async",       // settled wake -> outcome (value_to_outcome on watch path)
@@ -33,9 +33,17 @@ pub mod stage_timing {
         "resp_encode_direct", // serve: generated EncoderProgram traversal
         "resp_text_bytes",    // serve: BodyOut::Text -> PlainResponse (into_bytes)
         "unused7",
+        "native_params_query_validation",
+        "request_meta",
+        "prevalidated_json_to_js",
+        "context_construct",
     ];
 
-    pub static STAGE_NS: [AtomicU64; 8] = [
+    pub static STAGE_NS: [AtomicU64; 12] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
@@ -45,7 +53,11 @@ pub mod stage_timing {
         AtomicU64::new(0),
         AtomicU64::new(0),
     ];
-    pub static STAGE_N: [AtomicU64; 8] = [
+    pub static STAGE_N: [AtomicU64; 12] = [
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
+        AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),
         AtomicU64::new(0),

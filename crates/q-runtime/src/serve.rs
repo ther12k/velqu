@@ -707,6 +707,8 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
 
             // ---- native input validation (params/query) — SchemaId indexed,
             // zero string-map lookups on the request path (M23R2-004).
+            #[cfg(feature = "bench-instrumentation")]
+            let __native_validation_t = q_bridge::stage_timing::timer();
             // M24-004-A: parameter strings materialize from capture ranges
             // ONLY when validation or the engine actually needs them; a route
             // that neither validates params nor declares param needs never
@@ -819,6 +821,9 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             // the single read is bounded by the route's limit_bytes and stops
             // at the budget instead of buffering an oversize body first.
             // Routes without a body binding never poll the stream at all.
+            #[cfg(feature = "bench-instrumentation")]
+            q_bridge::stage_timing::record(8, __native_validation_t.elapsed());
+
             let mut body_value: Option<Value> = None;
             let mut raw_body: Option<bytes::Bytes> = None;
             if needs.body {
@@ -1048,19 +1053,25 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     }
                 };
             }
-            let requestless = !needs.params
-                && !needs.query
-                && !needs.headers
-                && !needs.body
-                && route.policy.is_none()
-                && compiled.policy_id.is_none()
-                && compiled.policy_handler_id.is_none()
+            // A validated field does not need a request-store slot: its value
+            // crosses the engine boundary in `pre`. Keep a slot whenever any
+            // field still needs lazy store access, a policy needs the request
+            // object, or an explicit request escape hatch was declared.
+            let body_prevalidated =
+                body_value.is_some() && route.validation_strategy == q_pack::Strategy::Native;
+            let needs_request_store = (needs.params && params_value.is_none())
+                || (needs.query && query_value.is_none())
+                || (needs.headers && headers_value.is_none())
+                || (needs.body && !body_prevalidated)
+                || route.policy.is_some()
+                || compiled.policy_id.is_some()
+                || compiled.policy_handler_id.is_some()
                 // M25-007-B: the full-request escape hatch owns a request
                 // slot by declaration — its handler reads the store
-                && !route.capabilities.iter().any(|c| c == "full-request");
-            let request = if requestless {
-                None
-            } else {
+                || route.capabilities.iter().any(|c| c == "full-request");
+            #[cfg(feature = "bench-instrumentation")]
+            let __request_meta_t = q_bridge::stage_timing::timer();
+            let request = if needs_request_store {
                 Some(q_engine::RequestMeta {
                     method: ctx.method.clone(),
                     path: ctx.path.clone(),
@@ -1070,7 +1081,11 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                     content_type,
                     body: ctx.body.clone(),
                 })
+            } else {
+                None
             };
+            #[cfg(feature = "bench-instrumentation")]
+            q_bridge::stage_timing::record(9, __request_meta_t.elapsed());
 
             // PolicyId is the canonical dense policy-vector identity. Resolve the
             // precompiled handler through that manifest; QPack::verify has already
@@ -1112,10 +1127,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 headers_schema_id: compiled.headers_schema_id,
                 body_schema_id: compiled.body_schema_id,
                 request,
-                slot: if requestless {
-                    q_engine::NO_REQUEST_SLOT
-                } else {
+                slot: if needs_request_store {
                     0
+                } else {
+                    q_engine::NO_REQUEST_SLOT
                 },
                 generation: 0,
                 params: params_value,

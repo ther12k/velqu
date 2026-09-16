@@ -2162,6 +2162,8 @@ fn call_runner<'js>(
     let make_ctx: Function<'js> = make_ctx_persistent.clone().restore(ctx)?;
 
     let pre = Object::new(ctx.clone())?;
+    #[cfg(feature = "bench-instrumentation")]
+    let __bridge_t = q_bridge::stage_timing::timer();
     if let Some(ref val) = spec.params {
         pre.set("params", crate::convert::json_to_js(ctx, val)?)?;
     }
@@ -2174,6 +2176,8 @@ fn call_runner<'js>(
     if let Some(ref val) = spec.body {
         pre.set("body", crate::convert::json_to_js(ctx, val)?)?;
     }
+    #[cfg(feature = "bench-instrumentation")]
+    q_bridge::stage_timing::record(10, __bridge_t.elapsed());
     // Keep route-plan identity as numeric references; request bytes remain in
     // the worker-local slab and never enter this per-invocation object.
     let plan = Object::new(ctx.clone())?;
@@ -2189,7 +2193,11 @@ fn call_runner<'js>(
         spec.slot as f64
     };
     let gen = spec.generation as f64;
+    #[cfg(feature = "bench-instrumentation")]
+    let __ctx_t = q_bridge::stage_timing::timer();
     let ctx_obj: Value<'js> = make_ctx.call((slot, gen, pre))?;
+    #[cfg(feature = "bench-instrumentation")]
+    q_bridge::stage_timing::record(11, __ctx_t.elapsed());
 
     let (policy_fn, req_obj) = match policy {
         Some(p) => {
