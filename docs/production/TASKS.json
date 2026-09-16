@@ -3322,7 +3322,16 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "IN_PROGRESS",
+   "evidence_refs": {
+    "source": [
+     "docs/production/evidence/m8-003-signing-dr-drill.md",
+     "docs/production/operational/RELEASE_SIGNING_AND_DISASTER_RECOVERY.md"
+    ],
+    "rawEvidence": [
+     "docs/production/evidence/raw/m8-003-signing-dr-drill-transcript.txt"
+    ]
+   }
   },
   {
    "id": "M8-004",

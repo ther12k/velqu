@@ -1,0 +1,27 @@
+=== [PROMOTE-N] verify N packet (signed, require-signature) ===
+✓ CHECKSUMS-OK: 25 files verified identically against manifest
+Verifying packet completeness (no unlisted extraneous files)...
+✓ PACKET-COMPLETE: all files accounted for in manifest
+=== RELEASE PACKET VERIFICATION PASSED ===
+EXIT=0 (expect 0)
+=== [SCENARIO-1] tampered artifact must fail checksums ===
+REJECTED exit=1 (expect nonzero)
+velqu-runtime: FAILED
+=== [SCENARIO-2] signature by UNTRUSTED key must fail closed ===
+REJECTED exit=1 (expect nonzero)
+ERROR: signer primary key F72FE2ECC4B344F232CB5A11C9E6BF06CB0B1309 is NOT authorized in trusted publishers list.
+=== [SCENARIO-3] registry REVOCATION overrides explicit --trusted-key ===
+REJECTED exit=1 (expect nonzero)
+ERROR: key 90FB7F4E84D6E00026A9D5E17EE7DA2F0B04B412 is REVOKED in the trusted publishers registry and is rejected even when named via --trusted-key.
+ERROR: every key named via --trusted-key is revoked in the trusted publishers registry; refusing to fall back to other registry publishers.
+=== [SCENARIO-4] missing signature + --require-signature must fail ===
+REJECTED exit=1 (expect nonzero)
+ERROR: release signature missing (/tmp/packet-unsigned/SHA256SUMS.txt.asc) but --require-signature was specified.
+=== [PROMOTE-N] boot N runtime, health check ===
+N(/health/live): {"status":"ok"} commit=f72ec83b426379867bdb20c56219f561e017636f
+=== [ROLLBACK-N-1] verify archived N-1 packet, swap binary, boot ===
+✓ PACKET-COMPLETE: all files accounted for in manifest
+=== RELEASE PACKET VERIFICATION PASSED ===
+N-1(/health/live): {"status":"ok"} commit=b51927ed802d558cf594dd6820edaf764f7f14c0
+N-1(/hello/Rafi):   {"message":"Hello Rafi"}
+DRILL-COMPLETE
