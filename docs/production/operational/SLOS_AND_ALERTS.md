@@ -38,11 +38,11 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 
 | Objective | Metric / Indicator (SLI, 5-minute rolling) | SLO Target (30-day window) | Measurement Point |
 |---|---|---|---|
-| **Availability** | `sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))` (aggregate first; per-series division is wrong — see above) | **≥ 99.9%** successful requests | Ingress reverse proxy & runtime metrics |
+| **Availability** | **Authoritative: ingress reverse proxy** success ratio (30-day). A runtime-diagnostic ratio (`sum(rate(velqu_http_requests_total{status_class!="5xx"}[5m])) / sum(rate(velqu_http_requests_total[5m]))`) exists for alerting but includes scrape/health traffic and is NOT the SLO of record | **≥ 99.9%** successful requests | Ingress reverse proxy (authoritative); runtime `/metrics` (diagnostic) |
 | **P95 Latency (Light/Static)** | P95 duration for C0 (liveness) and C1 (text) requests | **≤ 15 ms** | Host HTTP ingress listener |
 | **P95 Latency (JSON/Validated)** | P95 duration for C2 (JSON) and C3 (schema-validated) | **≤ 35 ms** | Host HTTP ingress listener |
 | **Readiness Recovery** | Time from startup or post-drain to `/health/ready` 200 OK | **≤ 5.0 s** | Health probe poller |
-| **Queue Health** | `sum(rate(dispatcher_queue_rejected_total[5m])) / sum(rate(http_requests_total[5m]))` (aggregated the same way) | **≤ 0.01%** of requests shed | Dispatcher queue rejected counter |
+| **Queue Health** | `sum(rate(velqu_load_shed_total{reason!="draining"}[5m])) / sum(rate(velqu_http_requests_total[5m]))` (aggregated before division) | **≤ 0.01%** of requests shed | Runtime `/metrics` load-shed counters (closed reason set; planned drain excluded) |
 | **Memory Retention** | Process RSS drift post-warmup | **Flat (no monotonic growth beyond tolerance over 24h)** | OS `/proc/<pid>/status` / cgroup memory |
 
 ---
@@ -61,23 +61,28 @@ Numerator and denominator are aggregated with `sum(...)` over the whole service 
 groups:
   - name: velqu_production_alerts
     rules:
-      # Availability Alerts
+      # Availability Alerts — RUNTIME RATIO IS DIAGNOSTIC. The runtime
+      # counter aggregates all requests INCLUDING /metrics scrapes and
+      # native health traffic (the unknown/native fallback bucket), which
+      # dilutes the ratio at low volume. The authoritative 30-day
+      # availability SLO is measured at the ingress proxy; treat these
+      # rules as a fast in-runtime smoke signal, not the SLO of record.
       - alert: VelquHigh5xxErrorRate
-        expr: (sum(rate(velqu_http_requests_total{status=~"5.."}[5m])) / sum(rate(velqu_http_requests_total[5m]))) > 0.01
+        expr: (sum(rate(velqu_http_requests_total{status_class="5xx"}[5m])) / sum(rate(velqu_http_requests_total[5m]))) > 0.01
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Velqu HTTP 5xx error rate exceeds 1% over 5m"
+          summary: "Velqu HTTP 5xx error rate exceeds 1% over 5m (runtime-diagnostic; SLO of record is proxy-side)"
           runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-high-error-rate"
 
       - alert: VelquElevated5xxWarning
-        expr: (sum(rate(velqu_http_requests_total{status=~"5.."}[5m])) / sum(rate(velqu_http_requests_total[5m]))) > 0.001
+        expr: (sum(rate(velqu_http_requests_total{status_class="5xx"}[5m])) / sum(rate(velqu_http_requests_total[5m]))) > 0.001
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Velqu HTTP 5xx error rate exceeds 0.1% over 5m"
+          summary: "Velqu HTTP 5xx error rate exceeds 0.1% over 5m (runtime-diagnostic)"
 
       # Latency Alerts
       - alert: VelquHighP95Latency
@@ -101,21 +106,34 @@ groups:
           runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-queue-saturation"
 
       - alert: VelquActiveLoadShedding
-        expr: rate(velqu_dispatcher_queue_rejected_total[1m]) > 10
+        expr: sum(rate(velqu_load_shed_total{reason!="draining"}[1m])) > 10
         for: 30s
         labels:
           severity: critical
         annotations:
-          summary: "Velqu is actively shedding load (rejected requests due to bounded queue)"
+          summary: "Velqu is actively shedding load (bounded admission refusals, excluding planned drain)"
+          detail: "reason is the closed load-shed set (worker_queue_full, all_workers_full, global_admission_full, class_ceiling, long_running_slots, tracking_full); draining is excluded as planned behavior."
 
-      # Process Health
-      - alert: VelquWorkerQuarantineLoop
-        expr: rate(velqu_worker_restarts_total[5m]) > 0.1
+      # Process Health — the runtime's worker trouble signal is
+      # quarantine/poison, not process restarts. Any poison event is
+      # already severe (dynamic JS routes fail closed); an elevated
+      # poison RATE indicates a replacement loop.
+      - alert: VelquEngineQuarantined
+        expr: velqu_engine_quarantined == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "QuickJS worker quarantined — dynamic JS routes are failing closed (503)"
+          runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-worker-quarantine"
+
+      - alert: VelquWorkerPoisonLoop
+        expr: rate(velqu_worker_poison_events_total[5m]) > 0
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "QuickJS worker restarting repeatedly (quarantine loop detected)"
+          summary: "Repeated worker poison events (quarantine/replacement loop detected)"
           runbook: "docs/production/operational/SLOS_AND_ALERTS.md#runbook-worker-quarantine"
 ```
 
@@ -146,5 +164,5 @@ groups:
 
 ### Runbook: Worker Quarantine
 1. If a worker panics or exceeds memory limits, the dispatcher isolates the faulty worker and restarts a fresh instance.
-2. If `velqu_worker_restarts_total` fires, inspect stderr logs for the panic backtrace or unhandled runtime fault.
+2. If `velqu_engine_quarantined == 1` or `velqu_worker_poison_events_total` is rising, inspect stderr logs for the panic backtrace or unhandled runtime fault.
 3. Verify that the QPack bundle has not been corrupted.

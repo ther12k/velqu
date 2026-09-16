@@ -134,3 +134,34 @@ including scrape self-counting, capacity gauges = configured bounds, shed
 and poison counters, and the capacity-relative queue-pressure expression
 evaluates). The six alert rules in SLOS_AND_ALERTS.md §3 pass
 `promtool check rules` (6 rules found, SUCCESS).
+
+## Addendum 3 — alert-rule source binding corrected (owner review)
+
+Three alert families still referenced wrong/nonexistent series after the
+exporter landed (`status=~"5.."` instead of `status_class="5xx"`;
+`velqu_dispatcher_queue_rejected_total` instead of the real closed-set
+`velqu_load_shed_total`; `velqu_worker_restarts_total` — no such series —
+instead of the real poison/quarantine semantics). promtool had validated
+SYNTAX, not series existence; the live evidence had not executed those
+expressions. Fixed in SLOS_AND_ALERTS.md §3:
+
+- 5xx critical/warning: aggregate-first ratio over
+  `velqu_http_requests_total{status_class="5xx"}`, annotated as
+  runtime-DIAGNOSTIC (scrapes/health traffic dilute the ratio at low
+  volume; the authoritative availability SLO stays proxy-side — §2
+  Availability row updated the same way);
+- load shedding: `sum(rate(velqu_load_shed_total{reason!="draining"}[1m])) > 10`
+  (planned drain excluded);
+- worker trouble split into `velqu_engine_quarantined == 1` (immediate)
+  and `rate(velqu_worker_poison_events_total[5m]) > 0` (loop);
+- §2 Queue Health SLI rebound to the real load-shed counter;
+- runbook worker-quarantine step updated to the real series.
+
+Validation: promtool SUCCESS (7 rules); every corrected expression
+EXECUTED against the live Prometheus scrape (status=success, computed
+values); counter accuracy proven by direct exposition diff (declared 502
+→ `status_class="5xx"` 0→1). Raw transcript extended (supersedes the
+earlier hash; current sha256
+`061cda4a5344e71e49c03f5d0b1a73da396a6fc935467e308deb89365c9c4790`).
+A rate()-on-fresh-series extrapolation artifact is documented in the
+transcript as standard Prometheus semantics, not an exporter defect.

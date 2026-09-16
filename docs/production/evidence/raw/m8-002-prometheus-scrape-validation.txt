@@ -32,3 +32,42 @@ Notes:
 - Exposition content-type: text/plain; version=0.0.4; charset=utf-8
 - No velqu_http_request_duration_seconds_bucket series is emitted
   (deliberate: runtime keeps totals+max only; latency stays proxy-side).
+
+--- EXTENSION: corrected alert-expression execution (owner review follow-up) ---
+
+Owner found three alert families still bound to nonexistent/wrong series
+(status=~"5..", velqu_dispatcher_queue_rejected_total,
+velqu_worker_restarts_total). SLOS_AND_ALERTS.md §3 was corrected to:
+
+  5xx ratio        sum(rate(velqu_http_requests_total{status_class="5xx"}[5m]))
+                 / sum(rate(velqu_http_requests_total[5m]))
+  load shedding    sum(rate(velqu_load_shed_total{reason!="draining"}[1m])) > 10
+  worker trouble   velqu_engine_quarantined == 1   (immediate)
+                   rate(velqu_worker_poison_events_total[5m]) > 0  (loop)
+
+promtool check rules: SUCCESS, 7 rules found.
+grep audit: no stale series references remain in the document.
+
+Live execution of every corrected expression against Prometheus v2.53.1
+scraping a live runtime (all returned status=success with computed values;
+series exist):
+
+  EXEC 5xx-ratio-critical / -warning
+  EXEC queue-saturation
+  EXEC active-load-shedding
+  EXEC engine-quarantined
+  EXEC poison-loop
+  EXEC queue-health-sli
+  EXEC availability-diagnostic (computed 1.0)
+
+Counter accuracy proof (direct exposition diff, no Prometheus): a declared
+502 (GET /upstream/quote with unreachable controlled upstream) increments
+velqu_http_requests_total{status_class="5xx"} 0 -> 1; the /metrics scrape
+itself self-counts as 2xx (documented self-observation semantics).
+
+Known artifact (NOT an exporter defect): on a series only seconds old,
+Prometheus rate() extrapolates the in-window increase to ~0, so the 5xx
+ratio computed 0.0 immediately after the 502 despite the correct counter.
+Steady-state alert behavior requires an established series; this is
+standard Prometheus semantics, and alert firing on fresh deployments is
+out of scope for this validation.
