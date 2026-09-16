@@ -150,6 +150,42 @@ each is a separate packet with its own decision):
 Raw: `benchmarks/raw/c3-probe/c3-decompose-20260916.jsonl` /
 `.summary.json` (sha256 below).
 
+## Candidate 1 measured: slotless makeCtx fast path
+
+Implemented as a follow-up A/B (10 s x 5 interleaved, same pack and
+protocol, zero errors; raw `c3-ctxfast-20260916`). Label mapping in this
+run's rows: `pre-c3-request-store` = the slotless build WITHOUT the fast
+path (11e27a6b + identical instrumentation), `c3-slotless-prevalidated` =
+WITH the fast path (harness labels are inherited from the template; the
+`commit` fields in the summary carry the true mapping).
+
+Stage outcome (us/req, mean over 5 reps):
+
+| stage | pre c=1 | fast c=1 | pre c=10 | fast c=10 | pre c=50 | fast c=50 |
+|---|---:|---:|---:|---:|---:|---:|
+| context_construct | 7.792 | 3.503 | 5.875 | 2.113 | 5.716 | 2.078 |
+| handler_sync total | 14.587 | 10.427 | 10.851 | 7.169 | 10.502 | 7.636 |
+
+The fast path removes ~3.3–3.7 us of engine work per request
+(context assembly −64% at concurrency) by skipping the two
+`defineProperty` calls, the two per-call closures, and the redundant
+`hasPre` indirection on the slotless branch. All 120 engine tests and 38
+conformance tests pass unchanged; the slot/generation properties' only
+reader (`webRequest()`) requires a valid slot and still fails closed
+without them.
+
+End-to-end honesty: paired throughput ratios are x0.99–1.00 (median) at
+all three concurrencies on this host. The ~3.7 us removed is real and
+reproducible at stage level but is below this host's end-to-end noise
+floor (the 72 h soak was running throughout; between-rep variance ~2–3x).
+The packet's claim is therefore stage-level — strictly less work and
+fewer per-request allocations (two descriptor objects and two closures)
+on every slotless invocation — with the end-to-end delta left to a
+quieter host run rather than claimed from this one.
+
+Raw: `benchmarks/raw/c3-probe/c3-ctxfast-20260916.jsonl` /
+`.summary.json`.
+
 ## Clean-install verification disposition
 
 `scripts/verify` locally reports one TypeScript failure:
