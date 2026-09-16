@@ -1151,6 +1151,8 @@ impl WorkerInner {
             // Cleanup for floating-op unwinding.
             let _scope = InvocationScope::enter(budget.invocation_id, Some(budget.deadline));
             let _phase = PhaseScope::enter(ExecutionPhase::Invocation);
+            #[cfg(feature = "bench-instrumentation")]
+            let __stage_t = q_bridge::stage_timing::timer();
             self.ctx.with(|ctx| {
                 // M2.2.1-r4.2.2: keep the interrupt deadline armed through
                 // ALL synchronous JS work — handler call, watch attachment,
@@ -1187,13 +1189,22 @@ impl WorkerInner {
                                 }
                             };
                             match watch.call::<_, ()>((promise, spec_id as f64)) {
-                                Ok(()) => Step::Watched,
+                                Ok(()) => {
+                                    #[cfg(feature = "bench-instrumentation")]
+                                    q_bridge::stage_timing::record(
+                                        1,
+                                        __stage_t.elapsed(),
+                                    );
+                                    Step::Watched
+                                }
                                 Err(_) => Step::Failed(Outcome::EngineFailure {
                                     detail: "failed to attach promise watch".into(),
                                     source: None,
                                 }),
                             }
                         } else {
+                            #[cfg(feature = "bench-instrumentation")]
+                            q_bridge::stage_timing::record(0, __stage_t.elapsed());
                             Step::Immediate(value_to_outcome(
                                 &ctx,
                                 &spec,
@@ -1961,7 +1972,9 @@ impl WorkerInner {
                 let _phase = PhaseScope::enter(ExecutionPhase::Invocation);
                 let _deadline_guard =
                     InterruptDeadlineScope::enter(Arc::clone(&self.sync_deadline), budget.deadline);
-                let out = self.ctx.with(|ctx| -> Outcome {
+                #[cfg(feature = "bench-instrumentation")]
+                let __settle_t = q_bridge::stage_timing::timer();
+                let __out = self.ctx.with(|ctx| -> Outcome {
                     let table: Object = match ctx.globals().get("__velquSettled") {
                         Ok(t) => t,
                         Err(_) => {
@@ -2011,8 +2024,10 @@ impl WorkerInner {
                         }
                     }
                 });
+                #[cfg(feature = "bench-instrumentation")]
+                q_bridge::stage_timing::record(2, __settle_t.elapsed());
                 let interrupted = self.shared.interrupted.swap(false, Ordering::SeqCst);
-                (out, interrupted)
+                (__out, interrupted)
             };
 
             // M2.3-A: Drain response-mapping microtasks (from toJSON/getters)
@@ -2206,11 +2221,15 @@ fn value_to_outcome<'js>(
         };
     }
     if value.is_string() {
+        #[cfg(feature = "bench-instrumentation")]
+        let __extract_t = q_bridge::stage_timing::timer();
         let s = value
             .clone()
             .get::<rquickjs::Coerced<String>>()
             .map(|c| c.0)
             .unwrap_or_default();
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::record(3, __extract_t.elapsed());
         return Outcome::Response {
             status: spec.default_status,
             body: BodyOut::Text(s),

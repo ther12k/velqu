@@ -1,0 +1,224 @@
+{
+  "formatVersion": 1,
+  "appId": "app",
+  "routes": [
+    {
+      "id": "diag.text.sync",
+      "method": "GET",
+      "path": "/diag/text-sync",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "examples/c1-probe/src/app.ts"
+    },
+    {
+      "id": "diag.text.async",
+      "method": "GET",
+      "path": "/diag/text-async",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "engine",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "examples/c1-probe/src/app.ts"
+    },
+    {
+      "id": "diag.json.sync",
+      "method": "GET",
+      "path": "/diag/json-sync",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "native-liveness",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "examples/c1-probe/src/app.ts"
+    },
+    {
+      "id": "diag.json.async",
+      "method": "GET",
+      "path": "/diag/json-async",
+      "moduleId": "src",
+      "policy": null,
+      "capabilities": [],
+      "nativeStage": "native-liveness",
+      "validationStrategy": "native",
+      "validationFallbackReason": null,
+      "responseStrategy": "native",
+      "responseFallbackReason": null,
+      "validationCodec": "direct-decoder",
+      "responseCodec": "direct-encoder",
+      "bridge": "single-prevalidated",
+      "sourceFile": "examples/c1-probe/src/app.ts"
+    }
+  ],
+  "schemas": {
+    "schemaIrVersion": 1,
+    "schemas": {
+      "sch:diag.text.sync.200": {
+        "kind": "string"
+      },
+      "sch:diag.text.async.200": {
+        "kind": "string"
+      },
+      "sch:diag.json.sync.200": {
+        "kind": "object",
+        "properties": {
+          "ok": {
+            "kind": "boolean"
+          }
+        },
+        "propertyOrder": [
+          "ok"
+        ],
+        "required": [
+          "ok"
+        ]
+      },
+      "sch:diag.json.async.200": {
+        "kind": "object",
+        "properties": {
+          "ok": {
+            "kind": "boolean"
+          }
+        },
+        "propertyOrder": [
+          "ok"
+        ],
+        "required": [
+          "ok"
+        ]
+      }
+    }
+  },
+  "capabilities": {
+    "declared": [],
+    "perRoute": {
+      "diag.text.sync": [],
+      "diag.text.async": [],
+      "diag.json.sync": [],
+      "diag.json.async": []
+    },
+    "portability": {},
+    "nativeOps": {
+      "timer": "cancellable delay (ms) → Promise<number>"
+    },
+    "intrinsicRequirement": {
+      "requirement": "minimal",
+      "used": {
+        "dateOrPerformance": [],
+        "webOnlyBuiltins": []
+      }
+    },
+    "reductionImpact": [
+      {
+        "profile": "web",
+        "missing": []
+      },
+      {
+        "profile": "minimal",
+        "missing": []
+      }
+    ]
+  },
+  "intrinsicRequirement": {
+    "requirement": "minimal",
+    "used": {
+      "dateOrPerformance": [],
+      "webOnlyBuiltins": []
+    }
+  },
+  "strategies": {
+    "validation": "native",
+    "responses": "native",
+    "fallbacks": [],
+    "decisions": [
+      {
+        "route": "diag.text.sync",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "diag.text.async",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "diag.json.sync",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      },
+      {
+        "route": "diag.json.async",
+        "validationStrategy": "native",
+        "responseStrategy": "native",
+        "basis": "representable Schema IR v2 with native validator (M25-002: 20–40% lower latency, 0 bridge crossings)"
+      }
+    ],
+    "evidenceSummary": {
+      "source": "M25-002-A/B/C codec benchmarks (run m25-002-c-1787293512)",
+      "referenceHost": "13th Gen Intel Core i5-13420H, Linux, quickjs-ng 0.15.1",
+      "smallObjectP50Us": {
+        "native": 21.3,
+        "quickjs": 30.1
+      },
+      "largeObject64kP50Us": {
+        "native": 45.5,
+        "quickjs": 277.8
+      },
+      "array1000P50Us": {
+        "native": 3004.1,
+        "quickjs": 2635.4
+      }
+    },
+    "notes": [
+      "validation: native default for representable Schema IR v2 (M25-002 evidence: 20–40% lower latency on small/nested shapes, ~6x lower on 16–64 KB payloads)",
+      "responses: native serialization default (ADR-0015, M25-002-C: zero bridge crossings, no JS stringify jitter)",
+      "fallback: explicit per-route fallback with visible reason and estimated overhead (SCHEMA-005, ADR-0009)"
+    ]
+  },
+  "nativeStages": [
+    {
+      "route": "diag.json.sync",
+      "stage": "native-liveness"
+    },
+    {
+      "route": "diag.json.async",
+      "stage": "native-liveness"
+    }
+  ],
+  "integrity": {
+    "algorithm": "sha256",
+    "bundleSha256": "859d752bd9963634364220579870d6cb115f5037632597eec6da747717a23e87",
+    "routesSha256": "30513e7ae991552d5778a1d1daecc43f7b8df87dca1ea3857f6ed3336488476a"
+  },
+  "versions": {
+    "name": "quickjs-ng",
+    "version": "0.15.1",
+    "binding": "rquickjs-0.12.2",
+    "rquickjs": "0.12.2",
+    "buildHash": "dcdbfe8a8cde33a842176eb5378e4338f44d48a9f9c99280533bf0afffae1e52"
+  }
+}

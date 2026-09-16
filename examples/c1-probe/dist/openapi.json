@@ -1,0 +1,111 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "app",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/diag/text-sync": {
+      "get": {
+        "operationId": "diag.text.sync",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/diag.text.sync.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diag/text-async": {
+      "get": {
+        "operationId": "diag.text.async",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/diag.text.async.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diag/json-sync": {
+      "get": {
+        "operationId": "diag.json.sync",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/diag.json.sync.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diag/json-async": {
+      "get": {
+        "operationId": "diag.json.async",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/diag.json.async.resp200"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "diag.text.sync.resp200": {
+        "type": "string"
+      },
+      "diag.text.async.resp200": {
+        "type": "string"
+      },
+      "diag.json.sync.resp200": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "diag.json.async.resp200": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

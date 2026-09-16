@@ -1,0 +1,10 @@
+{
+  "name": "@velqu/c1-probe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@velqu/core": "workspace:*",
+    "@velqu/schema": "workspace:*"
+  }
+}

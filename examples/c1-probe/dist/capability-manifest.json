@@ -1,0 +1,30 @@
+{
+  "declared": [],
+  "perRoute": {
+    "diag.text.sync": [],
+    "diag.text.async": [],
+    "diag.json.sync": [],
+    "diag.json.async": []
+  },
+  "portability": {},
+  "nativeOps": {
+    "timer": "cancellable delay (ms) → Promise<number>"
+  },
+  "intrinsicRequirement": {
+    "requirement": "minimal",
+    "used": {
+      "dateOrPerformance": [],
+      "webOnlyBuiltins": []
+    }
+  },
+  "reductionImpact": [
+    {
+      "profile": "web",
+      "missing": []
+    },
+    {
+      "profile": "minimal",
+      "missing": []
+    }
+  ]
+}

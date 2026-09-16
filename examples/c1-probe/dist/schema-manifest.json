@@ -1,0 +1,39 @@
+{
+  "schemaIrVersion": 1,
+  "schemas": {
+    "sch:diag.text.sync.200": {
+      "kind": "string"
+    },
+    "sch:diag.text.async.200": {
+      "kind": "string"
+    },
+    "sch:diag.json.sync.200": {
+      "kind": "object",
+      "properties": {
+        "ok": {
+          "kind": "boolean"
+        }
+      },
+      "propertyOrder": [
+        "ok"
+      ],
+      "required": [
+        "ok"
+      ]
+    },
+    "sch:diag.json.async.200": {
+      "kind": "object",
+      "properties": {
+        "ok": {
+          "kind": "boolean"
+        }
+      },
+      "propertyOrder": [
+        "ok"
+      ],
+      "required": [
+        "ok"
+      ]
+    }
+  }
+}

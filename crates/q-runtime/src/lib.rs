@@ -444,6 +444,8 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         // SchemaIds once at startup (production startup performs zero
         // compilation — both tables are precompiled programs keyed by id).
         let encoder_table = q_schema_runtime::EncoderTable::from_schemas(&schema_vector);
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::start_dumper("serve");
         let schema_id_by_key: std::collections::BTreeMap<&str, u32> = pack
             .schema_manifest
             .iter()

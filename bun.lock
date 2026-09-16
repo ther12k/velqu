@@ -13,6 +13,14 @@
       "name": "@velqu/bench-harness",
       "version": "0.1.0",
     },
+    "examples/c1-probe": {
+      "name": "@velqu/c1-probe",
+      "version": "0.1.0",
+      "dependencies": {
+        "@velqu/core": "workspace:*",
+        "@velqu/schema": "workspace:*",
+      },
+    },
     "examples/proof": {
       "name": "@velqu/proof-app",
       "version": "0.1.0",
@@ -106,6 +114,8 @@
     "@velqu/browser-pglite": ["@velqu/browser-pglite@workspace:packages/browser-pglite"],
 
     "@velqu/browser-runtime": ["@velqu/browser-runtime@workspace:packages/browser-runtime"],
+
+    "@velqu/c1-probe": ["@velqu/c1-probe@workspace:examples/c1-probe"],
 
     "@velqu/capability-auth-jwt": ["@velqu/capability-auth-jwt@workspace:packages/capability-auth-jwt"],
 
