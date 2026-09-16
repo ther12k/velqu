@@ -5,7 +5,7 @@
   "handlerAbiVersion": 1,
   "kernelAbiVersion": 1,
   "appId": "app",
-  "packSha256": "11adb3cea4706e2c4a9c04169c73e93109188eb89310708566ffecdaee7650bd",
+  "packSha256": "63acea410c18dd280d940685661612d5c9a43cf29a7f0c30e65aaacc5964b237",
   "handlers": [
     {
       "handlerKey": "echo.post",

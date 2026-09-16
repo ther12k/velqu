@@ -223,8 +223,11 @@ function schemaFromNode(node: ts.Node, file: string): Ir {
         properties[key] = ir;
         if (ir.kind !== "optional") required.push(key);
       }
-      // keep insertion order (properties is a plain map in JSON)
-      return { kind: "object", properties, required };
+      // keep insertion order (properties is a plain map in JSON);
+      // propertyOrder carries the SOURCE declaration order explicitly so
+      // response encoders can emit declared order (the Rust side stores
+      // properties as a sorted BTreeMap for canonical hashing)
+      return { kind: "object", properties, propertyOrder: Object.keys(properties), required };
     }
     case "transform": {
       if (args.length !== 3 || !ts.isStringLiteral(args[2])) throw new CompileError("s.transform requires input, output, and literal name", nodeLoc(node, file));

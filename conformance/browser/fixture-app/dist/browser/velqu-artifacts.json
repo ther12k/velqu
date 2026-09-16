@@ -34,13 +34,13 @@
     }
   ],
   "appId": "app",
-  "packSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+  "packSha256": "34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6",
   "artifacts": {
     "pack": {
       "role": "pack",
       "url": "app.qpack",
-      "sha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
-      "bytes": 18645,
+      "sha256": "34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6",
+      "bytes": 19265,
       "mediaType": "application/x-velqu-qpack"
     },
     "kernelWasm": {
@@ -60,22 +60,22 @@
     "manifest": {
       "role": "manifest",
       "url": "browser-manifest.json",
-      "sha256": "bf92963eb2c0a5b689018527d8a124d678176ab2e3dc44c9a0043020f6e1e300",
+      "sha256": "0d7280fbdd9a178ccf0cb1f915e4b9d532bea17d5f8ba67f3619747be049c75f",
       "bytes": 1095,
       "mediaType": "application/json"
     },
     "contract": {
       "role": "contract",
       "url": "contract.json",
-      "sha256": "901949697019318acab6d4adb051f328db1f6e9ad4d644d30c81a009176771dc",
-      "bytes": 4066,
+      "sha256": "d0b9ee86f60668dcff97abab355caa88633fff5f1c2000fbd477e7435bf6517a",
+      "bytes": 4791,
       "mediaType": "application/json"
     },
     "schemas": {
       "role": "schemas",
       "url": "schema-manifest.json",
-      "sha256": "b7fc5ab435a09e4d1f2716b0605d0054650031e01349b5fdf61c67f0a14880e1",
-      "bytes": 2384,
+      "sha256": "f2213116f71adad6c267ba688af74cd595ab61aca488a645c849a5498fa457b6",
+      "bytes": 2968,
       "mediaType": "application/json"
     },
     "capabilities": {
@@ -86,5 +86,5 @@
       "mediaType": "application/json"
     }
   },
-  "buildId": "2c6696a749a6695c4ba2910125f4e98eba31f57f8b6477029b16c860b31c0ac6"
+  "buildId": "a848c1172d7db27e671c8e4152b2997743718c4621bd387133badce0ca5bd9c5"
 }

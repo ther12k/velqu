@@ -21,14 +21,14 @@
 
 ## Artifacts
 
-- app.qpack: 18645 B
-- route-manifest.json: 3938 B
-- schema-manifest.json: 2384 B
+- app.qpack: 19265 B
+- route-manifest.json: 3784 B
+- schema-manifest.json: 2968 B
 - capability-manifest.json: 722 B
-- contract.json: 4066 B
+- contract.json: 4791 B
 - contract.d.ts: 1651 B
 - contract.meta.json: 1142 B
 - openapi.json: 7709 B
-- build-report.json: 11058 B
+- build-report.json: 11556 B
 - app.qpack.sources.json: 39944 B
 - published-manifest.json: 785 B

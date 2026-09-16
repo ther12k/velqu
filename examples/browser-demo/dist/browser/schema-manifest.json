@@ -10,6 +10,9 @@
           "maxLength": 60
         }
       },
+      "propertyOrder": [
+        "name"
+      ],
       "required": [
         "name"
       ]
@@ -21,6 +24,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "message"
+      ],
       "required": [
         "message"
       ]
@@ -33,6 +39,9 @@
           "maxLength": 200
         }
       },
+      "propertyOrder": [
+        "text"
+      ],
       "required": [
         "text"
       ]
@@ -44,6 +53,9 @@
           "kind": "string"
         }
       },
+      "propertyOrder": [
+        "echoed"
+      ],
       "required": [
         "echoed"
       ]
@@ -55,6 +67,9 @@
           "kind": "boolean"
         }
       },
+      "propertyOrder": [
+        "missing"
+      ],
       "required": [
         "missing"
       ]

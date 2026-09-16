@@ -712,6 +712,7 @@ mod tests {
             },
             SchemaIr::Object {
                 properties: std::collections::BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             },
             SchemaIr::Transform {
@@ -818,6 +819,7 @@ mod tests {
                     inner: None,
                 }),
             )]),
+            property_order: None,
             required: vec![],
         };
         assert!(!generated::supports(&ir));

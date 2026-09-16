@@ -17,11 +17,13 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 fn obj(props: Vec<(&str, SchemaIr)>, required: Vec<&str>) -> SchemaIr {
+    let order: Vec<String> = props.iter().map(|(k, _)| k.to_string()).collect();
     SchemaIr::Object {
         properties: props
             .into_iter()
             .map(|(k, v)| (k.to_string(), Box::new(v)))
             .collect::<BTreeMap<_, _>>(),
+        property_order: Some(order),
         required: required.into_iter().map(String::from).collect(),
     }
 }
@@ -79,23 +81,23 @@ fn encoder_output_matches_standard_json_bytes() {
         // slash is NOT escaped (RFC 8259 leaves it unescaped)
         (
             json!({"esc": "a\"b\\c\nd\te☺ƒ/x", "n": 2.5, "i": 42, "list": [1, -2]}),
-            "{\"esc\":\"a\\\"b\\\\c\\nd\\te☺ƒ/x\",\"i\":42,\"list\":[1,-2],\"n\":2.5}",
+            "{\"esc\":\"a\\\"b\\\\c\\nd\\te☺ƒ/x\",\"n\":2.5,\"i\":42,\"list\":[1,-2]}",
         ),
         // float that is integral keeps float form ("3.0"), matching the
         // reference producer's canonical f64 formatting
         (
             json!({"esc": "s", "n": 3.0, "i": 0, "list": []}),
-            "{\"esc\":\"s\",\"i\":0,\"list\":[],\"n\":3.0}",
+            "{\"esc\":\"s\",\"n\":3.0,\"i\":0,\"list\":[]}",
         ),
         // i64 extremes round through unchanged
         (
             json!({"esc": "s", "n": -1.5, "i": i64::MAX, "list": [i64::MIN]}),
-            "{\"esc\":\"s\",\"i\":9223372036854775807,\"list\":[-9223372036854775808],\"n\":-1.5}",
+            "{\"esc\":\"s\",\"n\":-1.5,\"i\":9223372036854775807,\"list\":[-9223372036854775808]}",
         ),
         // unicode control range escapes
         (
             json!({"esc": "\u{1}\u{1f}", "n": 0.0, "i": 1, "list": []}),
-            "{\"esc\":\"\\u0001\\u001f\",\"i\":1,\"list\":[],\"n\":0.0}",
+            "{\"esc\":\"\\u0001\\u001f\",\"n\":0.0,\"i\":1,\"list\":[]}",
         ),
     ];
 
@@ -390,11 +392,10 @@ fn malformed_and_boundary_corpus() {
         program
             .encode(&value, &mut out)
             .unwrap_or_else(|_| panic!("encoder must accept: {label}"));
-        assert_eq!(
-            out,
-            serde_json::to_vec(&reference).unwrap(),
-            "encoder byte drift at {label}"
-        );
+        // declared-order emission: byte parity with serde's sorted map no
+        // longer holds; semantic parity must.
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(parsed, reference, "encoder semantic drift at {label}");
     }
 }
 

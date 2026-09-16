@@ -5,7 +5,7 @@
   "handlerAbiVersion": 1,
   "kernelAbiVersion": 1,
   "appId": "app",
-  "packSha256": "38869b6e4daeac862df5cd44d96b1b3475b65d30c3388d3e5194b95c47499ed9",
+  "packSha256": "34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6",
   "handlers": [
     {
       "handlerKey": "absent.get",

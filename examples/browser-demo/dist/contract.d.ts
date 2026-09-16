@@ -24,4 +24,4 @@ export interface Api {
   }>;
 };
 
-export const contractHash = "b26439f208395252f7dd7af593aac691";
+export const contractHash = "5bc4c8c3c283fbb0aa51e0ee268d49fe";

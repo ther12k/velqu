@@ -70,4 +70,4 @@ export interface Api {
   }>;
 };
 
-export const contractHash = "328439b8793ae0d40175e4def159bd50";
+export const contractHash = "e54ff14e1fe37e1d4bb6516ab842d772";

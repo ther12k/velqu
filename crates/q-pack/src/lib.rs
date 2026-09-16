@@ -6472,6 +6472,7 @@ mod tests {
                 ]
                 .into_iter()
                 .collect(),
+                property_order: None,
                 required: vec![],
             },
         );
@@ -6540,6 +6541,7 @@ mod tests {
             "sch:health.query".into(),
             q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             },
         );
@@ -6756,6 +6758,7 @@ mod tests {
             "sch:health.query".into(),
             q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             },
         );
@@ -6765,6 +6768,7 @@ mod tests {
             features: vec![],
             ir: q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             },
         }];
@@ -6782,6 +6786,7 @@ mod tests {
             features: vec![],
             ir: q_schema_runtime::SchemaIr::Object {
                 properties: BTreeMap::new(),
+                property_order: None,
                 required: vec![],
             },
         }];
