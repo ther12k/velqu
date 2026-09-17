@@ -3020,7 +3020,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "IN_PROGRESS",
+   "status": "BLOCKED",
    "evidence_refs": {
     "source": [
      "benchmarks/gate-thresholds.json",
@@ -3031,7 +3031,8 @@
     ],
     "rawEvidence": [
      "docs/production/evidence/raw/m6-009-ruleset-readback.json",
-     "benchmarks/raw/ga-m6-soak-72h-r3/"
+     "benchmarks/raw/ga-m6-soak-72h-r3/",
+     "benchmarks/raw/ga-m6-soak-72h-r3/REBOOT-INCIDENT-2026-09-16-R3.md"
     ]
    }
   },
