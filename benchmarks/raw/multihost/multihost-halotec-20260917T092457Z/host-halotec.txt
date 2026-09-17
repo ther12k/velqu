@@ -1,0 +1,7 @@
+docker=Docker version 24.0.2, build cb74dfc
+image-id=sha256:b1c1238e11c1374136d873d077c3364cd036d37e10061ac69630da888209d6d2
+cpus-limit=2
+host-cpu=Intel(R) Xeon(R) Platinum 8163 CPU @ 2.50GHz
+host-kernel=4.15.0-211-generic
+virtualization=kvm
+note=host identity reconstructed post-run by the launcher; the original ssh wrapper was killed mid-run by a session restore, the measurement container completed independently

@@ -1,0 +1,14 @@
+host-label=local
+run-id=multihost-local-20260917T092118Z
+builder-image=ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254
+cpu-quota=200000 100000
+nproc=12
+cpu=13th Gen Intel(R) Core(TM) i5-13420H
+uname=Linux 7.0.0-31-generic x86_64
+kernel=7.0.0-31-generic
+bun=1.4.0
+rustc=rustc 1.96.0 (ac68faa20 2026-05-25)
+gcc=gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+protocol=seed=20260915 duration=10s reps=5 conc=1,10,50
+1e95d54bbdd77d1a2b85734ec4ca657053469a57657cb60e4cff34a68b6a248d  target/release/velqu-runtime
+35c0bc88112f14de2d1e62a83f7e271ee697c2b91c45602a4a073edd44e81231  baselines/raw-rust/target/release/velqu-baseline-raw-rust

@@ -1,0 +1,8 @@
+docker=podman version 5.8.2
+image-id=c1755b38a3ec129a324aedb58dc1bfcb7b4c31d6460c82211d726b83e33ae47a
+cpus-limit=none
+cpus-limit-note=rootless crun: cpu cgroup controller not delegated, --cpus rejected; container runs uncapped on a 1-vCPU VM (deviation from the 2-CPU default, recorded per protocol)
+host-cpu=Neoverse-N1
+host-kernel=6.12.0-203.76.7.3.el9uek.aarch64
+virtualization=kvm
+note=launched via manual podman invocation (run.sh --cpus rejected by rootless crun); an intermediate rerun completed all reps but lost its artifact copy to an SELinux-Enforcing bind-mount denial combined with --rm; this final run used the :Z relabel and a named container

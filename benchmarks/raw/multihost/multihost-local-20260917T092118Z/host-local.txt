@@ -1,0 +1,7 @@
+docker=Docker version 29.5.0, build 98f1464
+image-id=sha256:dda011a80ab0925a64b007f027c29a61f39f4b1449b55f70975e6a5eace02e44
+cpus-limit=2
+host-cpu=13th Gen Intel(R) Core(TM) i5-13420H
+host-kernel=7.0.0-31-generic
+virtualization=none
+note=host identity reconstructed post-run by the launcher; the original wrapper was killed mid-run by a session restore, the measurement container completed independently
