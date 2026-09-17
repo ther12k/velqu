@@ -3020,7 +3020,20 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "TODO"
+   "status": "IN_PROGRESS",
+   "evidence_refs": {
+    "source": [
+     "benchmarks/gate-thresholds.json",
+     "scripts/cold-start-gate.ts",
+     "scripts/throughput-latency-gate.ts",
+     ".github/workflows/perf-gate.yml",
+     "docs/reports/m6-009-enforcement-state.md"
+    ],
+    "rawEvidence": [
+     "docs/production/evidence/raw/m6-009-ruleset-readback.json",
+     "benchmarks/raw/ga-m6-soak-72h-r3/"
+    ]
+   }
   },
   {
    "id": "M6-GATE",
