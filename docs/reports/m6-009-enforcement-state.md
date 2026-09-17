@@ -49,11 +49,24 @@ Known scope boundaries, recorded honestly:
   `verify` was dropped in the owner's final disposition ("the single
   required check").
 
-## Behavioral verification (PR carrying this record)
+## Behavioral verification (PR #1387, the branch carrying this record)
 
-Recorded after merge-readiness checks below; see the "behavioral
-verification" subsection in the PR body/commit history for the observed
-`mergeStateStatus` while `perf-gate` was pending.
+Observed via the GraphQL `pullRequest { mergeable, mergeStateStatus }`
+on 2026-09-17, immediately after opening the PR:
+
+1. With `perf-gate` `IN_PROGRESS` (conclusion `null`) and no merge
+   conflicts (`mergeable: MERGEABLE`), GitHub reported
+   `mergeStateStatus: BLOCKED` — the pending required check alone blocks
+   the merge.
+2. The moment `perf-gate` completed (`SUCCESS`), the state flipped to
+   `UNSTABLE` — no required check is pending or failing anymore; the
+   remaining `UNSTABLE` signal comes only from non-required checks
+   (`verify` lanes, browser lanes) still running. The block is therefore
+   bound exactly to `perf-gate`'s conclusion, nothing else.
+
+This is the end-to-end proof of "performance regressions block merge
+automatically" for the PR path: a red or pending `perf-gate` cannot be
+merged around by anyone (`bypass_actors: []`).
 
 Historical note preserved: before the ruleset existed, merge discipline
 (green gates on every packet) was convention, not enforcement — no
