@@ -1,0 +1,14 @@
+host-label=oracle
+run-id=multihost-oracle-20260917T112107Z
+builder-image=ubuntu:24.04@sha256:224a1869083a311ef3f13648a154ba79832fbef6364d31493642ca03082da254
+cpu-quota=unknown
+nproc=1
+cpu=
+uname=Linux 6.12.0-203.76.7.3.el9uek.aarch64 aarch64
+kernel=6.12.0-203.76.7.3.el9uek.aarch64
+bun=1.4.0
+rustc=rustc 1.96.0 (ac68faa20 2026-05-25)
+gcc=gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+protocol=seed=20260915 duration=10s reps=5 conc=1,10,50
+962f0e3d9a5f5a969ecbd9c761f423751b783ff121ee4fb064babb6d6161d29d  target/release/velqu-runtime
+0c2a25e68e5c12ae1e62c9e7c6f5cc3be07db798f7d1ff8a1c6d6c14e468cbb9  baselines/raw-rust/target/release/velqu-baseline-raw-rust
