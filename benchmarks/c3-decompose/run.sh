@@ -49,7 +49,7 @@ echo "== phase 1: build q-c3-decompose (uncapped) =="
     export CARGO_TARGET_DIR=/work/target
     export RUSTFLAGS="--remap-path-prefix=/work/src=/velqu-src"
     [ "$BENCH_CARGO_JOBS" = 0 ] || export CARGO_BUILD_JOBS="$BENCH_CARGO_JOBS"
-    cargo build --release -p q-bench-support --bin q-c3-decompose
+    cargo build --release -p q-bench-support --bin q-c3-decompose --features bench-direct
     cp /work/target/release/q-c3-decompose /work/bin/q-c3-decompose
     sha256sum /work/bin/q-c3-decompose
     rm -rf /work/target /work/src
@@ -101,7 +101,7 @@ python3 - "$DEST/decompose-summary.json" "$BATCHES" <<'EOF'
 import json, sys
 s = json.load(open(sys.argv[1])); batches = int(sys.argv[2])
 names = {t["tier"] for t in s["tiers"]}
-assert names == {"A_raw_call", "A2_raw_call_extract", "B_slotless_invoke"}, names
+assert names == {"A_raw_call", "A2_raw_call_extract", "B_worker_direct", "C_channel_invoke", "B3_worker_direct_repeat"}, names
 for t in s["tiers"]:
     assert t["samples"] == batches, f"{t['tier']}: {t['samples']} != {batches}"
     assert t["correctness_checks"] >= 1, t["tier"]

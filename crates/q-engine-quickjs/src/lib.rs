@@ -32,6 +32,12 @@
 
 mod convert;
 pub mod prelude;
+
+/// Diagnostic-only (feature `bench-direct`): construct the worker engine
+/// on the CALLING thread and invoke without the host-worker channel.
+/// Not compiled in default or production feature sets.
+#[cfg(feature = "bench-direct")]
+pub mod bench_direct;
 mod worker;
 
 use std::sync::{Arc, Mutex};

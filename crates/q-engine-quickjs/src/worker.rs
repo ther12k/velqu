@@ -821,7 +821,7 @@ impl WorkerInner {
     }
 
     #[allow(clippy::type_complexity)]
-    fn load(
+    pub(crate) fn load(
         &mut self,
         bundle: &str,
         bytecode: Option<&[u8]>,
@@ -998,7 +998,7 @@ impl WorkerInner {
         })
     }
 
-    fn begin_invocation(&mut self, job: InvokeJob) -> InvocationDisposition {
+    pub(crate) fn begin_invocation(&mut self, job: InvokeJob) -> InvocationDisposition {
         let InvokeJob { mut spec, reply } = job;
         self.shared.interrupted.store(false, Ordering::SeqCst);
 
@@ -1894,7 +1894,14 @@ impl WorkerInner {
     /// budget (or the watchdog when nothing is pending) and settle whatever
     /// promises completed. Used at message boundaries where multiple
     /// invocations may have queued work.
-    fn settle_background(&mut self) {
+    /// Diagnostic helper (bench-direct): whether any invocation is
+    /// awaiting promise settlement.
+    #[cfg(feature = "bench-direct")]
+    pub(crate) fn has_pending(&self) -> bool {
+        !self.pending.is_empty()
+    }
+
+    pub(crate) fn settle_background(&mut self) {
         if self.rt.is_job_pending() {
             if let Some(budget) = self
                 .pending

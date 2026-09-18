@@ -1,0 +1,11 @@
+== phase 1: build q-c3-decompose (uncapped) ==
+46980786876c6b0ea5d27892e057332aa6c45e22fcc72492ce7dc374a4d58187  /work/bin/q-c3-decompose
+== phase 2: run decomposition (cpus=2) run-id=c3d-halotec-20260918T180917Z ==
+c3 decompose complete: /work/out/decompose.jsonl + decompose-summary.json
+A_raw_call: p50 0.501us p95 0.960us (120 batches x 1000 ops, 1 correctness checks)
+A2_raw_call_extract: p50 0.581us p95 0.988us (120 batches x 1000 ops, 1 correctness checks)
+B_slotless_invoke: p50 87.294us p95 141.671us (120 batches x 200 ops, 2 correctness checks)
+derived: glue(B-A) 86.794us | extract(A2-A) 0.080us | glue share of B 99.4%
+POSTCONDITION-OK: A_raw_call p50=0.501us, A2_raw_call_extract p50=0.581us, B_slotless_invoke p50=87.294us
+derived: {'glue_B_minus_A_us': 86.793695, 'extract_A2_minus_A_us': 0.07998899999999998, 'glue_share_of_B_pct': 99.42639518081452}
+DONE: /home/rizky/velqu-c3d/benchmarks/raw/c3-decompose-engine/c3d-halotec-20260918T180917Z

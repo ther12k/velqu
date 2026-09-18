@@ -1,22 +1,28 @@
 //! C3 context-vs-engine decomposition (diagnostic, #1392 follow-up).
 //!
-//! Splits the remaining post-slotless C3 cost into Velqu glue vs actual
-//! QuickJS execution, engine-only (no network):
+//! Splits the remaining post-slotless C3 cost into engine execution,
+//! in-worker Velqu glue, and host↔worker handoff — engine-only (no
+//! network):
 //!
 //!   A  raw_call          — cached JS handler invoked directly inside a bare
 //!                          QuickJS context with a PRE-CREATED `{params}`
 //!                          wrapper object; result discarded (engine floor)
 //!   A2 raw_call_extract  — A + per-op boundary read of the result field
 //!                          back to a Rust String (minimal result extraction)
-//!   B  slotless_invoke   — the PRODUCTION path: full `InvocationSpec`
-//!                          (slot = NO_REQUEST_SLOT, prevalidated params,
-//!                          native strategy) through `QuickJsEngine::invoke`,
-//!                          including makeCtx, run(), and result conversion
+//!   B  worker_direct     — the production worker code path
+//!                          (`WorkerInner` + `begin_invocation`: makeCtx,
+//!                          run(), conversions, settlement postlude) executed
+//!                          DIRECTLY on the calling thread — no channel, no
+//!                          wakeup, no scheduler participation
+//!   C  channel_invoke    — the full production dispatch: host →
+//!                          `QuickJsEngine::invoke` → mpsc → worker wakeup →
+//!                          (B) → oneshot reply back to the host
 //!
-//!   B - A  = Velqu JS-context/dispatch/conversion glue
+//!   B - A  = context construction + in-worker Velqu glue
+//!   C - B  = channel + queue + wakeup + scheduling (the handoff)
 //!   A      = actual engine execution of the C3-shaped handler
-//! HTTP/router/queue overhead (tier C) is NOT measured here; it is read
-//! from the committed #1392 cross-host evidence in the report.
+//! HTTP/router/queue/encode/socket overhead is NOT measured here; it is
+//! read from the committed #1392 cross-host evidence in the report.
 //!
 //! Raw JSONL (one line per timed batch) + summary JSON into --out-dir.
 //! Correctness is asserted periodically and fail-closes the run.
@@ -27,6 +33,7 @@ use std::time::Instant;
 
 use q_engine::Engine as _;
 use q_engine::{InvocationSpec, Outcome, ResponseStrategy, NO_REQUEST_SLOT};
+use q_engine_quickjs::bench_direct::DirectWorker;
 use q_engine_quickjs::{IdentityMapper, QuickJsConfig, QuickJsEngine};
 use serde_json::{json, Value};
 
@@ -103,8 +110,18 @@ fn main() {
     rt.set_memory_limit(64 * 1024 * 1024);
     let ctx = rquickjs::Context::full(&rt).expect("quickjs context");
     let (mut tier_a, mut tier_a2) = (
-        TierStats { name: "A_raw_call", samples: Vec::new(), ops_per_batch: a_ops, checked: 0 },
-        TierStats { name: "A2_raw_call_extract", samples: Vec::new(), ops_per_batch: a_ops, checked: 0 },
+        TierStats {
+            name: "A_raw_call",
+            samples: Vec::new(),
+            ops_per_batch: a_ops,
+            checked: 0,
+        },
+        TierStats {
+            name: "A2_raw_call_extract",
+            samples: Vec::new(),
+            ops_per_batch: a_ops,
+            checked: 0,
+        },
     );
     ctx.with(|ctx| -> rquickjs::Result<()> {
         ctx.eval::<(), _>(RAW_SCRIPT)?;
@@ -131,7 +148,9 @@ fn main() {
             for _ in 0..a_ops {
                 let _ = handler.call::<_, rquickjs::Value>((wrapper_value.clone(),))?;
             }
-            tier_a.samples.push(t0.elapsed().as_secs_f64() * 1e6 / a_ops as f64);
+            tier_a
+                .samples
+                .push(t0.elapsed().as_secs_f64() * 1e6 / a_ops as f64);
         }
         // timed batches — tier A2: extract one string field per op
         let mut sink: u64 = 0;
@@ -142,7 +161,9 @@ fn main() {
                 let m: String = out.as_object().unwrap().get("message")?;
                 sink += m.len() as u64;
             }
-            tier_a2.samples.push(t0.elapsed().as_secs_f64() * 1e6 / a_ops as f64);
+            tier_a2
+                .samples
+                .push(t0.elapsed().as_secs_f64() * 1e6 / a_ops as f64);
         }
         assert!(sink > 0);
         tier_a2.checked += 1;
@@ -151,7 +172,7 @@ fn main() {
     })
     .expect("tier A evaluation");
 
-    // ---------------- tier B: production slotless invoke ----------------
+    // -------- tiers B and C: in-worker direct, then full channel --------
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -159,31 +180,31 @@ fn main() {
         .unwrap();
     // NO tokio_rt.enter(): an entered context makes Handle::block_on skip
     // driving spawned tasks (same caveat as bridge_bench).
-    let mut engine = QuickJsEngine::spawn(
-        QuickJsConfig::default(),
-        tokio_rt.handle().clone(),
-        Arc::new(IdentityMapper),
-    );
-    let table: std::collections::BTreeMap<String, String> =
-        [("hello.c3", "")]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-    engine
+    let table: std::collections::BTreeMap<String, String> = [("hello.c3", "")]
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+
+    // Tier B: the SAME WorkerInner a spawned thread would run, constructed
+    // on THIS thread; begin_invocation called directly — no channel, no
+    // wakeup, no scheduler participation.
+    let mut direct = DirectWorker::new(QuickJsConfig::default(), tokio_rt.handle().clone())
+        .expect("direct worker constructs");
+    direct
         .load(
             BUNDLE,
-            None,
-            q_engine::EngineLoadPlan::Legacy { expected_handlers: table },
+            &q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table.clone(),
+            },
         )
-        .expect("bundle loads");
-
-    let mut tier_b = TierStats { name: "B_slotless_invoke", samples: Vec::new(), ops_per_batch: b_ops, checked: 0 };
+        .expect("direct bundle loads");
     let mut next_id: u64 = 0;
-    let mut invoke_once = |engine: &mut QuickJsEngine, keep: bool| -> f64 {
-        next_id += 1;
-        let spec = InvocationSpec {
-            id: next_id,
-            request_id: format!("c3d-{next_id}"),
+    let make_spec = |next_id: &mut u64| {
+        *next_id += 1;
+        let id = *next_id;
+        InvocationSpec {
+            id,
+            request_id: format!("c3d-{id}"),
             route_id: "hello.c3".into(),
             route_id_num: None,
             handler_key: "hello.c3".into(),
@@ -207,39 +228,100 @@ fn main() {
             response_strategy: ResponseStrategy::Native,
             raw_response: false,
             deadline: Instant::now() + std::time::Duration::from_millis(2000),
-        };
+        }
+    };
+    let check_outcome = |outcome: &Outcome| match outcome {
+        Outcome::Response { body, status, .. } => {
+            let ok = *status == 200
+                && match body {
+                    q_engine::BodyOut::Json(v) => v["message"] == EXPECTED_MESSAGE,
+                    q_engine::BodyOut::JsonText(t) => serde_json::from_str::<Value>(t.as_str())
+                        .map(|v| v["message"] == EXPECTED_MESSAGE)
+                        .unwrap_or(false),
+                    _ => false,
+                };
+            assert!(ok, "correctness: {body:?}");
+        }
+        other => panic!("expected Response, got {other:?}"),
+    };
+    let mut tier_b = TierStats {
+        name: "B_worker_direct",
+        samples: Vec::new(),
+        ops_per_batch: b_ops,
+        checked: 0,
+    };
+    let mut direct_once = |direct: &mut DirectWorker, keep: bool| -> f64 {
+        // spec construction hoisted OUT of the timed window — identical to
+        // tier C, so B and C time exactly invoke→outcome.
+        let spec = make_spec(&mut next_id);
+        let t0 = Instant::now();
+        let outcome = direct.invoke_direct(spec);
+        let us = t0.elapsed().as_secs_f64() * 1e6;
+        if keep {
+            check_outcome(&outcome);
+        }
+        us
+    };
+    direct_once(&mut direct, true);
+    tier_b.checked += 1;
+    for _ in 0..(b_ops * 5) {
+        let _ = direct_once(&mut direct, false);
+    }
+    for _ in 0..batches {
+        let t0 = Instant::now();
+        for _ in 0..b_ops {
+            let _ = direct_once(&mut direct, false);
+        }
+        tier_b
+            .samples
+            .push(t0.elapsed().as_secs_f64() * 1e6 / b_ops as f64);
+    }
+    direct_once(&mut direct, true);
+    tier_b.checked += 1;
+    drop(direct);
+
+    // Tier C: the full production dispatch — host → QuickJsEngine::invoke →
+    // mpsc channel → worker wakeup → (tier B work) → oneshot reply.
+    let mut engine = QuickJsEngine::spawn(
+        QuickJsConfig::default(),
+        tokio_rt.handle().clone(),
+        Arc::new(IdentityMapper),
+    );
+    engine
+        .load(
+            BUNDLE,
+            None,
+            q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table.clone(),
+            },
+        )
+        .expect("bundle loads");
+    let mut tier_c = TierStats {
+        name: "C_channel_invoke",
+        samples: Vec::new(),
+        ops_per_batch: b_ops,
+        checked: 0,
+    };
+    let mut invoke_once = |engine: &mut QuickJsEngine, keep: bool| -> f64 {
+        let spec = make_spec(&mut next_id);
         let (tx, rx) = tokio::sync::oneshot::channel();
         let t0 = Instant::now();
         engine.invoke(spec, tx);
         let outcome = tokio_rt
             .handle()
-            .block_on(async { tokio::time::timeout(std::time::Duration::from_millis(1900), rx).await })
+            .block_on(async {
+                tokio::time::timeout(std::time::Duration::from_millis(1900), rx).await
+            })
             .expect("reply within deadline")
             .expect("channel open");
         let us = t0.elapsed().as_secs_f64() * 1e6;
         if keep {
-            match &outcome {
-                Outcome::Response { body, status, .. } => {
-                    let ok = *status == 200
-                        && match body {
-                            q_engine::BodyOut::Json(v) => v["message"] == EXPECTED_MESSAGE,
-                            q_engine::BodyOut::JsonText(t) => {
-                                serde_json::from_str::<Value>(t.as_str())
-                                    .map(|v| v["message"] == EXPECTED_MESSAGE)
-                                    .unwrap_or(false)
-                            }
-                            _ => false,
-                        };
-                    assert!(ok, "tier B correctness: {body:?}");
-                }
-                other => panic!("tier B expected Response, got {other:?}"),
-            }
+            check_outcome(&outcome);
         }
         us
     };
-    // correctness gate + warmup
     invoke_once(&mut engine, true);
-    tier_b.checked += 1;
+    tier_c.checked += 1;
     for _ in 0..(b_ops * 5) {
         invoke_once(&mut engine, false);
     }
@@ -248,18 +330,71 @@ fn main() {
         for _ in 0..b_ops {
             let _ = invoke_once(&mut engine, false);
         }
-        tier_b.samples.push(t0.elapsed().as_secs_f64() * 1e6 / b_ops as f64);
+        tier_c
+            .samples
+            .push(t0.elapsed().as_secs_f64() * 1e6 / b_ops as f64);
     }
-    invoke_once(&mut engine, true); // still correct after the timed phase
-    tier_b.checked += 1;
+    invoke_once(&mut engine, true);
+    tier_c.checked += 1;
     engine.shutdown();
 
+    // Tier B3: in-worker direct REPEATED on a freshly constructed worker
+    // AFTER tier C. Distinguishes a stable in-worker-direct cost from
+    // run-order/warmup artifacts (guards the B/C comparison; on a 1-vCPU
+    // host a single ordering produced an inverted B vs C).
+    let mut direct3 = DirectWorker::new(QuickJsConfig::default(), tokio_rt.handle().clone())
+        .expect("direct worker 3 constructs");
+    direct3
+        .load(
+            BUNDLE,
+            &q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table,
+            },
+        )
+        .expect("direct bundle 3 loads");
+    let mut tier_b3 = TierStats {
+        name: "B3_worker_direct_repeat",
+        samples: Vec::new(),
+        ops_per_batch: b_ops,
+        checked: 0,
+    };
+    let mut direct3_once = |direct: &mut DirectWorker, keep: bool| -> f64 {
+        let spec = make_spec(&mut next_id);
+        let t0 = Instant::now();
+        let outcome = direct.invoke_direct(spec);
+        let us = t0.elapsed().as_secs_f64() * 1e6;
+        if keep {
+            check_outcome(&outcome);
+        }
+        us
+    };
+    direct3_once(&mut direct3, true);
+    tier_b3.checked += 1;
+    for _ in 0..(b_ops * 5) {
+        let _ = direct3_once(&mut direct3, false);
+    }
+    for _ in 0..batches {
+        let t0 = Instant::now();
+        for _ in 0..b_ops {
+            let _ = direct3_once(&mut direct3, false);
+        }
+        tier_b3
+            .samples
+            .push(t0.elapsed().as_secs_f64() * 1e6 / b_ops as f64);
+    }
+    direct3_once(&mut direct3, true);
+    tier_b3.checked += 1;
+    drop(direct3);
+
     // ---------------- output ----------------
-    let mut raw_file = std::fs::File::create(format!("{out_dir}/decompose.jsonl")).expect("raw out");
+    let mut raw_file =
+        std::fs::File::create(format!("{out_dir}/decompose.jsonl")).expect("raw out");
     let tiers = [
         write_tier(&mut raw_file, &tier_a),
         write_tier(&mut raw_file, &tier_a2),
         write_tier(&mut raw_file, &tier_b),
+        write_tier(&mut raw_file, &tier_c),
+        write_tier(&mut raw_file, &tier_b3),
     ];
     let get = |t: &str, k: &str| {
         tiers
@@ -268,8 +403,12 @@ fn main() {
             .map(|e| e[k].as_f64().unwrap_or(f64::NAN))
             .unwrap_or(f64::NAN)
     };
+    let a = get("A_raw_call", "p50_us");
+    let b = get("B_worker_direct", "p50_us");
+    let c = get("C_channel_invoke", "p50_us");
+    let b3 = get("B3_worker_direct_repeat", "p50_us");
     let summary = json!({
-        "format": "velqu-c3-decompose-v1",
+        "format": "velqu-c3-decompose-v2-three-tier",
         "diagnosticOnly": true,
         "hostLabel": std::env::var("C3D_LABEL").unwrap_or_else(|_| "unspecified".into()),
         "sourceCommit": std::env::var("C3D_COMMIT").unwrap_or_else(|_| "unknown".into()),
@@ -277,13 +416,18 @@ fn main() {
         "batches": batches,
         "tiers": tiers,
         "derived": {
-            "glue_B_minus_A_us": get("B_slotless_invoke", "p50_us") - get("A_raw_call", "p50_us"),
-            "extract_A2_minus_A_us": get("A2_raw_call_extract", "p50_us") - get("A_raw_call", "p50_us"),
-            "glue_share_of_B_pct": (get("B_slotless_invoke", "p50_us") - get("A_raw_call", "p50_us"))
-                / get("B_slotless_invoke", "p50_us") * 100.0,
+            "engine_A_us": a,
+            "inworker_glue_B_minus_A_us": b - a,
+            "handoff_C_minus_B_us": c - b,
+            "extract_A2_minus_A_us": get("A2_raw_call_extract", "p50_us") - a,
+            "inworker_glue_share_of_C_pct": (b - a) / c * 100.0,
+            "handoff_share_of_C_pct": (c - b) / c * 100.0,
+            "b3_repeat_us": b3,
+            "b3_minus_b_us": b3 - b,
         },
     });
-    let mut sum_file = std::fs::File::create(format!("{out_dir}/decompose-summary.json")).expect("summary out");
+    let mut sum_file =
+        std::fs::File::create(format!("{out_dir}/decompose-summary.json")).expect("summary out");
     let _ = writeln!(sum_file, "{summary}");
     println!("c3 decompose complete: {out_dir}/decompose.jsonl + decompose-summary.json");
     for t in &tiers {
@@ -299,9 +443,11 @@ fn main() {
     }
     let d = &summary["derived"];
     println!(
-        "derived: glue(B-A) {:.3}us | extract(A2-A) {:.3}us | glue share of B {:.1}%",
-        d["glue_B_minus_A_us"].as_f64().unwrap(),
-        d["extract_A2_minus_A_us"].as_f64().unwrap(),
-        d["glue_share_of_B_pct"].as_f64().unwrap(),
+        "derived: engine(A) {:.3}us | in-worker glue(B-A) {:.3}us | handoff(C-B) {:.3}us | shares of C: glue {:.1}% / handoff {:.1}%",
+        d["engine_A_us"].as_f64().unwrap(),
+        d["inworker_glue_B_minus_A_us"].as_f64().unwrap(),
+        d["handoff_C_minus_B_us"].as_f64().unwrap(),
+        d["inworker_glue_share_of_C_pct"].as_f64().unwrap(),
+        d["handoff_share_of_C_pct"].as_f64().unwrap(),
     );
 }
