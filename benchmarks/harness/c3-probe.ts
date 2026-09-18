@@ -101,17 +101,21 @@ async function measure(candidate: Candidate, concurrency: number, stageDir: stri
 }
 
 const results: Record<string, unknown>[] = [];
-// Interleaved paired cells: within each repetition, old/new alternate per
-// concurrency level so time drift (thermal, background load) hits both
-// candidates equally. Paired medians are computed from these rows.
+// Balanced interleaved pairing (v3): within each repetition the old/new
+// pair runs back-to-back per concurrency level, and the ORDER alternates
+// per repetition (odd reps old→new, even reps new→old) so ambient drift
+// (thermal, background load) cannot systematically favor one candidate.
+// Paired ratios are computed from matched (repetition, concurrency) pairs.
 for (let repetition = 1; repetition <= REPS; repetition++) {
+  const order = repetition % 2 === 1 ? CANDIDATES : [...CANDIDATES].slice().reverse();
   for (const concurrency of CONC) {
-    for (const candidate of CANDIDATES) {
+    for (let orderInCell = 0; orderInCell < order.length; orderInCell++) {
+      const candidate = order[orderInCell];
       const stageDir = `${OUT_DIR}/${RUN_ID}/${candidate.id}-c${concurrency}-r${repetition}`;
       const result = await measure(candidate, concurrency, stageDir);
-      const row = { runId: RUN_ID, candidate: candidate.id, commit: candidate.commit, routeId: "C3", path: "/hello/Rafi", concurrency, repetition, durationSec: DURATION, ...result };
+      const row = { runId: RUN_ID, candidate: candidate.id, commit: candidate.commit, routeId: "C3", path: "/hello/Rafi", concurrency, repetition, orderInCell, durationSec: DURATION, ...result };
       results.push(row);
-      console.log(`rep${repetition} ${candidate.id} c=${concurrency}: ${result.rps} req/s p50=${result.p50Us}us p95=${result.p95Us}us errors=${result.errors}`);
+      console.log(`rep${repetition} pos${orderInCell} ${candidate.id} c=${concurrency}: ${result.rps} req/s p50=${result.p50Us}us p95=${result.p95Us}us errors=${result.errors}`);
     }
   }
 }
@@ -123,6 +127,21 @@ function median(values: number[]): number {
 }
 
 const aggregate: Record<string, unknown>[] = [];
+// Median per-stage µs/op (stage files hold cumulative {ns, n}; ns/n is the
+// per-operation mean including the 300-request warmup, identically for both
+// candidates) — surfaces which engine stages the candidate removes/shrinks.
+function medianStageUs(cells: Record<string, unknown>[], key: "stages" | "serveStages"): Record<string, number> {
+  const perStage: Record<string, number[]> = {};
+  for (const cell of cells) {
+    const stages = (cell[key] ?? {}) as Record<string, { ns: number; n: number }>;
+    for (const [name, v] of Object.entries(stages)) {
+      if (v && typeof v.ns === "number" && v.n > 0) (perStage[name] ??= []).push(v.ns / v.n / 1000);
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const [name, vals] of Object.entries(perStage)) out[name] = Math.round(median(vals) * 100) / 100;
+  return out;
+}
 for (const candidate of CANDIDATES) {
   for (const concurrency of CONC) {
     const cells = results.filter((r) => r.candidate === candidate.id && r.concurrency === concurrency);
@@ -136,6 +155,31 @@ for (const candidate of CANDIDATES) {
       medianP95Us: Math.round(median(cells.map((c) => c.p95Us as number)) * 10) / 10,
       medianP99Us: Math.round(median(cells.map((c) => c.p99Us as number)) * 10) / 10,
       totalErrors: cells.reduce((sum, c) => sum + (c.errors as number), 0),
+      stageUs: medianStageUs(cells, "stages"),
+      serveStageUs: medianStageUs(cells, "serveStages"),
+    });
+  }
+}
+
+// Matched-pair ratios: new/old rps within each (repetition, concurrency)
+// pair — order-independent under balanced alternation, and robust to
+// between-repetition drift that pooled medians can hide.
+const pairedRatios: Record<string, unknown>[] = [];
+for (const concurrency of CONC) {
+  const ratios: number[] = [];
+  for (let repetition = 1; repetition <= REPS; repetition++) {
+    const o = results.find((r) => r.candidate === CANDIDATES[0].id && r.concurrency === concurrency && r.repetition === repetition) as { rps: number } | undefined;
+    const n = results.find((r) => r.candidate === CANDIDATES[1].id && r.concurrency === concurrency && r.repetition === repetition) as { rps: number } | undefined;
+    if (o && n && o.rps > 0) ratios.push(Math.round((n.rps / o.rps) * 10000) / 10000);
+  }
+  if (ratios.length > 0) {
+    pairedRatios.push({
+      concurrency,
+      pairs: ratios.length,
+      medianRatio: Math.round(median(ratios) * 10000) / 10000,
+      minRatio: Math.round(Math.min(...ratios) * 10000) / 10000,
+      maxRatio: Math.round(Math.max(...ratios) * 10000) / 10000,
+      ratios,
     });
   }
 }
@@ -144,21 +188,26 @@ mkdirSync(OUT_DIR, { recursive: true });
 const raw = `${OUT_DIR}/${RUN_ID}.jsonl`;
 writeFileSync(raw, results.map((row) => JSON.stringify(row)).join("\n") + "\n");
 writeFileSync(`${OUT_DIR}/${RUN_ID}.summary.json`, JSON.stringify({
-  format: "velqu-c3-matched-diagnostic-v2-interleaved",
+  format: "velqu-c3-matched-diagnostic-v3-balanced",
   diagnosticOnly: true,
   runId: RUN_ID,
+  hostLabel: process.env.C3PROBE_LABEL ?? "unspecified",
   route: { id: "C3", path: "/hello/Rafi", dynamicJsHandler: true },
   pack: PACK,
   durationSec: DURATION,
   repetitions: REPS,
   concurrency: CONC,
-  pairing: "interleaved (old/new alternate per cell within each repetition)",
+  pairing: "balanced interleaved (old/new back-to-back per cell; order alternates per repetition: odd old→new, even new→old)",
   candidates: CANDIDATES,
   raw: `benchmarks/raw/c3-probe/${RUN_ID}.jsonl`,
   aggregate,
+  pairedRatios,
   results,
 }, null, 2));
 console.log(`wrote ${raw}`);
 for (const row of aggregate) {
   console.log(`AGG ${row.candidate} c=${row.concurrency}: median ${row.medianRps} req/s p50=${row.medianP50Us}us p95=${row.medianP95Us}us errors=${row.totalErrors}`);
+}
+for (const row of pairedRatios) {
+  console.log(`PAIRED c=${row.concurrency}: median ratio ${row.medianRatio} (n=${row.pairs}, min ${row.minRatio}, max ${row.maxRatio})`);
 }
