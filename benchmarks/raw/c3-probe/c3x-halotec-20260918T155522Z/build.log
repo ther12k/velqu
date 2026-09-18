@@ -1,0 +1,22 @@
+bun install v1.4.0 (34cbb9a40)
+
++ @types/bun@1.3.4
++ typescript@5.9.3
+
+6 packages installed [560.00ms]
+velqu build [serverless]: 24 routes → examples/proof/dist in 2304ms
+  app.qpack  75023B
+  route-manifest.json  12422B
+  schema-manifest.json  17112B
+  capability-manifest.json  1242B
+  contract.json  24781B
+  contract.d.ts  5865B
+  contract.meta.json  3742B
+  openapi.json  34053B
+  contract.lock.json  24761B
+  build-report.json  41605B
+  app.qpack.sources.json  107955B
+  published-manifest.json  965B
+47c7d784e32228ea9cd973709d6f1ce20cc5536ab4941e8779571bb70d34e348  /work/bin/velqu-runtime-old
+959550f69cd3bf30cedff32b583c4a1361560451947a9ae1e58b992953318b98  /work/bin/velqu-runtime-new
+9ca122bd5e448c7cfd643dc96e4587db551fff84858fabb2b2037787bf1c2f28  /work/pack/app.qpack

@@ -1,0 +1,15 @@
+label=local
+run-id=c3x-local-20260918T162021Z
+harness-commit=00723a20c7bacbcb6f6187f6e78c80c1a7617af6
+docker=Docker version 29.5.0, build 98f1464
+image-id=sha256:dda011a80ab0925a64b007f027c29a61f39f4b1449b55f70975e6a5eace02e44
+cpus-limit=2
+host-cpu=13th Gen Intel(R) Core(TM) i5-13420H
+host-kernel=7.0.0-31-generic
+virtualization=none
+build-features=bench-instrumentation (both candidates, identical instrumentation)
+protocol=balanced-interleaved duration=10s reps=10 conc=1,10,50
+47c7d784e32228ea9cd973709d6f1ce20cc5536ab4941e8779571bb70d34e348  velqu-runtime-old (5170c5a6)
+959550f69cd3bf30cedff32b583c4a1361560451947a9ae1e58b992953318b98  velqu-runtime-new (b51927ed)
+9ca122bd5e448c7cfd643dc96e4587db551fff84858fabb2b2037787bf1c2f28  pack/app.qpack (identical pack hash on all three hosts)
+note=host file rewritten post-run: the wrapper aborted partway through writing it (set -e vs systemd-detect-virt exit status); build+measure transcript preserved in build-measure.log

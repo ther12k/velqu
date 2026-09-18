@@ -1,0 +1,46 @@
+rep1 pos0 pre-c3-request-store c=1: 2140 req/s p50=384.7us p95=798.3us errors=0
+rep1 pos1 c3-slotless-prevalidated c=1: 2462 req/s p50=349.3us p95=670.5us errors=0
+rep1 pos0 pre-c3-request-store c=10: 9742 req/s p50=670.4us p95=1823.9us errors=0
+rep1 pos1 c3-slotless-prevalidated c=10: 10776 req/s p50=612.3us p95=1642.1us errors=0
+rep1 pos0 pre-c3-request-store c=50: 12886 req/s p50=2526.9us p95=9183.8us errors=0
+rep1 pos1 c3-slotless-prevalidated c=50: 14184 req/s p50=2315.7us p95=8728.1us errors=0
+rep2 pos0 c3-slotless-prevalidated c=1: 2441 req/s p50=355.1us p95=672.2us errors=0
+rep2 pos1 pre-c3-request-store c=1: 2283 req/s p50=377.7us p95=710.1us errors=0
+rep2 pos0 c3-slotless-prevalidated c=10: 10175 req/s p50=630.8us p95=1782.1us errors=0
+rep2 pos1 pre-c3-request-store c=10: 9712 req/s p50=653.7us p95=1724.4us errors=0
+rep2 pos0 c3-slotless-prevalidated c=50: 14703 req/s p50=2152.3us p95=7712.6us errors=0
+rep2 pos1 pre-c3-request-store c=50: 13124 req/s p50=2382.9us p95=8894.1us errors=0
+rep3 pos0 pre-c3-request-store c=1: 2186 req/s p50=389.8us p95=761.4us errors=0
+rep3 pos1 c3-slotless-prevalidated c=1: 2320 req/s p50=367.9us p95=709.2us errors=0
+rep3 pos0 pre-c3-request-store c=10: 9501 req/s p50=674us p95=1871.3us errors=0
+rep3 pos1 c3-slotless-prevalidated c=10: 10103 req/s p50=651.6us p95=2080.3us errors=0
+rep3 pos0 pre-c3-request-store c=50: 13450 req/s p50=2293.8us p95=8563.7us errors=0
+rep3 pos1 c3-slotless-prevalidated c=50: 14872 req/s p50=2122.2us p95=7362.4us errors=0
+rep4 pos0 c3-slotless-prevalidated c=1: 2282 req/s p50=377.7us p95=728.7us errors=0
+rep4 pos1 pre-c3-request-store c=1: 2154 req/s p50=387.3us p95=769us errors=0
+rep4 pos0 c3-slotless-prevalidated c=10: 10188 req/s p50=623.1us p95=1948.5us errors=0
+rep4 pos1 pre-c3-request-store c=10: 9632 req/s p50=673.5us p95=1800.5us errors=0
+rep4 pos0 c3-slotless-prevalidated c=50: 14808 req/s p50=2133.4us p95=7047.5us errors=0
+rep4 pos1 pre-c3-request-store c=50: 13383 req/s p50=2315.1us p95=8282.1us errors=0
+rep5 pos0 pre-c3-request-store c=1: 2229 req/s p50=382us p95=730.3us errors=0
+rep5 pos1 c3-slotless-prevalidated c=1: 2370 req/s p50=354.7us p95=705.7us errors=0
+rep5 pos0 pre-c3-request-store c=10: 9499 req/s p50=672us p95=1852.4us errors=0
+rep5 pos1 c3-slotless-prevalidated c=10: 10285 req/s p50=639us p95=1635.3us errors=0
+rep5 pos0 pre-c3-request-store c=50: 13181 req/s p50=2405.9us p95=9447us errors=0
+rep5 pos1 c3-slotless-prevalidated c=50: 14383 req/s p50=2255.1us p95=7954.2us errors=0
+rep6 pos0 c3-slotless-prevalidated c=1: 2331 req/s p50=361.9us p95=714.8us errors=0
+rep6 pos1 pre-c3-request-store c=1: 2350 req/s p50=368.7us p95=684.7us errors=0
+rep6 pos0 c3-slotless-prevalidated c=10: 10513 req/s p50=613.1us p95=1651.2us errors=0
+rep6 pos1 pre-c3-request-store c=10: 9505 req/s p50=680.8us p95=2065us errors=0
+rep6 pos0 c3-slotless-prevalidated c=50: 14397 req/s p50=2205.1us p95=8227.1us errors=0
+rep6 pos1 pre-c3-request-store c=50: 13314 req/s p50=2280.9us p95=8195.6us errors=0
+wrote /work/out/c3x-halotec-20260918T155522Z.jsonl
+AGG pre-c3-request-store c=1: median 2208 req/s p50=383.4us p95=745.8us errors=0
+AGG pre-c3-request-store c=10: median 9569 req/s p50=672.8us p95=1838.2us errors=0
+AGG pre-c3-request-store c=50: median 13248 req/s p50=2349us p95=8728.9us errors=0
+AGG c3-slotless-prevalidated c=1: median 2351 req/s p50=358.5us p95=707.5us errors=0
+AGG c3-slotless-prevalidated c=10: median 10237 req/s p50=627us p95=1716.7us errors=0
+AGG c3-slotless-prevalidated c=50: median 14550 req/s p50=2178.7us p95=7833.4us errors=0
+PAIRED c=1: median ratio 1.0623 (n=6, min 0.9919, max 1.1505)
+PAIRED c=10: median ratio 1.073 (n=6, min 1.0477, max 1.1061)
+PAIRED c=50: median ratio 1.1032 (n=6, min 1.0813, max 1.1203)
