@@ -21,6 +21,10 @@ name = "q-worker-scaling"
 path = "src/bin/worker_scaling.rs"
 
 [[bin]]
+name = "q-c3-decompose"
+path = "src/bin/c3_decompose.rs"
+
+[[bin]]
 name = "q-soak"
 path = "src/bin/soak.rs"
 
@@ -28,6 +32,8 @@ path = "src/bin/soak.rs"
 bench-instrumentation = ["q-engine-quickjs/bench-instrumentation"]
 
 [dependencies]
+# tier-A of q-c3-decompose drives a bare quickjs context directly
+rquickjs = { version = "=0.12.2", features = ["full-async"] }
 q-capabilities = { workspace = true }
 q-engine = { workspace = true }
 q-engine-quickjs = { workspace = true }
