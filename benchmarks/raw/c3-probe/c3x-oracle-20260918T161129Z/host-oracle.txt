@@ -1,0 +1,16 @@
+label=oracle
+run-id=c3x-oracle-20260918T161129Z
+harness-commit=tree-fallback:benchmarks/harness/c3-probe.ts
+docker=podman version 5.8.2
+image-id=c1755b38a3ec129a324aedb58dc1bfcb7b4c31d6460c82211d726b83e33ae47a
+cpus-limit=none
+cpus-limit-note=rootless crun rejects --cpus (cpu controller not delegated); build AND measurement containers uncapped on a 1-vCPU VM (recorded deviation; same effective condition as the 2026-09-15 run)
+host-cpu=Neoverse-N1
+host-kernel=6.12.0-203.76.7.3.el9uek.aarch64
+virtualization=kvm
+build-features=bench-instrumentation (both candidates, identical instrumentation)
+protocol=balanced-interleaved duration=10s reps=6 conc=1,10,50
+dadb8b3dfa30fc1697c0a1524f47160d600cb3de4e15cc6023552445536c8836  velqu-runtime-old (5170c5a6)
+6bbd8b3774d67fbe3b64b07ceac4fb067febdcbbda91fa71af45f0fc491bea0c  velqu-runtime-new (b51927ed)
+9ca122bd5e448c7cfd643dc96e4587db551fff84858fabb2b2037787bf1c2f28  pack/app.qpack (identical pack hash on all three hosts)
+note=artifact-recovery: the wrapper's in-container chown failed under the rootless subuid mapping (work-dir files owned by host uid 100999), so the automated copy/host-file/postcondition never ran and the cleanup trap removed the opc-owned build/measure logs; out/ and bin/ survived in the work dir and were recovered via `podman unshare` tar extraction. The JSONL/summary/stage files here are the unmodified container-written artifacts; all 36 cells cross-checked against the captured run transcript (0 errors).

@@ -1,0 +1,14 @@
+label=halotec
+run-id=c3x-halotec-20260918T155522Z
+harness-commit=tree-fallback:benchmarks/harness/c3-probe.ts
+docker=Docker version 24.0.2, build cb74dfc
+image-id=sha256:e43bad1f3e2b0f51ad4eaaafbba3ad8935694de904cdfd3c3cfc176921ac965c
+cpus-limit=2
+host-cpu=Intel(R) Xeon(R) Platinum 8163 CPU @ 2.50GHz
+host-kernel=4.15.0-211-generic
+virtualization=kvm
+build-features=bench-instrumentation (both candidates, identical instrumentation)
+protocol=balanced-interleaved duration=10s reps=6 conc=1,10,50
+47c7d784e32228ea9cd973709d6f1ce20cc5536ab4941e8779571bb70d34e348  /tmp/c3x-work-9p2wn8/bin/velqu-runtime-old
+959550f69cd3bf30cedff32b583c4a1361560451947a9ae1e58b992953318b98  /tmp/c3x-work-9p2wn8/bin/velqu-runtime-new
+9ca122bd5e448c7cfd643dc96e4587db551fff84858fabb2b2037787bf1c2f28  /tmp/c3x-work-9p2wn8/pack/app.qpack
