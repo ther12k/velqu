@@ -1235,6 +1235,7 @@ dependencies = [
  "q-engine",
  "q-engine-quickjs",
  "q-schema-runtime",
+ "rquickjs",
  "serde",
  "serde_json",
  "sha2 0.10.9",

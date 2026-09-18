@@ -6,6 +6,9 @@ license.workspace = true
 
 [features]
 bench-instrumentation = ["q-bridge/bench-instrumentation"]
+# diagnostic-only in-worker direct invocation harness (q-c3-decompose);
+# never enabled by default or by any production crate
+bench-direct = []
 
 [dependencies]
 rquickjs = { workspace = true }
