@@ -101,7 +101,7 @@ python3 - "$DEST/decompose-summary.json" "$BATCHES" <<'EOF'
 import json, sys
 s = json.load(open(sys.argv[1])); batches = int(sys.argv[2])
 names = {t["tier"] for t in s["tiers"]}
-assert names == {"A_raw_call", "A2_raw_call_extract", "B_worker_direct", "C_channel_invoke", "B3_worker_direct_repeat"}, names
+assert names == {"A_sync", "A_async", "P_sync", "P_async", "C_async", "P_async_repeat"}, names
 for t in s["tiers"]:
     assert t["samples"] == batches, f"{t['tier']}: {t['samples']} != {batches}"
     assert t["correctness_checks"] >= 1, t["tier"]

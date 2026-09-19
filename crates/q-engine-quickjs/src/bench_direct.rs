@@ -52,6 +52,12 @@ impl DirectWorker {
         self.inner.load(bundle, None, plan).map(|_| ())
     }
 
+    /// Shared engine counters (diagnostic): watcher registrations,
+    /// drain/scans, immediate-vs-promise results, handler calls.
+    pub fn stats(&self) -> q_engine::EngineStats {
+        self.inner.shared_stats()
+    }
+
     /// Execute one invocation synchronously on this thread. The reply
     /// oneshot is created and consumed here (same completion signalling as
     /// production); only the cross-thread scheduling is absent.
