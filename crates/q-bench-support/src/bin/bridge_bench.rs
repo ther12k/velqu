@@ -450,6 +450,7 @@ fn run_case(
         default_status: 200,
         response_strategy: case.strategy,
         raw_response: false,
+        context_plan: q_engine::ContextPlan::RequestBacked,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -495,6 +496,7 @@ fn run_case(
         default_status: 200,
         response_strategy: case.strategy,
         raw_response: false,
+        context_plan: q_engine::ContextPlan::RequestBacked,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();

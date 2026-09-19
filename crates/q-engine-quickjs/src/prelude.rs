@@ -825,6 +825,18 @@ globalThis.__velquMakeCtx = function (slot, gen, pre) {
   return c;
 };
 
+// ADR-0045 ValidatedParamsOnly: the compiler answered every question the
+// generic constructor re-asks — exactly one field (params, natively
+// validated), no slot, no lazy facilities, immutable per-route plan
+// object (host-authored, frozen, shared across that route's calls).
+globalThis.__velquMakeCtxParams = function (routePlan, params) {
+  const c = Object.create(__velquContextPrototype);
+  c.routePlan = routePlan;
+  c.params = params;
+  return c;
+};
+globalThis.__velquFreeze = (o) => Object.freeze(o);
+
 // Timer capability: promise callbacks live in a JS-side op table keyed by
 // op id; the host resolves/rejects through the two dispatch functions below.
 globalThis.__velquOps = Object.create(null);

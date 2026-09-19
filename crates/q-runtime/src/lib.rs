@@ -455,6 +455,21 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             .iter()
             .map(|s| (s.key.as_str(), s.id))
             .collect();
+        // ADR-0045: per-route context plans, derived ONCE at load from the
+        // same route-static inputs the request path uses (FieldNeeds from
+        // the verified RoutePlan, schema ids, body binding + strategy,
+        // policy, capabilities). The request path never re-derives them.
+        let context_plans: Vec<q_engine::ContextPlan> = pack
+            .routes
+            .iter()
+            .enumerate()
+            .map(|(index, route)| {
+                let compiled = router
+                    .compiled_route(index)
+                    .expect("router built from the same pack");
+                context_plan_for(route, compiled)
+            })
+            .collect();
         let response_schema_ids: Vec<std::collections::BTreeMap<u16, u32>> = pack
             .routes
             .iter()
@@ -481,6 +496,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             decoder_table,
             encoder_table,
             response_schema_ids,
+            context_plans,
             engine: std::sync::Mutex::new(engine),
             health,
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
@@ -608,4 +624,49 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         }
         0
     })
+}
+
+/// ADR-0045: derive a route's context construction plan from compiled
+/// metadata. This is the STATIC mirror of the request-path
+/// `needs_request_store` predicate in `serve` — every input is
+/// route-static (schema-id presence ⇔ validated value presence, since a
+/// validation failure rejects before invocation; policy/capabilities are
+/// declarations). The worker additionally fails closed: a non-sentinel
+/// slot always selects the generic constructor regardless of plan.
+fn context_plan_for(
+    route: &q_pack::RouteEntry,
+    compiled: &q_router::CompiledRoute,
+) -> q_engine::ContextPlan {
+    let needs = compiled
+        .plan
+        .as_ref()
+        .map(|p| p.field_needs)
+        .unwrap_or_default();
+    let body_prevalidated = needs.body
+        && compiled.body_schema_id.is_some()
+        && route.validation_strategy == q_pack::Strategy::Native;
+    let needs_request_store = (needs.params && compiled.params_schema_id.is_none())
+        || (needs.query && compiled.query_schema_id.is_none())
+        || (needs.headers && compiled.headers_schema_id.is_none())
+        || (needs.body && !body_prevalidated)
+        || route.policy.is_some()
+        || compiled.policy_id.is_some()
+        || compiled.policy_handler_id.is_some()
+        || route.capabilities.iter().any(|c| c == "full-request");
+    if needs_request_store {
+        return q_engine::ContextPlan::RequestBacked;
+    }
+    // Slotless: which prevalidated fields can appear in `pre`? Exactly the
+    // declared schemas (body only when natively prevalidated).
+    let has_params = compiled.params_schema_id.is_some();
+    let has_query = compiled.query_schema_id.is_some();
+    let has_headers = compiled.headers_schema_id.is_some();
+    let has_body = body_prevalidated;
+    if !has_params && !has_query && !has_headers && !has_body {
+        q_engine::ContextPlan::Requestless
+    } else if has_params && !has_query && !has_headers && !has_body {
+        q_engine::ContextPlan::ValidatedParamsOnly
+    } else {
+        q_engine::ContextPlan::ValidatedFields
+    }
 }

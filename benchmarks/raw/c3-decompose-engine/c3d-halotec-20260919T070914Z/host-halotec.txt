@@ -1,0 +1,12 @@
+label=halotec
+run-id=c3d-halotec-20260919T070914Z
+docker=Docker version 24.0.2, build cb74dfc
+image-id=sha256:10ba290134253322ee12f912a06988b1e0a046134c01dc38e00f4540e906f1fc
+cpus-limit=2
+host-cpu=Intel(R) Xeon(R) Platinum 8163 CPU @ 2.50GHz
+host-kernel=4.15.0-211-generic
+virtualization=kvm
+source-tar-sha256=26ecdc094eae213f338ebac22bc665a59a080c635ed94957e4ccb1ff7e4559c3
+source-commit=unknown
+bin-sha256=7066d89244af0f926071e9c244d90fc2460aa4359cfc5e1b51d3413f93aedb4c
+batches=120

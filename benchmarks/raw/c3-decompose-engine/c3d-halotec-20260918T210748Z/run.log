@@ -1,7 +1,0 @@
-c3 decompose complete: /work/out/decompose.jsonl + decompose-summary.json
-A_raw_call: p50 0.385us p95 0.510us (120 batches x 1000 ops, 1 correctness checks)
-A2_raw_call_extract: p50 0.577us p95 0.915us (120 batches x 1000 ops, 1 correctness checks)
-B_worker_direct: p50 13.542us p95 21.858us (120 batches x 200 ops, 2 correctness checks)
-C_channel_invoke: p50 74.131us p95 117.843us (120 batches x 200 ops, 2 correctness checks)
-B3_worker_direct_repeat: p50 14.021us p95 20.307us (120 batches x 200 ops, 2 correctness checks)
-derived: engine(A) 0.385us | in-worker glue(B-A) 13.156us | handoff(C-B) 60.590us | shares of C: glue 17.7% / handoff 81.7%

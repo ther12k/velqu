@@ -1,0 +1,14 @@
+label=local
+run-id=c3x-local-20260919T070932Z
+harness-commit=144a8f4b8a5be8e4cf50aad7a705fad645fdef16
+docker=Docker version 29.5.0, build 98f1464
+image-id=sha256:dda011a80ab0925a64b007f027c29a61f39f4b1449b55f70975e6a5eace02e44
+cpus-limit=2
+host-cpu=13th Gen Intel(R) Core(TM) i5-13420H
+host-kernel=7.0.0-31-generic
+virtualization=none
+build-features=bench-instrumentation (both candidates, identical instrumentation)
+protocol=balanced-interleaved duration=10s reps=8 conc=1,10,50
+6c8672c35b3f308ed46428eec0a2c482e4a6761f7f97ae510f665b2fadd9dc3a  /tmp/c3x-work-SlRhyu/bin/velqu-runtime-old
+85561aa371f8acfb09b2f01c2afcd7e1c55470fe3b2ec35e0fec2514cb58f712  /tmp/c3x-work-SlRhyu/bin/velqu-runtime-new
+9ca122bd5e448c7cfd643dc96e4587db551fff84858fabb2b2037787bf1c2f28  /tmp/c3x-work-SlRhyu/pack/app.qpack

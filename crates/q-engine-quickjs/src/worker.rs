@@ -381,6 +381,7 @@ impl WorkerShared {
 pub(crate) struct CachedPrelude {
     run_fn: Persistent<Function<'static>>,
     make_ctx_fn: Persistent<Function<'static>>,
+    make_ctx_params_fn: Persistent<Function<'static>>,
     make_req_fn: Persistent<Function<'static>>,
     watch_fn: Persistent<Function<'static>>,
     op_resolve_fn: Persistent<Function<'static>>,
@@ -445,6 +446,12 @@ fn collect_prelude_handles(ctx: &rquickjs::Ctx<'_>) -> Result<CachedPrelude, Str
             .get::<_, Function>("__velquMakeCtx")
             .map_err(|e| e.to_string())?,
     );
+    let make_ctx_params_fn = Persistent::save(
+        ctx,
+        ctx.globals()
+            .get::<_, Function>("__velquMakeCtxParams")
+            .map_err(|e| e.to_string())?,
+    );
     let make_req_fn = Persistent::save(
         ctx,
         ctx.globals()
@@ -475,6 +482,7 @@ fn collect_prelude_handles(ctx: &rquickjs::Ctx<'_>) -> Result<CachedPrelude, Str
     Ok(CachedPrelude {
         run_fn,
         make_ctx_fn,
+        make_ctx_params_fn,
         make_req_fn,
         watch_fn,
         op_resolve_fn,
@@ -508,6 +516,9 @@ pub(crate) struct WorkerInner {
     defer_deadline: Duration,
     /// M4A-007-A: enforced queue cap for deferred callbacks.
     defer_queue_capacity: usize,
+    /// ADR-0045: hoisted frozen routePlan objects for the specialized
+    /// ValidatedParamsOnly context path, keyed by params SchemaId.
+    ctx_plan_route_plans: std::collections::BTreeMap<Option<u32>, Persistent<Object<'static>>>,
 }
 
 thread_local! {
@@ -592,6 +603,7 @@ impl WorkerInner {
             max_invocation_jobs: config.max_invocation_jobs,
             defer_deadline: Duration::from_millis(config.defer_deadline_ms),
             defer_queue_capacity: config.defer_queue_capacity,
+            ctx_plan_route_plans: std::collections::BTreeMap::new(),
         })
     }
 
@@ -1141,9 +1153,15 @@ impl WorkerInner {
         let watch_fn_persistent = prelude.watch_fn.clone();
         let run_fn_persistent = prelude.run_fn.clone();
         let make_ctx_persistent = prelude.make_ctx_fn.clone();
+        let make_ctx_params_persistent = prelude.make_ctx_params_fn.clone();
         let make_req_persistent = prelude.make_req_fn.clone();
 
         let stringify_fn_persistent = prelude.stringify_fn.clone();
+
+        // ADR-0045: hoisted immutable per-route routePlan objects for the
+        // specialized ValidatedParamsOnly path (frozen; key = params
+        // SchemaId — the only id that varies under that plan).
+        let mut route_plan_cache = std::mem::take(&mut self.ctx_plan_route_plans);
 
         let step = {
             // handler + its sync microtask checkpoint run as a live invocation
@@ -1167,7 +1185,9 @@ impl WorkerInner {
                     policy.as_ref(),
                     &run_fn_persistent,
                     &make_ctx_persistent,
+                    &make_ctx_params_persistent,
                     &make_req_persistent,
+                    &mut route_plan_cache,
                     &spec,
                 );
                 let stringify_fn = stringify_fn_persistent.restore(&ctx).ok();
@@ -2155,13 +2175,19 @@ fn dec_capped(counter: &AtomicU64) {
 // free functions operating inside a Ctx scope
 // ---------------------------------------------------------------------------
 
+// ADR-0045 adds the params-constructor and the routePlan cache to an
+// already-wide internal boundary; a struct would churn every caller for
+// no behavioral gain, so the arity is explicit and local.
+#[allow(clippy::too_many_arguments)]
 fn call_runner<'js>(
     ctx: &rquickjs::Ctx<'js>,
     handler: &Persistent<Function<'static>>,
     policy: Option<&Persistent<Function<'static>>>,
     run_fn_persistent: &Persistent<Function<'static>>,
     make_ctx_persistent: &Persistent<Function<'static>>,
+    make_ctx_params_persistent: &Persistent<Function<'static>>,
     make_req_persistent: &Persistent<Function<'static>>,
+    route_plan_cache: &mut std::collections::BTreeMap<Option<u32>, Persistent<Object<'static>>>,
     spec: &InvocationSpec,
 ) -> rquickjs::Result<Value<'js>> {
     use rquickjs::IntoJs;
@@ -2172,6 +2198,62 @@ fn call_runner<'js>(
     let make_ctx: Function<'js> = make_ctx_persistent.clone().restore(ctx)?;
     #[cfg(feature = "bench-instrumentation")]
     q_bridge::stage_timing::record(12, __restore_t.elapsed());
+
+    // ADR-0045: the specialized constructor runs ONLY when the compiler
+    // plan says ValidatedParamsOnly AND the slot is the sentinel — any
+    // slot (or any other plan) fails closed to the generic path below.
+    let ctx_obj: Value<'js> = if spec.context_plan == q_engine::ContextPlan::ValidatedParamsOnly
+        && spec.slot == q_engine::NO_REQUEST_SLOT
+        && spec.params.is_some()
+        && policy.is_none()
+    {
+        #[cfg(feature = "bench-instrumentation")]
+        let __pre_t = q_bridge::stage_timing::timer();
+        let make_ctx_params: Function<'js> = make_ctx_params_persistent.clone().restore(ctx)?;
+        // Hoisted frozen routePlan: one object per params SchemaId,
+        // shared across that route's calls (immutable metadata).
+        let key = spec.params_schema_id.map(|v| v.0);
+        let route_plan: Object<'js> = match route_plan_cache.get(&key) {
+            Some(p) => p.clone().restore(ctx)?,
+            None => {
+                let plan = Object::new(ctx.clone())?;
+                plan.set("paramsSchemaId", spec.params_schema_id.map(|v| v.0))?;
+                plan.set("querySchemaId", None::<u32>)?;
+                plan.set("headersSchemaId", None::<u32>)?;
+                plan.set("bodySchemaId", None::<u32>)?;
+                // immutable per-route metadata: freeze through the
+                // engine (rquickjs 0.12 exposes no Object::freeze)
+                let freeze: Function<'js> = ctx.globals().get::<_, Function>("__velquFreeze")?;
+                freeze.call::<_, ()>((plan.clone(),))?;
+                route_plan_cache.insert(key, Persistent::save(ctx, plan.clone()));
+                plan
+            }
+        };
+        let c: Value<'js> = match spec.params.as_ref() {
+            Some(params_json) => {
+                let params_val = crate::convert::json_to_js(ctx, params_json)?;
+                make_ctx_params.call((route_plan, params_val))?
+            }
+            // unreachable: the branch guard checked params presence
+            None => Value::new_undefined(ctx.clone()),
+        };
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::record(13, __pre_t.elapsed());
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::record(11, std::time::Duration::from_nanos(0));
+        c
+    } else {
+        Value::new_undefined(ctx.clone())
+    };
+
+    if !ctx_obj.is_undefined() {
+        #[cfg(feature = "bench-instrumentation")]
+        let __invoke_t = q_bridge::stage_timing::timer();
+        let out = run_fn.call::<_, Value<'js>>((handler_fn, ().into_js(ctx)?, ctx_obj, ()));
+        #[cfg(feature = "bench-instrumentation")]
+        q_bridge::stage_timing::record(14, __invoke_t.elapsed());
+        return out;
+    }
 
     #[cfg(feature = "bench-instrumentation")]
     let __pre_t = q_bridge::stage_timing::timer();

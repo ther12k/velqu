@@ -1,0 +1,14 @@
+label=oracle
+run-id=c3d-oracle-20260919T070914Z
+docker=podman version 5.8.2
+image-id=c1755b38a3ec129a324aedb58dc1bfcb7b4c31d6460c82211d726b83e33ae47a
+cpus-limit=none
+cpus-limit-note=rootless crun rejects --cpus; measurement container uncapped (recorded deviation)
+mount-flags=Z (SELinux Enforcing host)
+host-cpu=Neoverse-N1
+host-kernel=6.12.0-203.76.7.3.el9uek.aarch64
+virtualization=kvm
+source-tar-sha256=26ecdc094eae213f338ebac22bc665a59a080c635ed94957e4ccb1ff7e4559c3
+source-commit=head
+bin-sha256=d0fbc2ecbc4268a00063832856211fcdaf36858938decd6245b045de1769f8bc
+batches=120

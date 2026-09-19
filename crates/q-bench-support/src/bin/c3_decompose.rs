@@ -227,6 +227,8 @@ fn main() {
             default_status: 200,
             response_strategy: ResponseStrategy::Native,
             raw_response: false,
+            // ADR-0045: the production C3 shape — params-only slotless
+            context_plan: q_engine::ContextPlan::ValidatedParamsOnly,
             deadline: Instant::now() + std::time::Duration::from_millis(2000),
         }
     };

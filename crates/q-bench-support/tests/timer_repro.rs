@@ -57,6 +57,7 @@ __velquRegister("promise.int", promise_int);
         default_status: 200,
         response_strategy: ResponseStrategy::Js,
         raw_response: false,
+        context_plan: q_engine::ContextPlan::RequestBacked,
         deadline: Instant::now() + Duration::from_millis(1000),
     };
     let (tx, rx) = tokio::sync::oneshot::channel();
