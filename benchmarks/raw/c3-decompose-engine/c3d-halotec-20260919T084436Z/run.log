@@ -1,0 +1,8 @@
+c3 decompose complete: /work/out/decompose.jsonl + decompose-summary.json
+A_sync: p50 0.526us p95 0.734us (120x1000 ops, 1 checks, counts null)
+A_async: p50 1.726us p95 2.387us (120x1000 ops, 1 checks, counts {"jobs_pumped":0.0})
+P_sync: p50 9.237us p95 12.969us (120x200 ops, 2 checks, counts {"handler_calls":1.0,"immediate_results":1.0,"promise_results":0.0,"promise_watches":0.0,"job_queue_drains":0.0,"settlement_scans":0.0})
+P_async: p50 13.907us p95 19.694us (120x200 ops, 2 checks, counts {"handler_calls":1.0,"immediate_results":0.0,"promise_results":1.0,"promise_watches":1.0,"job_queue_drains":1.0,"settlement_scans":1.0})
+C_async: p50 84.251us p95 140.957us (120x200 ops, 2 checks, counts {"handler_calls":1.0,"immediate_results":0.0,"promise_results":1.0,"promise_watches":1.0,"job_queue_drains":1.0,"settlement_scans":1.0})
+P_async_repeat: p50 15.082us p95 20.995us (120x200 ops, 2 checks, counts null)
+derived: raw-async 1.200 | prod-async 4.670 | glue(sync) 8.711 | glue(async) 12.181 | handoff 70.344 | guard +1.175
