@@ -38,6 +38,7 @@ fn spec(id: u64, handler: &str, allowed: &[u16], deadline_ms: u64) -> Invocation
         default_status: 200,
         response_strategy: ResponseStrategy::Js,
         raw_response: false,
+        context_plan: q_engine::ContextPlan::RequestBacked,
         deadline: Instant::now() + Duration::from_millis(deadline_ms),
     }
 }
@@ -406,6 +407,34 @@ __velquRegister("js.json", js_json);
 __velquRegister("requestless", requestless);
 __velquRegister("hello.get", hello);
 __velquRegister("hello.slotless", hello_slotless);
+// ADR-0045 ValidatedParamsOnly: semantics probes for the specialized path
+function plan_ctx_shape(ctx) {
+  return {
+    keys: Object.keys(ctx).sort().join(","),
+    paramsOwn: Object.prototype.hasOwnProperty.call(ctx, "params"),
+    hasQueryOwn: Object.prototype.hasOwnProperty.call(ctx, "query"),
+    routePlanType: typeof ctx.routePlan,
+    paramsFrozenProto: ctx.params === ctx.params,
+  };
+}
+function plan_null_params(ctx) {
+  // a validated nullable param field stays an own property holding null
+  return { isNull: ctx.params.name === null, own: Object.prototype.hasOwnProperty.call(ctx.params, "name") };
+}
+function plan_route_plan_identity(ctx) {
+  return {
+    frozen: Object.isFrozen(ctx.routePlan),
+    paramsId: ctx.routePlan.paramsSchemaId,
+    othersNull: ctx.routePlan.querySchemaId == null && ctx.routePlan.headersSchemaId == null && ctx.routePlan.bodySchemaId == null,
+  };
+}
+function plan_proto_chain(ctx) {
+  return { sharedProto: Object.getPrototypeOf(ctx) === globalThis.__velquContextPrototype };
+}
+__velquRegister("plan.ctx_shape", plan_ctx_shape);
+__velquRegister("plan.null_params", plan_null_params);
+__velquRegister("plan.route_plan_identity", plan_route_plan_identity);
+__velquRegister("plan.proto_chain", plan_proto_chain);
 __velquRegister("slotless.fields", slotless_fields);
 __velquRegister("slotless.null_presence", slotless_null_presence);
 __velquRegister("params.lazyb", params_lazy_b);
@@ -532,6 +561,10 @@ fn expected_table() -> BTreeMap<String, String> {
         "requestless",
         "hello.get",
         "hello.slotless",
+        "plan.ctx_shape",
+        "plan.null_params",
+        "plan.route_plan_identity",
+        "plan.proto_chain",
         "slotless.fields",
         "slotless.null_presence",
         "params.lazyb",
@@ -619,7 +652,7 @@ fn load_default(eng: &mut QuickJsEngine) -> Result<q_engine::LoadStats, String> 
 async fn load_verifies_handler_table_and_caches() {
     let mut eng = engine();
     let stats = load_default(&mut eng).expect("load");
-    assert_eq!(stats.handlers_registered, 72);
+    assert_eq!(stats.handlers_registered, 76);
     // a table mismatch must fail
     let mut bad = expected_table();
     bad.insert("extra.handler".into(), String::new());
@@ -4706,5 +4739,156 @@ async fn postgres_native_ops_start_only_inside_invocations() {
     };
     let out = run(&mut eng, s).await;
     assert!(matches!(out, Outcome::Response { status: 200, .. }));
+    eng.shutdown();
+}
+
+// ---- ADR-0045: ValidatedParamsOnly specialized context path ----
+
+fn params_only_spec(id: u64, handler: &str, params: serde_json::Value) -> InvocationSpec {
+    let mut s = spec(id, handler, &[200], 1000);
+    s.slot = q_engine::NO_REQUEST_SLOT;
+    s.params = Some(params);
+    s.context_plan = q_engine::ContextPlan::ValidatedParamsOnly;
+    s
+}
+
+#[tokio::test]
+async fn plan_params_only_context_shape_matches_generic() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let s = params_only_spec(710, "plan.ctx_shape", serde_json::json!({ "name": "Rafi" }));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(
+            text,
+            r#"{"keys":"params,routePlan","paramsOwn":true,"hasQueryOwn":false,"routePlanType":"object","paramsFrozenProto":true}"#
+        ),
+        other => panic!("unexpected plan outcome: {other:?}"),
+    }
+    assert_eq!(eng.bridge_snapshot().live_slots, 0);
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn plan_params_only_null_is_own_property_null() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let s = params_only_spec(711, "plan.null_params", serde_json::json!({ "name": null }));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            assert_eq!(text, r#"{"isNull":true,"own":true}"#)
+        }
+        other => panic!("unexpected plan outcome: {other:?}"),
+    }
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn plan_route_plan_is_frozen_with_schema_identity() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = params_only_spec(
+        712,
+        "plan.route_plan_identity",
+        serde_json::json!({ "name": "Rafi" }),
+    );
+    s.params_schema_id = Some(q_engine::SchemaId(7));
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            assert_eq!(text, r#"{"frozen":true,"paramsId":7,"othersNull":true}"#)
+        }
+        other => panic!("unexpected plan outcome: {other:?}"),
+    }
+    // second invocation same schema id: SAME frozen object (hoisted identity)
+    let mut s2 = params_only_spec(
+        713,
+        "plan.route_plan_identity",
+        serde_json::json!({ "name": "Zed" }),
+    );
+    s2.params_schema_id = Some(q_engine::SchemaId(7));
+    let out2 = run(&mut eng, s2).await;
+    match out2 {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            assert_eq!(text, r#"{"frozen":true,"paramsId":7,"othersNull":true}"#)
+        }
+        other => panic!("unexpected plan outcome: {other:?}"),
+    }
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn plan_params_only_uses_shared_context_prototype() {
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let s = params_only_spec(
+        714,
+        "plan.proto_chain",
+        serde_json::json!({ "name": "Rafi" }),
+    );
+    let out = run(&mut eng, s).await;
+    match out {
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => {
+            assert_eq!(text, r#"{"sharedProto":true}"#)
+        }
+        other => panic!("unexpected plan outcome: {other:?}"),
+    }
+    eng.shutdown();
+}
+
+#[tokio::test]
+async fn plan_with_slot_overrides_to_generic_path() {
+    // fail-closed guard: a real slot must never take the specialized
+    // constructor — the request-backed machinery (lazy fields, request
+    // handle) must exist.
+    let mut eng = engine();
+    load_default(&mut eng).unwrap();
+    let mut s = spec(715, "web.fallback", &[200], 1000);
+    s.slot = 0; // host would have inserted a request; use insert_request
+    s.context_plan = q_engine::ContextPlan::ValidatedParamsOnly;
+    let handle = insert_request(
+        &eng,
+        q_engine::RequestMeta {
+            method: "GET".into(),
+            path: "/x?ms=9".into(),
+            query: vec![("ms".into(), "9".into())],
+            ..Default::default()
+        },
+    );
+    s.slot = handle.slot();
+    s.generation = handle.generation();
+    let out = run(&mut eng, s).await;
+    match out {
+        // web.fallback reads the request through the store — only the
+        // GENERIC path can serve it (the specialized constructor leaves
+        // webRequest() failing closed). url is the stub's slot string.
+        Outcome::Response {
+            status: 200,
+            body: BodyOut::JsonText(text),
+            ..
+        } => assert_eq!(text, r#"{"url":"0","query":"9"}"#),
+        other => panic!("slot override must keep generic path: {other:?}"),
+    }
     eng.shutdown();
 }

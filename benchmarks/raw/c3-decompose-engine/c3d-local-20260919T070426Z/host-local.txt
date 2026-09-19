@@ -1,0 +1,12 @@
+label=local
+run-id=c3d-local-20260919T070426Z
+docker=Docker version 29.5.0, build 98f1464
+image-id=sha256:dda011a80ab0925a64b007f027c29a61f39f4b1449b55f70975e6a5eace02e44
+cpus-limit=2
+host-cpu=13th Gen Intel(R) Core(TM) i5-13420H
+host-kernel=7.0.0-31-generic
+virtualization=none
+source-tar-sha256=26ecdc094eae213f338ebac22bc665a59a080c635ed94957e4ccb1ff7e4559c3
+source-commit=unknown
+bin-sha256=7066d89244af0f926071e9c244d90fc2460aa4359cfc5e1b51d3413f93aedb4c
+batches=120

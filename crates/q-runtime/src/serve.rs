@@ -408,6 +408,9 @@ pub struct ServeState {
     /// dense SchemaIds once at startup (M25-005-A) — zero request-time
     /// string lookups on the response path.
     pub response_schema_ids: Vec<std::collections::BTreeMap<u16, u32>>,
+    /// ADR-0045: per-route context construction plans (dense, indexed by
+    /// route index — same ordering as pack.routes).
+    pub context_plans: Vec<q_engine::ContextPlan>,
     pub engine: Mutex<QuickJsEngine>,
     pub health: q_engine_quickjs::EngineHealth,
     /// BETA-006-C: linked Postgres pool dialer, if the pack requires
@@ -1219,6 +1222,10 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 default_status: compiled.default_status,
                 response_strategy: compiled.response_strategy,
                 raw_response,
+                // ADR-0045: compiler-answered plan (dense vector, zero
+                // request-time derivation). Debug parity with the runtime
+                // slot decision — divergence is a contract violation.
+                context_plan: state.context_plans[route_index],
                 deadline: request_deadline,
             };
 

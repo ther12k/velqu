@@ -574,6 +574,7 @@ fn invoke(
         default_status: 200,
         response_strategy: cand.strategy(),
         raw_response: false,
+        context_plan: q_engine::ContextPlan::RequestBacked,
         deadline: Instant::now() + std::time::Duration::from_millis(1000),
     };
     let t_engine = Instant::now();

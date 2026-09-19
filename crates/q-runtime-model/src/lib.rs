@@ -71,6 +71,37 @@ pub struct FieldNeeds {
     pub body: bool,
 }
 
+/// ADR-0045: per-route context construction plan, derived ONCE at load
+/// from compiled route metadata (RoutePlan FieldNeeds, validation
+/// strategies, policy presence, capabilities) — the compiler answers
+/// which context shape a route needs; the request path never re-derives
+/// it. The worker dispatches on this; any slot presence overrides to the
+/// generic constructor (fail-closed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextPlan {
+    /// No request field reaches the handler context at all.
+    Requestless,
+    /// Exactly one prevalidated field: `params` (the canonical dynamic
+    /// route shape). Specialized constructor; no `pre` object, no
+    /// per-field branching, hoisted frozen routePlan.
+    ValidatedParamsOnly,
+    /// Multiple prevalidated fields (params/query/headers/body) with no
+    /// request-store need. Generic slotless construction this packet.
+    ValidatedFields,
+    /// Any request-store access: lazy fields, policy request object,
+    /// full-request escape hatch, or JS-validation body fallback.
+    RequestBacked,
+}
+
+impl Default for ContextPlan {
+    /// The generic path is the default: a construction site that does not
+    /// state a plan keeps exactly the pre-ADR-0045 behavior.
+    fn default() -> Self {
+        ContextPlan::RequestBacked
+    }
+}
+
 /// No request-store entry is created for policy-free, field-free routes.
 /// Bridge access with this slot fails closed and settlement is a no-op.
 pub const NO_REQUEST_SLOT: usize = usize::MAX;

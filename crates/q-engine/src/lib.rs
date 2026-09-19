@@ -16,9 +16,10 @@ use std::time::Instant;
 use serde_json::Value;
 
 pub use q_runtime_model::{
-    BodyOut, DispatchRoute, EngineLoadPlan, EngineStats, FieldErrorOut, FieldNeeds, FunctionDecl,
-    FunctionKind, HandlerId, LoadStats, OriginalLocation, Outcome, ParamSpec, PolicyId, ProblemOut,
-    RequestMeta, ResponseStrategy, RouteId, SchemaId, SourceLocation, NO_REQUEST_SLOT,
+    BodyOut, ContextPlan, DispatchRoute, EngineLoadPlan, EngineStats, FieldErrorOut, FieldNeeds,
+    FunctionDecl, FunctionKind, HandlerId, LoadStats, OriginalLocation, Outcome, ParamSpec,
+    PolicyId, ProblemOut, RequestMeta, ResponseStrategy, RouteId, SchemaId, SourceLocation,
+    NO_REQUEST_SLOT,
 };
 
 /// Cross-target model identity re-exported beside the types it versions.
@@ -69,6 +70,10 @@ pub struct InvocationSpec {
     /// handlers may return tagged raw envelopes; without it a raw return
     /// is a contract violation (fallback never activates silently).
     pub raw_response: bool,
+    /// ADR-0045: context construction plan (compiler-answered). The
+    /// worker dispatches on it; a non-`NO_REQUEST_SLOT` slot always
+    /// overrides to the generic constructor regardless of plan.
+    pub context_plan: ContextPlan,
     pub deadline: Instant,
 }
 
