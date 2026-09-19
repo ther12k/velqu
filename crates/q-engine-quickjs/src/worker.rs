@@ -1914,6 +1914,13 @@ impl WorkerInner {
     /// budget (or the watchdog when nothing is pending) and settle whatever
     /// promises completed. Used at message boundaries where multiple
     /// invocations may have queued work.
+    /// Diagnostic helper (bench-direct): shared engine counters
+    /// (watcher registrations, drain/scans, immediate-vs-promise results).
+    #[cfg(feature = "bench-direct")]
+    pub(crate) fn shared_stats(&self) -> EngineStats {
+        self.shared.stats()
+    }
+
     /// Diagnostic helper (bench-direct): whether any invocation is
     /// awaiting promise settlement.
     #[cfg(feature = "bench-direct")]
