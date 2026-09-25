@@ -1,4 +1,4 @@
-# M6-009 enforcement state — gates implemented, ruleset active, soak pending
+# M6-009 enforcement state — gates implemented, ruleset active, soak PASS (r4)
 
 Status record for #1319, split from the soak evidence per owner review
 (2026-09-16). M6-009's performance acceptance has three distinguishable
@@ -8,7 +8,7 @@ parts; conflating them hides the one remaining action.
 |---|---|---|
 | Performance-regression gates implemented | **DONE** | `benchmarks/gate-thresholds.json` (v2, committed floors); `scripts/cold-start-gate.ts`, `scripts/throughput-latency-gate.ts` + fail-closed test suite; both run on every runtime-affecting PR and weekly (`.github/workflows/perf-gate.yml`) and have been green on all merged PRs since introduction |
 | Automatic merge enforcement (repository-level) | **DONE (2026-09-17)** | Branch ruleset **`perf-gate required on master (M6-009)`** (id `23573680`), enforcement `active`, scoped to `refs/heads/master`, requiring status check `perf-gate` from the `github-actions` app (integration id `15368`). See below for scope notes and verification. |
-| 24h/72h soak + analyzer verdict | **BLOCKED (host instability — owner action required)** | r3 was environment-interrupted at 26.254 h (787 healthy windows, flat RSS) by a third host power event — this one unclean (no shutdown record in wtmp; no persistent journal, so cause undetermined; not a kernel-update reboot). Full record: `benchmarks/raw/ga-m6-soak-72h-r3/REBOOT-INCIDENT-2026-09-16-R3.md`. Three consecutive interruptions (r1 25.22 h, r2 0.2 h, r3 26.25 h) disqualify this host: per the standing boundary there is **no r4 here**; the next 72 h soak requires an owner-provided demonstrably stable host, same candidate `b8fee349`, identical q-soak binary (sha256 `6497fb16…6794d`), acceptance unchanged, checkpoint/resume not acceptable. r1–r3 windows are preserved as progress-only evidence, never combined |
+| 24h/72h soak + analyzer verdict | **DONE (r4, 2026-09-23)** | r4 completed the qualification on the owner-assigned stable host (Halotec, 40+ days uptime): 2026-09-20T06:47:58Z → 2026-09-23T06:47:58Z, 259,325,600 verified requests, zero errors, analyzer `--min-hours 72` verdict **PASS** (T1–T5). Full record: `benchmarks/raw/ga-m6-soak-72h-r4/COMPLETION.md`. History: r3 was environment-interrupted at 26.254 h
 
 ## Ruleset details (created 2026-09-17)
 
