@@ -3020,7 +3020,7 @@
    ],
    "files_hint": [],
    "owner": "implementation-agent",
-   "status": "BLOCKED",
+   "status": "IN_PROGRESS",
    "evidence_refs": {
     "source": [
      "benchmarks/gate-thresholds.json",

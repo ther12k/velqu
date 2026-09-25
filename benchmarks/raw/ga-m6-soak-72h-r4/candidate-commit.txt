@@ -1,0 +1,13 @@
+b8fee34909c0d6a4b3b9f76aebe9665cf3192c99
+q-soak binary sha256: 6497fb16bc9e42ff85fc7726e602638a70461f4e3d74094e5851f6c9fdc6794d
+built from: exact b8fee349 worktree (/home/ther12k/Workspace/Learning/velqu-soak-src)
+rustc: 1.96.0 (ac68faa20 2026-05-25) — host toolchain (~/Workspace/.toolchain, gcc 13.3.0)
+flags: RUSTFLAGS --remap-path-prefix=$(pwd)=/velqu-src; CFLAGS -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src
+       (host build reproduced the r1/r2/r3-recorded sha256 EXACTLY; a velqu-bench:multihost
+       container build of the same worktree does NOT reproduce it — 959c706d… — do not
+       substitute the container-built binary for this candidate identity)
+verified on launch host (sha256sum): 6497fb16bc9e42ff85fc7726e602638a70461f4e3d74094e5851f6c9fdc6794d
+run: replacement run r4 (r1 25.22h, r2 0.2h, r3 26.25h — all environment-interrupted on the
+     original host; NO r4 was permitted there per the owner's 2026-09-15 boundary)
+args: --workers 2 --duration-secs 259200 --window-secs 120 (chaos disabled: --chaos-secs 0
+      --disconnect-permille 0 --timeout-permille 0)
