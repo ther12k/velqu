@@ -56,6 +56,13 @@ export interface PolicyInfo {
   bindingName: string;
   sourceFile: string;
   declaredStatuses: number[];
+  /**
+   * Declared policy header name (lowercased at extraction). The route
+   * plan's declared-header set is built from it, so the runtime
+   * materializes exactly the header the policy check reads (#1401).
+   * Defaults to "authorization" — definePolicy's own default.
+   */
+  header: string;
 }
 
 export interface ExtractedApp {
@@ -655,6 +662,9 @@ export function extractApp(entryFile: string): ExtractedApp {
           const declares = arg && ts.isObjectLiteralExpression(arg)
             ? arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "declares")
             : undefined;
+          const headerProp = arg && ts.isObjectLiteralExpression(arg)
+            ? arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "header")
+            : undefined;
           const statuses: number[] = [];
           if (declares && ts.isPropertyAssignment(declares) && ts.isObjectLiteralExpression(declares.initializer)) {
             for (const p of declares.initializer.properties) {
@@ -666,6 +676,9 @@ export function extractApp(entryFile: string): ExtractedApp {
             bindingName: decl.name.text,
             sourceFile: sf.fileName,
             declaredStatuses: statuses,
+            header: headerProp && ts.isPropertyAssignment(headerProp)
+              ? String(literalValue(headerProp.initializer, sf.fileName)).toLowerCase()
+              : "authorization",
           });
         } else if (isCallTo(init, ["defineModule"])) {
           const arg = init.arguments[0];
