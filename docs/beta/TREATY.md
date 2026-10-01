@@ -18,9 +18,10 @@ A consumer can use the generated contract with a transport:
 ```ts
 import { treaty } from "@velqu/treaty";
 import type { Api } from "./dist/contract";
+import contract from "./dist/contract.json";
 
-const client = treaty<Api>(fetch, { baseUrl: "http://127.0.0.1:3000" });
-const health = await client.api.health.live.get();
+const api = treaty<Api>({ baseUrl: "http://127.0.0.1:3000", contract });
+const health = await api.health.live.get();
 if (health.error) throw new Error(`health failed: ${health.error.status}`);
 console.log(health.data.status);
 ```
@@ -30,11 +31,11 @@ method; query, headers, and body options are checked against the route's
 schema:
 
 ```ts
-const result = await client.api.users.get({ id: "usr_1" }).get({
+const result = await api.users.get({ id: "usr_1" }).get({
   headers: { authorization: "Bearer q-demo-token" },
 });
 
-const created = await client.api.users.create({}).post({
+const created = await api.users.create({}).post({
   name: "Ada",
   email: "ada@example.org",
 });

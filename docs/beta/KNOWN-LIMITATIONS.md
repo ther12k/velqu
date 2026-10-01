@@ -52,6 +52,10 @@ is evidenced. This is a public beta: non-SLA, no production-readiness claim.
 14. **npm packages are private.** All 9 `@velqu/*` tarballs are packed and
     checksummed but unpublished; the `beta`/`next` dist-tag flow is rehearsed
     (BETA-011-B) and Owner-gated.
+    *(Corrected 2026-10-01, #1398: superseded by OD-010 — the seven
+    publishable packages went live on npm as `0.1.0-beta.1` under the
+    `beta` dist-tag on 2026-09-09; see `docs/beta/PUBLISHING.md`. The
+    Rust runtime binary remains source-distributed.)*
 15. **License selection is an open owner decision.** Workspace crates carry
     `UNLICENSED-BEFORE-OWNER-DECISION`; npm packages are `NOASSERTION` in the
     SBOM (`release/sbom.cdx.json` records the posture honestly).

@@ -77,18 +77,12 @@ pinned versions.
 
 ### Scaffold cannot resolve `@velqu/*` or fails to bundle
 
-`@velqu/*` packages are workspace-resolved (not on npm). Scaffold
-inside a Velqu checkout and link the workspace packages:
-
-```bash
-mkdir -p hello-velqu/node_modules/@velqu
-for p in core schema treaty; do
-  ln -sfn "$(pwd)/packages/$p" "hello-velqu/node_modules/@velqu/$p"
-done
-```
-
-(Reproduced during the beta docs work: scaffolding outside the checkout
-fails with the toolchain-mismatch guard, by design.)
+The scaffold pins `@velqu/*@0.1.0-beta.1` from npm (OD-010), so
+`bun install` inside the generated project needs no Velqu checkout —
+only Bun `1.4.0` exactly (older scaffolds from the private alpha used
+`workspace:*`; re-create the project). If resolution still fails, check
+that the registry is reachable and that the generated `package.json`
+dependencies were not edited back to `workspace:*`.
 
 ## Runtime behavior questions
 

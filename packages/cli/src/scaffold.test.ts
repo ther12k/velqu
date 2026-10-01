@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { generateStarterProject } from "./scaffold";
+import { generateStarterProject, PUBLISHED_BETA_VERSION } from "./scaffold";
 import { build, extractApp } from "@velqu/compiler";
 import { ExitCode } from "./exit-codes";
-import { mkdirSync, rmSync, existsSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -33,8 +33,16 @@ describe("Starter API Scaffolding (M4A-003-A)", () => {
 
     const pkg = JSON.parse(files["package.json"]);
     expect(pkg.name).toBe("my-service");
-    expect(pkg.dependencies["@velqu/core"]).toBeDefined();
-    expect(pkg.dependencies["@velqu/schema"]).toBeDefined();
+    expect(pkg.dependencies["@velqu/core"]).toBe(PUBLISHED_BETA_VERSION);
+    expect(pkg.dependencies["@velqu/schema"]).toBe(PUBLISHED_BETA_VERSION);
+    expect(pkg.dependencies["@velqu/treaty"]).toBe(PUBLISHED_BETA_VERSION);
+    expect(pkg.dependencies["@velqu/cli"]).toBeUndefined(); // the CLI is not a runtime dependency
+    expect(pkg.devDependencies["@velqu/cli"]).toBe(PUBLISHED_BETA_VERSION); // scripts use its bin
+    expect(pkg.devDependencies.typescript).toBe("5.9.3"); // exact toolchain pin
+    expect(pkg.engines.bun).toBe("1.4.0");
+    expect(pkg.scripts.check).toBe("velqu check --project .");
+    expect(pkg.scripts.build).toBe("velqu build --project .");
+    expect(pkg.scripts.dev).toBe("velqu dev --project .");
 
     // Verify no demo secrets or credentials in starter:
     const allContent = Object.values(files).join("\n");
@@ -43,13 +51,28 @@ describe("Starter API Scaffolding (M4A-003-A)", () => {
     expect(allContent).not.toContain("API_KEY");
   });
 
-  it("README discloses the private-alpha workspace resolution requirement (M4A-003-V)", () => {
+  it("README discloses the published-registry dependency posture (OD-010, #1398)", () => {
     const files = generateStarterProject({ name: "docs-disclosure" });
 
     const readme = files["README.md"];
-    expect(readme).toContain("Dependencies (private alpha)");
-    expect(readme).toContain("not yet published to npm");
-    expect(readme).toContain("workspace:*");
+    expect(readme).toContain("## Dependencies (public beta)");
+    expect(readme).toContain(PUBLISHED_BETA_VERSION);
+    expect(readme).toContain("bun install");
+    expect(readme).toContain("VELQU_RUNTIME");
+    expect(readme).not.toContain("workspace:*");
+    expect(readme).not.toContain("not yet published");
+  });
+
+  it("PUBLISHED_BETA_VERSION matches the shipped package manifests (no scaffold drift)", () => {
+    // Resolved from this test file (packages/cli/src), not process.cwd():
+    // bun test runs from the repository root, and the monorepo root
+    // manifest carries a different version than the packages.
+    const versionOf = (rel: string) =>
+      JSON.parse(readFileSync(join(import.meta.dir, rel), "utf8")).version as string;
+    expect(PUBLISHED_BETA_VERSION).toBe(versionOf(join("..", "package.json")));
+    for (const pkg of ["core", "schema", "treaty"]) {
+      expect(PUBLISHED_BETA_VERSION).toBe(versionOf(join("..", "..", pkg, "package.json")));
+    }
   });
 
   it("statically compiles the generated starter project with clean extraction and parity", async () => {

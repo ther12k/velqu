@@ -44,10 +44,12 @@ velqu init [dir] [--name <app-name>] [--profile <serverless|service:N>] [--with-
   the app and the Treaty client contract.
 - `--force`: allow scaffolding over a directory that already contains an app.
 
-**Private-alpha note**: the generated `@velqu/*` dependencies use the
-`workspace:*` protocol and are not yet published to npm; run scaffolded
-projects inside a Velqu monorepo checkout (or symlink the packages into
-`node_modules/@velqu/`) until the public beta release.
+**Published-beta note**: the generated project pins
+`@velqu/*@0.1.0-beta.1` from npm and declares `@velqu/cli` in
+devDependencies; its scripts call the `velqu` bin, so `bun install`
+works with no Velqu checkout. `velqu dev` additionally needs the Rust
+runtime binary (build it from a Velqu checkout and export
+`VELQU_RUNTIME`).
 
 ---
 

@@ -5,7 +5,8 @@
  * or forced databases:
  * - Module/service/contract separation.
  * - Standard health/liveness route and greetings API.
- * - Minimal workspace dependencies (@velqu/core, @velqu/schema, @velqu/treaty).
+ * - Minimal registry-pinned dependencies (@velqu/core, @velqu/schema,
+ *   @velqu/treaty — published beta, OD-010).
  * - End-to-end type-safe Treaty client example with route-id dot-navigation.
  * - Optional runtime service profile choices (serverless, service:N).
  * - Optional outbound fetch capability integration (M4A-003-D).
@@ -25,6 +26,14 @@ export const MAX_SERVICE_WORKERS = 64;
 
 /** CLI-facing summary of the accepted profile grammar. */
 export const SERVICE_PROFILE_USAGE = "serverless | service:N (N = 1..64, e.g. service:4)";
+
+/**
+ * The published beta version every scaffolded project pins exactly
+ * (OD-010: all @velqu/* packages share one version under the `beta`
+ * dist-tag). scaffold.test asserts this stays equal to the CLI's own
+ * package version so scaffolds can never drift from the registry.
+ */
+export const PUBLISHED_BETA_VERSION = "0.1.0-beta.1";
 
 export type ResolvedServiceProfile =
   | { ok: true; profile: ServiceProfileChoice; devFlag: string; buildFlag: string }
@@ -87,13 +96,12 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
     throw new Error(resolved.error);
   }
 
-  // Scaffold scripts invoke the CLI through its workspace-linked path:
-  // outside the monorepo there is no global `velqu` binary (the @velqu/*
-  // packages resolve via the documented node_modules links, BETA-016-D),
-  // and `bun <file.ts>` runs identically in both environments. The
-  // project is explicit (`.`) because the CLI's bare default assumes the
-  // monorepo's examples/proof layout.
-  const cliCmd = "bun node_modules/@velqu/cli/src/index.ts";
+  // Scaffold scripts call the published `velqu` bin (node_modules/.bin,
+  // provided by the @velqu/cli devDependency), so the project behaves
+  // identically inside and outside the monorepo (OD-010 published state).
+  // The project is explicit (`.`) because the CLI's bare default assumes
+  // the monorepo's examples/proof layout.
+  const cliCmd = "velqu";
   const devScript = `${cliCmd} dev --project .${resolved.devFlag}`;
   const buildScript = `${cliCmd} build --project .${resolved.buildFlag}`;
 
@@ -116,13 +124,20 @@ export function generateStarterProject(opts: ProjectTemplateOptions): Record<str
         capabilities: withFetch ? ["fetch"] : [],
       },
       dependencies: {
-        "@velqu/core": "workspace:*",
-        "@velqu/schema": "workspace:*",
-        "@velqu/treaty": "workspace:*",
+        "@velqu/core": PUBLISHED_BETA_VERSION,
+        "@velqu/schema": PUBLISHED_BETA_VERSION,
+        "@velqu/treaty": PUBLISHED_BETA_VERSION,
       },
       devDependencies: {
+        "@velqu/cli": PUBLISHED_BETA_VERSION,
         "@types/bun": "^1.3.4",
-        typescript: "^5.9.3",
+        // Exact pins: byte-identical packs require Bun 1.4.0 and
+        // TypeScript 5.9.3 exactly (packages/compiler/src/toolchain.ts);
+        // drift fails the build with a named mismatch, not silent bytes.
+        typescript: "5.9.3",
+      },
+      engines: {
+        bun: "1.4.0",
       },
     },
     null,
@@ -435,22 +450,44 @@ describe("greetings service", () => {
 
   const clientTestTs = `/**
  * Treaty client contract test (M4A-003-C): drives the LIVE dev-server
- * runtime through the type-safe Treaty client. Requires \`velqu dev\`
- * running on 127.0.0.1:3000 (skipped automatically otherwise).
+ * runtime through the type-safe Treaty client. Start it first:
+ *
+ *   bun run dev        # binds 127.0.0.1:3000 by default
+ *
+ * Determinism rules: when nothing answers, Treaty reports a status-0
+ * network error and the suite skips with a warning. Anything else that
+ * answers — including an unrelated service occupying the port — fails
+ * loudly instead of passing silently. If port 3000 is taken, start the
+ * dev server on another port and set VELQU_DEV_PORT accordingly.
  */
 
 import { describe, it, expect } from "bun:test";
 import { createClient } from "./client";
 
-const api = createClient("http://127.0.0.1:3000");
+const port = process.env.VELQU_DEV_PORT ?? "3000";
+const api = createClient(\`http://127.0.0.1:\${port}\`);
+
+function refused(res: { error?: unknown }): boolean {
+  // Status 0 is Treaty's network-refusal shape: no server answered.
+  const err = res.error as { status?: number } | undefined | null;
+  return Boolean(err) && err.status === 0;
+}
+
+function expectVelquServer(what: string): never {
+  throw new Error(
+    \`\${what}: 127.0.0.1:\${port} answered but did not behave like this app's dev server. \` +
+      \`If another service occupies the port, start the dev server elsewhere and set VELQU_DEV_PORT.\`,
+  );
+}
 
 describe("greetings API (runtime-local via Treaty)", () => {
   it("health.live answers ok", async () => {
     const res = await api.health.live.get();
-    if (res.error) {
-      console.warn("skipping: dev server not reachable");
+    if (refused(res)) {
+      console.warn(\`skipping: no dev server on 127.0.0.1:\${port} (start one with "bun run dev")\`);
       return;
     }
+    if (res.error) expectVelquServer("health.live failed");
     expect(res.data?.status).toBe("ok");
   });
 
@@ -459,10 +496,11 @@ describe("greetings API (runtime-local via Treaty)", () => {
       name: "TestUser",
       customGreeting: "Hello from contract test!",
     });
-    if (created.error) {
-      console.warn("skipping: dev server not reachable");
+    if (refused(created)) {
+      console.warn(\`skipping: no dev server on 127.0.0.1:\${port} (start one with "bun run dev")\`);
       return;
     }
+    if (created.error) expectVelquServer("greetings.create failed");
     expect(created.data?.name).toBe("TestUser");
 
     const greeting = await api.greetings.get({ name: "TestUser" }).get();
@@ -482,7 +520,10 @@ ${description}
 ## Getting Started
 
 \`\`\`bash
-# Start live development reload loop
+# Install dependencies from the public registry
+bun install
+
+# Start live development reload loop (needs the runtime binary — see below)
 bun run dev
 
 # Build production QPack bundle
@@ -498,13 +539,29 @@ bun run test
 bun run client
 \`\`\`
 
-## Dependencies (private alpha)
+## Dependencies (public beta)
 
-The \`@velqu/*\` packages are declared with the \`workspace:*\` protocol and are
-not yet published to npm. Until the public beta release, run this project
-inside a checkout of the Velqu monorepo (or symlink \`@velqu/core\`,
-\`@velqu/schema\`, and \`@velqu/treaty\` into \`node_modules/@velqu/\` from your
-local Velqu build) so \`bun install\` can resolve them.
+All \`@velqu/*\` packages are published to npm as \`${PUBLISHED_BETA_VERSION}\`
+under the \`beta\` dist-tag and pinned exactly, so \`bun install\` works with
+no Velqu checkout. Builds are reproducible only on the pinned toolchain:
+Bun 1.4.0 and TypeScript 5.9.3 exactly — other versions fail with a named
+toolchain error instead of producing non-identical packs.
+
+## Runtime binary for \`velqu dev\`
+
+\`bun install\`, \`bun run check\`, \`bun test\`, and \`bun run build\` need no
+runtime binary. \`velqu dev\` (and serving the built QPack) require the Rust
+runtime, which is distributed as source:
+
+\`\`\`bash
+git clone https://github.com/ther12k/velqu && cd velqu
+bun install && cargo build --release -p velqu-runtime
+export VELQU_RUNTIME="$PWD/target/release/velqu-runtime"
+\`\`\`
+
+With \`VELQU_RUNTIME\` set, \`bun run dev\` works from this project. A pack
+runs only on the exact runtime build it was compiled against (engine
+match, SEC-001), so rebuild the pack whenever the runtime changes.
 `;
 
   const result: Record<string, string> = {

@@ -1,18 +1,33 @@
 /**
- * Clean Install Packet Verification (M4A-010-A).
+ * Clean Install Packet Verification (M4A-010-A, revised for the
+ * published-beta posture — #1398).
  *
- * Verifies that invited alpha developers can:
- * 1. Initialize a new starter project with `velqu init`.
- * 2. Run static validation with `velqu check`.
- * 3. Execute unit tests with `bun test`.
- * 4. Compile the production QPack bundle with `velqu build`.
- * 5. Verify the compiled bundle structure, route count, and manifest artifacts.
+ * Verifies that a developer can take a scaffolded project and, using the
+ * `velqu` bin exactly the way the scaffold's `bun run` scripts do:
+ *   init -> check -> test -> build
+ * `@velqu/*` resolution is simulated offline by symlinking the workspace
+ * packages (plus the node_modules/.bin/velqu link a registry install
+ * creates); the real public-registry path is exercised end-to-end by
+ * registry-install.test.ts under VELQU_REGISTRY_E2E=1.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, rmSync, existsSync, writeFileSync, symlinkSync, readFileSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, symlinkSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { createServer } from "node:net";
+
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const addr = srv.address();
+      const port = typeof addr === "object" && addr !== null ? addr.port : 0;
+      srv.close(() => resolve(port));
+    });
+    srv.on("error", reject);
+  });
+}
 
 describe("Clean install packet verification (M4A-010-A)", () => {
   let testDir: string;
@@ -29,7 +44,7 @@ describe("Clean install packet verification (M4A-010-A)", () => {
     }
   });
 
-  it("completes the full developer workflow (init -> check -> test -> build) on a clean project", async () => {
+  it("completes the developer workflow (init -> check -> test -> build) through the velqu bin", async () => {
     const appDir = join(testDir, "starter-app");
 
     // 1. velqu init
@@ -42,40 +57,71 @@ describe("Clean install packet verification (M4A-010-A)", () => {
     expect(existsSync(join(appDir, "package.json"))).toBe(true);
     expect(existsSync(join(appDir, "src/app.ts"))).toBe(true);
 
-    // 2. Set up workspace package resolution (private alpha requirement)
+    // 2. Offline @velqu/* resolution: symlink the workspace packages the
+    // way a registry install materializes them, plus the bin link that
+    // makes the scaffold's `velqu …` scripts executable via `bun run`.
     mkdirSync(join(appDir, "node_modules/@velqu"), { recursive: true });
-    for (const pkg of ["core", "compiler", "schema", "treaty", "contract", "cli", "testing"]) {
+    for (const pkg of ["core", "compiler", "schema", "treaty", "contract", "cli", "testing", "browser-runtime"]) {
       const pkgPath = join(worktreeDir, "packages", pkg);
       if (existsSync(pkgPath)) {
         symlinkSync(pkgPath, join(appDir, "node_modules/@velqu", pkg), "dir");
       }
     }
-    // Link pinned typescript from monorepo dependencies
     symlinkSync(join(worktreeDir, "node_modules/typescript"), join(appDir, "node_modules/typescript"), "dir");
+    mkdirSync(join(appDir, "node_modules/.bin"), { recursive: true });
+    symlinkSync(join(worktreeDir, "packages/cli/bin/velqu.js"), join(appDir, "node_modules/.bin/velqu"));
 
-    // 3. velqu check
-    const checkProc = Bun.spawn(
-      ["bun", join(worktreeDir, "packages/cli/src/index.ts"), "check", "--project", appDir],
-      { stdout: "pipe", stderr: "pipe", env: process.env },
-    );
+    // The bin imports the built dist output; regenerate it if absent
+    // (dist/ is gitignored — scripts/build-packages.ts is the source).
+    if (!existsSync(join(worktreeDir, "packages/cli/dist/index.js"))) {
+      const buildPkgs = Bun.spawn(["bun", "scripts/build-packages.ts"], {
+        cwd: worktreeDir,
+        stdout: "pipe",
+        stderr: "pipe",
+        env: process.env,
+      });
+      const buildPkgsCode = await buildPkgs.exited;
+      expect(buildPkgsCode).toBe(0);
+    }
+
+    // 3. velqu check (through the bin, exactly as `bun run check` does)
+    const checkProc = Bun.spawn(["bun", "run", "check"], {
+      cwd: appDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: process.env,
+    });
     const checkOut = await new Response(checkProc.stdout).text();
     const checkCode = await checkProc.exited;
     expect(checkCode).toBe(0);
     expect(checkOut).toContain("velqu check: 3 routes");
 
-    // 4. bun test
-    const testProc = Bun.spawn(
-      ["bun", "test"],
-      { cwd: appDir, stdout: "pipe", stderr: "pipe", env: process.env },
-    );
+    // 4. bun test — deterministic: point the runtime-local client tests at
+    // an ephemeral free port (nothing listens there, so they exercise the
+    // documented status-0 skip path instead of colliding with whatever
+    // occupies 3000 on the host).
+    const devPort = String(await freePort());
+    const testEnv = { ...process.env, VELQU_DEV_PORT: devPort };
+    const testProc = Bun.spawn(["bun", "test"], {
+      cwd: appDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: testEnv,
+    });
+    const testOut = await new Response(testProc.stdout).text();
+    const testErr = await new Response(testProc.stderr).text();
     const testCode = await testProc.exited;
     expect(testCode).toBe(0);
+    // bun routes test console output to stderr.
+    expect(testOut + testErr).toContain("skipping: no dev server on 127.0.0.1:" + devPort);
 
-    // 5. velqu build
-    const buildProc = Bun.spawn(
-      ["bun", join(worktreeDir, "packages/cli/src/index.ts"), "build", "--project", appDir, "--out", join(appDir, "dist")],
-      { stdout: "pipe", stderr: "pipe", env: process.env },
-    );
+    // 5. velqu build (through the bin)
+    const buildProc = Bun.spawn(["bun", "run", "build"], {
+      cwd: appDir,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: process.env,
+    });
     const buildOut = await new Response(buildProc.stdout).text();
     const buildCode = await buildProc.exited;
     expect(buildCode).toBe(0);
@@ -93,5 +139,5 @@ describe("Clean install packet verification (M4A-010-A)", () => {
     expect(pack.appId).toBe("starter-app");
     expect(pack.routes.length).toBe(3);
     expect(pack.runtimeAbi).toBe(1);
-  });
+  }, 120_000);
 });
