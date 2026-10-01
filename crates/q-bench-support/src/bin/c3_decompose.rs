@@ -125,6 +125,184 @@ fn counts_json(before: &EngineStats, after: &EngineStats, ops: u64) -> Value {
     })
 }
 
+/// #1409 — in-flight-depth experiment (pre-check for #1408): does the
+/// async-completion overhead (P_async − P_sync) grow with the number of
+/// invocations sitting in flight at a settlement boundary? The standard
+/// six-tier mode is strictly sequential (settlement table depth 1); this
+/// mode dispatches K invocations and then settles once — the batched-
+/// arrival pattern the worker loop sees under concurrency. Diagnostic
+/// only; writes inflight.jsonl + inflight-summary.json and exits without
+/// touching the standard tier outputs.
+fn run_inflight_mode(out_dir: &str, batches: usize, depths: &[usize]) {
+    use std::collections::BTreeMap;
+
+    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let table: BTreeMap<String, String> = [("hello.c3", ""), ("hello.c3.sync", "")]
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    let mut next_id: u64 = 0;
+    let make_specs = |next_id: &mut u64, handler: &'static str, k: usize| {
+        (0..k)
+            .map(|_| {
+                *next_id += 1;
+                let id = *next_id;
+                InvocationSpec {
+                    id,
+                    request_id: format!("c3di-{id}"),
+                    route_id: handler.into(),
+                    route_id_num: None,
+                    handler_key: handler.into(),
+                    policy_key: None,
+                    handler_id: None,
+                    policy_id_num: None,
+                    policy_handler_id: None,
+                    params_schema_id: None,
+                    query_schema_id: None,
+                    headers_schema_id: None,
+                    body_schema_id: None,
+                    request: None,
+                    slot: NO_REQUEST_SLOT,
+                    generation: 0,
+                    params: Some(params()),
+                    query: None,
+                    headers: None,
+                    body: None,
+                    allowed_statuses: vec![200],
+                    default_status: 200,
+                    response_strategy: ResponseStrategy::Native,
+                    raw_response: false,
+                    context_plan: q_engine::ContextPlan::ValidatedParamsOnly,
+                    deadline: Instant::now() + std::time::Duration::from_millis(2000),
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let check = |outcome: &Outcome| match outcome {
+        Outcome::Response { body, status, .. } => {
+            let ok = *status == 200
+                && match body {
+                    q_engine::BodyOut::Json(v) => v["message"] == EXPECTED_MESSAGE,
+                    q_engine::BodyOut::JsonText(t) => serde_json::from_str::<Value>(t.as_str())
+                        .map(|v| v["message"] == EXPECTED_MESSAGE)
+                        .unwrap_or(false),
+                    _ => false,
+                };
+            assert!(ok, "correctness: {body:?}");
+        }
+        other => panic!("expected Response, got {other:?}"),
+    };
+
+    let mut direct = DirectWorker::new(QuickJsConfig::default(), tokio_rt.handle().clone())
+        .expect("direct worker constructs");
+    direct
+        .load(
+            BUNDLE,
+            &q_engine::EngineLoadPlan::Legacy {
+                expected_handlers: table,
+            },
+        )
+        .expect("direct bundle loads");
+
+    let mut raw_file = std::fs::File::create(format!("{out_dir}/inflight.jsonl")).expect("raw out");
+    let mut entries: Vec<Value> = Vec::new();
+    for &k in depths {
+        for (handler, name) in [("hello.c3", "I_async"), ("hello.c3.sync", "I_sync")] {
+            // warmup (unchecked timing, checked outcomes)
+            for _ in 0..3 {
+                let specs = make_specs(&mut next_id, handler, k);
+                for o in direct.invoke_direct_batch(specs) {
+                    check(&o);
+                }
+            }
+            let before = direct.stats();
+            let mut samples: Vec<f64> = Vec::new();
+            for _ in 0..batches {
+                let specs = make_specs(&mut next_id, handler, k);
+                let t0 = Instant::now();
+                let outcomes = direct.invoke_direct_batch(specs);
+                let us = t0.elapsed().as_secs_f64() * 1e6;
+                for o in &outcomes {
+                    check(&o);
+                }
+                samples.push(us / k as f64);
+            }
+            let after = direct.stats();
+            let ops = after.invocations - before.invocations;
+            samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            for v in &samples {
+                let _ = writeln!(raw_file, "{}", json!({"tier": name, "k": k, "us": v}));
+            }
+            let entry = json!({
+                "tier": name,
+                "inflight_k": k,
+                "batches": batches,
+                "p50_us": quantile(&samples, 0.50),
+                "p95_us": quantile(&samples, 0.95),
+                "p99_us": quantile(&samples, 0.99),
+                "counts_per_op": counts_json(&before, &after, ops),
+            });
+            println!(
+                "{} K={}: p50 {:.3}us p95 {:.3}us (counts {})",
+                name,
+                k,
+                entry["p50_us"].as_f64().unwrap(),
+                entry["p95_us"].as_f64().unwrap(),
+                entry["counts_per_op"],
+            );
+            entries.push(entry);
+        }
+    }
+    drop(direct);
+
+    // derived: async overhead per depth (differences of measured tiers)
+    let get = |tier: &str, k: usize| {
+        entries
+            .iter()
+            .find(|e| e["tier"] == tier && e["inflight_k"].as_u64() == Some(k as u64))
+            .map(|e| e["p50_us"].as_f64().unwrap())
+            .unwrap_or(f64::NAN)
+    };
+    let depths_json: Vec<Value> = depths
+        .iter()
+        .map(|&k| {
+            json!({
+                "inflight_k": k,
+                "sync_p50_us": get("I_sync", k),
+                "async_p50_us": get("I_async", k),
+                "async_overhead_us": get("I_async", k) - get("I_sync", k),
+            })
+        })
+        .collect();
+    let summary = json!({
+        "format": "velqu-c3-decompose-inflight-v1",
+        "diagnosticOnly": true,
+        "boundary": "batch of K invocations dispatched, settled to quiescence once, all K outcomes collected; per-op = batch/K",
+        "hostLabel": std::env::var("C3D_LABEL").unwrap_or_else(|_| "unspecified".into()),
+        "sourceCommit": std::env::var("C3D_COMMIT").unwrap_or_else(|_| "unknown".into()),
+        "batches": batches,
+        "tiers": entries,
+        "derived_per_depth": depths_json,
+    });
+    let mut sum_file =
+        std::fs::File::create(format!("{out_dir}/inflight-summary.json")).expect("summary out");
+    let _ = writeln!(sum_file, "{summary}");
+    println!("c3 inflight complete: {out_dir}/inflight.jsonl + inflight-summary.json");
+    for d in &depths_json {
+        println!(
+            "K={}: sync {:.3}us async {:.3}us overhead {:+.3}us",
+            d["inflight_k"],
+            d["sync_p50_us"].as_f64().unwrap(),
+            d["async_p50_us"].as_f64().unwrap(),
+            d["async_overhead_us"].as_f64().unwrap(),
+        );
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let out_dir = args
@@ -139,9 +317,22 @@ fn main() {
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
         .unwrap_or(120);
+    let _ = std::fs::create_dir_all(&out_dir);
+
+    // #1409: --inflight K1,K2,... runs ONLY the in-flight-depth experiment
+    // (standard six-tier mode and its outputs remain untouched).
+    if let Some(pos) = args.iter().position(|a| a == "--inflight") {
+        let depths: Vec<usize> = args
+            .get(pos + 1)
+            .map(|v| v.split(',').filter_map(|d| d.parse().ok()).collect())
+            .filter(|v: &Vec<usize>| !v.is_empty())
+            .unwrap_or_else(|| vec![1, 10, 50]);
+        run_inflight_mode(&out_dir, batches, &depths);
+        return;
+    }
+
     let a_ops: usize = 1000;
     let b_ops: usize = 200;
-    let _ = std::fs::create_dir_all(&out_dir);
 
     // ---------------- tiers A_sync / A_async: bare rquickjs ----------------
     let rt = rquickjs::Runtime::new().expect("quickjs runtime");

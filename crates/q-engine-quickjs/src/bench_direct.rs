@@ -82,4 +82,56 @@ impl DirectWorker {
             },
         }
     }
+
+    /// Execute K invocations with all of them IN FLIGHT before the first
+    /// settlement pass — the batched-arrival pattern the worker loop sees
+    /// at message boundaries under concurrency. Begins every invocation,
+    /// then settles background work to quiescence (bounded, mirroring the
+    /// drain contract), then collects each reply in dispatch order.
+    ///
+    /// Diagnostic counterpart of [`Self::invoke_direct`] for the #1409
+    /// in-flight-depth experiment; never reachable from production builds.
+    pub fn invoke_direct_batch(&mut self, specs: Vec<InvocationSpec>) -> Vec<Outcome> {
+        let mut receivers = Vec::with_capacity(specs.len());
+        for spec in specs {
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            let job = InvokeJob {
+                spec,
+                reply: Some(tx),
+            };
+            let _disposition = self.inner.begin_invocation(job);
+            receivers.push(rx);
+        }
+        // One bounded settle-to-quiescence loop for the whole batch: drains
+        // queued jobs and harvests settled promises until nothing is pending.
+        // The bound mirrors the drain contract's finite-job guarantees; the
+        // canonical fixture settles within a couple of passes.
+        let mut guard = 0;
+        while self.inner.has_pending() {
+            self.inner.settle_background();
+            guard += 1;
+            if guard > receivers.len() + 8 {
+                return receivers
+                    .into_iter()
+                    .map(|mut rx| match rx.try_recv() {
+                        Ok(outcome) => outcome,
+                        Err(_) => Outcome::EngineFailure {
+                            detail: "bench-direct: batch settlement did not quiesce".into(),
+                            source: None,
+                        },
+                    })
+                    .collect();
+            }
+        }
+        receivers
+            .into_iter()
+            .map(|mut rx| match rx.try_recv() {
+                Ok(outcome) => outcome,
+                Err(_) => Outcome::EngineFailure {
+                    detail: "bench-direct: batch invocation did not reply".into(),
+                    source: None,
+                },
+            })
+            .collect()
+    }
 }
