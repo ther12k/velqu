@@ -30,12 +30,9 @@ step "bun $CLI create $(basename "$APP") --name $(basename "$APP")"
 (cd "$INSTALL" && bun "$CLI" create "$APP" --name "$(basename "$APP")") \
   || fail "scaffold creation failed"
 
-step "link @velqu workspace packages (documented quickstart step)"
-mkdir -p "$APP/node_modules/@velqu"
-for p in core schema treaty cli; do
-  ln -sfn "$INSTALL/packages/$p" "$APP/node_modules/@velqu/$p"
-done
-ls "$APP/node_modules/@velqu"
+step "bun install (documented quickstart step — @velqu/* from the public registry, #1399)"
+(cd "$APP" && bun install) || fail "registry install failed (the beta environment needs npm network access; the scaffold no longer uses workspace links)"
+[ -d "$APP/node_modules/@velqu/core" ] || fail "registry install did not materialize @velqu/core"
 
 step "verify scaffold structure (package.json, src/app.ts, health route)"
 [ -f "$APP/package.json" ] || fail "package.json missing"
