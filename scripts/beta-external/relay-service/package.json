@@ -1,0 +1,31 @@
+{
+  "name": "relay-service",
+  "private": true,
+  "version": "0.1.0",
+  "description": "External Velqu consumer: token-authenticated webhook intake with fetch enrichment",
+  "type": "module",
+  "scripts": {
+    "dev": "velqu dev --project .",
+    "build": "velqu build --project .",
+    "check": "velqu check --project .",
+    "test": "bun test",
+    "client": "bun run src/client.ts"
+  },
+  "velqu": {
+    "profile": "serverless",
+    "capabilities": ["fetch"]
+  },
+  "dependencies": {
+    "@velqu/core": "0.1.0-beta.1",
+    "@velqu/schema": "0.1.0-beta.1",
+    "@velqu/treaty": "0.1.0-beta.1"
+  },
+  "devDependencies": {
+    "@velqu/cli": "0.1.0-beta.1",
+    "@types/bun": "^1.3.4",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "bun": "1.4.0"
+  }
+}
