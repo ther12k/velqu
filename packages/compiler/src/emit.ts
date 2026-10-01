@@ -416,7 +416,10 @@ export function buildPack(
     if (declared) {
       for (const sec of declared) names.add(sec.header);
     } else if (r.policyId) {
-      names.add("authorization");
+      // #1401: the declared-header set must carry the POLICY's header —
+      // the runtime materializes exactly these names into the policy
+      // request's headers record. Falls back to the authoring default.
+      names.add(app.policies.find((p) => p.id === r.policyId)?.header ?? "authorization");
     }
     for (const n of names) headerNameSet.add(n);
     return [...names].sort();
@@ -526,7 +529,13 @@ export function buildPack(
       ),
       validationStrategy: decision.validationStrategy,
       nativeLiveness: r.liveness,
-      security: r.policyId ? [{ scheme: "bearer", header: "authorization", problemStatus: 401 }] : [],
+      security: r.policyId
+        ? [{
+            scheme: "bearer",
+            header: app.policies.find((p) => p.id === r.policyId)?.header ?? "authorization",
+            problemStatus: 401,
+          }]
+        : [],
       capabilities: r.capabilities,
       deadlineMs: 5000,
       plan,
