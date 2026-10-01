@@ -28,6 +28,27 @@ arrays are rejected typed — they are model-shaped, and models are out
 of scope by design. Applications compose SQL in their own modules;
 the capability runs it.
 
+## Handler surface vs SDK surface (#1406)
+
+Two distinct shapes carry the same operation — consumers hit this
+distinction the first time they write handler code:
+
+- **Handler surface** (`ctx.native.postgres.sql(...)` in route
+  handlers — what the snippet above shows): returns the **rows array**
+  directly. This is the surface application code runs on, and the one
+  that exists on deployed runtimes.
+- **SDK surface** (this package's `postgres.sql(...)`): wraps the same
+  operation as `{ rows, affectedRows }` plus typed error classes. The
+  SDK is workspace-only — **not part of the published npm set** as of
+  `0.1.0-beta.1` — so published-package consumers use the handler
+  surface.
+
+Consequence for DML on the handler surface: there is no
+`affectedRows`, so existence/detection keys on `RETURNING`
+(e.g. `DELETE ... WHERE id = $1 RETURNING id`; zero rows → not found).
+Observed live by the external notes consumer
+(`scripts/beta-external/notes-service/`, #1404).
+
 ## Identity & linking
 
 - Grant: `postgres` (handler `native.postgres`)
