@@ -169,6 +169,8 @@ path parameters are required and URI-encoded by the client.
 | --- | --- | --- |
 | [`examples/proof`](examples/proof/) | 13 routes across modules: validation, async timers, cancellation, redaction, upstream fetch | Native |
 | [`examples/browser-demo`](examples/browser-demo/) | Minimal two-route app compiled to static browser assets | Browser-WASM |
+| [`scripts/beta-external/relay-service`](scripts/beta-external/relay-service/) | External consumer on the published npm packages: webhook relay, token policy, fetch enrichment, typed failures (transcript: `docs/reports/relay-consumer-e2e-1400.md`) | External |
+| [`scripts/beta-external/notes-service`](scripts/beta-external/notes-service/) | External consumer: Postgres CRUD, SQL pagination, generated Treaty contract, fail-closed grant proof (transcript: `docs/reports/notes-consumer-e2e-1404.md`) | External |
 
 ## Compatibility
 
