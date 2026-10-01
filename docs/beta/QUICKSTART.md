@@ -8,16 +8,19 @@ Production execution is the Rust runtime loading a compiled QPack; Bun
 is used for development, package, and test tooling only.
 
 > **Beta notice:** the supported beta target is Linux x86_64 glibc
-> (macOS works for development only). The `@velqu/*` packages resolve
-> through the monorepo workspace and are not published to npm, so the
-> commands below run from a Velqu checkout and link workspace packages
-> into the scaffold.
+> (macOS works for development only). The `@velqu/*` packages are
+> published to npm as `0.1.0-beta.1` under the `beta` dist-tag (OD-010),
+> so scaffolded projects install from the registry; the Rust runtime
+> binary is built from a Velqu checkout and is required only for
+> `velqu dev` and serving. The walkthrough below runs from a checkout
+> because that is also how you build the runtime.
 
 ## Prerequisites
 
 - Linux x86_64 (beta target)
-- Bun `1.4.0` (build/dev tooling)
-- Rust toolchain from the repository lockfile
+- Bun `1.4.0` (build/dev tooling — exact pin; the build refuses other
+  versions by design)
+- Rust toolchain from the repository lockfile (runtime binary only)
 - A checkout of this repository
 
 From the repository root:
@@ -43,16 +46,15 @@ development profile; a multi-worker service uses the explicit grammar
 bun packages/cli/src/index.ts create hello-svc --name hello-svc --profile service:4
 ```
 
-Because the scaffold declares `workspace:*` dependencies and its
-scripts invoke the CLI through the linked package, link the workspace
-packages into it (repeat per scaffolded project; `cli` is what makes
-`bun run dev`/`check`/`build` work):
+The scaffold pins `@velqu/*@0.1.0-beta.1` and declares `@velqu/cli` in
+devDependencies, with scripts that call its `velqu` bin — so inside the
+generated project, `bun install` resolves everything from npm and no
+monorepo linking is required:
 
 ```bash
-mkdir -p hello-velqu/node_modules/@velqu
-for p in core schema treaty cli; do
-  ln -sfn "$(pwd)/packages/$p" "hello-velqu/node_modules/@velqu/$p"
-done
+cd hello-velqu
+bun install
+bun run check        # → velqu check: 3 routes in . — clean
 ```
 
 ## Build a production QPack

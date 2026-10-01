@@ -28,6 +28,7 @@ import { ExitCode, type ExitCodeValue } from "./exit-codes";
 import { formatActionableError, renderCodeFrame, type FormattedDiagnostic } from "./errors";
 import {
   generateStarterProject,
+  PUBLISHED_BETA_VERSION,
   resolveServiceProfile,
   type ProjectTemplateOptions,
   type ServiceProfileChoice,
@@ -914,9 +915,10 @@ async function main() {
           console.log(`  + ${f}`);
         }
         console.log(
-          "\nNext steps:\n  cd " + targetDir + "\n  bun install\n  velqu dev" +
-          "\n\nNote (private alpha): @velqu/* packages are workspace-resolved and not yet on npm —" +
-          "\nrun inside a Velqu monorepo checkout or symlink them into node_modules/@velqu/.",
+          "\nNext steps:\n  cd " + targetDir + "\n  bun install\n  bun run check\n  bun run build" +
+          "\n\nNote: @velqu/* install from npm as " + PUBLISHED_BETA_VERSION + " (beta dist-tag)." +
+          "\n`velqu dev` additionally needs the Rust runtime binary — build it from a Velqu" +
+          "\ncheckout (cargo build --release -p velqu-runtime) and export VELQU_RUNTIME.",
         );
       }
       break;

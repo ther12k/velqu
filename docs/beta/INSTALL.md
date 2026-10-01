@@ -14,8 +14,10 @@ API may change between beta releases (see `docs/beta/01_BETA_DEFINITION.md`).
 
 ## Prerequisites (build from source)
 
-Beta distribution is source-based; the `@velqu/*` npm packages are
-prepared but not yet published (all are marked `private`).
+The TypeScript side is published: all `@velqu/*` packages are on npm as
+`0.1.0-beta.1` under the `beta` dist-tag (OD-010), and scaffolded
+projects install from the registry. The Rust runtime binary remains
+source-distributed — this page covers building it.
 
 - Linux x86_64 with glibc (beta target).
 - Rust stable (`cargo`) and Bun 1.4 (build/dev tooling only — production
