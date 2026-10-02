@@ -1,9 +1,12 @@
 # Publishing `@velqu/*` to npm — Owner Runbook
 
-**Status: beta.1 PUBLISHED (2026-09-09); beta.2 prepared 2026-10-02 (#1411,
-awaiting owner `npm login` + `bun run publish:beta:real`).** The packages
-publish under the **`beta`** dist-tag (`latest` intentionally
-unset; moves only by a recorded owner decision). Install with e.g.
+**Status: beta.2 PUBLISHED (2026-10-02, receipt on #1411; beta.1
+2026-09-09).** All eight packages are live on npm as `0.1.0-beta.2`
+under the **`beta`** dist-tag. Registry observation for the owner:
+`latest` points at `0.1.0-beta.1` for the seven original packages and
+at `0.1.0-beta.2` for `@velqu/browser-pglite` (a first publish sets
+`latest` implicitly) — the set is inconsistent; `latest` moves only by
+a recorded owner decision. Install with e.g.
 `bun add @velqu/core@beta`. The packaging invariants below (tarball
 layout, kernel assets, workspace-dep replacement) remain enforced by
 `packages/publishing/src/publishing.test.ts`. Decision record:
