@@ -39,3 +39,4 @@ status: active
 Each material change to these defaults during implementation will add a new
 ADR under `docs/okf/decisions/` and update this register.
 | OD-010 | npm publication of `@velqu/*` | **DECIDED (2026-09-09)** | Owner created the `velqu` npm org and published all seven packages as `0.1.0-beta.1` under the `beta` dist-tag (`latest` intentionally not set); runbook + packaging invariants in `docs/beta/PUBLISHING.md`; verified post-publish from the registry |
+| OD-011 | GA RC1 candidate nomination | **DECIDED (2026-10-03)** | Owner selected master `8b3dce23` (the live beta.2 content, CI-green both architectures) as RC1; qualification reruns launched fresh on the SHA per the evidence-transfer doctrine — record + comparison in `docs/production/evidence/rc1-nomination.md`; RC revision frozen except release corrections. Remaining #1321 inputs: canary assignments, greenfield rollback disposition, publisher identity |
