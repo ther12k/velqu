@@ -21,19 +21,19 @@ warning: unused workspace dependency `tokio-postgres`
    |
 help: consider removing the workspace dependency `tokio-postgres`
 
-running 59 tests
-...........................................................
-test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.01s
+running 63 tests
+...............................................................
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.79s
 
 
 running 5 tests
 .....
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.64s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.05s
 
 
 running 4 tests
 ....
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.72s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.08s
 
 
 running 0 tests
