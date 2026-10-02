@@ -9,7 +9,7 @@ is used for development, package, and test tooling only.
 
 > **Beta notice:** the supported beta target is Linux x86_64 glibc
 > (macOS works for development only). The `@velqu/*` packages are
-> published to npm as `0.1.0-beta.1` under the `beta` dist-tag (OD-010),
+> published to npm as `0.1.0-beta.2` under the `beta` dist-tag (OD-010),
 > so scaffolded projects install from the registry; the Rust runtime
 > binary is built from a Velqu checkout and is required only for
 > `velqu dev` and serving. The walkthrough below runs from a checkout
@@ -46,7 +46,7 @@ development profile; a multi-worker service uses the explicit grammar
 bun packages/cli/src/index.ts create hello-svc --name hello-svc --profile service:4
 ```
 
-The scaffold pins `@velqu/*@0.1.0-beta.1` and declares `@velqu/cli` in
+The scaffold pins `@velqu/*@0.1.0-beta.2` and declares `@velqu/cli` in
 devDependencies, with scripts that call its `velqu` bin — so inside the
 generated project, `bun install` resolves everything from npm and no
 monorepo linking is required:
@@ -115,7 +115,7 @@ Inside the scaffold, `bun run check`, `bun run test`, and
 ## What this quickstart does not promise
 
 - This is not a production-readiness claim and carries no SLA. The
-  beta release line is `0.1.0-beta.1`; see
+  beta release line is `0.1.0-beta.2`; see
   [the beta definition](01_BETA_DEFINITION.md).
 - `app.qpack` embeds QuickJS bytecode: it improves startup and enables
   strict verification, but it is not native-machine-code JIT

@@ -6,6 +6,38 @@ As defined in `docs/beta/01_BETA_DEFINITION.md`, prerelease versions carry no ba
 
 ---
 
+## [0.1.0-beta.2] — 2026-10-02
+
+### Adoption-Fix Release
+
+No runtime/engine changes: same pinned Rust toolchain, same engine pins
+(quickjs-ng 0.15.1 via rquickjs 0.12.2), same pack fingerprint — packs
+built against beta.1 artifacts load unchanged. The release ships the
+compiler/CLI fixes that make the published npm path match the documented
+experience:
+
+- **Starters install from the public registry** (#1399): scaffolded
+  projects pin `@velqu/*@0.1.0-beta.2` and `@velqu/cli` in
+  devDependencies with `velqu` bin scripts — `bun install` works with no
+  Velqu checkout. Generated client tests skip only on true connection
+  refusal and accept `VELQU_DEV_PORT`.
+- **`definePolicy` honors its declared `header`** (#1402): extraction
+  previously dropped the field and emit hardcoded `authorization`, so
+  policies reading any other header always returned 401 with an empty
+  headers record. Existing `authorization` policies are byte-identical.
+- **Docs corrections** (#1407): postgres handler surface (rows array)
+  vs SDK wrapper (`{rows, affectedRows}`, not in the published set);
+  QUICKSTART/INSTALL/TREATY/CLI-reference aligned to the published
+  state; README lists the two external consumer journeys
+  (`scripts/beta-external/`) with committed transcripts.
+
+### Migration Notes & Breaking Changes (from 0.1.0-beta.1)
+
+None. Same-version bump across all packages; no API, pack, or config
+changes.
+
+---
+
 ## [0.1.0-beta.1] — 2026-09-04
 
 ### Initial Public Beta Release

@@ -1,6 +1,6 @@
 {
   "name": "@velqu/compiler",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Velqu compiler: static route extraction, deterministic QPack emission, contract/OpenAPI output, and the browser-wasm target. Never executes application code.",
   "license": "MIT",
   "type": "module",

@@ -15,7 +15,7 @@ API may change between beta releases (see `docs/beta/01_BETA_DEFINITION.md`).
 ## Prerequisites (build from source)
 
 The TypeScript side is published: all `@velqu/*` packages are on npm as
-`0.1.0-beta.1` under the `beta` dist-tag (OD-010), and scaffolded
+`0.1.0-beta.2` under the `beta` dist-tag (OD-010), and scaffolded
 projects install from the registry. The Rust runtime binary remains
 source-distributed — this page covers building it.
 

@@ -77,7 +77,7 @@ pinned versions.
 
 ### Scaffold cannot resolve `@velqu/*` or fails to bundle
 
-The scaffold pins `@velqu/*@0.1.0-beta.1` from npm (OD-010), so
+The scaffold pins `@velqu/*@0.1.0-beta.2` from npm (OD-010), so
 `bun install` inside the generated project needs no Velqu checkout —
 only Bun `1.4.0` exactly (older scaffolds from the private alpha used
 `workspace:*`; re-create the project). If resolution still fails, check

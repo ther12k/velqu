@@ -1,7 +1,7 @@
 {
   "name": "@velqu/browser-pglite",
-  "version": "0.1.0-beta.1",
-  "description": "Velqu optional browser-local SQL capability (BWASM-C-003): the frozen async Postgres operation subset mapped onto PGlite running in the browser. Browser-local prototype data only — never multi-user, production-durable, or native-Postgres-performance. The native `postgres` grant stays deployment-required; this adapter is a distinct, opt-in surface.",
+  "version": "0.1.0-beta.2",
+  "description": "Velqu optional browser-local SQL capability (BWASM-C-003): the frozen async Postgres operation subset mapped onto PGlite running in the browser. Browser-local prototype data only \u2014 never multi-user, production-durable, or native-Postgres-performance. The native `postgres` grant stays deployment-required; this adapter is a distinct, opt-in surface.",
   "license": "MIT",
   "type": "module",
   "repository": {
