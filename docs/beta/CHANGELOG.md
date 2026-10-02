@@ -1,4 +1,4 @@
-# Changelog & Migration Notes — Velqu 0.1.0-beta.1
+# Changelog & Migration Notes — Velqu beta releases
 
 All notable changes and migration requirements for Velqu public beta releases are documented here.
 This project adheres to [Semantic Versioning 2.0.0](https://semver.org/).
