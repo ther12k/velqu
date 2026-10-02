@@ -1,25 +1,19 @@
 /**
- * Opt-in registry E2E (#1398): proves the starter's PUBLIC dependency path
- * with no monorepo links at all —
+ * Opt-in registry E2E (#1398, restored for 0.1.0-beta.2 — #1411): proves
+ * the starter's PUBLIC path with no monorepo links at all —
  *
- *   scaffold (local CLI) -> bun install (@velqu/* from npm)
- *   ->  bun run check  ->  bun test  ->  bun run build      [registry CLI]
+ *   bun add @velqu/cli@<beta>  ->  velqu create  ->  bun install (npm)
+ *   ->  bun run check  ->  bun test  ->  bun run build
  *
- * The scaffold step runs the WORKTREE CLI because the published
- * 0.1.0-beta.1 predates this packet (it still emits `workspace:*`);
- * every later step runs the registry-installed `velqu` bin that a real
- * consumer gets. When a post-fix version is published, add the
- * create-via-published-bin assertion back (it is what this suite
- * originally asserted).
+ * Requires 0.1.0-beta.2+ on the registry (the fixed scaffold — beta.1
+ * still emitted `workspace:*`); until the publish lands the create step
+ * fails with the beta.1 behavior.
  *
  * Requires network access to registry.npmjs.org and the pinned toolchain
  * (Bun 1.4.0 — `velqu build` refuses other versions by design), so it is
  * deliberately NOT part of the offline verify battery. Run it with:
  *
  *   VELQU_REGISTRY_E2E=1 bun test packages/cli/src/registry-install.test.ts
- *
- * A transcript of a real run is attached to the PR that introduced this
- * file; when skipped, this suite prints a pointer to that command.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
@@ -45,7 +39,6 @@ const enabled = process.env.VELQU_REGISTRY_E2E === "1";
 
 describe.skipIf(!enabled)("Registry E2E: starter installs from npm (opt-in, #1398)", () => {
   let testDir: string;
-  const worktreeDir = process.cwd();
 
   beforeEach(() => {
     testDir = join(tmpdir(), `velqu-registry-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -75,10 +68,10 @@ describe.skipIf(!enabled)("Registry E2E: starter installs from npm (opt-in, #139
     expect(addCode).toBe(0);
     expect(existsSync(join(hostDir, "node_modules/.bin/velqu"))).toBe(true);
 
-    // 2. Scaffold via the worktree CLI (see file header: the published
-    // 0.1.0-beta.1 predates this packet).
+    // 2. Scaffold via the PUBLISHED CLI bin — the exact consumer entry
+    // point (restored for beta.2; beta.1 still emitted workspace:*).
     const createProc = Bun.spawn(
-      ["bun", join(worktreeDir, "packages/cli/src/index.ts"), "create", appDir, "--name", "registry-app"],
+      ["bun", "node_modules/.bin/velqu", "create", appDir, "--name", "registry-app"],
       {
         cwd: hostDir,
         stdout: "pipe",

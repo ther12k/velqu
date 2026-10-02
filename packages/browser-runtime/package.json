@@ -1,6 +1,6 @@
 {
   "name": "@velqu/browser-runtime",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Velqu Browser-WASM runtime: fetch(Request) -> Promise<Response> over the Rust/WASM kernel (ADR-0037). Browser-only: no Bun.*, node:*, native addons, q-http, or native runtime dependencies.",
   "license": "MIT",
   "type": "module",

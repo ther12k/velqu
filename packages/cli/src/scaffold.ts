@@ -33,7 +33,7 @@ export const SERVICE_PROFILE_USAGE = "serverless | service:N (N = 1..64, e.g. se
  * dist-tag). scaffold.test asserts this stays equal to the CLI's own
  * package version so scaffolds can never drift from the registry.
  */
-export const PUBLISHED_BETA_VERSION = "0.1.0-beta.1";
+export const PUBLISHED_BETA_VERSION = "0.1.0-beta.2";
 
 export type ResolvedServiceProfile =
   | { ok: true; profile: ServiceProfileChoice; devFlag: string; buildFlag: string }

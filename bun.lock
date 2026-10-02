@@ -32,14 +32,14 @@
     },
     "packages/browser-pglite": {
       "name": "@velqu/browser-pglite",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
       "dependencies": {
         "@electric-sql/pglite": "0.5.8",
       },
     },
     "packages/browser-runtime": {
       "name": "@velqu/browser-runtime",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
     },
     "packages/capability-auth-jwt": {
       "name": "@velqu/capability-auth-jwt",
@@ -51,7 +51,7 @@
     },
     "packages/cli": {
       "name": "@velqu/cli",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
       "bin": {
         "velqu": "./bin/velqu.js",
       },
@@ -62,7 +62,7 @@
     },
     "packages/compiler": {
       "name": "@velqu/compiler",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
       "dependencies": {
         "@velqu/contract": "workspace:*",
         "@velqu/core": "workspace:*",
@@ -72,11 +72,11 @@
     },
     "packages/contract": {
       "name": "@velqu/contract",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
     },
     "packages/core": {
       "name": "@velqu/core",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
       "dependencies": {
         "@velqu/schema": "workspace:*",
       },
@@ -87,7 +87,7 @@
     },
     "packages/schema": {
       "name": "@velqu/schema",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
     },
     "packages/testing": {
       "name": "@velqu/testing",
@@ -99,7 +99,7 @@
     },
     "packages/treaty": {
       "name": "@velqu/treaty",
-      "version": "0.1.0-beta.1",
+      "version": "0.1.0-beta.2",
     },
   },
   "packages": {

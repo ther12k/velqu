@@ -1,6 +1,6 @@
 {
   "name": "@velqu/contract",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Velqu published contract types and runtime contract table (language-neutral shape).",
   "license": "MIT",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@velqu/core",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Velqu application surface: route() declarations compiled to a verified QPack and executed by the Rust Velqu runtime.",
   "license": "MIT",
   "type": "module",

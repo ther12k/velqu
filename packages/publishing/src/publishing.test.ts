@@ -5,7 +5,7 @@
  * - build dist/ JS + declarations via scripts/build-packages.ts;
  * - pack a correctly laid-out tarball (files at `package/` root — the
  *   D1 cleanroom defect was archives with entries at the tar root);
- * - declare a non-private, MIT, 0.1.0-beta.1 manifest with public
+ * - declare a non-private, MIT, beta manifest with public
  *   access and the bun/src + default/dist exports split;
  * - `@velqu/browser-runtime` must ship the vendored, hash-pinned
  *   kernel/ assets (the D3 cleanroom defect was a tarball without a
@@ -34,7 +34,7 @@ const PUBLISH_ORDER = [
   "compiler",
   "cli",
 ] as const;
-const VERSION = "0.1.0-beta.1";
+const VERSION = "0.1.0-beta.2";
 
 let packDirs: Record<string, { dir: string; files: string[] }> = {};
 

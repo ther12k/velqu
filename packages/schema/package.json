@@ -1,6 +1,6 @@
 {
   "name": "@velqu/schema",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Velqu schema builders (s.*): one schema contract driving validation, types, Treaty clients, and OpenAPI.",
   "license": "MIT",
   "type": "module",

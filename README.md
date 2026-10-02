@@ -31,14 +31,14 @@ contract lock — one source of truth, no drift.
 
 ## Status & install
 
-Public beta **`0.1.0-beta.1`** shipped (ADR-0020,
+Public beta **`0.1.0-beta.2`** shipped (ADR-0020,
 [`docs/beta/`](docs/beta/)). Milestone state:
 [`docs/beta/program/STATUS.md`](docs/beta/program/STATUS.md).
 Material decisions live in [`docs/okf/decisions/`](docs/okf/decisions/);
 open owner decisions in
 [`docs/open-decisions.md`](docs/open-decisions.md).
 
-Published to npm as `@velqu/*@0.1.0-beta.1` under the **`beta`**
+Published to npm as `@velqu/*@0.1.0-beta.2` under the **`beta`**
 dist-tag (publication decision OD-010;
 [`docs/beta/PUBLISHING.md`](docs/beta/PUBLISHING.md)):
 
@@ -161,7 +161,7 @@ path parameters are required and URI-encoded by the client.
 | Browser fetch boundary | Available | M2.8 |
 | Multi-worker service mode | Available | M3 |
 | Browser-WASM static deployment (Rust/WASM kernel + Worker handlers) | Beta — gate GO (2026-09-11, #1179) | BWASM |
-| Alpha release (`0.1.0-beta.1`) | Available | M4 / ADR-0020 |
+| Beta release (`0.1.0-beta.2`) | Available | M4 / ADR-0020 |
 
 ## Examples
 

@@ -1,7 +1,8 @@
 # Publishing `@velqu/*` to npm — Owner Runbook
 
-**Status: PUBLISHED (2026-09-09).** All seven packages are live on npm
-as `0.1.0-beta.1` under the **`beta`** dist-tag (`latest` intentionally
+**Status: beta.1 PUBLISHED (2026-09-09); beta.2 prepared 2026-10-02 (#1411,
+awaiting owner `npm login` + `bun run publish:beta:real`).** The packages
+publish under the **`beta`** dist-tag (`latest` intentionally
 unset; moves only by a recorded owner decision). Install with e.g.
 `bun add @velqu/core@beta`. The packaging invariants below (tarball
 layout, kernel assets, workspace-dep replacement) remain enforced by

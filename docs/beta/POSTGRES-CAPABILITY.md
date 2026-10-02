@@ -32,7 +32,7 @@ Two shapes carry that operation (#1406): the **handler surface**
 (`ctx.native.postgres.sql(...)`) returns the rows array directly and is
 what application code runs on; the **SDK surface**
 (`@velqu/capability-postgres`, workspace-only — not in the published
-npm set as of `0.1.0-beta.1`) wraps it as `{ rows, affectedRows }`.
+npm set as of `0.1.0-beta.2`) wraps it as `{ rows, affectedRows }`.
 On the handler surface, DML existence detection keys on `RETURNING`
 (zero rows → not found) because there is no `affectedRows`.
 
