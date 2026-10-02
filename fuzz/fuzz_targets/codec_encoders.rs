@@ -27,6 +27,7 @@ fn table() -> &'static EncoderTable {
     T.get_or_init(|| {
         EncoderTable::from_schemas(&[
             SchemaIr::Object {
+                property_order: None,
                 properties: std::collections::BTreeMap::from([
                     ("message".into(), boxed(SchemaIr::String { min_length: None, max_length: Some(200), pattern: None, format: None })),
                     ("code".into(), boxed(SchemaIr::Integer { minimum: Some(0), maximum: Some(65535) })),

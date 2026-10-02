@@ -21,6 +21,7 @@ fn boxed(ir: SchemaIr) -> Box<SchemaIr> {
 
 fn corpus_ir() -> SchemaIr {
     SchemaIr::Object {
+        property_order: None,
         properties: BTreeMap::from([
             (
                 "name".into(),
