@@ -1,0 +1,2 @@
+soak complete: benchmarks/raw/ga-m6-008-chaos-rc1/soak.jsonl + summary (901s, 2224328 verified)
+CHAOS_EXIT=0

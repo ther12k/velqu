@@ -1,7 +1,7 @@
 warning: binary `bridge_handles` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
-   |                                                        ^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../bridge_handles
+   |                                                                             ^^^^^^^^^^^^^^
    |
    = note: `cargo::non_kebab_case_bins` is set to `warn` by default
 help: to change the binary name to `bridge-handles`, convert `bin.name`
@@ -12,8 +12,8 @@ help: to change the binary name to `bridge-handles`, convert `bin.name`
    |
 warning: binary `capabilities_policy` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
-   |                                                        ^^^^^^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../capabilities_policy
+   |                                                                             ^^^^^^^^^^^^^^^^^^^
    |
 help: to change the binary name to `capabilities-policy`, convert `bin.name`
   --> Cargo.toml:74:8
@@ -23,8 +23,8 @@ help: to change the binary name to `capabilities-policy`, convert `bin.name`
    |
 warning: binary `codec_encoders` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
-   |                                                        ^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../codec_encoders
+   |                                                                             ^^^^^^^^^^^^^^
    |
 help: to change the binary name to `codec-encoders`, convert `bin.name`
   --> Cargo.toml:67:8
@@ -34,8 +34,8 @@ help: to change the binary name to `codec-encoders`, convert `bin.name`
    |
 warning: binary `http_decode` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
-   |                                                        ^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../http_decode
+   |                                                                             ^^^^^^^^^^^
    |
 help: to change the binary name to `http-decode`, convert `bin.name`
   --> Cargo.toml:46:8
@@ -45,8 +45,8 @@ help: to change the binary name to `http-decode`, convert `bin.name`
    |
 warning: binary `pack_verify` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
-   |                                                        ^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../pack_verify
+   |                                                                             ^^^^^^^^^^^
    |
 help: to change the binary name to `pack-verify`, convert `bin.name`
   --> Cargo.toml:32:8
@@ -56,8 +56,8 @@ help: to change the binary name to `pack-verify`, convert `bin.name`
    |
 warning: binary `router_match` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
-   |                                                        ^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../router_match
+   |                                                                             ^^^^^^^^^^^^
    |
 help: to change the binary name to `router-match`, convert `bin.name`
   --> Cargo.toml:39:8
@@ -67,8 +67,8 @@ help: to change the binary name to `router-match`, convert `bin.name`
    |
 warning: binary `schema_validate` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
-   |                                                        ^^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../schema_validate
+   |                                                                             ^^^^^^^^^^^^^^^
    |
 help: to change the binary name to `schema-validate`, convert `bin.name`
   --> Cargo.toml:53:8
@@ -78,7 +78,7 @@ help: to change the binary name to `schema-validate`, convert `bin.name`
    |
 warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
 warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
-  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+  --> /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/crates/q-capabilities/src/drain.rs:77:18
    |
 77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
    |                  ^^^^^^^^^^^^
@@ -91,7 +91,7 @@ help: replace the use of the deprecated method
    |
 
 warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
-   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+   --> /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/crates/q-capabilities/src/load_shed.rs:199:14
     |
 199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
     |              ^^^^^^^^^^^^
@@ -103,12 +103,11 @@ help: replace the use of the deprecated method
     |
 
 warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
-   Compiling velqu-runtime-fuzz v0.0.0 (/home/ther12k/Workspace/Learning/velqu/fuzz)
-    Finished `release` profile [optimized + debuginfo] target(s) in 1.44s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.07s
 warning: binary `bridge_handles` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../bridge_handles
-   |                                                        ^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../bridge_handles
+   |                                                                             ^^^^^^^^^^^^^^
    |
    = note: `cargo::non_kebab_case_bins` is set to `warn` by default
 help: to change the binary name to `bridge-handles`, convert `bin.name`
@@ -119,8 +118,8 @@ help: to change the binary name to `bridge-handles`, convert `bin.name`
    |
 warning: binary `capabilities_policy` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../capabilities_policy
-   |                                                        ^^^^^^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../capabilities_policy
+   |                                                                             ^^^^^^^^^^^^^^^^^^^
    |
 help: to change the binary name to `capabilities-policy`, convert `bin.name`
   --> Cargo.toml:74:8
@@ -130,8 +129,8 @@ help: to change the binary name to `capabilities-policy`, convert `bin.name`
    |
 warning: binary `codec_encoders` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../codec_encoders
-   |                                                        ^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../codec_encoders
+   |                                                                             ^^^^^^^^^^^^^^
    |
 help: to change the binary name to `codec-encoders`, convert `bin.name`
   --> Cargo.toml:67:8
@@ -141,8 +140,8 @@ help: to change the binary name to `codec-encoders`, convert `bin.name`
    |
 warning: binary `http_decode` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../http_decode
-   |                                                        ^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../http_decode
+   |                                                                             ^^^^^^^^^^^
    |
 help: to change the binary name to `http-decode`, convert `bin.name`
   --> Cargo.toml:46:8
@@ -152,8 +151,8 @@ help: to change the binary name to `http-decode`, convert `bin.name`
    |
 warning: binary `pack_verify` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../pack_verify
-   |                                                        ^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../pack_verify
+   |                                                                             ^^^^^^^^^^^
    |
 help: to change the binary name to `pack-verify`, convert `bin.name`
   --> Cargo.toml:32:8
@@ -163,8 +162,8 @@ help: to change the binary name to `pack-verify`, convert `bin.name`
    |
 warning: binary `router_match` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../router_match
-   |                                                        ^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../router_match
+   |                                                                             ^^^^^^^^^^^^
    |
 help: to change the binary name to `router-match`, convert `bin.name`
   --> Cargo.toml:39:8
@@ -174,8 +173,8 @@ help: to change the binary name to `router-match`, convert `bin.name`
    |
 warning: binary `schema_validate` should have a kebab-case name
    |
- 1 | /home/ther12k/Workspace/Learning/velqu/fuzz/target/.../schema_validate
-   |                                                        ^^^^^^^^^^^^^^^
+ 1 | /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/target/.../schema_validate
+   |                                                                             ^^^^^^^^^^^^^^^
    |
 help: to change the binary name to `schema-validate`, convert `bin.name`
   --> Cargo.toml:53:8
@@ -185,7 +184,7 @@ help: to change the binary name to `schema-validate`, convert `bin.name`
    |
 warning: `velqu-runtime-fuzz` (manifest) generated 7 warnings
 warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
-  --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/drain.rs:77:18
+  --> /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/crates/q-capabilities/src/drain.rs:77:18
    |
 77 |                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1));
    |                  ^^^^^^^^^^^^
@@ -198,7 +197,7 @@ help: replace the use of the deprecated method
    |
 
 warning: use of deprecated method `std::sync::atomic::Atomic::<u64>::fetch_update`: renamed to `try_update` for consistency
-   --> /home/ther12k/Workspace/Learning/velqu/crates/q-capabilities/src/load_shed.rs:199:14
+   --> /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/crates/q-capabilities/src/load_shed.rs:199:14
     |
 199 |             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
     |              ^^^^^^^^^^^^
@@ -210,35 +209,101 @@ help: replace the use of the deprecated method
     |
 
 warning: `q-capabilities` (lib) generated 2 warnings (run `cargo fix --lib -p q-capabilities` to apply 2 suggestions)
-    Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
-     Running `fuzz/target/x86_64-unknown-linux-gnu/release/router_match -artifact_prefix=/home/ther12k/Workspace/Learning/velqu/fuzz/artifacts/router_match/ -max_total_time=900 -rss_limit_mb=4096 -seed=1789338807 -print_final_stats=1 /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/router_match`
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+     Running `fuzz/target/x86_64-unknown-linux-gnu/release/router_match -artifact_prefix=/home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/artifacts/router_match/ -max_total_time=900 -rss_limit_mb=4096 -seed=1790971405 -print_final_stats=1 /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/corpus/router_match`
 INFO: Running with entropic power schedule (0xFF, 100).
-INFO: Seed: 1789338807
-INFO: Loaded 1 modules   (3718 inline 8-bit counters): 3718 [0x580723c559d0, 0x580723c56856), 
-INFO: Loaded 1 PC tables (3718 PCs): 3718 [0x580723c56858,0x580723c650b8), 
-INFO:      248 files found in /home/ther12k/Workspace/Learning/velqu/fuzz/corpus/router_match
+INFO: Seed: 1790971405
+INFO: Loaded 1 modules   (3718 inline 8-bit counters): 3718 [0x5e3b3dc73c30, 0x5e3b3dc74ab6), 
+INFO: Loaded 1 PC tables (3718 PCs): 3718 [0x5e3b3dc74ab8,0x5e3b3dc83318), 
+INFO:       88 files found in /home/ther12k/Workspace/Learning/velqu-worktrees/rc1-qual-a/fuzz/corpus/router_match
 INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
-INFO: seed corpus: files: 248 min: 1b max: 1369b total: 106752b rss: 38Mb
-#249	INITED cov: 239 ft: 678 corp: 86/2878b exec/s: 0 rss: 50Mb
-#4193	REDUCE cov: 239 ft: 678 corp: 86/2877b lim: 1069 exec/s: 0 rss: 62Mb L: 2/1029 MS: 4 ChangeBit-EraseBytes-ChangeBit-ChangeByte-
-#262144	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 3633 exec/s: 131072 rss: 434Mb
-#524288	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 104857 rss: 444Mb
-#1048576	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 104857 rss: 448Mb
-#2097152	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 110376 rss: 450Mb
-#4194304	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 116508 rss: 451Mb
-#8388608	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 116508 rss: 458Mb
-#16777216	pulse  cov: 239 ft: 678 corp: 86/2877b lim: 4096 exec/s: 112598 rss: 460Mb
-#20271064	REDUCE cov: 239 ft: 678 corp: 86/2876b lim: 4096 exec/s: 112617 rss: 462Mb L: 517/1029 MS: 1 EraseBytes-
-#24253986	REDUCE cov: 239 ft: 678 corp: 86/2875b lim: 4096 exec/s: 112286 rss: 462Mb L: 1028/1028 MS: 2 EraseBytes-CopyPart-
-#24821149	REDUCE cov: 239 ft: 678 corp: 86/2874b lim: 4096 exec/s: 112312 rss: 462Mb L: 1027/1027 MS: 3 ChangeBinInt-CopyPart-EraseBytes-
-#33554432	pulse  cov: 239 ft: 678 corp: 86/2874b lim: 4096 exec/s: 110014 rss: 462Mb
-#43177387	REDUCE cov: 239 ft: 678 corp: 86/2873b lim: 4096 exec/s: 106348 rss: 462Mb L: 516/1027 MS: 2 EraseBytes-CopyPart-
-#67108864	pulse  cov: 239 ft: 678 corp: 86/2873b lim: 4096 exec/s: 102927 rss: 462Mb
-#79046208	REDUCE cov: 239 ft: 678 corp: 86/2872b lim: 4096 exec/s: 101863 rss: 462Mb L: 515/1027 MS: 1 EraseBytes-
-#90333449	DONE   cov: 239 ft: 678 corp: 86/2872b lim: 4096 exec/s: 100259 rss: 462Mb
-Done 90333449 runs in 901 second(s)
-stat::number_of_executed_units: 90333449
-stat::average_exec_per_sec:     100259
-stat::new_units_added:          6
+INFO: seed corpus: files: 88 min: 1b max: 1083b total: 3331b rss: 37Mb
+#89	INITED cov: 231 ft: 646 corp: 82/3062b exec/s: 0 rss: 37Mb
+#6460	REDUCE cov: 231 ft: 646 corp: 82/3056b lim: 1143 exec/s: 0 rss: 56Mb L: 19/1083 MS: 1 EraseBytes-
+#25053	REDUCE cov: 231 ft: 646 corp: 82/3050b lim: 1323 exec/s: 0 rss: 108Mb L: 13/1083 MS: 3 ShuffleBytes-ChangeBinInt-EraseBytes-
+#54352	REDUCE cov: 231 ft: 646 corp: 82/3049b lim: 1613 exec/s: 0 rss: 188Mb L: 12/1083 MS: 4 ChangeBit-CopyPart-CopyPart-EraseBytes-
+#63524	REDUCE cov: 231 ft: 646 corp: 82/3048b lim: 1703 exec/s: 0 rss: 212Mb L: 11/1083 MS: 2 ShuffleBytes-EraseBytes-
+#73450	REDUCE cov: 231 ft: 646 corp: 82/3047b lim: 1793 exec/s: 0 rss: 238Mb L: 10/1083 MS: 1 EraseBytes-
+#88432	REDUCE cov: 231 ft: 646 corp: 82/3046b lim: 1933 exec/s: 0 rss: 281Mb L: 9/1083 MS: 2 ShuffleBytes-EraseBytes-
+#262144	pulse  cov: 231 ft: 646 corp: 82/3046b lim: 3659 exec/s: 131072 rss: 434Mb
+#265666	REDUCE cov: 231 ft: 646 corp: 82/3039b lim: 3692 exec/s: 132833 rss: 434Mb L: 1076/1076 MS: 3 EraseBytes-ChangeASCIIInt-CrossOver-
+#524288	pulse  cov: 231 ft: 646 corp: 82/3039b lim: 4096 exec/s: 131072 rss: 451Mb
+#612550	REDUCE cov: 231 ft: 646 corp: 82/3037b lim: 4096 exec/s: 122510 rss: 451Mb L: 88/1076 MS: 3 InsertByte-EraseBytes-InsertByte-
+#666757	REDUCE cov: 231 ft: 646 corp: 82/3033b lim: 4096 exec/s: 111126 rss: 451Mb L: 24/1076 MS: 2 EraseBytes-ChangeByte-
+#741474	REDUCE cov: 231 ft: 646 corp: 82/3032b lim: 4096 exec/s: 123579 rss: 451Mb L: 1075/1075 MS: 2 ChangeBit-EraseBytes-
+#803832	REDUCE cov: 231 ft: 646 corp: 82/3028b lim: 4096 exec/s: 114833 rss: 451Mb L: 20/1075 MS: 3 CopyPart-ChangeBit-EraseBytes-
+#1048576	pulse  cov: 231 ft: 646 corp: 82/3028b lim: 4096 exec/s: 116508 rss: 451Mb
+#1862496	REDUCE cov: 231 ft: 646 corp: 82/3027b lim: 4096 exec/s: 124166 rss: 451Mb L: 1074/1074 MS: 3 EraseBytes-CopyPart-CopyPart-
+#2097152	pulse  cov: 231 ft: 646 corp: 82/3027b lim: 4096 exec/s: 123361 rss: 451Mb
+#2817875	REDUCE cov: 231 ft: 646 corp: 82/3026b lim: 4096 exec/s: 122516 rss: 451Mb L: 1073/1073 MS: 4 ChangeByte-EraseBytes-ChangeASCIIInt-CrossOver-
+#3062521	REDUCE cov: 231 ft: 646 corp: 82/3020b lim: 4096 exec/s: 122500 rss: 451Mb L: 1067/1067 MS: 5 EraseBytes-ChangeBinInt-EraseBytes-ChangeBinInt-CopyPart-
+#3119142	REDUCE cov: 231 ft: 646 corp: 82/3019b lim: 4096 exec/s: 124765 rss: 451Mb L: 1066/1066 MS: 1 EraseBytes-
+#4194304	pulse  cov: 231 ft: 646 corp: 82/3019b lim: 4096 exec/s: 123361 rss: 451Mb
+#5736056	REDUCE cov: 231 ft: 646 corp: 82/3018b lim: 4096 exec/s: 124696 rss: 451Mb L: 522/1066 MS: 2 CopyPart-EraseBytes-
+#6515895	REDUCE cov: 231 ft: 646 corp: 82/3017b lim: 4096 exec/s: 125305 rss: 451Mb L: 265/1066 MS: 3 EraseBytes-InsertRepeatedBytes-CopyPart-
+#7022341	REDUCE cov: 231 ft: 646 corp: 82/3016b lim: 4096 exec/s: 125398 rss: 451Mb L: 1065/1065 MS: 1 EraseBytes-
+#8227578	REDUCE cov: 231 ft: 646 corp: 82/3014b lim: 4096 exec/s: 124660 rss: 451Mb L: 8/1065 MS: 2 EraseBytes-CMP- DE: "greet"-
+#8388608	pulse  cov: 231 ft: 646 corp: 82/3014b lim: 4096 exec/s: 125203 rss: 451Mb
+#12785443	REDUCE cov: 231 ft: 646 corp: 82/3011b lim: 4096 exec/s: 124130 rss: 458Mb L: 4/1065 MS: 5 PersAutoDict-ChangeBinInt-EraseBytes-ChangeBit-EraseBytes- DE: "greet"-
+#14403177	NEW    cov: 231 ft: 649 corp: 83/3040b lim: 4096 exec/s: 124165 rss: 458Mb L: 29/1065 MS: 4 CrossOver-CMP-PersAutoDict-CMP- DE: "\000\000\000\000\000\000\004\000"-"greet"-"ping"-
+#14403196	REDUCE cov: 231 ft: 651 corp: 84/3052b lim: 4096 exec/s: 124165 rss: 458Mb L: 12/1065 MS: 4 EraseBytes-CrossOver-PersAutoDict-PersAutoDict- DE: "greet"-"ping"-
+#14406068	REDUCE cov: 231 ft: 651 corp: 84/3047b lim: 4096 exec/s: 124190 rss: 458Mb L: 24/1065 MS: 2 CrossOver-EraseBytes-
+#14417350	REDUCE cov: 231 ft: 651 corp: 84/3046b lim: 4096 exec/s: 124287 rss: 458Mb L: 23/1065 MS: 2 CopyPart-EraseBytes-
+#14419041	REDUCE cov: 231 ft: 651 corp: 84/3045b lim: 4096 exec/s: 124302 rss: 458Mb L: 11/1065 MS: 1 EraseBytes-
+#14429777	REDUCE cov: 231 ft: 651 corp: 84/3040b lim: 4096 exec/s: 124394 rss: 458Mb L: 18/1065 MS: 1 EraseBytes-
+#14431949	REDUCE cov: 231 ft: 652 corp: 85/3051b lim: 4096 exec/s: 124413 rss: 459Mb L: 11/1065 MS: 2 ShuffleBytes-ChangeByte-
+#14549295	REDUCE cov: 231 ft: 652 corp: 85/3049b lim: 4096 exec/s: 124352 rss: 520Mb L: 16/1065 MS: 1 EraseBytes-
+#14992321	REDUCE cov: 231 ft: 652 corp: 85/3047b lim: 4096 exec/s: 124936 rss: 757Mb L: 14/1065 MS: 1 EraseBytes-
+#16777216	pulse  cov: 231 ft: 652 corp: 85/3047b lim: 4096 exec/s: 129055 rss: 791Mb
+#20972047	REDUCE cov: 231 ft: 652 corp: 85/3046b lim: 4096 exec/s: 135303 rss: 791Mb L: 13/1065 MS: 1 EraseBytes-
+#33554432	pulse  cov: 231 ft: 652 corp: 85/3046b lim: 4096 exec/s: 145888 rss: 791Mb
+#67108864	pulse  cov: 231 ft: 652 corp: 85/3046b lim: 4096 exec/s: 154985 rss: 791Mb
+#91344789	NEW    cov: 231 ft: 653 corp: 86/3059b lim: 4096 exec/s: 157763 rss: 791Mb L: 13/1065 MS: 2 CrossOver-CMP- DE: "rev"-
+#91982805	NEW    cov: 231 ft: 656 corp: 87/3072b lim: 4096 exec/s: 157774 rss: 791Mb L: 13/1065 MS: 1 ChangeBinInt-
+#91997048	NEW    cov: 232 ft: 668 corp: 88/3093b lim: 4096 exec/s: 157799 rss: 791Mb L: 21/1065 MS: 3 CMP-ChangeBinInt-CopyPart- DE: "\007\000\000\000\000\000\000\000"-
+#92001154	NEW    cov: 238 ft: 674 corp: 89/3114b lim: 4096 exec/s: 157806 rss: 791Mb L: 21/1065 MS: 1 ChangeBinInt-
+#92002255	NEW    cov: 238 ft: 677 corp: 90/3211b lim: 4096 exec/s: 157808 rss: 791Mb L: 97/1065 MS: 1 InsertRepeatedBytes-
+#92016162	REDUCE cov: 238 ft: 677 corp: 90/3203b lim: 4096 exec/s: 157832 rss: 791Mb L: 89/1065 MS: 2 PersAutoDict-EraseBytes- DE: "\007\000\000\000\000\000\000\000"-
+#92017963	REDUCE cov: 238 ft: 677 corp: 90/3186b lim: 4096 exec/s: 157835 rss: 791Mb L: 72/1065 MS: 1 EraseBytes-
+#92029494	NEW    cov: 238 ft: 678 corp: 91/3207b lim: 4096 exec/s: 157584 rss: 791Mb L: 21/1065 MS: 1 ChangeByte-
+#92034141	REDUCE cov: 238 ft: 678 corp: 91/3197b lim: 4096 exec/s: 157592 rss: 791Mb L: 62/1065 MS: 2 PersAutoDict-EraseBytes- DE: "\000\000\000\000\000\000\004\000"-
+#92043238	NEW    cov: 238 ft: 686 corp: 92/3218b lim: 4096 exec/s: 157608 rss: 791Mb L: 21/1065 MS: 2 ChangeASCIIInt-ChangeBinInt-
+#92049719	REDUCE cov: 238 ft: 686 corp: 92/3194b lim: 4096 exec/s: 157619 rss: 791Mb L: 38/1065 MS: 1 EraseBytes-
+#92056122	REDUCE cov: 238 ft: 686 corp: 92/3183b lim: 4096 exec/s: 157630 rss: 791Mb L: 27/1065 MS: 3 ChangeASCIIInt-ChangeASCIIInt-EraseBytes-
+#92062890	REDUCE cov: 238 ft: 686 corp: 92/3180b lim: 4096 exec/s: 157641 rss: 791Mb L: 18/1065 MS: 3 ChangeBinInt-ChangeASCIIInt-EraseBytes-
+#92064386	REDUCE cov: 238 ft: 686 corp: 92/3177b lim: 4096 exec/s: 157644 rss: 791Mb L: 18/1065 MS: 1 EraseBytes-
+#92067482	REDUCE cov: 238 ft: 686 corp: 92/3173b lim: 4096 exec/s: 157649 rss: 791Mb L: 17/1065 MS: 1 EraseBytes-
+#92091208	REDUCE cov: 238 ft: 686 corp: 92/3172b lim: 4096 exec/s: 157690 rss: 791Mb L: 17/1065 MS: 1 EraseBytes-
+#92093053	REDUCE cov: 238 ft: 686 corp: 92/3165b lim: 4096 exec/s: 157693 rss: 791Mb L: 20/1065 MS: 5 PersAutoDict-CopyPart-CopyPart-CrossOver-EraseBytes- DE: "ping"-
+#92101779	REDUCE cov: 238 ft: 686 corp: 92/3162b lim: 4096 exec/s: 157708 rss: 791Mb L: 18/1065 MS: 1 EraseBytes-
+#92129765	REDUCE cov: 238 ft: 686 corp: 92/3160b lim: 4096 exec/s: 157756 rss: 791Mb L: 15/1065 MS: 1 EraseBytes-
+#92150811	REDUCE cov: 238 ft: 686 corp: 92/3159b lim: 4096 exec/s: 157792 rss: 791Mb L: 17/1065 MS: 1 EraseBytes-
+#92163072	REDUCE cov: 238 ft: 686 corp: 92/3158b lim: 4096 exec/s: 157813 rss: 791Mb L: 16/1065 MS: 1 EraseBytes-
+#92176818	REDUCE cov: 238 ft: 686 corp: 92/3156b lim: 4096 exec/s: 157837 rss: 791Mb L: 16/1065 MS: 1 EraseBytes-
+#92279510	REDUCE cov: 238 ft: 686 corp: 92/3153b lim: 4096 exec/s: 157742 rss: 791Mb L: 17/1065 MS: 2 InsertByte-EraseBytes-
+#92289462	REDUCE cov: 238 ft: 686 corp: 92/3151b lim: 4096 exec/s: 157759 rss: 791Mb L: 14/1065 MS: 2 ChangeBit-EraseBytes-
+#92314769	REDUCE cov: 238 ft: 686 corp: 92/3150b lim: 4096 exec/s: 157803 rss: 791Mb L: 15/1065 MS: 2 CopyPart-EraseBytes-
+#92324085	REDUCE cov: 238 ft: 686 corp: 92/3149b lim: 4096 exec/s: 157818 rss: 791Mb L: 16/1065 MS: 1 EraseBytes-
+#92367721	REDUCE cov: 238 ft: 686 corp: 92/3148b lim: 4096 exec/s: 157624 rss: 791Mb L: 14/1065 MS: 1 EraseBytes-
+#92436492	REDUCE cov: 238 ft: 686 corp: 92/3147b lim: 4096 exec/s: 157741 rss: 791Mb L: 14/1065 MS: 1 EraseBytes-
+#93311888	REDUCE cov: 238 ft: 686 corp: 92/3146b lim: 4096 exec/s: 157888 rss: 791Mb L: 15/1065 MS: 1 EraseBytes-
+#93361089	REDUCE cov: 238 ft: 686 corp: 92/3145b lim: 4096 exec/s: 157971 rss: 791Mb L: 14/1065 MS: 1 EraseBytes-
+#93375620	REDUCE cov: 238 ft: 686 corp: 92/3144b lim: 4096 exec/s: 157729 rss: 791Mb L: 12/1065 MS: 1 EraseBytes-
+#93620546	REDUCE cov: 238 ft: 686 corp: 92/3143b lim: 4096 exec/s: 157876 rss: 791Mb L: 12/1065 MS: 1 EraseBytes-
+#93790222	REDUCE cov: 238 ft: 686 corp: 92/3142b lim: 4096 exec/s: 157895 rss: 791Mb L: 16/1065 MS: 1 EraseBytes-
+#113791848	REDUCE cov: 238 ft: 686 corp: 92/3141b lim: 4096 exec/s: 158927 rss: 791Mb L: 1064/1064 MS: 1 EraseBytes-
+#134217728	pulse  cov: 238 ft: 686 corp: 92/3141b lim: 4096 exec/s: 159214 rss: 791Mb
+#143409558	DONE   cov: 238 ft: 686 corp: 92/3141b lim: 4096 exec/s: 159167 rss: 791Mb
+###### Recommended dictionary. ######
+"greet" # Uses: 3747458
+"\000\000\000\000\000\000\004\000" # Uses: 2949800
+"ping" # Uses: 3246982
+"rev" # Uses: 953619
+"\007\000\000\000\000\000\000\000" # Uses: 835481
+###### End of recommended dictionary. ######
+Done 143409558 runs in 901 second(s)
+stat::number_of_executed_units: 143409558
+stat::average_exec_per_sec:     159167
+stat::new_units_added:          64
 stat::slowest_unit_time_sec:    0
-stat::peak_rss_mb:              462
+stat::peak_rss_mb:              791

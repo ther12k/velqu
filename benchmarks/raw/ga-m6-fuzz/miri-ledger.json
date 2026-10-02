@@ -1,7 +1,7 @@
 {
   "campaign": "ga-m6-miri",
-  "startedAt": "2026-09-14T00:29:41Z",
-  "toolchain": "rustc 1.100.0-nightly (67eda617e 2026-09-10)",
+  "startedAt": "2026-10-02T21:59:52Z",
+  "toolchain": "rustc 1.100.0-nightly (809936eac 2026-09-12)",
   "scopeSource": "fuzz/miri-scope.json",
   "excludedWithReason": [
     {
