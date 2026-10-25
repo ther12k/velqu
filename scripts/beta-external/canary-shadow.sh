@@ -17,8 +17,10 @@
 #
 # Manifest: [{"method":"GET","path":"/health/live","body":null,"headers":{}}, ...]
 # Comparison: status (exact), content-type (normalized, exact), body
-# (exact bytes after masking the RFC 9457 `instance` member — it is
-# request-scoped by definition and can never match across two services).
+# (exact after masking the top-level RFC 9457 `instance` member of
+# application/problem+json responses ONLY — it is request-scoped by
+# definition and can never match across two services. Application payload
+# members named "instance" are DATA and are compared exactly, #1426.)
 # Manifests must otherwise avoid per-instance volatile fields (ids,
 # timestamps); extend the mask if a workload needs more.
 set -uo pipefail
@@ -39,8 +41,23 @@ const [base, cand, manifestPath, passesArg] = process.argv.slice(1);
 const passes = Number(passesArg ?? "1");
 const manifest = JSON.parse(await Bun.file(manifestPath).text());
 
-// request-scoped members that can never match across services
-const mask = (s) => s.replace(/"instance"\s*:\s*"[^"]*"/g, `"instance":"*"`);
+// #1426: only the request-scoped RFC 9457 `instance` member of a PROBLEM
+// response is masked — never application payload members of the same
+// name. The old body-wide regex masked every "instance" member in every
+// body, so a candidate returning {"instance":"tenant-B",...} in ordinary
+// application/json compared equal to a baseline returning tenant-A.
+const mask = (ctype, body) => {
+  if (ctype !== "application/problem+json") return body;
+  try {
+    const v = JSON.parse(body);
+    if (v && typeof v === "object" && !Array.isArray(v) && typeof v.instance === "string") {
+      v.instance = "*";
+    }
+    return JSON.stringify(v);
+  } catch {
+    return body; // non-JSON problem body: compare bytes as-is
+  }
+};
 
 const one = async (root, req) => {
   const res = await fetch(root + req.path, {
@@ -48,7 +65,8 @@ const one = async (root, req) => {
     headers: { ...(req.body ? { "content-type": "application/json" } : {}), ...(req.headers ?? {}) },
     body: req.body ? JSON.stringify(req.body) : undefined,
   });
-  return { status: res.status, ctype: (res.headers.get("content-type") ?? "").split(";")[0], body: mask(await res.text()) };
+  const ctype = (res.headers.get("content-type") ?? "").split(";")[0];
+  return { status: res.status, ctype, body: mask(ctype, await res.text()) };
 };
 
 let divergences = 0, unhandled5xx = 0, compared = 0;
