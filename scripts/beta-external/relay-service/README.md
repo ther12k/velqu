@@ -16,7 +16,7 @@ Rust runtime, and assert happy paths plus typed failures.
 |---|---|
 | `GET /health/live` | standard liveness |
 | `POST /hooks` | `webhook.token` policy over the `authorization` header (typed 401 without `Authorization: Bearer q-relay-demo-token`), validated bounded body (422), bounded store insert (201) |
-| `POST /hooks/:deliveryId/enrich` | outbound `fetch` to the loopback upstream (`UPSTREAM_BASE`, port 18971 — the driver binds it; loopback trust is the runtime's explicit integration-test policy), typed 502 on upstream loss, typed 404 for unknown deliveries |
+| `POST /hooks/:deliveryId/enrich` | outbound `fetch` to the loopback upstream (`UPSTREAM_BASE`, port 18971 — the driver binds it; loopback trust is the explicit `VELQU_FETCH_EGRESS=test-loopback` integration-test opt-in, #1424 — serving denies loopback egress by default), typed 502 on upstream loss, typed 404 for unknown deliveries |
 | `GET /hooks/:deliveryId` | read-back with `enrichment: "pending"` until enriched; typed 404 |
 
 The webhook token is a **fixture** (`q-relay-demo-token`), like the proof
@@ -37,7 +37,9 @@ bun install
 bun run check && bun test && bun run build
 # upstream stub (what the driver does):
 bun -e 'Bun.serve({port:18971,fetch:()=>new Response(JSON.stringify({enrichment:"stub-enrichment"}),{headers:{"content-type":"application/json"}})})' &
-VELQU_RUNTIME=/path/to/velqu-runtime bun run dev   # needs the runtime binary
+# VELQU_FETCH_EGRESS=test-loopback: the enrich route dials the loopback
+# stub — serving denies loopback egress by default (#1424)
+VELQU_FETCH_EGRESS=test-loopback VELQU_RUNTIME=/path/to/velqu-runtime bun run dev
 ```
 
 Builds are reproducible only on Bun 1.4.0 / TypeScript 5.9.3 exactly

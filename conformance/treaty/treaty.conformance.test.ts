@@ -70,7 +70,10 @@ describe("Treaty runtime-local mode (ACTUAL binary over HTTP)", () => {
     });
 
     const rt = await runtimeTreaty<ProofPublishedApi>(
-      { packPath: "examples/proof/dist/app.qpack" },
+      // #1424: the proof app's upstream routes fetch the local mock
+      // origin; serving denies loopback egress unless the test explicitly
+      // opts into the documented integration-test trust.
+      { packPath: "examples/proof/dist/app.qpack", fetchEgress: "test-loopback" },
       proofContract,
     );
     expect(rt.__mode).toBe("runtime-local");

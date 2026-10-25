@@ -59,6 +59,13 @@ pub const ENV_PROFILE: &str = "VELQU_PROFILE";
 /// BETA-008-A: deployment boundary. `reverse-proxy` is the safe default
 /// and requires a loopback bind; `direct` is an explicit operator opt-in.
 pub const ENV_PROXY_MODE: &str = "VELQU_PROXY_MODE";
+/// #1424: outbound fetch egress trust. `deny` (the default) applies the
+/// ADR-0033 default policy — private, loopback, link-local, and metadata
+/// addresses are denied. `test-loopback` opts into the documented
+/// integration-test loopback trust (`FetchPolicy::trusted_loopback_explicit`)
+/// so a local test origin can be dialed; it exists for tests and local
+/// development, never for a deployment.
+pub const ENV_FETCH_EGRESS: &str = "VELQU_FETCH_EGRESS";
 
 /// BETA-007-B: the closed `VELQU_*` environment namespace. Startup
 /// rejects any `VELQU_*` name outside this list — a typo'd knob
@@ -78,6 +85,7 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     ENV_PORT,
     ENV_PROFILE,
     ENV_PROXY_MODE,
+    ENV_FETCH_EGRESS,
     // postgres capability (BETA-004-E)
     "VELQU_DATABASE_URL",
     "VELQU_PG_POOL_MAX",
@@ -163,6 +171,7 @@ pub struct FieldSources {
     pub log: FieldSource,
     pub log_sample: FieldSource,
     pub metrics: FieldSource,
+    pub fetch_egress: FieldSource,
 }
 
 /// Versioned, typed config-file schema (`--config` / `VELQU_CONFIG`).
@@ -193,6 +202,8 @@ struct FileConfig {
     #[serde(rename = "logSample")]
     log_sample: Option<u64>,
     metrics: Option<String>,
+    #[serde(rename = "fetchEgress")]
+    fetch_egress: Option<String>,
 }
 
 /// BETA-007-D: one profile block. Unknown fields inside a block are
@@ -211,6 +222,8 @@ struct ProfileBlock {
     #[serde(rename = "logSample")]
     log_sample: Option<u64>,
     metrics: Option<String>,
+    #[serde(rename = "fetchEgress")]
+    fetch_egress: Option<String>,
 }
 
 /// Explicit CLI layer (already parsed; `None` = flag not given).
@@ -223,6 +236,8 @@ pub struct CliConfig {
     pub log_sample: Option<u64>,
     /// M8-002: native /metrics exposition posture override.
     pub metrics: Option<String>,
+    /// #1424: outbound fetch egress trust override (deny|test-loopback).
+    pub fetch_egress: Option<String>,
     /// BETA-008-A: explicit deployment boundary override.
     pub proxy_mode: Option<String>,
 }
@@ -247,6 +262,8 @@ pub struct Resolved {
     pub log_sample: u64,
     /// M8-002: native /metrics posture (canonical "on"|"off").
     pub metrics: &'static str,
+    /// #1424: outbound fetch egress trust (canonical "deny"|"test-loopback").
+    pub fetch_egress: &'static str,
     /// BETA-007-D: the applied profile, when one is active.
     pub active_profile: Option<String>,
     /// BETA-008-A: listener/deployment boundary posture.
@@ -287,6 +304,8 @@ pub enum ConfigError {
     InvalidLogMode { source: String, value: String },
     /// M8-002: metrics posture value not in the closed on|off set.
     InvalidMetricsMode { source: String, value: String },
+    /// #1424: fetch egress trust value not in the closed deny|test-loopback set.
+    InvalidFetchEgress { source: String, value: String },
     /// A `VELQU_*` environment name outside the closed namespace. The
     /// variable's VALUE is deliberately never read or echoed.
     UnknownEnvVar { var: String },
@@ -337,6 +356,10 @@ impl std::fmt::Display for ConfigError {
             ConfigError::InvalidMetricsMode { source, value } => write!(
                 f,
                 "metrics mode from {source} must be on|off, got {value:?}"
+            ),
+            ConfigError::InvalidFetchEgress { source, value } => write!(
+                f,
+                "fetch egress from {source} must be deny|test-loopback, got {value:?} (test-loopback exists for integration tests dialing a local mock origin — never for a deployment)"
             ),
             ConfigError::UnknownEnvVar { var } => write!(
                 f,
@@ -528,6 +551,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
     let fl_queue: Option<(u64, FieldSource)> = overlay!(max_queue, max_queue);
     let fl_log = overlay!(log, log);
     let fl_metrics = overlay!(metrics, metrics);
+    let fl_fetch_egress = overlay!(fetch_egress, fetch_egress);
     let fl_sample: Option<(u64, FieldSource)> = match (
         profile.as_ref().and_then(|b| b.log_sample),
         base.and_then(|f| f.log_sample),
@@ -565,6 +589,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         log: FieldSource::Default,
         log_sample: FieldSource::Default,
         metrics: FieldSource::Default,
+        fetch_egress: FieldSource::Default,
     };
     let host = if let Some(h) = &s.cli.host {
         validate_host(h, "cli")?;
@@ -727,6 +752,24 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         "off"
     };
 
+    // ---- fetch egress (#1424): cli > env > profile > file > default
+    // (closed set, canonicalized). Default deny = ADR-0033 default policy.
+    let fetch_egress: &'static str = if let Some(v) = &s.cli.fetch_egress {
+        sources.fetch_egress = FieldSource::Cli;
+        parse_fetch_egress(v, "cli")?
+    } else if let Some(v) = (s.env)(ENV_FETCH_EGRESS) {
+        sources.fetch_egress = FieldSource::Env;
+        parse_fetch_egress(&v, "env:VELQU_FETCH_EGRESS")?
+    } else if let Some((v, layer)) = fl_fetch_egress {
+        sources.fetch_egress = layer;
+        parse_fetch_egress(
+            &v,
+            &layer_source(layer, file_path, active_profile.as_deref()),
+        )?
+    } else {
+        "deny"
+    };
+
     Ok(Resolved {
         host,
         port,
@@ -735,6 +778,7 @@ pub fn resolve(s: Sources) -> Result<Resolved, ConfigError> {
         log,
         log_sample,
         metrics,
+        fetch_egress,
         active_profile,
         proxy_mode,
         proxy_mode_source: proxy_mode_value.1,
@@ -804,6 +848,8 @@ pub fn startup_config_json(r: &Resolved) -> serde_json::Value {
         "logSampleSource": r.sources.log_sample.as_str(),
         "metrics": r.metrics,
         "metricsSource": r.sources.metrics.as_str(),
+        "fetchEgress": r.fetch_egress,
+        "fetchEgressSource": r.sources.fetch_egress.as_str(),
         "activeProfile": r.active_profile,
         "proxyMode": r.proxy_mode.as_str(),
         "proxyModeSource": r.proxy_mode_source.as_str(),
@@ -834,6 +880,20 @@ fn parse_metrics(v: &str, source: &str) -> Result<&'static str, ConfigError> {
             source: source.to_string(),
             value: v.to_string(),
         })
+}
+
+/// #1424: closed deny|test-loopback egress trust; canonicalized to
+/// lowercase. `deny` is the ADR-0033 default policy; `test-loopback` is
+/// the documented integration-test loopback trust.
+fn parse_fetch_egress(v: &str, source: &str) -> Result<&'static str, ConfigError> {
+    match v.to_ascii_lowercase().as_str() {
+        "deny" => Ok("deny"),
+        "test-loopback" => Ok("test-loopback"),
+        _ => Err(ConfigError::InvalidFetchEgress {
+            source: source.to_string(),
+            value: v.to_string(),
+        }),
+    }
 }
 
 /// BETA-007-C: typed wrapper for secret configuration values —
@@ -1390,6 +1450,42 @@ mod tests {
     }
 
     #[test]
+    fn fetch_egress_defaults_to_deny_and_canonicalizes() {
+        // #1424: the serving default is the ADR-0033 deny posture — the
+        // integration-test loopback trust is a named opt-in, never a default.
+        let r = resolve_with(cli_default(), &no_env, &no_file).unwrap();
+        assert_eq!(r.fetch_egress, "deny");
+        assert_eq!(r.sources.fetch_egress, FieldSource::Default);
+        let e = env_of(&[("VELQU_FETCH_EGRESS", "Test-Loopback")]);
+        let r = resolve_with(cli_default(), &e, &no_file).unwrap();
+        assert_eq!(r.fetch_egress, "test-loopback");
+        assert_eq!(r.sources.fetch_egress, FieldSource::Env);
+    }
+
+    #[test]
+    fn unknown_fetch_egress_fails_closed_everywhere() {
+        let e = env_of(&[("VELQU_FETCH_EGRESS", "allow-all")]);
+        let err = resolve_with(cli_default(), &e, &no_file).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidFetchEgress { .. }),
+            "{err}"
+        );
+        let read = file_map(&[(
+            "/app/velqu.config.json",
+            r#"{"configVersion":1,"fetchEgress":"loopback"}"#,
+        )]);
+        let cli = CliConfig {
+            config: Some("/app/velqu.config.json".into()),
+            ..cli_default()
+        };
+        let err = resolve_with(cli, &no_env, &read).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InvalidFetchEgress { .. }),
+            "{err}"
+        );
+    }
+
+    #[test]
     fn metrics_layering_cli_beats_env_beats_file() {
         let read = file_map(&[(
             "/app/velqu.config.json",
@@ -1456,6 +1552,8 @@ mod tests {
             "logSampleSource",
             "metrics",
             "metricsSource",
+            "fetchEgress",
+            "fetchEgressSource",
             "activeProfile",
             "proxyMode",
             "proxyModeSource",

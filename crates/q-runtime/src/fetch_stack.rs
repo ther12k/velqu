@@ -10,9 +10,11 @@
 //! hyper-rustls with webpki roots) with strict bounds on idle connections,
 //! active concurrency, keepalive, and bounded shutdown drains (ADR-0031).
 
+use std::collections::HashMap;
 use std::fmt;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use http_body_util::Empty;
@@ -107,6 +109,159 @@ pub fn build_connector_with_bounds(bounds: &PoolBounds) -> OutboundConnector {
         .wrap_connector(http)
 }
 
+/// #1424: the last address set the SSRF gate validated per host. Keyed by
+/// the lowercased host string the connector resolves (hyper-util passes
+/// the URI host verbatim, brackets stripped). Inserted by the policy gate
+/// immediately after classification passes; consumed by
+/// [`ValidatedDnsResolver`] to pin the dial. Bounded by
+/// [`VALIDATED_PIN_LIMIT`] with recycling eviction.
+type ValidatedPins = Arc<Mutex<HashMap<String, Vec<std::net::SocketAddr>>>>;
+
+/// Bound on retained validated pins (#1424: every new mutable shared
+/// structure is bounded). Each pin is a host string + a handful of socket
+/// addresses; the bound is on retained hosts, not requests — a burst of
+/// distinct destinations recycles the oldest entries.
+pub const VALIDATED_PIN_LIMIT: usize = 10_000;
+
+static VALIDATED_PINS: OnceLock<ValidatedPins> = OnceLock::new();
+
+fn validated_pins() -> &'static ValidatedPins {
+    VALIDATED_PINS.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
+}
+
+/// #1424: record the validated address set for a host (called by the
+/// policy gate after every A/AAAA record passed classification). The
+/// connector's dial may only use addresses from this set.
+pub fn pin_validated_addrs(host: &str, addrs: &[std::net::IpAddr], port: u16) {
+    let key = host.to_ascii_lowercase();
+    let sockets: Vec<std::net::SocketAddr> = addrs
+        .iter()
+        .map(|ip| std::net::SocketAddr::new(*ip, port))
+        .collect();
+    let pins = validated_pins();
+    let Ok(mut map) = pins.lock() else { return };
+    if !map.contains_key(&key) && map.len() >= VALIDATED_PIN_LIMIT {
+        // recycling eviction: drop the oldest inserted key
+        if let Some(oldest) = map.keys().next().cloned() {
+            map.remove(&oldest);
+        }
+    }
+    map.insert(key, sockets);
+}
+
+/// #1424: resolve through the validated-address pins. The SSRF gate
+/// classifies DNS answers BEFORE the request is dispatched; this resolver
+/// serves exactly the addresses it validated (port already set by the
+/// pin), so the connector cannot dial an address that was never
+/// classified — closing the validate/dial rebinding window where the
+/// connector's own independent DNS lookup could return a different,
+/// policy-denied address (ADR-0033 §3 connect-to-validated-address).
+/// IP-literal hosts never reach this resolver (hyper-util connects
+/// directly) — they are classified in-line by the policy gate.
+///
+/// Fail closed: a host with no recorded pin (stale pin after recycling,
+/// or a caller that skipped the gate) resolves to nothing, and the
+/// connector's DNS error surfaces to the fetch as a failure.
+#[derive(Clone, Debug)]
+pub struct ValidatedDnsResolver {
+    pins: ValidatedPins,
+    misses: Arc<AtomicU32>,
+}
+
+impl ValidatedDnsResolver {
+    pub fn new() -> Self {
+        ValidatedDnsResolver {
+            pins: validated_pins().clone(),
+            misses: Arc::new(AtomicU32::new(0)),
+        }
+    }
+
+    /// Resolution attempts that found no validated pin for the host
+    /// (#1424 observability: should stay at zero on the gated path).
+    pub fn miss_count(&self) -> u32 {
+        self.misses.load(Ordering::Relaxed)
+    }
+}
+
+impl Default for ValidatedDnsResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl tower_service::Service<hyper_util::client::legacy::connect::dns::Name>
+    for ValidatedDnsResolver
+{
+    type Response = std::vec::IntoIter<std::net::SocketAddr>;
+    type Error = String;
+    type Future = Pin<
+        std::boxed::Box<dyn std::future::Future<Output = Result<Self::Response, String>> + Send>,
+    >;
+
+    fn poll_ready(
+        &mut self,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, name: hyper_util::client::legacy::connect::dns::Name) -> Self::Future {
+        let pins = self.pins.clone();
+        let misses = self.misses.clone();
+        let host = name.as_str().to_ascii_lowercase();
+        Box::pin(async move {
+            let Ok(map) = pins.lock() else {
+                return Err("validated-address registry unavailable".to_string());
+            };
+            match map.get(&host) {
+                Some(addrs) => Ok(addrs.clone().into_iter()),
+                None => {
+                    misses.fetch_add(1, Ordering::Relaxed);
+                    Err(format!(
+                        "no policy-validated address for host {host:?} — the fetch SSRF gate must classify DNS answers before dialing (#1424)"
+                    ))
+                }
+            }
+        })
+    }
+}
+
+/// The pinned connector type: identical transport bounds to
+/// [`OutboundConnector`], resolving only through validated pins.
+pub type PinnedConnector = hyper_rustls::HttpsConnector<
+    hyper_util::client::legacy::connect::HttpConnector<ValidatedDnsResolver>,
+>;
+pub type PinnedClient = Client<PinnedConnector, Empty<bytes::Bytes>>;
+
+/// Build the #1424 pinned connector: same bounds as
+/// [`build_connector_with_bounds`], resolver set to
+/// [`ValidatedDnsResolver`] so every dialed hostname address was
+/// previously classified by the fetch policy.
+pub fn build_pinned_connector_with_bounds(bounds: &PoolBounds) -> PinnedConnector {
+    let mut http = hyper_util::client::legacy::connect::HttpConnector::new_with_resolver(
+        ValidatedDnsResolver::new(),
+    );
+    http.set_connect_timeout(Some(bounds.connect_timeout));
+    http.set_nodelay(true);
+    http.set_keepalive(Some(bounds.tcp_keepalive));
+    http.enforce_http(false);
+
+    HttpsConnectorBuilder::new()
+        .with_webpki_roots()
+        .https_or_http()
+        .enable_http1()
+        .wrap_connector(http)
+}
+
+/// Construct a pinned outbound client (same pooling bounds; validated-only
+/// resolution). This is the client all policy-gated fetch traffic uses.
+pub fn build_pinned_client_with_bounds(bounds: &PoolBounds) -> PinnedClient {
+    Client::builder(TokioExecutor::new())
+        .pool_idle_timeout(bounds.idle_timeout)
+        .pool_max_idle_per_host(bounds.max_idle_per_host)
+        .build(build_pinned_connector_with_bounds(bounds))
+}
+
 /// Build default connector.
 pub fn build_connector() -> OutboundConnector {
     build_connector_with_bounds(&PoolBounds::default())
@@ -156,6 +311,7 @@ pub fn shared_pool() -> &'static FetchPool {
 pub struct FetchPool {
     bounds: PoolBounds,
     client: OnceLock<Arc<OutboundClient>>,
+    client_pinned: OnceLock<Arc<PinnedClient>>,
     semaphore: Arc<Semaphore>,
     shutdown_called: AtomicBool,
     /// New-work refusals since creation (saturating; M28-009-D observability).
@@ -182,6 +338,7 @@ impl FetchPool {
         FetchPool {
             bounds,
             client: OnceLock::new(),
+            client_pinned: OnceLock::new(),
             semaphore: Arc::new(Semaphore::new(max_active)),
             shutdown_called: AtomicBool::new(false),
             rejections: AtomicU32::new(0),
@@ -205,6 +362,16 @@ impl FetchPool {
     pub fn client(&self) -> Arc<OutboundClient> {
         self.client
             .get_or_init(|| Arc::new(build_client_with_bounds(&self.bounds)))
+            .clone()
+    }
+
+    /// #1424: access or initialize the shared PINNED outbound client —
+    /// the one all policy-gated fetch traffic dials through (validated
+    /// addresses only). Lazily initialized exactly like [`FetchPool::client`],
+    /// so an application that never fetches still pays zero cost.
+    pub fn client_pinned(&self) -> Arc<PinnedClient> {
+        self.client_pinned
+            .get_or_init(|| Arc::new(build_pinned_client_with_bounds(&self.bounds)))
             .clone()
     }
 

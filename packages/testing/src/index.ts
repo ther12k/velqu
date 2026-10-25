@@ -248,6 +248,13 @@ export interface RuntimeTreatyOptions {
   port?: number;
   serviceProfile?: string;
   drainTimeoutMs?: number;
+  /**
+   * #1424: pass VELQU_FETCH_EGRESS=test-loopback to the spawned runtime
+   * so pack routes that fetch a local mock origin (e.g. the proof app's
+   * upstream module) are allowed by the serving fetch policy. Without
+   * this, serving denies loopback egress by default (ADR-0033 deny).
+   */
+  fetchEgress?: "deny" | "test-loopback";
 }
 
 export interface RuntimeReadyInfo {
@@ -299,7 +306,9 @@ export async function runtimeTreaty<Api extends Record<string, AnyRouteContract>
   const resolvedContract = contract ?? contractFromBuild(dirname(packRoot));
   const args = [bin, "--pack", opts.packPath, "--port", String(port)];
   if (opts.serviceProfile) args.push("--service-profile", opts.serviceProfile);
-  const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe", env: process.env });
+  const childEnv = { ...process.env } as Record<string, string | undefined>;
+  if (opts.fetchEgress) childEnv.VELQU_FETCH_EGRESS = opts.fetchEgress;
+  const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe", env: childEnv });
   let ready: RuntimeReadyInfo | null = null;
   const consume = async (stream: ReadableStream<Uint8Array>) => {
     const reader = stream.getReader();

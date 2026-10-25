@@ -56,6 +56,8 @@ pub struct RunConfig {
     pub log_sample: Option<u64>,
     /// M8-002: native /metrics exposition posture (on | off).
     pub metrics: Option<String>,
+    /// #1424: outbound fetch egress trust (`deny` or `test-loopback`).
+    pub fetch_egress: Option<String>,
     /// BETA-008-A: deployment boundary (`reverse-proxy` or explicit `direct`).
     pub proxy_mode: Option<String>,
     /// M26-002-C: explicit source-rebuild recovery path.
@@ -183,6 +185,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 log: cfg.log.clone(),
                 log_sample: cfg.log_sample,
                 metrics: cfg.metrics.clone(),
+                fetch_egress: cfg.fetch_egress.clone(),
                 proxy_mode: cfg.proxy_mode.clone(),
             },
             env: &|k| std::env::var(k).ok(),
@@ -271,10 +274,19 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 None => service_profile::ServiceProfile::default(),
             };
         let startup_workers = service_profile.initial_workers();
+        // #1424: outbound fetch egress trust is an explicit, auditable
+        // configuration choice. The serving default is the ADR-0033
+        // default policy — deny (private/loopback/link-local/metadata
+        // denied). `test-loopback` opts into the documented
+        // integration-test loopback trust (FetchPolicy::
+        // trusted_loopback_explicit); anything else already failed closed
+        // in config resolution, and this match has no fallback.
+        let fetch_policy = match resolved.fetch_egress {
+            "test-loopback" => q_capabilities::FetchPolicy::trusted_loopback_explicit(),
+            _ => q_capabilities::FetchPolicy::default(),
+        };
         let fetch_dialer = Some(q_engine_quickjs::FetchDialerHandle(Arc::new(
-            fetch_bridge::PoolFetchDialer::new(
-                q_capabilities::FetchPolicy::trusted_loopback_explicit(),
-            ),
+            fetch_bridge::PoolFetchDialer::new(fetch_policy),
         )));
         // BETA-004-D: link runtime:postgres only when the pack requires it.
         // A required-but-unconfigured capability fails closed at startup

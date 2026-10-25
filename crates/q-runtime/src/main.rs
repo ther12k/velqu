@@ -39,6 +39,13 @@ struct Args {
     /// or network boundary in production.
     #[arg(long)]
     metrics: Option<String>,
+    /// #1424: outbound fetch egress trust: deny | test-loopback (default
+    /// deny, or VELQU_FETCH_EGRESS). `deny` applies the ADR-0033 default
+    /// policy (private/loopback/link-local/metadata addresses denied);
+    /// `test-loopback` opts into the documented integration-test loopback
+    /// trust — for tests and local development, never a deployment.
+    #[arg(long)]
+    fetch_egress: Option<String>,
     /// Deployment boundary: reverse-proxy (default, loopback-only) or
     /// direct (explicit operator-owned public boundary; VELQU_PROXY_MODE).
     #[arg(long)]
@@ -118,6 +125,7 @@ fn main() {
             log: args.log,
             log_sample: args.log_sample,
             metrics: args.metrics,
+            fetch_egress: args.fetch_egress,
             proxy_mode: args.proxy_mode,
             no_bytecode: args.no_bytecode,
             context_profile: args.context_profile,
