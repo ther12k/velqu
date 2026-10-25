@@ -15,17 +15,22 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
-/// M3-007-C/D: how in-flight completion ended after the shutdown
-/// signal. `completed` counts connections that reached a terminal state
-/// within the drain budget; `aborted` counts stragglers FORCE-ABORTED
-/// at budget expiry (M3-007-D): their tasks are aborted, which drops
-/// the in-flight handler futures — running each `CancelOnDrop` guard,
-/// settling the ownership binding and delivering `Engine::cancel`
-/// exactly once — so no invocation and no native task is orphaned.
+/// M3-007-C/D + #1422: how serving ended and how connection tasks were
+/// accounted. `completed` counts connections that reached a terminal state
+/// during the drain budget window; `aborted` counts stragglers FORCE-ABORTED
+/// at budget expiry (M3-007-D): their tasks are aborted, which drops the
+/// in-flight handler futures — running each `CancelOnDrop` guard, settling
+/// the ownership binding and delivering `Engine::cancel` exactly once — so
+/// no invocation and no native task is orphaned. `reaped_while_serving`
+/// counts connection tasks reaped (#1422) while the server was still
+/// serving, BEFORE the shutdown signal — finished connections no longer
+/// linger in the task set until drain. Every admitted connection is
+/// accounted exactly once across the three counters.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ServeDrain {
     pub completed: usize,
     pub aborted: usize,
+    pub reaped_while_serving: u64,
 }
 
 /// Admission/body limits (RUN-005). Defaults per docs/specs/pack-format-v1.md.
@@ -255,6 +260,12 @@ struct Shared {
     queue: Arc<tokio::sync::Semaphore>,
     request_clock: AtomicU64,
     start_unix_ms: u64,
+    /// #1422 anti-retention gauges: connections admitted into the serve
+    /// task set, and connection tasks reaped (joined) DURING serving. The
+    /// difference is the live+unreaped task count; it must not grow with
+    /// cumulative connection churn.
+    connections_spawned: AtomicU64,
+    connections_reaped: AtomicU64,
 }
 
 #[derive(Clone)]
@@ -271,12 +282,29 @@ impl HttpHost {
                 queue: Arc::new(tokio::sync::Semaphore::new(limits.max_queue.max(1))),
                 request_clock: AtomicU64::new(1),
                 start_unix_ms: now_unix_ms(),
+                connections_spawned: AtomicU64::new(0),
+                connections_reaped: AtomicU64::new(0),
             }),
         }
     }
 
     pub fn limits(&self) -> Limits {
         self.shared.limits
+    }
+
+    /// Cumulative accepted connections spawned into the serve task set
+    /// (#1422 observability).
+    pub fn connections_spawned(&self) -> u64 {
+        self.shared.connections_spawned.load(Ordering::Relaxed)
+    }
+
+    /// Cumulative connection tasks reaped (joined) WHILE SERVING — before
+    /// any shutdown signal. Reaping during serving is what keeps retained
+    /// task state bounded under connection churn (#1422); connections that
+    /// finish during the drain wait are counted in `ServeDrain.completed`
+    /// instead, so the two counters never double-count.
+    pub fn connections_reaped(&self) -> u64 {
+        self.shared.connections_reaped.load(Ordering::Relaxed)
     }
 
     /// Returns the connection peer supplied by the accept loop. This API
@@ -291,10 +319,19 @@ impl HttpHost {
     /// M3-007-C: connection tasks are tracked; after the accept loop
     /// stops, in-flight work is ALLOWED to complete — the drain wait is
     /// bounded by `drain_budget` (ADR-0031 posture). Connections that
-    /// finish are counted; on budget expiry the stragglers are detached
-    /// (still running; process exit reclaims them) and counted, so the
-    /// caller can report both honestly. M3-007-D replaces the detach
-    /// with explicit abort-through-ownership and forced-abort reporting.
+    /// finish are counted; on budget expiry the stragglers are force-
+    /// aborted and counted (M3-007-D), so the caller can report both
+    /// honestly.
+    ///
+    /// #1422: completed connection tasks are reaped (joined) WHILE
+    /// SERVING, not only after shutdown. Tokio's `JoinSet` retains a task
+    /// entry for every spawned task until it is joined — spawning does not
+    /// reap — so joining only in the drain phase let finished-task entries
+    /// accumulate without bound under cumulative connection churn,
+    /// independent of `max_queue`. The serving-phase reap keeps retained
+    /// task state at the live-connection count; reaped-during-serving
+    /// connections are NOT part of `ServeDrain.completed` (drain-phase
+    /// accounting only).
     pub async fn serve<H, F>(
         self,
         listener: TcpListener,
@@ -325,6 +362,7 @@ impl HttpHost {
                     let host = self.clone();
                     let handler = Arc::clone(&handler);
                     let watcher = graceful.watcher();
+                    self.shared.connections_spawned.fetch_add(1, Ordering::Relaxed);
                     connections.spawn(async move {
                         let io = TokioIo::new(stream);
                         let service = ReqService {
@@ -345,6 +383,16 @@ impl HttpHost {
                             let _ = e;
                         }
                     });
+                }
+                // #1422: reap finished connection tasks during serving so
+                // completed entries cannot accumulate until shutdown. The
+                // branch is disabled while the set is empty; join_next is
+                // cancel-safe, and serving-phase reaps go to the gauge,
+                // never into drain accounting.
+                joined = connections.join_next(), if !connections.is_empty() => {
+                    if joined.is_some() {
+                        self.shared.connections_reaped.fetch_add(1, Ordering::Relaxed);
+                    }
                 }
             }
         }
@@ -374,12 +422,17 @@ impl HttpHost {
                 // Reap without counting: aborted stragglers are reported
                 // as aborted, never as completed.
                 while connections.join_next().await.is_some() {}
-                return Ok(ServeDrain { completed, aborted });
+                return Ok(ServeDrain {
+                    completed,
+                    aborted,
+                    reaped_while_serving: self.shared.connections_reaped.load(Ordering::Relaxed),
+                });
             }
         }
         Ok(ServeDrain {
             completed,
             aborted: 0,
+            reaped_while_serving: self.shared.connections_reaped.load(Ordering::Relaxed),
         })
     }
 

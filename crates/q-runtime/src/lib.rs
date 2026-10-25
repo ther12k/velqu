@@ -560,9 +560,9 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 std::time::Duration::from_millis(q_capabilities::SHUTDOWN_BUDGET_MS),
             )
             .await;
-        let (drain_completed, mut drain_aborted) = match serve_drain {
-            Ok(d) => (d.completed, d.aborted),
-            Err(_) => (0, 0),
+        let (drain_completed, drain_reaped, mut drain_aborted) = match serve_drain {
+            Ok(d) => (d.completed, d.reaped_while_serving, d.aborted),
+            Err(_) => (0, 0, 0),
         };
         // M3-007-D: defensive ownership sweep. Every aborted connection's
         // CancelOnDrop guard already settled its binding during the
@@ -603,15 +603,19 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                     "registered": ownership.registered,
                     "settled": ownership.settled,
                 },
-                // M3-007-B/C/D: admissions refused after the drain
+                // M3-007-B/C/D + #1422: admissions refused after the drain
                 // flip; in-flight connections completed within the
                 // budget; stragglers force-aborted at expiry (their
                 // invocations cancelled through ownership exactly once —
-                // no orphan, by construction and by sweep).
+                // no orphan, by construction and by sweep); and
+                // connection tasks reaped while still serving — every
+                // admitted connection is accounted exactly once across
+                // completed + aborted + reapedWhileServing.
                 "drain": {
                     "refused": state.drain_gate.refused(),
                     "completed": drain_completed,
                     "aborted": drain_aborted,
+                    "reapedWhileServing": drain_reaped,
                 },
                 // M3-008-C: refusals by their closed-set load-shed kind.
                 "loadShed": state.load_shed.snapshot(),
