@@ -1957,13 +1957,15 @@ fn graceful_shutdown_exits_zero() {
 
 #[test]
 fn graceful_drain_flips_gate_and_reports_before_exit() {
-    // M3-007-B/C: the instant the shutdown signal fires, the drain gate
-    // flips and the flip is OBSERVABLE: a drain.begin event (with the
+    // M3-007-B/C + #1422: the instant the shutdown signal fires, the drain
+    // gate flips and the flip is OBSERVABLE: a drain.begin event (with the
     // live invocation count) precedes shutdown, and the shutdown report
-    // carries the drain outcome — refusals, connections completed within
-    // the budget, and stragglers detached at expiry. (With no open
-    // connection at the signal, the one closed request's connection task
-    // still joins: completed 1, detached 0.)
+    // carries the drain outcome. The one request's connection finished
+    // while serving; since #1422 it is reaped during serving (or, if the
+    // signal races the reap, joins during drain) — assert the accounting
+    // identity instead of a phase-specific count: every admitted
+    // connection is accounted exactly once across completed +
+    // reapedWhileServing, with no refusals and no aborts.
     let dir = temp_dir("drain");
     let pack_path = write_pack(&dir);
     let port = free_port();
@@ -2007,14 +2009,19 @@ fn graceful_drain_flips_gate_and_reports_before_exit() {
         "drain.begin reports the live invocation count: {begin_line}"
     );
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
-    assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"aborted\":0}"),
-        "shutdown report carries the full drain outcome: {complete}"
+    let report: Value = serde_json::from_str(&complete).unwrap();
+    let drain = &report["drain"];
+    assert_eq!(drain["refused"], 0, "no drain refusals: {complete}");
+    assert_eq!(drain["aborted"], 0, "no forced aborts: {complete}");
+    let accounted =
+        drain["completed"].as_u64().unwrap() + drain["reapedWhileServing"].as_u64().unwrap();
+    assert_eq!(
+        accounted, 1,
+        "the one closed connection is accounted exactly once across serving-phase reap and drain completion: {complete}"
     );
     // M3-008-C: the load-shed exposure is part of the report — the
     // closed reason vocabulary with per-kind counts (no refusals in
     // this scenario, so all kinds report zero).
-    let report: Value = serde_json::from_str(&complete).unwrap();
     let shed = &report["loadShed"];
     assert_eq!(
         shed["draining"], 0,
@@ -2132,9 +2139,20 @@ fn drain_lets_in_flight_request_complete() {
     }
     assert!(saw_drain_begin, "drain.begin event missing");
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
-    assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":1,\"aborted\":0}"),
+    // #1422: the drain object carries reapedWhileServing alongside
+    // completed — assert on parsed values, not the exact JSON shape.
+    let drain_report: Value = serde_json::from_str(&complete).unwrap();
+    assert_eq!(
+        drain_report["drain"]["refused"], 0,
+        "no refusals: {complete}"
+    );
+    assert_eq!(
+        drain_report["drain"]["completed"], 1,
         "the in-flight connection completed within the budget: {complete}"
+    );
+    assert_eq!(
+        drain_report["drain"]["aborted"], 0,
+        "no forced aborts: {complete}"
     );
     assert!(
         complete.contains("\"invocations\":{\"pending\":0,\"registered\":1,\"settled\":1}"),
@@ -2193,8 +2211,19 @@ fn drain_waits_bounded_then_detaches_straggler_connection() {
     }
     let elapsed = t0.elapsed();
     let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
-    assert!(
-        complete.contains("\"drain\":{\"refused\":0,\"completed\":0,\"aborted\":1}"),
+    // #1422: parsed drain assertions — the report also carries
+    // reapedWhileServing (0 here: the straggler was live at the signal).
+    let straggler_report: Value = serde_json::from_str(&complete).unwrap();
+    assert_eq!(
+        straggler_report["drain"]["refused"], 0,
+        "no refusals: {complete}"
+    );
+    assert_eq!(
+        straggler_report["drain"]["completed"], 0,
+        "the straggler never completed: {complete}"
+    );
+    assert_eq!(
+        straggler_report["drain"]["aborted"], 1,
         "the active straggler is force-aborted at the budget: {complete}"
     );
     // M3-007-D: the abort is THROUGH ownership — the dropped handler
