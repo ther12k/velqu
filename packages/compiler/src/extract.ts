@@ -467,12 +467,71 @@ function detectCapabilities(fnNode: ts.Node): string[] {
 
 // ---------------------------------------------------------------- route extraction
 
+/** Strip assertion wrappers (`x as const`, parens, `<T>x`, `x!`) for static resolution. */
+function unwrapAssertion(e: ts.Expression): ts.Expression {
+  let expr = e;
+  while (
+    expr.kind === ts.SyntaxKind.AsExpression ||
+    expr.kind === ts.SyntaxKind.ParenthesizedExpression ||
+    expr.kind === ts.SyntaxKind.TypeAssertionExpression ||
+    expr.kind === ts.SyntaxKind.NonNullExpression
+  ) {
+    expr = (expr as unknown as { expression: ts.Expression }).expression;
+  }
+  return expr;
+}
+
+function arrayLiteralOf(e: ts.Expression): ts.ArrayLiteralExpression | null {
+  const expr = unwrapAssertion(e);
+  return ts.isArrayLiteralExpression(expr) ? expr : null;
+}
+
+/** #1421: spread members are invisible to static extraction — reject them
+ *  instead of silently dropping the metadata they carry. */
+function rejectSpreads(literal: ts.ObjectLiteralExpression, file: string, what: string): void {
+  for (const p of literal.properties) {
+    if (ts.isSpreadAssignment(p)) {
+      throw new CompileError(
+        `${what} object literal does not support spread properties`,
+        nodeLoc(p, file),
+        "static extraction cannot see spread members — inline every property (PRD §10.2 rejects unsupported dynamic metadata)",
+      );
+    }
+  }
+}
+
+/** Parse a defineModule call's static id and raw routes expression. The
+ *  routes expression is resolved against the app graph only when a defineApp
+ *  is present (see the membership pass in extractApp). */
+function moduleDefFromCall(
+  call: ts.CallExpression,
+  file: string,
+  fallbackId?: string,
+): { id: string; routesExpr: ts.Expression | undefined } {
+  const arg = call.arguments[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    throw new CompileError("defineModule expects an object literal", nodeLoc(call, file));
+  }
+  rejectSpreads(arg, file, "defineModule()");
+  let id = fallbackId ?? "";
+  const idProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, file) === "id");
+  if (idProp && ts.isPropertyAssignment(idProp)) {
+    id = String(literalValue(idProp.initializer, file));
+  }
+  const routesProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, file) === "routes");
+  return {
+    id,
+    routesExpr: routesProp && ts.isPropertyAssignment(routesProp) ? routesProp.initializer : undefined,
+  };
+}
+
 function routeFromCall(
   call: ts.CallExpression,
   file: string,
   moduleId: string,
   bindingName: string,
   exported: boolean,
+  policyRefs?: Map<RouteInfo, ts.Identifier>,
 ): RouteInfo {
   const arg = call.arguments[0];
   if (!arg || !ts.isObjectLiteralExpression(arg)) {
@@ -480,6 +539,20 @@ function routeFromCall(
   }
   const props = new Map<string, ts.PropertyAssignment | ts.MethodDeclaration>();
   for (const p of arg.properties) {
+    if (ts.isSpreadAssignment(p)) {
+      throw new CompileError(
+        "route() object literal does not support spread properties",
+        nodeLoc(p, file),
+        "a spread can hide policy/schema metadata from static extraction — inline every property (PRD §10.2 rejects unsupported dynamic metadata)",
+      );
+    }
+    if (ts.isShorthandPropertyAssignment(p)) {
+      throw new CompileError(
+        `route() object literal does not support shorthand property '${p.name.text}'`,
+        nodeLoc(p, file),
+        `write '${p.name.text}: ${p.name.text}' so the value expression is statically visible`,
+      );
+    }
     if (ts.isPropertyAssignment(p) || ts.isMethodDeclaration(p)) props.set(propKey(p, file), p);
   }
   const need = (k: string): ts.Expression | ts.Node => {
@@ -543,15 +616,20 @@ function routeFromCall(
     );
   }
 
-  // policy reference: identifier bound to a definePolicy result
+  // policy reference: identifier bound to a definePolicy result. The
+  // identifier NODE is captured so the extractor pass can resolve it by
+  // TypeScript symbol identity — never by binding name (same-name policies
+  // in different modules must not collide, #1421).
   let policyId: string | null = null;
+  let policyRef: ts.Identifier | null = null;
   const policyProp = props.get("policy");
   if (policyProp && ts.isPropertyAssignment(policyProp)) {
     const init = policyProp.initializer;
     if (!ts.isIdentifier(init)) {
       throw new CompileError("route policy must reference a definePolicy(...) variable", nodeLoc(init, file));
     }
-    policyId = init.text; // resolved to policy id by the extractor pass
+    policyId = init.text; // placeholder; symbol-resolved to a policy id below
+    policyRef = init;
   }
 
   // native liveness from statically evaluable handler — SCHEMA-DRIVEN:
@@ -580,7 +658,7 @@ function routeFromCall(
   const handleNode = ts.isPropertyAssignment(handleProp) ? handleProp.initializer : handleProp;
   const capabilities = detectCapabilities(handleNode);
 
-  return {
+  const info: RouteInfo = {
     id,
     method,
     path,
@@ -596,6 +674,8 @@ function routeFromCall(
     liveness,
     capabilities,
   };
+  if (policyRef && policyRefs) policyRefs.set(info, policyRef);
+  return info;
 }
 
 // ---------------------------------------------------------------- module/app extraction
@@ -637,13 +717,29 @@ export function extractApp(entryFile: string): ExtractedApp {
   if (unsupportedImports.length) throw unsupportedImports[0];
 
   // walk every (app) source file; find route/definePolicy/defineService/defineApp declarations
-  const routes: RouteInfo[] = [];
+  let routes: RouteInfo[] = [];
   const policies: PolicyInfo[] = [];
   const modules: string[] = [];
   // #1292: local names re-exported after their declaration (`export { tick }`)
   const reExportedBindings = new Map<string, Set<string>>();
   let appId = "app";
   const checker = program.getTypeChecker();
+
+  // #1421 static-graph artifacts: routes keyed by their declaring node,
+  // array-of-route bindings, module defs keyed by declaration/call node, and
+  // defineApp call sites — the inputs for symbol-based policy resolution and
+  // app-graph membership below.
+  const policyRefs = new Map<RouteInfo, ts.Identifier>();
+  const policyByDecl = new Map<ts.Node, PolicyInfo>();
+  const routeByDecl = new Map<ts.Node, RouteInfo>();
+  const arrayByDecl = new Map<ts.Node, readonly ts.Expression[]>();
+  interface ModuleDef {
+    id: string;
+    routesExpr: ts.Expression | undefined;
+    file: string;
+  }
+  const moduleDefs = new Map<ts.Node, ModuleDef>();
+  const appCalls: { call: ts.CallExpression; file: string }[] = [];
 
   const visit = (n: ts.Node, sf: ts.SourceFile): void => {
     // const X = route({...})
@@ -653,25 +749,25 @@ export function extractApp(entryFile: string): ExtractedApp {
         if (!init || !ts.isIdentifier(decl.name)) continue;
         if (isCallTo(init, ["route"])) {
           const moduleId = sf.fileName.split("/").slice(-2, -1)[0] ?? "app";
-          routes.push(routeFromCall(init, sf.fileName, moduleId, decl.name.text, hasExportModifier(n)));
+          const info = routeFromCall(init, sf.fileName, moduleId, decl.name.text, hasExportModifier(n), policyRefs);
+          routes.push(info);
+          routeByDecl.set(decl, info);
         } else if (isCallTo(init, ["definePolicy"])) {
           const arg = init.arguments[0];
-          const idProp = arg && ts.isObjectLiteralExpression(arg)
-            ? arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "id")
-            : undefined;
-          const declares = arg && ts.isObjectLiteralExpression(arg)
-            ? arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "declares")
-            : undefined;
-          const headerProp = arg && ts.isObjectLiteralExpression(arg)
-            ? arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "header")
-            : undefined;
+          if (!arg || !ts.isObjectLiteralExpression(arg)) {
+            throw new CompileError("definePolicy expects an object literal", nodeLoc(init, sf.fileName));
+          }
+          rejectSpreads(arg, sf.fileName, "definePolicy()");
+          const idProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "id");
+          const declares = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "declares");
+          const headerProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "header");
           const statuses: number[] = [];
           if (declares && ts.isPropertyAssignment(declares) && ts.isObjectLiteralExpression(declares.initializer)) {
             for (const p of declares.initializer.properties) {
               if (ts.isPropertyAssignment(p)) statuses.push(Number(propKey(p, sf.fileName)));
             }
           }
-          policies.push({
+          const policy: PolicyInfo = {
             id: idProp && ts.isPropertyAssignment(idProp) ? String(literalValue(idProp.initializer, sf.fileName)) : decl.name.text,
             bindingName: decl.name.text,
             sourceFile: sf.fileName,
@@ -679,28 +775,37 @@ export function extractApp(entryFile: string): ExtractedApp {
             header: headerProp && ts.isPropertyAssignment(headerProp)
               ? String(literalValue(headerProp.initializer, sf.fileName)).toLowerCase()
               : "authorization",
-          });
+          };
+          policies.push(policy);
+          policyByDecl.set(decl, policy);
         } else if (isCallTo(init, ["defineModule"])) {
-          const arg = init.arguments[0];
-          if (arg && ts.isObjectLiteralExpression(arg)) {
-            const idProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "id");
-            if (idProp && ts.isPropertyAssignment(idProp)) modules.push(String(literalValue(idProp.initializer, sf.fileName)));
-          }
+          const def = moduleDefFromCall(init, sf.fileName, decl.name.text);
+          moduleDefs.set(decl, { ...def, file: sf.fileName });
+          modules.push(def.id);
         } else if (isCallTo(init, ["defineApp"])) {
           const arg = init.arguments[0];
           if (arg && ts.isObjectLiteralExpression(arg)) {
             const idProp = arg.properties.find((p) => ts.isPropertyAssignment(p) && propKey(p, sf.fileName) === "id");
             if (idProp && ts.isPropertyAssignment(idProp)) appId = String(literalValue(idProp.initializer, sf.fileName));
           }
+        } else {
+          const arr = arrayLiteralOf(init);
+          if (arr) arrayByDecl.set(decl, arr.elements);
         }
       }
     }
     // default export route({...}) — e.g. `export default route({...})`
     if (ts.isExportAssignment(n) && ts.isCallExpression(n.expression) && isCallTo(n.expression, ["route"])) {
       const moduleId = sf.fileName.split("/").slice(-2, -1)[0] ?? "app";
-      routes.push(routeFromCall(n.expression, sf.fileName, moduleId, `__default_${sf.fileName.replace(/\W/g, "_")}`, true));
-      const r = routes[routes.length - 1];
-      r.bindingName = "__default_export";
+      const info = routeFromCall(n.expression, sf.fileName, moduleId, `__default_${sf.fileName.replace(/\W/g, "_")}`, true, policyRefs);
+      info.bindingName = "__default_export";
+      routes.push(info);
+      routeByDecl.set(n, info);
+    }
+    // default export of an array of routes — `export default [a, b] as const`
+    if (ts.isExportAssignment(n) && !(ts.isCallExpression(n.expression) && isCallTo(n.expression, ["route"]))) {
+      const arr = arrayLiteralOf(n.expression);
+      if (arr) arrayByDecl.set(n, arr.elements);
     }
     // export { tick } / export { tick as tickRoute } — the local binding
     // (propertyName when present, else the specifier name) joins the
@@ -710,6 +815,29 @@ export function extractApp(entryFile: string): ExtractedApp {
       if (!names) reExportedBindings.set(sf.fileName, (names = new Set()));
       for (const el of n.exportClause.elements) {
         names.add((el.propertyName ?? el.name).text);
+      }
+    }
+    // defineModule/defineApp call sites in ANY position — variable form,
+    // default export, or inline inside defineApp modules arrays. These feed
+    // app-graph membership (#1421); parse errors fail closed here.
+    if (ts.isCallExpression(n)) {
+      // callee-name check, not isCallTo: isCallTo's type predicate would
+      // narrow n to never in the else-branch
+      const callee = n.expression.getText().replace(/^.*\./, "");
+      if (callee === "defineModule") {
+        const parent = n.parent;
+        const fallbackId =
+          parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name) ? parent.name.text : undefined;
+        const def = { ...moduleDefFromCall(n, sf.fileName, fallbackId), file: sf.fileName };
+        moduleDefs.set(n, def);
+        if (parent && ts.isVariableDeclaration(parent)) moduleDefs.set(parent, def);
+      } else if (callee === "defineApp") {
+        const arg = n.arguments[0];
+        if (!arg || !ts.isObjectLiteralExpression(arg)) {
+          throw new CompileError("defineApp expects an object literal", nodeLoc(n, sf.fileName));
+        }
+        rejectSpreads(arg, sf.fileName, "defineApp()");
+        appCalls.push({ call: n, file: sf.fileName });
       }
     }
     n.forEachChild((c) => visit(c, sf));
@@ -732,16 +860,73 @@ export function extractApp(entryFile: string): ExtractedApp {
     throw new CompileError(`no route() declarations found from entry ${entryFile}`);
   }
 
-  // resolve policy variable names → policy ids + merge declared statuses into route responses
-  const policyByBinding = new Map(policies.map((p) => [p.bindingName, p]));
+  // Resolve policy references by TypeScript SYMBOL identity (#1421): each
+  // route captured its policy identifier node; resolve it through the
+  // checker (imports and aliases included) and bind the policy declared by
+  // that exact symbol. The old binding-NAME map collided when different
+  // modules exported same-named policies, silently binding routes to the
+  // wrong policy/header/handler.
+  const resolveSymbol = (id: ts.Identifier): ts.Symbol | undefined => {
+    let sym = checker.getSymbolAtLocation(id);
+    if (sym && (sym.flags & ts.SymbolFlags.Alias) !== 0) {
+      try {
+        const aliased = checker.getAliasedSymbol(sym);
+        if (aliased && aliased !== sym) sym = aliased;
+      } catch {
+        // unresolved import — keep the alias symbol; the declaration scan
+        // below finds no policy and fails closed
+      }
+    }
+    return sym;
+  };
+  const policyForDeclarations = (declarations: readonly ts.Declaration[] | undefined): PolicyInfo | undefined => {
+    for (const d of declarations ?? []) {
+      if (policyByDecl.has(d)) return policyByDecl.get(d);
+      // `export default somePolicy;` — follow the exported identifier
+      if (ts.isExportAssignment(d) && ts.isIdentifier(d.expression)) {
+        const inner = resolveSymbol(d.expression);
+        for (const dd of inner?.declarations ?? []) {
+          if (policyByDecl.has(dd)) return policyByDecl.get(dd);
+        }
+      }
+    }
+    return undefined;
+  };
+
+  // App-graph membership bindings (#1421): a route binding resolves through
+  // symbol identity to a route declaration, an exported array of routes, or
+  // a default export of either.
+  type RouteBinding = { kind: "route"; route: RouteInfo } | { kind: "array"; elements: readonly ts.Expression[] };
+  const routeBindingFor = (id: ts.Identifier): RouteBinding | null => {
+    for (const d of resolveSymbol(id)?.declarations ?? []) {
+      const b = bindingFromDecl(d);
+      if (b) return b;
+    }
+    return null;
+  };
+  const bindingFromExpr = (e: ts.Expression): RouteBinding | null => {
+    const expr = unwrapAssertion(e);
+    if (ts.isArrayLiteralExpression(expr)) return { kind: "array", elements: expr.elements };
+    if (ts.isIdentifier(expr)) return routeBindingFor(expr);
+    return null;
+  };
+  const bindingFromDecl = (d: ts.Node): RouteBinding | null => {
+    if (routeByDecl.has(d)) return { kind: "route", route: routeByDecl.get(d)! };
+    if (arrayByDecl.has(d)) return { kind: "array", elements: arrayByDecl.get(d)! };
+    if (ts.isExportAssignment(d)) return bindingFromExpr(d.expression);
+    if (ts.isVariableDeclaration(d) && d.initializer) return bindingFromExpr(d.initializer);
+    return null;
+  };
+
   for (const r of routes) {
-    if (r.policyId) {
-      const pol = policyByBinding.get(r.policyId);
+    const ref = policyRefs.get(r);
+    if (r.policyId && ref) {
+      const pol = policyForDeclarations(resolveSymbol(ref)?.declarations);
       if (!pol) {
         throw new CompileError(
-          `route '${r.id}' references unknown policy '${r.policyId}'`,
+          `route '${r.id}' references unknown policy '${ref.text}'`,
           { file: r.sourceFile, line: 1, column: 1 },
-          "imported policies must be definePolicy(...) variables",
+          "policies resolve by import symbol — import the definePolicy(...) variable in the route's module (cross-module name matching is not supported)",
         );
       }
       for (const s of pol.declaredStatuses) {
@@ -751,6 +936,154 @@ export function extractApp(entryFile: string): ExtractedApp {
     }
     // 404/401 problems only exist where handlers return them; keep minimal set:
     if (r.responses["404"] && !r.responses["404"].problem) r.responses["404"].problem = "not-found";
+  }
+
+  // App-graph membership (#1421): when the application declares defineApp,
+  // exactly the routes reachable through its module graph are emitted — a
+  // route() declaration that no included module references stays OUT of the
+  // pack (removing a route from composition removes the endpoint). Without
+  // defineApp, every discovered route ships (legacy collect-all behavior,
+  // unchanged). Filtering keeps the original discovery order so existing
+  // packs stay byte-stable.
+  if (appCalls.length > 1) {
+    const first = appCalls[0];
+    throw new CompileError(
+      `multiple defineApp declarations are not supported (found ${appCalls.length})`,
+      nodeLoc(first.call, first.file),
+    );
+  }
+  if (appCalls.length === 1) {
+    const appCall = appCalls[0];
+    const appArg = appCall.call.arguments[0];
+    if (!appArg || !ts.isObjectLiteralExpression(appArg)) {
+      throw new CompileError("defineApp expects an object literal", nodeLoc(appCall.call, appCall.file));
+    }
+    const modulesProp = appArg.properties.find(
+      (p) => ts.isPropertyAssignment(p) && propKey(p, appCall.file) === "modules",
+    );
+    if (!modulesProp || !ts.isPropertyAssignment(modulesProp)) {
+      throw new CompileError(
+        "defineApp requires a static 'modules' property",
+        nodeLoc(appArg, appCall.file),
+        "list defineModule(...) values or exported module bindings",
+      );
+    }
+    const modulesInit = unwrapAssertion(modulesProp.initializer);
+    if (!ts.isArrayLiteralExpression(modulesInit)) {
+      throw new CompileError(
+        "defineApp 'modules' must be an array literal",
+        nodeLoc(modulesProp.initializer, appCall.file),
+      );
+    }
+
+    const included = new Set<RouteInfo>();
+    const includeRoute = (r: RouteInfo): void => {
+      included.add(r);
+    };
+    const resolveRouteElements = (el: ts.Expression, where: string): void => {
+      if (ts.isSpreadElement(el)) {
+        const target = unwrapAssertion(el.expression);
+        if (!ts.isIdentifier(target)) {
+          throw new CompileError(
+            `module routes spread '...${el.expression.getText()}' is not statically resolvable`,
+            nodeLoc(el, appCall.file),
+            "spread an exported route or an exported array of routes",
+          );
+        }
+        const binding = routeBindingFor(target);
+        if (!binding) {
+          throw new CompileError(
+            `module routes spread '...${target.text}' does not resolve to an exported route or array of routes`,
+            nodeLoc(el, appCall.file),
+          );
+        }
+        if (binding.kind === "route") includeRoute(binding.route);
+        else for (const inner of binding.elements) resolveRouteElements(inner, where);
+        return;
+      }
+      const expr = unwrapAssertion(el);
+      if (ts.isIdentifier(expr)) {
+        const binding = routeBindingFor(expr);
+        if (binding?.kind === "route") {
+          includeRoute(binding.route);
+          return;
+        }
+        if (binding?.kind === "array") {
+          for (const inner of binding.elements) resolveRouteElements(inner, where);
+          return;
+        }
+        throw new CompileError(
+          `${where} references '${expr.text}', which is not an exported route or array of routes`,
+          nodeLoc(el, appCall.file),
+          "routes must be statically referenceable bindings",
+        );
+      }
+      throw new CompileError(
+        `${where} contains a dynamic expression ('${el.getText().slice(0, 40)}')`,
+        nodeLoc(el, appCall.file),
+        "PRD §10.2: unsupported dynamic metadata is rejected — reference route bindings or exported arrays",
+      );
+    };
+
+    for (const el of modulesInit.elements) {
+      if (ts.isSpreadElement(el)) {
+        throw new CompileError(
+          "defineApp 'modules' does not support spreads",
+          nodeLoc(el, appCall.file),
+          "list each module explicitly",
+        );
+      }
+      const expr = unwrapAssertion(el);
+      let def: ModuleDef | undefined;
+      if (ts.isIdentifier(expr)) {
+        for (const d of resolveSymbol(expr)?.declarations ?? []) {
+          if (moduleDefs.has(d)) {
+            def = moduleDefs.get(d)!;
+            break;
+          }
+          if (ts.isExportAssignment(d)) {
+            const inner = unwrapAssertion(d.expression);
+            if (ts.isCallExpression(inner) && moduleDefs.has(inner)) {
+              def = moduleDefs.get(inner)!;
+              break;
+            }
+          }
+        }
+        if (!def) {
+          throw new CompileError(
+            `defineApp module reference '${expr.text}' does not resolve to a defineModule(...)`,
+            nodeLoc(el, appCall.file),
+          );
+        }
+      } else if (ts.isCallExpression(expr) && isCallTo(expr, ["defineModule"])) {
+        def = moduleDefs.get(expr);
+        if (!def) {
+          throw new CompileError("inline defineModule could not be parsed", nodeLoc(el, appCall.file));
+        }
+      } else {
+        throw new CompileError(
+          `defineApp 'modules' contains an unsupported expression ('${el.getText().slice(0, 40)}')`,
+          nodeLoc(el, appCall.file),
+        );
+      }
+      if (def.routesExpr === undefined) {
+        throw new CompileError(
+          `defineModule '${def.id}' is missing a static 'routes' property`,
+          nodeLoc(el, appCall.file),
+        );
+      }
+      const moduleRoutes = unwrapAssertion(def.routesExpr);
+      if (ts.isArrayLiteralExpression(moduleRoutes)) {
+        for (const inner of moduleRoutes.elements) resolveRouteElements(inner, `module '${def.id}' routes`);
+      } else {
+        resolveRouteElements(moduleRoutes, `module '${def.id}' routes`);
+      }
+    }
+    if (included.size === 0) {
+      throw new CompileError("defineApp resolved to zero routes", nodeLoc(appCall.call, appCall.file));
+    }
+    // keep original discovery order so existing packs stay byte-stable
+    routes = routes.filter((r) => included.has(r));
   }
 
   // canonical collision detection (COMP-004)
