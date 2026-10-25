@@ -56,6 +56,12 @@ jobs:
       - name: Verify release-packet signing behavior
         run: bun test scripts/verify-release-packet.test.ts
 
+      # #1426: the canary Phase-0 shadow harness must mask only the
+      # request-scoped problem+json `instance` member — application payload
+      # fields of the same name are compared exactly.
+      - name: Verify canary-shadow mask scope
+        run: bun test scripts/beta-external/canary-shadow.test.ts
+
   okf-only:
     runs-on: ubuntu-latest
     timeout-minutes: 5

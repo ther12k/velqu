@@ -20,3 +20,21 @@ DIVERGENCE_EXIT=1
 ```
 
 Dead-candidate case (stub crashed pre-listen) was also observed live: reported as transport-error divergence, exit 1 — the fail-closed abort CANARY_PROGRAM §4 requires.
+
+## Addendum — #1426: mask scope narrowed (2026-10-25)
+
+The original body-wide `"instance"` regex masked every `instance` member in
+every response, so a candidate changing an APPLICATION-level `instance`
+field in ordinary `application/json` compared equal to the baseline
+(reproduced: `{"instance":"tenant-A",...}` vs `{"instance":"tenant-B",...}`
+→ 0 divergences, exit 0). The mask now applies ONLY to the top-level RFC
+9457 `instance` member of `application/problem+json` responses.
+
+The original self-test results above remain valid: the problem-body mask
+behavior they verify is unchanged. Regression coverage for the narrowed
+scope is automated in `scripts/beta-external/canary-shadow.test.ts` (five
+cases: problem-body instance still masked; application-level and nested
+`instance` differences reported as divergence; identical application
+bodies equivalent; other differing problem members still flagged), wired
+into the CI verify lane alongside the release-packet suite.
+
