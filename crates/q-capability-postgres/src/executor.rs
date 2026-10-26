@@ -12,10 +12,12 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
+use futures_util::StreamExt;
 use tokio_postgres::types::{ToSql, Type};
 
 use crate::query::{
-    validate_deadline, validate_query, QueryError, QueryExecutor, SqlParam, SqlRow,
+    estimate_row_bytes, validate_deadline, validate_query, QueryError, QueryExecutor, ResultBudget,
+    SqlParam, SqlRow,
 };
 
 /// Binds our closed parameter set through tokio-postgres's ToSql.
@@ -98,14 +100,25 @@ async fn bounded<'f, T>(
 }
 
 /// Executor bound to one leased connection. Cheap to construct; all
-/// I/O happens per call under the caller's deadline.
+/// I/O happens per call under the caller's deadline and the #1425
+/// result budget (rows + estimated serialized bytes, enforced while
+/// rows stream — never after full collection).
 pub struct ClientExecutor<'c> {
     client: &'c tokio_postgres::Client,
+    budget: ResultBudget,
 }
 
 impl<'c> ClientExecutor<'c> {
     pub fn new(client: &'c tokio_postgres::Client) -> Self {
-        ClientExecutor { client }
+        ClientExecutor {
+            client,
+            budget: ResultBudget::default(),
+        }
+    }
+
+    /// Executor with an explicit per-query result budget (#1425).
+    pub fn with_budget(client: &'c tokio_postgres::Client, budget: ResultBudget) -> Self {
+        ClientExecutor { client, budget }
     }
 }
 
@@ -146,18 +159,59 @@ impl<'c> QueryExecutor for ClientExecutor<'c> {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
         let client = self.client;
+        let budget = self.budget;
         let owned_text = text.to_string();
         Box::pin(async move {
             let refs: Vec<&(dyn ToSql + Sync)> =
                 bound.iter().map(|p| &**p as &(dyn ToSql + Sync)).collect();
-            let rows = bounded(
-                deadline_ms,
-                Box::pin(client.query(owned_text.as_str(), &refs)),
+            // #1425: stream rows through query_raw and enforce the result
+            // budget DURING collection. `client.query` fully buffered
+            // every row before any bound applied — deadlines bound time,
+            // not bytes, so a database willing to produce a huge result
+            // inside the deadline exhausted native memory before the JS
+            // heap limit could matter. Rows are now converted and counted
+            // one at a time; crossing either bound rejects the result as
+            // soon as it happens, so the collected Vec and the serialized
+            // output stay bounded by the budget.
+            let deadline_ms = validate_deadline(deadline_ms)?;
+            let deadline = Duration::from_millis(deadline_ms);
+            let stream = tokio::time::timeout(
+                deadline,
+                Box::pin(client.query_raw(owned_text.as_str(), refs)),
             )
-            .await?;
-            let mut out = Vec::with_capacity(rows.len());
-            for row in rows {
-                out.push(SqlRow::from_pg_row(row)?);
+            .await
+            .map_err(|_| QueryError::DeadlineExceeded { ms: deadline_ms })?
+            .map_err(|e| QueryError::Backend(map_pg_error(&e)))?;
+            let mut stream = Box::pin(stream);
+            let mut out: Vec<SqlRow> = Vec::new();
+            let mut total_bytes: u64 = 0;
+            loop {
+                let next = {
+                    let mut stream = std::pin::pin!(stream.as_mut());
+                    tokio::time::timeout(deadline, stream.next()).await
+                };
+                match next {
+                    Err(_) => return Err(QueryError::DeadlineExceeded { ms: deadline_ms }),
+                    Ok(None) => break,
+                    Ok(Some(Err(e))) => return Err(QueryError::Backend(map_pg_error(&e))),
+                    Ok(Some(Ok(row))) => {
+                        let sql = SqlRow::from_pg_row(row)?;
+                        if (out.len() as u64) >= budget.max_rows {
+                            return Err(QueryError::ResultRowsExceeded {
+                                rows: out.len() as u64 + 1,
+                                max: budget.max_rows,
+                            });
+                        }
+                        total_bytes += estimate_row_bytes(&sql);
+                        if total_bytes > budget.max_bytes {
+                            return Err(QueryError::ResultBytesExceeded {
+                                bytes: total_bytes,
+                                max: budget.max_bytes,
+                            });
+                        }
+                        out.push(sql);
+                    }
+                }
             }
             Ok(out)
         })

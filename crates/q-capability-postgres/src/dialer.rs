@@ -17,7 +17,9 @@ use std::sync::Arc;
 use serde_json::{json, Map, Value};
 
 use crate::executor::ClientExecutor;
-use crate::query::{QueryExecutor, SqlParam, SqlValue, MAX_PARAM_COUNT, MAX_QUERY_TEXT_LEN};
+use crate::query::{
+    QueryExecutor, ResultBudget, SqlParam, SqlValue, MAX_PARAM_COUNT, MAX_QUERY_TEXT_LEN,
+};
 use crate::{LazyPool, PoolConfig, PoolError, TokioConnector};
 
 /// Maximum parameters accepted through the JSON path (mirrors the
@@ -141,27 +143,76 @@ impl PostgresQueryDialer for LazyPool<TokioConnector> {
         params_json: String,
         deadline_ms: u64,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> {
-        let this = self.clone();
-        Box::pin(async move {
-            if text.is_empty() || text.len() > MAX_QUERY_TEXT_LEN {
-                return Err("postgres: statement text empty or over the ceiling".into());
+        query_json_budgeted(
+            self.clone(),
+            ResultBudget::default(),
+            text,
+            params_json,
+            deadline_ms,
+        )
+    }
+}
+
+/// #1425: the shared budgeted query path — acquire, stream rows under the
+/// per-query result budget, serialize the bounded result. A lease that
+/// ends in an error is DISCARDED (never parked): the connection may hold
+/// backend state (the server may keep streaming rows after the client
+/// rejected the result for budget breach, exactly like a timeout).
+fn query_json_budgeted(
+    pool: LazyPool<TokioConnector>,
+    budget: ResultBudget,
+    text: String,
+    params_json: String,
+    deadline_ms: u64,
+) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> {
+    Box::pin(async move {
+        if text.is_empty() || text.len() > MAX_QUERY_TEXT_LEN {
+            return Err("postgres: statement text empty or over the ceiling".into());
+        }
+        let params = parse_params_json(&params_json).map_err(|e: PoolError| e.to_string())?;
+        if params.len() > MAX_JSON_PARAMS {
+            return Err("postgres: too many params".into());
+        }
+        let mut lease = pool.acquire(deadline_ms).await.map_err(|e| e.to_string())?;
+        let executor = ClientExecutor::with_budget(lease.get(), budget);
+        match executor.query(&text, &params, deadline_ms).await {
+            Ok(rows) => Ok(rows_to_json(rows)),
+            // mid-flight failure, timeout, or budget breach: the connection
+            // may hold backend state — discard (close), never park
+            Err(e) => {
+                lease.discard();
+                Err(format!("postgres: {e}"))
             }
-            let params = parse_params_json(&params_json).map_err(|e: PoolError| e.to_string())?;
-            if params.len() > MAX_JSON_PARAMS {
-                return Err("postgres: too many params".into());
-            }
-            let mut lease = this.acquire(deadline_ms).await.map_err(|e| e.to_string())?;
-            let executor = ClientExecutor::new(lease.get());
-            match executor.query(&text, &params, deadline_ms).await {
-                Ok(rows) => Ok(rows_to_json(rows)),
-                // mid-flight failure or timeout: the connection may hold
-                // backend state — discard (close), never park
-                Err(e) => {
-                    lease.discard();
-                    Err(format!("postgres: {e}"))
-                }
-            }
-        })
+        }
+    })
+}
+
+/// #1425: a pool paired with an env-resolved per-query result budget.
+/// Same pool semantics as [`LazyPool`]'s direct dialer impl; only the
+/// budget differs. Constructed by [`pool_from_url_and_env`].
+pub struct BudgetedQueryPool {
+    pool: LazyPool<TokioConnector>,
+    budget: ResultBudget,
+}
+
+impl PostgresQueryDialer for BudgetedQueryPool {
+    fn pool_stats_json(&self) -> Option<String> {
+        PostgresQueryDialer::pool_stats_json(&self.pool)
+    }
+
+    fn query_json(
+        &self,
+        text: String,
+        params_json: String,
+        deadline_ms: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> {
+        query_json_budgeted(
+            self.pool.clone(),
+            self.budget,
+            text,
+            params_json,
+            deadline_ms,
+        )
     }
 }
 
@@ -193,6 +244,11 @@ pub fn pool_from_url(url: impl Into<String>, config: PoolConfig) -> PostgresQuer
 pub const ENV_POOL_MAX: &str = "VELQU_PG_POOL_MAX";
 pub const ENV_POOL_CONNECT_TIMEOUT_MS: &str = "VELQU_PG_POOL_CONNECT_TIMEOUT_MS";
 pub const ENV_POOL_IDLE_TIMEOUT_MS: &str = "VELQU_PG_POOL_IDLE_TIMEOUT_MS";
+/// #1425: per-query result budget knobs. Absent values fall back to
+/// `ResultBudget::default()` (10k rows / 16 MiB); present-but-invalid
+/// values are startup rejections, never clamps.
+pub const ENV_MAX_RESULT_ROWS: &str = "VELQU_PG_MAX_RESULT_ROWS";
+pub const ENV_MAX_RESULT_BYTES: &str = "VELQU_PG_MAX_RESULT_BYTES";
 
 /// Resolve pool config from an env-style lookup (injectable for tests).
 pub fn pool_config_from_lookup(
@@ -230,10 +286,36 @@ pub fn pool_config_from_lookup(
 /// startup rejection.
 pub fn pool_from_url_and_env(
     url: impl Into<String>,
-    get: impl Fn(&str) -> Option<String>,
+    get: impl Fn(&str) -> Option<String> + Copy,
 ) -> Result<PostgresQueryHandle, PoolError> {
     let config = pool_config_from_lookup(get)?;
-    Ok(pool_from_url(url, config))
+    let budget = result_budget_from_lookup(get)?;
+    Ok(PostgresQueryHandle(Arc::new(BudgetedQueryPool {
+        pool: LazyPool::<TokioConnector>::postgres(url, config),
+        budget,
+    })))
+}
+
+/// #1425: resolve the per-query result budget from an env-style lookup
+/// (injectable for tests). Same posture as the pool knobs: absent =
+/// default, present-but-invalid = typed rejection.
+pub fn result_budget_from_lookup(
+    get: impl Fn(&str) -> Option<String>,
+) -> Result<ResultBudget, PoolError> {
+    let mut budget = ResultBudget::default();
+    if let Some(raw) = get(ENV_MAX_RESULT_ROWS) {
+        let n: u64 = raw.trim().parse().map_err(|_| PoolError::InvalidConfig {
+            detail: "VELQU_PG_MAX_RESULT_ROWS must be an integer",
+        })?;
+        budget.max_rows = n;
+    }
+    if let Some(raw) = get(ENV_MAX_RESULT_BYTES) {
+        let n: u64 = raw.trim().parse().map_err(|_| PoolError::InvalidConfig {
+            detail: "VELQU_PG_MAX_RESULT_BYTES must be an integer",
+        })?;
+        budget.max_bytes = n;
+    }
+    ResultBudget::new(budget.max_rows, budget.max_bytes)
 }
 
 // silence unused-import lint for PooledConnection in non-test builds
@@ -252,6 +334,7 @@ mod tests {
 #[cfg(test)]
 mod env_config_tests {
     use super::*;
+    use crate::query::{ResultBudget, MAX_RESULT_BYTES_CEILING};
     use std::collections::HashMap;
 
     fn lookup(map: &HashMap<String, String>) -> impl Fn(&str) -> Option<String> + '_ {
@@ -292,5 +375,37 @@ mod env_config_tests {
         let mut env = HashMap::new();
         env.insert(ENV_POOL_MAX.to_string(), "ten".to_string());
         assert!(pool_config_from_lookup(lookup(&env)).is_err());
+    }
+
+    /// #1425: result-budget env knobs — absent = default, present =
+    /// the stated value, present-but-invalid = typed rejection.
+    #[test]
+    fn result_budget_env_defaults_parses_and_rejects() {
+        assert_eq!(
+            result_budget_from_lookup(lookup(&HashMap::new())).unwrap(),
+            ResultBudget::default()
+        );
+        let mut env = HashMap::new();
+        env.insert(ENV_MAX_RESULT_ROWS.to_string(), "5000".to_string());
+        env.insert(ENV_MAX_RESULT_BYTES.to_string(), "1048576".to_string());
+        assert_eq!(
+            result_budget_from_lookup(lookup(&env)).unwrap(),
+            ResultBudget {
+                max_rows: 5_000,
+                max_bytes: 1_048_576,
+            }
+        );
+        let mut env = HashMap::new();
+        env.insert(ENV_MAX_RESULT_ROWS.to_string(), "many".to_string());
+        assert!(result_budget_from_lookup(lookup(&env)).is_err());
+        let mut env = HashMap::new();
+        env.insert(ENV_MAX_RESULT_ROWS.to_string(), "0".to_string());
+        assert!(result_budget_from_lookup(lookup(&env)).is_err());
+        let mut env = HashMap::new();
+        env.insert(
+            ENV_MAX_RESULT_BYTES.to_string(),
+            format!("{}", MAX_RESULT_BYTES_CEILING + 1),
+        );
+        assert!(result_budget_from_lookup(lookup(&env)).is_err());
     }
 }

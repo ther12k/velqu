@@ -9,6 +9,9 @@ repository.workspace = true
 tokio = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["runtime"] }
 serde_json = { workspace = true }
+# #1425: StreamExt over tokio-postgres's RowStream for budgeted streaming
+# result collection (version pinned by the workspace lockfile).
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 q-capabilities = { workspace = true }

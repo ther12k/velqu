@@ -83,6 +83,9 @@ pub const KNOWN_ENV_VARS: &[&str] = &[
     "VELQU_PG_POOL_MAX",
     "VELQU_PG_POOL_CONNECT_TIMEOUT_MS",
     "VELQU_PG_POOL_IDLE_TIMEOUT_MS",
+    // postgres per-query result budget (#1425)
+    "VELQU_PG_MAX_RESULT_ROWS",
+    "VELQU_PG_MAX_RESULT_BYTES",
     // build-time (embedded standalone pack)
     "VELQU_STANDALONE_PACK",
     // tooling-only (bench binaries, dev server, test gating)

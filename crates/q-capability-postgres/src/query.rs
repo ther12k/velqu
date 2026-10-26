@@ -67,6 +67,19 @@ impl SqlRow {
         self.columns.keys().collect()
     }
 
+    /// Column/value iteration (sorted; used by the #1425 byte estimator).
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &SqlValue)> {
+        self.columns.iter()
+    }
+
+    /// Test/estimator construction without a live `Row`.
+    #[cfg(test)]
+    pub(crate) fn from_pairs(pairs: Vec<(String, SqlValue)>) -> SqlRow {
+        SqlRow {
+            columns: pairs.into_iter().collect(),
+        }
+    }
+
     pub(crate) fn from_pg_row(row: Row) -> Result<SqlRow, QueryError> {
         let mut columns = BTreeMap::new();
         for (idx, column) in row.columns().iter().enumerate() {
@@ -148,6 +161,17 @@ pub enum QueryError {
     ColumnConversion {
         column: String,
     },
+    /// #1425: the streamed result crossed the per-query row budget.
+    ResultRowsExceeded {
+        rows: u64,
+        max: u64,
+    },
+    /// #1425: the streamed result crossed the per-query byte budget
+    /// (estimated serialized size).
+    ResultBytesExceeded {
+        bytes: u64,
+        max: u64,
+    },
     /// The backend rejected the statement (message verbatim).
     Backend(String),
 }
@@ -184,6 +208,13 @@ impl fmt::Display for QueryError {
                     "could not carry column '{column}' in the bounded value set"
                 )
             }
+            QueryError::ResultRowsExceeded { rows, max } => {
+                write!(f, "result exceeded the row budget: {rows} rows > {max} (paginate the query)")
+            }
+            QueryError::ResultBytesExceeded { bytes, max } => write!(
+                f,
+                "result exceeded the byte budget: ~{bytes} bytes > {max} (select fewer or narrower columns)"
+            ),
             QueryError::Backend(msg) => write!(f, "query rejected by backend: {msg}"),
         }
     }
@@ -264,6 +295,79 @@ pub const DEFAULT_QUERY_DEADLINE_MS: u64 = 5_000;
 /// Fail-closed query deadline ceiling (stricter than the pool's op ceiling).
 pub const MAX_QUERY_DEADLINE_MS: u64 = 30_000;
 
+/// #1425: default fail-closed result budget — rows per single query.
+pub const DEFAULT_MAX_RESULT_ROWS: u64 = 10_000;
+/// #1425: fail-closed ceiling for the per-query row budget. Raising it is
+/// a reviewed decision, not a caller option.
+pub const MAX_RESULT_ROWS_CEILING: u64 = 1_000_000;
+/// #1425: default fail-closed result budget — estimated serialized bytes
+/// per single query (aligned with the fetch response-body cap).
+pub const DEFAULT_MAX_RESULT_BYTES: u64 = 16 * 1024 * 1024;
+/// #1425: fail-closed ceiling for the byte budget.
+pub const MAX_RESULT_BYTES_CEILING: u64 = 256 * 1024 * 1024;
+
+/// #1425: per-query result budget. Deadlines bound TIME, not BYTES — a
+/// database that happily produces a 2 GB result inside the deadline used
+/// to be fully buffered natively before any JS-side heap bound applied.
+/// The executor streams rows and rejects the result the moment either
+/// bound is crossed, so native allocations are bounded by this budget.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResultBudget {
+    pub max_rows: u64,
+    pub max_bytes: u64,
+}
+
+impl Default for ResultBudget {
+    fn default() -> Self {
+        ResultBudget {
+            max_rows: DEFAULT_MAX_RESULT_ROWS,
+            max_bytes: DEFAULT_MAX_RESULT_BYTES,
+        }
+    }
+}
+
+impl ResultBudget {
+    /// Fail-closed validation: both bounds present, positive, at or below
+    /// their ceilings. Construction-time rejection, never a clamp.
+    pub fn new(max_rows: u64, max_bytes: u64) -> Result<Self, crate::PoolError> {
+        if max_rows == 0 || max_rows > MAX_RESULT_ROWS_CEILING {
+            return Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_rows out of 1..=1_000_000",
+            });
+        }
+        if max_bytes == 0 || max_bytes > MAX_RESULT_BYTES_CEILING {
+            return Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_bytes out of 1..=268435456",
+            });
+        }
+        Ok(ResultBudget {
+            max_rows,
+            max_bytes,
+        })
+    }
+}
+
+/// #1425: upper-bound estimate of a row's serialized JSON size, used
+/// DURING streaming so the collected `Vec<SqlRow>` and the serialized
+/// result string stay bounded by the byte budget (the actual serde_json
+/// output is always ≤ this estimate: text worst-cases at 6 bytes/char
+/// under `\uXXXX` escaping, numbers at their longest decimal forms).
+pub fn estimate_row_bytes(row: &SqlRow) -> u64 {
+    let mut total: u64 = 2; // row braces + slack for separators
+    for (name, value) in row.iter() {
+        // "name": escaped — names are identifiers but escape defensively
+        total += (name.len() as u64) * 6 + 4;
+        total += match value {
+            SqlValue::Null => 4,
+            SqlValue::Bool(_) => 5,
+            SqlValue::Int(_) => 20,
+            SqlValue::Float(_) => 24,
+            SqlValue::Text(s) => (s.len() as u64) * 6 + 2,
+        };
+    }
+    total
+}
+
 pub fn validate_deadline(deadline_ms: u64) -> Result<u64, QueryError> {
     if deadline_ms == 0 || deadline_ms > MAX_QUERY_DEADLINE_MS {
         return Err(QueryError::InvalidDeadline { ms: deadline_ms });
@@ -274,6 +378,97 @@ pub fn validate_deadline(deadline_ms: u64) -> Result<u64, QueryError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #1425: the streaming byte estimator must UPPER-BOUND the actual
+    /// serialized JSON member the dialer produces — the byte budget's
+    /// guarantee (collected rows + serialized string stay within budget)
+    /// rests on this property.
+    #[test]
+    fn row_byte_estimate_upper_bounds_serialized_json() {
+        let row = SqlRow::from_pairs(vec![
+            (
+                "name".into(),
+                SqlValue::Text("Ada Lovelace \"analytical engine\"".into()),
+            ),
+            ("id".into(), SqlValue::Int(i64::MAX)),
+            ("score".into(), SqlValue::Float(std::f64::consts::PI)),
+            ("ok".into(), SqlValue::Bool(true)),
+            ("note".into(), SqlValue::Null),
+        ]);
+        let estimate = estimate_row_bytes(&row);
+        let to_json = |v: &SqlValue| match v {
+            SqlValue::Null => serde_json::Value::Null,
+            SqlValue::Bool(b) => serde_json::Value::Bool(*b),
+            SqlValue::Int(i) => serde_json::json!(i),
+            SqlValue::Float(f) => serde_json::json!(f),
+            SqlValue::Text(s) => serde_json::Value::String(s.clone()),
+        };
+        let mut obj = serde_json::Map::new();
+        for (k, v) in row.iter() {
+            obj.insert(k.clone(), to_json(v));
+        }
+        let actual = serde_json::to_string(&serde_json::Value::Object(obj))
+            .unwrap()
+            .len() as u64;
+        assert!(
+            estimate >= actual,
+            "estimate {estimate} must bound the serialized row ({actual} bytes)"
+        );
+        // worst-case escaping: every char control-escapes to \uXXXX
+        let hostile = SqlRow::from_pairs(vec![(
+            "t".into(),
+            SqlValue::Text("\u{1}\u{2}\u{3}".repeat(64)),
+        )]);
+        let hostile_actual = {
+            let mut o = serde_json::Map::new();
+            for (k, v) in hostile.iter() {
+                o.insert(k.clone(), to_json(v));
+            }
+            serde_json::to_string(&serde_json::Value::Object(o))
+                .unwrap()
+                .len() as u64
+        };
+        assert!(estimate_row_bytes(&hostile) >= hostile_actual);
+    }
+
+    /// #1425: budget construction is fail-closed — no zero, no above
+    /// ceiling, never a clamp.
+    #[test]
+    fn result_budget_validates_fail_closed() {
+        assert!(ResultBudget::new(1, 1).is_ok());
+        assert!(ResultBudget::new(MAX_RESULT_ROWS_CEILING, MAX_RESULT_BYTES_CEILING).is_ok());
+        assert_eq!(
+            ResultBudget::new(0, 1024),
+            Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_rows out of 1..=1_000_000"
+            })
+        );
+        assert_eq!(
+            ResultBudget::new(MAX_RESULT_ROWS_CEILING + 1, 1024),
+            Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_rows out of 1..=1_000_000"
+            })
+        );
+        assert_eq!(
+            ResultBudget::new(10, 0),
+            Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_bytes out of 1..=268435456"
+            })
+        );
+        assert_eq!(
+            ResultBudget::new(10, MAX_RESULT_BYTES_CEILING + 1),
+            Err(crate::PoolError::InvalidConfig {
+                detail: "max_result_bytes out of 1..=268435456"
+            })
+        );
+        assert_eq!(
+            ResultBudget::default(),
+            ResultBudget {
+                max_rows: DEFAULT_MAX_RESULT_ROWS,
+                max_bytes: DEFAULT_MAX_RESULT_BYTES,
+            }
+        );
+    }
 
     #[test]
     fn validation_rejects_empty_overlong_and_overparam() {

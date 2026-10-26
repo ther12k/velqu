@@ -221,3 +221,68 @@ async fn live_parameterized_queries_and_transactions() {
     }
     assert!(pool.stats().created_total >= 1);
 }
+
+/// #1425: the per-query result budget rejects oversized results WHILE
+/// ROWS STREAM — never after full collection. Operator-run (same stack
+/// and VELQU_PG_LIVE_TEST=1 gating as the suite above): a small
+/// generate_series result crosses a deliberately tiny budget and fails
+/// typed on either axis; a within-budget result succeeds.
+#[tokio::test]
+async fn live_result_budget_rejects_oversized_results_while_streaming() {
+    let Some(url) = live_url() else {
+        eprintln!("live: skipped (set VELQU_PG_LIVE_TEST=1 and start the benchmark stack)");
+        return;
+    };
+    use q_capability_postgres::{ClientExecutor, QueryExecutor, ResultBudget, SqlParam};
+
+    let pool = PostgresPool::postgres(url, PoolConfig::new(2, 5_000, 30_000).unwrap());
+    let lease = pool.acquire(5_000).await.expect("acquire");
+
+    // row budget: 5-row result against a 2-row budget
+    let exec = ClientExecutor::with_budget(lease.get(), ResultBudget::new(2, 1_048_576).unwrap());
+    let err = exec
+        .query(
+            "SELECT i AS n FROM generate_series(1, $1::int8) AS i",
+            &[SqlParam::Int(5)],
+            5_000,
+        )
+        .await
+        .expect_err("5 rows must breach the 2-row budget");
+    assert!(
+        matches!(
+            &err,
+            q_capability_postgres::QueryError::ResultRowsExceeded { rows: 3, max: 2 }
+        ),
+        "typed row-budget breach, got {err}"
+    );
+
+    // byte budget: 4 KiB texts against a 8 KiB budget (3 rows ≈ 12 KiB)
+    let exec = ClientExecutor::with_budget(lease.get(), ResultBudget::new(1000, 8192).unwrap());
+    let err = exec
+        .query(
+            "SELECT repeat('x', 4096) AS payload FROM generate_series(1, $1::int8) AS i",
+            &[SqlParam::Int(3)],
+            5_000,
+        )
+        .await
+        .expect_err("3×4KiB rows must breach the 8KiB byte budget");
+    assert!(
+        matches!(
+            &err,
+            q_capability_postgres::QueryError::ResultBytesExceeded { max: 8192, .. }
+        ),
+        "typed byte-budget breach, got {err}"
+    );
+
+    // within budget: same shapes succeed and return every row
+    let exec = ClientExecutor::with_budget(lease.get(), ResultBudget::default());
+    let rows = exec
+        .query(
+            "SELECT i AS n FROM generate_series(1, $1::int8) AS i",
+            &[SqlParam::Int(5)],
+            5_000,
+        )
+        .await
+        .expect("within-budget result succeeds");
+    assert_eq!(rows.len(), 5);
+}
