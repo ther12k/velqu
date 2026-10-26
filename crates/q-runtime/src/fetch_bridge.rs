@@ -29,14 +29,20 @@ const RELAY_BODY_CAP: u64 = 16 * 1024 * 1024;
 
 pub struct PoolFetchDialer {
     policy: FetchPolicy,
+    /// #1424 (review hardening): this dialer's policy identity — pins are
+    /// registered under it, and the pin registry refuses a second distinct
+    /// policy (single-egress-policy invariant, fail closed).
+    policy_tag: u64,
     total_deadline: Duration,
 }
 
 impl PoolFetchDialer {
     pub fn new(policy: FetchPolicy) -> Self {
+        let policy_tag = crate::fetch_stack::process_policy_tag(&policy);
         let total_deadline = Duration::from_millis(policy.timeouts().total_deadline_ms);
         PoolFetchDialer {
             policy,
+            policy_tag,
             total_deadline,
         }
     }
@@ -51,11 +57,12 @@ impl FetchDialer for PoolFetchDialer {
         body_json: Option<String>,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> {
         let policy = self.policy.clone();
+        let policy_tag = self.policy_tag;
         let total = self.total_deadline;
         Box::pin(async move {
             match tokio::time::timeout(
                 total,
-                dial_following_redirects(policy, method, url, headers_json, body_json),
+                dial_following_redirects(policy, policy_tag, method, url, headers_json, body_json),
             )
             .await
             {
@@ -96,7 +103,11 @@ fn url_parts(target: &str) -> Option<(String, String)> {
     Some((scheme, host.to_ascii_lowercase()))
 }
 
-async fn validated_target(policy: &FetchPolicy, target: &str) -> Result<(), String> {
+async fn validated_target(
+    policy: &FetchPolicy,
+    policy_tag: u64,
+    target: &str,
+) -> Result<(), String> {
     let (scheme, host) =
         url_parts(target).ok_or_else(|| format!("fetch url has no scheme/host: {target}"))?;
     policy.check_scheme(&scheme).map_err(policy_err)?;
@@ -145,12 +156,14 @@ async fn validated_target(policy: &FetchPolicy, target: &str) -> Result<(), Stri
             .await
             .map_err(|e| format!("resolver task failed: {e}"))?
             .map_err(policy_err)?;
-    crate::fetch_stack::pin_validated_addrs(&host, &addrs, port);
+    crate::fetch_stack::pin_validated_addrs(policy_tag, &host, &addrs, port)
+        .map_err(|e| format!("fetch policy rejected request: {e}"))?;
     Ok(())
 }
 
 fn dial_following_redirects(
     policy: FetchPolicy,
+    policy_tag: u64,
     method: String,
     url: String,
     headers_json: String,
@@ -165,7 +178,7 @@ fn dial_following_redirects(
         let current_body = body;
 
         loop {
-            validated_target(&policy, &current_url).await?;
+            validated_target(&policy, policy_tag, &current_url).await?;
 
             let permit = shared_pool()
                 .try_acquire_permit()

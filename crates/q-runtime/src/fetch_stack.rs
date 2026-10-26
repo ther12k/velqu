@@ -21,6 +21,7 @@ use http_body_util::Empty;
 use hyper_rustls::HttpsConnectorBuilder;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
+use q_capabilities::FetchPolicy;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 /// Human-readable identity of the selected outbound stack.
@@ -129,17 +130,66 @@ fn validated_pins() -> &'static ValidatedPins {
     VALIDATED_PINS.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
 }
 
+/// #1424 (review hardening): the process's single active egress policy.
+/// hyper-util's resolver receives only the host string — there is no
+/// per-request context — so the pin registry cannot bind validations to
+/// individual requests. What it CAN enforce is the invariant that makes
+/// cross-request reuse safe: every address in the registry was classified
+/// by the ONE process-wide egress policy. A second distinct policy trying
+/// to pin is refused fail-closed (its fetches then fail closed at
+/// resolution), converting silent cross-policy contamination into an
+/// explicit unsupported condition. Serving constructs exactly one policy
+/// at startup, so production behavior is unchanged.
+static ACTIVE_EGRESS_POLICY: Mutex<Option<u64>> = Mutex::new(None);
+
+/// #1424 (review hardening): stable in-process identity of a fetch
+/// policy. The derived Debug representation covers every semantic field
+/// (and agrees with the derived PartialEq), hashed with a process-local
+/// hasher — the tag only ever compares within this process.
+pub fn process_policy_tag(policy: &FetchPolicy) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    format!("{policy:?}").hash(&mut hasher);
+    hasher.finish()
+}
+
 /// #1424: record the validated address set for a host (called by the
 /// policy gate after every A/AAAA record passed classification). The
 /// connector's dial may only use addresses from this set.
-pub fn pin_validated_addrs(host: &str, addrs: &[std::net::IpAddr], port: u16) {
+///
+/// Fails closed when a DIFFERENT egress policy attempts to pin: the
+/// registry is bound to the first policy that pinned in this process
+/// (see [`ACTIVE_EGRESS_POLICY`]).
+pub fn pin_validated_addrs(
+    tag: u64,
+    host: &str,
+    addrs: &[std::net::IpAddr],
+    port: u16,
+) -> Result<(), String> {
+    {
+        let mut active = ACTIVE_EGRESS_POLICY
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        match *active {
+            None => *active = Some(tag),
+            Some(active_tag) if active_tag == tag => {}
+            Some(_) => {
+                return Err(
+                    "a second egress policy is not supported in one process (#1424): the validated-address registry is bound to the first policy that pinned"
+                        .to_string(),
+                )
+            }
+        }
+    }
     let key = host.to_ascii_lowercase();
     let sockets: Vec<std::net::SocketAddr> = addrs
         .iter()
         .map(|ip| std::net::SocketAddr::new(*ip, port))
         .collect();
     let pins = validated_pins();
-    let Ok(mut map) = pins.lock() else { return };
+    let Ok(mut map) = pins.lock() else {
+        return Err("validated-address registry unavailable".into());
+    };
     if !map.contains_key(&key) && map.len() >= VALIDATED_PIN_LIMIT {
         // recycling eviction: drop the oldest inserted key
         if let Some(oldest) = map.keys().next().cloned() {
@@ -147,6 +197,7 @@ pub fn pin_validated_addrs(host: &str, addrs: &[std::net::IpAddr], port: u16) {
         }
     }
     map.insert(key, sockets);
+    Ok(())
 }
 
 /// #1424: resolve through the validated-address pins. The SSRF gate
