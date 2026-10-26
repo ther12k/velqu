@@ -613,6 +613,14 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             let mut combined_stats = q_engine::EngineStats::default();
             for eng in &state.engines {
                 let mut e = eng.lock().unwrap();
+                e.shutdown();
+                // #1423 review hardening: stats are snapshotted AFTER
+                // shutdown — WorkerShared counters are plain atomics
+                // (readable without the worker thread), and the join in
+                // shutdown() gives the happens-before edge, so the report
+                // includes the shutdown-induced updates (cancellations,
+                // task aborts, defers dropped at shutdown) that a
+                // pre-shutdown snapshot would miss.
                 let s = e.stats();
                 combined_stats.invocations += s.invocations;
                 combined_stats.policy_calls += s.policy_calls;
@@ -648,7 +656,6 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 combined_stats.defers_drained += s.defers_drained;
                 combined_stats.defer_drains_interrupted += s.defer_drains_interrupted;
                 combined_stats.defers_dropped_at_shutdown += s.defers_dropped_at_shutdown;
-                e.shutdown();
             }
             // M3-007-A: the shutdown report carries the ownership
             // invariant — a graceful drain leaves ZERO live bindings
