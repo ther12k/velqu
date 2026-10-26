@@ -8,7 +8,7 @@
  */
 import { afterAll, describe, expect, expectTypeOf, test } from "bun:test";
 import { defineApp, defineModule, definePolicy, route, status } from "@velqu/core";
-import { s } from "@velqu/schema";
+import { s, type Infer } from "@velqu/schema";
 import { treaty, type TreatyClient } from "./index";
 import type { RouteContract } from "@velqu/contract";
 
@@ -380,5 +380,8 @@ describe("type spike (compile-time)", () => {
     const Q = s.object({ ms: s.optional(s.integer({ minimum: 1, maximum: 1000 }), { default: 10 }) });
     const ir = Q as unknown as { required: string[] };
     expect(ir.required).toEqual([]);
+    type QueryInferred = Infer<typeof Q>;
+    const omitted: QueryInferred = {};
+    void omitted;
   });
 });
