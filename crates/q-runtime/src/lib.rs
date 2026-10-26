@@ -336,8 +336,24 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             postgres_handle: postgres_handle.clone(),
             ..Default::default()
         };
-        let mut engine =
-            QuickJsEngine::spawn(config, tokio::runtime::Handle::current(), mapper);
+        // #1423: spawn the configured worker fleet (ADR-0036 §1/§6).
+        // Serverless spawns exactly 1 worker; service:N spawns all N
+        // independent runtimes before readiness.
+        let mut engines = if startup_workers == 1 {
+            vec![QuickJsEngine::spawn(
+                config,
+                tokio::runtime::Handle::current(),
+                mapper,
+            )]
+        } else {
+            QuickJsEngine::spawn_independent(
+                startup_workers,
+                config,
+                tokio::runtime::Handle::current(),
+                mapper,
+                "velqu-qjs",
+            )
+        };
         stages.push(("engine.spawn".into(), t.elapsed().as_secs_f64() * 1000.0));
 
         let t = Instant::now();
@@ -358,16 +374,23 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
                 expected_handlers: pack.handler_table.clone(),
             }
         };
-        let load_stats = match engine.load(&pack.bundle, bytecode_decoded.as_deref(), load_plan) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!(
-                    "{}",
-                    serde_json::json!({"level":"error","event":"startup.rejected","stage":"bundle.load","error":e})
-                );
-                return 3;
+        let mut first_load_stats = None;
+        for engine in &mut engines {
+            let load_stats = match engine.load(&pack.bundle, bytecode_decoded.as_deref(), load_plan.clone()) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!(
+                        "{}",
+                        serde_json::json!({"level":"error","event":"startup.rejected","stage":"bundle.load","error":e})
+                    );
+                    return 3;
+                }
+            };
+            if first_load_stats.is_none() {
+                first_load_stats = Some(load_stats);
             }
-        };
+        }
+        let load_stats = first_load_stats.unwrap();
         stages.push(("bundle.load".into(), t.elapsed().as_secs_f64() * 1000.0));
 
         // ---- stage: listen
@@ -437,7 +460,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         });
         println!("{startup_line}");
 
-        let health = engine.health();
+        let health = serve::MultiEngineHealth::new(engines.iter().map(|e| e.health()).collect());
         // Dense schema vector indexed by SchemaId (verification guarantees the
         // manifest is dense and complete whenever the pack carries schemas)
         let schema_vector: Vec<q_schema_runtime::SchemaIr> =
@@ -497,12 +520,13 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             encoder_table,
             response_schema_ids,
             context_plans,
-            engine: std::sync::Mutex::new(engine),
+            engines: engines.into_iter().map(std::sync::Mutex::new).collect(),
             health,
+            next_worker: std::sync::atomic::AtomicUsize::new(0),
             invocation_clock: std::sync::atomic::AtomicU64::new(1),
-            // M3-007-A: single-worker topology today; the multi-worker
-            // runtime passes its fleet size here.
-            ownership: q_capabilities::InvocationOwnership::new(1),
+            // M3-007-A + #1423: fleet size passed to invocation ownership
+            // so each invocation binds to its owning worker index.
+            ownership: q_capabilities::InvocationOwnership::with_workers(startup_workers, 65_536),
             // M3-007-B: starts Serving; flipped once by the signal task below.
             drain_gate: q_capabilities::DrainGate::new(),
             // M3-008-C: per-reason load-shed counters, rendered in the
@@ -586,8 +610,46 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
 
         // deterministic engine teardown after connections drain
         {
-            let mut eng = state.engine.lock().unwrap();
-            eng.shutdown();
+            let mut combined_stats = q_engine::EngineStats::default();
+            for eng in &state.engines {
+                let mut e = eng.lock().unwrap();
+                let s = e.stats();
+                combined_stats.invocations += s.invocations;
+                combined_stats.policy_calls += s.policy_calls;
+                combined_stats.handler_calls += s.handler_calls;
+                combined_stats.immediate_results += s.immediate_results;
+                combined_stats.promise_results += s.promise_results;
+                combined_stats.promise_watches += s.promise_watches;
+                combined_stats.job_queue_drains += s.job_queue_drains;
+                combined_stats.settlement_scans += s.settlement_scans;
+                combined_stats.timer_ops_started += s.timer_ops_started;
+                combined_stats.timer_ops_completed += s.timer_ops_completed;
+                combined_stats.postgres_ops_started += s.postgres_ops_started;
+                combined_stats.postgres_ops_completed += s.postgres_ops_completed;
+                combined_stats.pending_ops += s.pending_ops;
+                combined_stats.native_tasks_started += s.native_tasks_started;
+                combined_stats.native_tasks_alive += s.native_tasks_alive;
+                combined_stats.native_tasks_completed += s.native_tasks_completed;
+                combined_stats.native_tasks_aborted += s.native_tasks_aborted;
+                combined_stats.scheduler_boundary_violations += s.scheduler_boundary_violations;
+                combined_stats.queue_poisoned |= s.queue_poisoned;
+                combined_stats.poison_events += s.poison_events;
+                combined_stats.late_completions_dropped += s.late_completions_dropped;
+                combined_stats.cancelled_invocations += s.cancelled_invocations;
+                combined_stats.timeouts += s.timeouts;
+                combined_stats.engine_failures += s.engine_failures;
+                combined_stats.contract_violations += s.contract_violations;
+                combined_stats.numeric_dispatches += s.numeric_dispatches;
+                combined_stats.legacy_map_dispatches += s.legacy_map_dispatches;
+                combined_stats.heap_used += s.heap_used;
+                combined_stats.defers_admitted += s.defers_admitted;
+                combined_stats.defers_rejected += s.defers_rejected;
+                combined_stats.defer_drains += s.defer_drains;
+                combined_stats.defers_drained += s.defers_drained;
+                combined_stats.defer_drains_interrupted += s.defer_drains_interrupted;
+                combined_stats.defers_dropped_at_shutdown += s.defers_dropped_at_shutdown;
+                e.shutdown();
+            }
             // M3-007-A: the shutdown report carries the ownership
             // invariant — a graceful drain leaves ZERO live bindings
             // (no orphan invocation); registered/settled expose whether
@@ -596,7 +658,7 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
             let done = serde_json::json!({
                 "level": "info",
                 "event": "shutdown.complete",
-                "stats": eng.stats(),
+                "stats": combined_stats,
                 "stageMetrics": state.metrics.snapshot(),
                 "invocations": {
                     "pending": ownership.pending,

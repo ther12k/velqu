@@ -1057,14 +1057,22 @@ struct Server {
 
 impl Server {
     fn start(pack_path: &std::path::Path, port: u16) -> Server {
+        Self::start_with_args(pack_path, port, &[])
+    }
+
+    fn start_with_args(pack_path: &std::path::Path, port: u16, extra_args: &[&str]) -> Server {
         let bin = env!("CARGO_BIN_EXE_velqu-runtime");
-        let mut child = Command::new(bin)
-            .arg("--pack")
+        let mut cmd = Command::new(bin);
+        cmd.arg("--pack")
             .arg(pack_path)
             .arg("--port")
             .arg(port.to_string())
             .arg("--log")
-            .arg("full")
+            .arg("full");
+        for arg in extra_args {
+            cmd.arg(arg);
+        }
+        let mut child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -4537,4 +4545,56 @@ fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
         err.contains("bytecode sha256 mismatch") || err.contains("integrity"),
         "stderr: {err}"
     );
+}
+
+/// #1423: service:N must spawn N actual independent worker threads
+/// and route requests across them, matching the ready-event report.
+#[test]
+fn service_profile_spawns_n_actual_worker_threads() {
+    let dir = temp_dir("service-n-workers");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start_with_args(&pack_path, port, &["--service-profile", "service:4"]);
+
+    // 1. Ready event reflects service:4 and 4 startup workers
+    assert!(
+        server
+            .ready_line
+            .contains("\"serviceProfile\":\"service:4\""),
+        "ready line must report service:4: {}",
+        server.ready_line
+    );
+    assert!(
+        server.ready_line.contains("\"startupWorkers\":4"),
+        "ready line must report startupWorkers: 4: {}",
+        server.ready_line
+    );
+
+    // 2. Serves requests across the fleet
+    for _ in 0..8 {
+        let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+        assert_eq!(r.status, 200);
+        assert_eq!(r.text(), "plain");
+    }
+
+    // 3. On Linux, verify that 4 distinct worker threads exist in /proc/<pid>/task
+    #[cfg(target_os = "linux")]
+    {
+        let pid = server.child.id();
+        let task_dir = format!("/proc/{pid}/task");
+        if let Ok(entries) = std::fs::read_dir(task_dir) {
+            let comms: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .filter_map(|e| std::fs::read_to_string(e.path().join("comm")).ok())
+                .map(|s| s.trim().to_string())
+                .collect();
+            let worker_threads = comms.iter().filter(|c| c.starts_with("velqu-qjs-")).count();
+            assert_eq!(
+                worker_threads, 4,
+                "expected 4 QuickJS worker threads, found: {comms:?}"
+            );
+        }
+    }
+
+    server.stop();
 }
