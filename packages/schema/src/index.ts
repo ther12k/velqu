@@ -64,8 +64,20 @@ export function s_literal<T extends LiteralValue>(value: T): Schema<T> {
 export function s_enum<T extends LiteralValue>(values: readonly T[]): Schema<T> {
   return { kind: "enum", values: [...values] } as unknown as Schema<T>;
 }
-export function s_optional<T>(inner: Schema<T>, opts: { default?: T } = {}): Schema<T | undefined> {
-  return { kind: "optional", inner, ...(opts.default !== undefined ? { default: opts.default } : {}) } as unknown as Schema<T | undefined>;
+
+/**
+ * #1427: specific OptionalSchema discriminator preserving kind: "optional"
+ * so RequiredKeys<O> recognizes optional properties during object type inference.
+ */
+export type OptionalSchema<T> = {
+  readonly kind: "optional";
+  readonly inner: Schema<unknown>;
+  readonly default?: unknown;
+  readonly __t?: T | undefined;
+};
+
+export function s_optional<T>(inner: Schema<T>, opts: { default?: T } = {}): OptionalSchema<T> {
+  return { kind: "optional", inner, ...(opts.default !== undefined ? { default: opts.default } : {}) } as unknown as OptionalSchema<T>;
 }
 export function s_nullable<T>(inner: Schema<T>): Schema<T | null> {
   return { kind: "nullable", inner } as unknown as Schema<T | null>;

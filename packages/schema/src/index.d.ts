@@ -108,9 +108,15 @@ export declare function s_number(opts?: IntOpts): Schema<number>;
 export declare function s_boolean(): Schema<boolean>;
 export declare function s_literal<T extends LiteralValue>(value: T): Schema<T>;
 export declare function s_enum<T extends LiteralValue>(values: readonly T[]): Schema<T>;
+export type OptionalSchema<T> = {
+    readonly kind: "optional";
+    readonly inner: Schema<unknown>;
+    readonly default?: unknown;
+    readonly __t?: T | undefined;
+};
 export declare function s_optional<T>(inner: Schema<T>, opts?: {
     default?: T;
-}): Schema<T | undefined>;
+}): OptionalSchema<T>;
 export declare function s_nullable<T>(inner: Schema<T>): Schema<T | null>;
 export declare function s_array<T>(items: Schema<T>, opts?: {
     minItems?: number;
