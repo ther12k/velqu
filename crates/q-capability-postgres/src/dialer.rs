@@ -174,7 +174,7 @@ fn query_json_budgeted(
             return Err("postgres: too many params".into());
         }
         let mut lease = pool.acquire(deadline_ms).await.map_err(|e| e.to_string())?;
-        let executor = ClientExecutor::with_budget(lease.get(), budget);
+        let mut executor = ClientExecutor::with_budget(lease.get_mut(), budget);
         match executor.query(&text, &params, deadline_ms).await {
             Ok(rows) => Ok(rows_to_json(rows)),
             // mid-flight failure, timeout, or budget breach: the connection

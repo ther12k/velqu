@@ -526,6 +526,19 @@ impl<F: Connector> PooledConnection<F> {
             .as_ref()
             .expect("connection present while leased")
     }
+
+    /// Mutable connection access for executors that must drive
+    /// transaction-scoped protocol (BEGIN/portal fetches/COMMIT,
+    /// #1425). The lease owns the connection exclusively, so `&mut`
+    /// never aliases another user of the same connection.
+    pub fn get_mut(&mut self) -> &mut F::Conn {
+        self.inner
+            .as_mut()
+            .expect("connection present while leased")
+            .conn
+            .as_mut()
+            .expect("connection present while leased")
+    }
 }
 
 impl<F: Connector> Drop for PooledConnection<F> {

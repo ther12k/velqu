@@ -277,14 +277,14 @@ pub fn validate_query(text: &str, params: &[SqlParam]) -> Result<usize, QueryErr
 /// without a database; the production impl wraps tokio-postgres.
 pub trait QueryExecutor: Send + Sync {
     fn execute(
-        &self,
+        &mut self,
         text: &str,
         params: &[SqlParam],
         deadline_ms: u64,
     ) -> Pin<Box<dyn Future<Output = Result<u64, QueryError>> + Send + '_>>;
 
     fn query(
-        &self,
+        &mut self,
         text: &str,
         params: &[SqlParam],
         deadline_ms: u64,

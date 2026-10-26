@@ -15,3 +15,4 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 q-capabilities = { workspace = true }
+log = "0.4"
