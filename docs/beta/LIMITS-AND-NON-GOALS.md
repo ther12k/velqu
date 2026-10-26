@@ -69,7 +69,11 @@ for the canonical included/deferred lists.
 - Fetch is an explicit capability subject to runtime/deployment egress policy.
   The generated upstream route is an educational fixture, not an availability
   or SSRF-safety guarantee for arbitrary destinations. By default, private and
-  loopback IP ranges are denied to prevent SSRF vulnerabilities.
+  loopback IP ranges are denied to prevent SSRF vulnerabilities; the explicit
+  `VELQU_FETCH_EGRESS=test-loopback` opt-in (also `--fetch-egress`) exists for
+  integration tests dialing a local mock origin and is not a deployment
+  posture. Every dialed hostname address comes from the SSRF gate's validated
+  answer set — the connector never re-resolves independently (#1424).
 - In-memory services in the proof app are learning fixtures, not durable
   persistence.
 

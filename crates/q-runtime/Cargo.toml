@@ -45,6 +45,9 @@ hyper = { workspace = true }
 hyper-util = { workspace = true }
 hyper-rustls = { workspace = true }
 http-body-util = { workspace = true }
+# #1424: named to implement ValidatedDnsResolver (tower Service<Name>) for
+# the pinned outbound connector; version pinned by the workspace lockfile.
+tower-service = "0.3"
 
 [dev-dependencies]
 sha2 = { workspace = true }

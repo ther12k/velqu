@@ -29,14 +29,20 @@ const RELAY_BODY_CAP: u64 = 16 * 1024 * 1024;
 
 pub struct PoolFetchDialer {
     policy: FetchPolicy,
+    /// #1424 (review hardening): this dialer's policy identity — pins are
+    /// registered under it, and the pin registry refuses a second distinct
+    /// policy (single-egress-policy invariant, fail closed).
+    policy_tag: u64,
     total_deadline: Duration,
 }
 
 impl PoolFetchDialer {
     pub fn new(policy: FetchPolicy) -> Self {
+        let policy_tag = crate::fetch_stack::process_policy_tag(&policy);
         let total_deadline = Duration::from_millis(policy.timeouts().total_deadline_ms);
         PoolFetchDialer {
             policy,
+            policy_tag,
             total_deadline,
         }
     }
@@ -51,11 +57,12 @@ impl FetchDialer for PoolFetchDialer {
         body_json: Option<String>,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> {
         let policy = self.policy.clone();
+        let policy_tag = self.policy_tag;
         let total = self.total_deadline;
         Box::pin(async move {
             match tokio::time::timeout(
                 total,
-                dial_following_redirects(policy, method, url, headers_json, body_json),
+                dial_following_redirects(policy, policy_tag, method, url, headers_json, body_json),
             )
             .await
             {
@@ -96,22 +103,67 @@ fn url_parts(target: &str) -> Option<(String, String)> {
     Some((scheme, host.to_ascii_lowercase()))
 }
 
-async fn validated_target(policy: &FetchPolicy, target: &str) -> Result<(), String> {
+async fn validated_target(
+    policy: &FetchPolicy,
+    policy_tag: u64,
+    target: &str,
+) -> Result<(), String> {
     let (scheme, host) =
         url_parts(target).ok_or_else(|| format!("fetch url has no scheme/host: {target}"))?;
     policy.check_scheme(&scheme).map_err(policy_err)?;
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        // IP literal: classified in-line by the policy gate below; the
+        // connector connects directly (no resolver involved), so no pin.
+        let policy2 = policy.clone();
+        let host2 = host.clone();
+        return tokio::task::spawn_blocking(move || {
+            resolve_and_validate(&policy2, &host2, |h| {
+                h.parse::<std::net::IpAddr>()
+                    .map(|ip| vec![ip])
+                    .map_err(|e| e.to_string())
+            })
+        })
+        .await
+        .map_err(|e| format!("resolver task failed: {e}"))?
+        .map(|_| ())
+        .map_err(policy_err);
+    }
+    // #1424 (ADR-0033 §3): hostname — classify the DNS answers AND pin
+    // them for the connector's dial. The pinned client's resolver serves
+    // exactly these addresses, so the connection can never be dialed to
+    // an address that escaped classification (validate-then-discard left
+    // a rebinding window where the connector re-resolved independently).
+    let port = target
+        .rsplit_once("://")
+        .and_then(|(_, rest)| {
+            let authority = rest.split('/').next().unwrap_or("");
+            let hostport = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+            hostport.rsplit_once(':').and_then(|(h, p)| {
+                // the last segment is a port only if it is not part of an
+                // IPv6 literal and parses as u16
+                if h.contains(']') || !p.is_empty() {
+                    p.parse::<u16>().ok()
+                } else {
+                    None
+                }
+            })
+        })
+        .unwrap_or(if scheme == "https" { 443 } else { 80 });
     let policy2 = policy.clone();
+    let host2 = host.clone();
     let addrs =
-        tokio::task::spawn_blocking(move || resolve_and_validate(&policy2, &host, resolve_host))
+        tokio::task::spawn_blocking(move || resolve_and_validate(&policy2, &host2, resolve_host))
             .await
             .map_err(|e| format!("resolver task failed: {e}"))?
             .map_err(policy_err)?;
-    let _ = addrs; // validated; the pooled connector performs its own dial
+    crate::fetch_stack::pin_validated_addrs(policy_tag, &host, &addrs, port)
+        .map_err(|e| format!("fetch policy rejected request: {e}"))?;
     Ok(())
 }
 
 fn dial_following_redirects(
     policy: FetchPolicy,
+    policy_tag: u64,
     method: String,
     url: String,
     headers_json: String,
@@ -126,12 +178,14 @@ fn dial_following_redirects(
         let current_body = body;
 
         loop {
-            validated_target(&policy, &current_url).await?;
+            validated_target(&policy, policy_tag, &current_url).await?;
 
             let permit = shared_pool()
                 .try_acquire_permit()
                 .map_err(|e| e.to_string())?;
-            let client = shared_pool().client();
+            // #1424: the PINNED client — its resolver serves only the
+            // addresses the policy gate just classified and pinned.
+            let client = shared_pool().client_pinned();
 
             let http_method = Method::from_bytes(current_method.as_bytes())
                 .map_err(|e| format!("invalid method {current_method}: {e}"))?;

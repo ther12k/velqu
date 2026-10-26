@@ -2119,6 +2119,7 @@ dependencies = [
  "sha2 0.10.9",
  "sourcemap",
  "tokio",
+ "tower-service",
 ]
 
 [[package]]
