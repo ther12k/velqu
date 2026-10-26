@@ -1057,14 +1057,22 @@ struct Server {
 
 impl Server {
     fn start(pack_path: &std::path::Path, port: u16) -> Server {
+        Self::start_with_args(pack_path, port, &[])
+    }
+
+    fn start_with_args(pack_path: &std::path::Path, port: u16, extra_args: &[&str]) -> Server {
         let bin = env!("CARGO_BIN_EXE_velqu-runtime");
-        let mut child = Command::new(bin)
-            .arg("--pack")
+        let mut cmd = Command::new(bin);
+        cmd.arg("--pack")
             .arg(pack_path)
             .arg("--port")
             .arg(port.to_string())
             .arg("--log")
-            .arg("full")
+            .arg("full");
+        for arg in extra_args {
+            cmd.arg(arg);
+        }
+        let mut child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -4536,5 +4544,150 @@ fn bytecode_pack_serves_identically_and_mismatch_fails_before_ready() {
     assert!(
         err.contains("bytecode sha256 mismatch") || err.contains("integrity"),
         "stderr: {err}"
+    );
+}
+
+/// #1423: service:N must spawn N actual independent worker threads
+/// and route requests across them, matching the ready-event report.
+#[test]
+fn service_profile_spawns_n_actual_worker_threads() {
+    let dir = temp_dir("service-n-workers");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let server = Server::start_with_args(&pack_path, port, &["--service-profile", "service:4"]);
+
+    // 1. Ready event reflects service:4 and 4 startup workers
+    assert!(
+        server
+            .ready_line
+            .contains("\"serviceProfile\":\"service:4\""),
+        "ready line must report service:4: {}",
+        server.ready_line
+    );
+    assert!(
+        server.ready_line.contains("\"startupWorkers\":4"),
+        "ready line must report startupWorkers: 4: {}",
+        server.ready_line
+    );
+
+    // 2. Serves requests across the fleet
+    for _ in 0..8 {
+        let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+        assert_eq!(r.status, 200);
+        assert_eq!(r.text(), "plain");
+    }
+
+    // 3. On Linux, verify that 4 distinct worker threads exist in /proc/<pid>/task
+    #[cfg(target_os = "linux")]
+    {
+        let pid = server.child.id();
+        let task_dir = format!("/proc/{pid}/task");
+        if let Ok(entries) = std::fs::read_dir(task_dir) {
+            let comms: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .filter_map(|e| std::fs::read_to_string(e.path().join("comm")).ok())
+                .map(|s| s.trim().to_string())
+                .collect();
+            let worker_threads = comms.iter().filter(|c| c.starts_with("velqu-qjs-")).count();
+            assert_eq!(
+                worker_threads, 4,
+                "expected 4 QuickJS worker threads, found: {comms:?}"
+            );
+        }
+    }
+
+    server.stop();
+}
+
+/// #1423 review hardening: service:N must DRAIN gracefully — an in-flight
+/// request completes across SIGTERM, the process exits 0, the shutdown
+/// report pins zero aborts, and the fleet's AGGREGATED engine stats (sum
+/// over worker engines, snapshotted after each engine's shutdown)
+/// account for every invocation admitted while serving. Serves several
+/// requests first so the round-robin fleet (not just worker 0) carries
+/// traffic; the aggregate counter is the externally observable proof.
+#[test]
+fn service_profile_drains_gracefully_and_reports_fleet_stats() {
+    let dir = temp_dir("service-n-drain");
+    let pack_path = write_pack(&dir);
+    let port = free_port();
+    let mut server = Server::start_with_args(&pack_path, port, &["--service-profile", "service:2"]);
+    assert!(server.ready_line.contains("\"startupWorkers\":2"));
+
+    // Several requests so the round-robin dispatch spreads work across
+    // the 2-engine fleet.
+    for _ in 0..4 {
+        let r = http(port, "GET /js-text HTTP/1.1\r\nhost: t\r\n", None);
+        assert_eq!(r.status, 200);
+    }
+
+    // One request in flight (800ms timer) when SIGTERM arrives: the
+    // graceful drain must let it COMPLETE, not abort it.
+    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).expect("connect");
+    stream
+        .write_all(b"GET /async?ms=800 HTTP/1.1\r\nhost: t\r\n\r\n")
+        .expect("write in-flight request");
+    std::thread::sleep(Duration::from_millis(150));
+
+    unsafe {
+        libc::kill(server.child.id() as i32, libc::SIGTERM);
+    }
+    let response = read_keep_alive_response(&mut stream);
+    assert_eq!(
+        response.status,
+        200,
+        "the in-flight request must complete during the drain: {}",
+        response.text()
+    );
+    assert_eq!(
+        response.json()["waited"],
+        800,
+        "the timer resolved fully (work was not cut short)"
+    );
+
+    let status = server.child.wait().expect("reap");
+    assert!(
+        status.success(),
+        "graceful drain must exit 0, got {status:?}"
+    );
+
+    let mut complete: Option<String> = None;
+    for _ in 0..50 {
+        let logs = server.drain_logs();
+        if let Some(line) = logs
+            .iter()
+            .find(|l| l.contains("\"event\":\"shutdown.complete\""))
+        {
+            complete = Some(line.clone());
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let complete = complete.unwrap_or_else(|| panic!("shutdown.complete event missing"));
+    let report: Value = serde_json::from_str(&complete).unwrap();
+
+    // Drain accounting: the in-flight connection completed, nothing was
+    // force-aborted.
+    assert_eq!(report["drain"]["refused"], 0, "{complete}");
+    assert!(
+        report["drain"]["completed"].as_u64().unwrap() >= 1,
+        "{complete}"
+    );
+    assert_eq!(report["drain"]["aborted"], 0, "{complete}");
+
+    // Ownership: every admission reached a terminal transition.
+    assert_eq!(report["invocations"]["pending"], 0, "{complete}");
+    let registered = report["invocations"]["registered"].as_u64().unwrap();
+    let settled = report["invocations"]["settled"].as_u64().unwrap();
+    assert_eq!(registered, settled, "{complete}");
+    // 4 warmup requests + 1 in-flight = 5 admissions across the fleet.
+    assert_eq!(registered, 5, "fleet served every admission: {complete}");
+
+    // Aggregated engine stats (post-shutdown snapshot) account for the
+    // same work: 5 handler invocations across the 2-engine fleet.
+    let invocations = report["stats"]["invocations"].as_u64().unwrap();
+    assert_eq!(
+        invocations, 5,
+        "shutdown stats (post-shutdown snapshot) must include the full fleet's invocations: {complete}"
     );
 }

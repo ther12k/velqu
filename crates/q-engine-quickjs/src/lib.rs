@@ -268,8 +268,9 @@ pub struct QuickJsEngine {
 }
 
 impl QuickJsEngine {
-    /// Spawn the single worker thread. `tokio_handle` drives native ops.
-    pub fn spawn(
+    /// Spawn a worker thread with an explicit thread name. `tokio_handle` drives native ops.
+    pub fn spawn_named(
+        thread_name: String,
         config: QuickJsConfig,
         tokio_handle: tokio::runtime::Handle,
         mapper: Arc<dyn SourceMapper>,
@@ -282,7 +283,7 @@ impl QuickJsEngine {
         #[cfg(feature = "bench-instrumentation")]
         q_bridge::stage_timing::start_dumper("qengine");
         let handle = std::thread::Builder::new()
-            .name("velqu-quickjs".into())
+            .name(thread_name.clone())
             .spawn({
                 let tx = worker_tx;
                 let shared = Arc::clone(&shared);
@@ -318,8 +319,17 @@ impl QuickJsEngine {
             handle: Some(handle),
             last_error,
             bridge_counters,
-            worker_label: None,
+            worker_label: Some(thread_name),
         }
+    }
+
+    /// Spawn the single worker thread. `tokio_handle` drives native ops.
+    pub fn spawn(
+        config: QuickJsConfig,
+        tokio_handle: tokio::runtime::Handle,
+        mapper: Arc<dyn SourceMapper>,
+    ) -> QuickJsEngine {
+        Self::spawn_named("velqu-quickjs".into(), config, tokio_handle, mapper)
     }
 
     /// Snapshot of worker-local request bridge counters. Only atomics cross
@@ -341,10 +351,17 @@ impl QuickJsEngine {
     ) -> Vec<QuickJsEngine> {
         (0..count)
             .map(|i| {
-                let mut e =
-                    QuickJsEngine::spawn(config.clone(), tokio_handle.clone(), Arc::clone(&mapper));
-                e.worker_label = Some(format!("{worker_name}-{i}"));
-                e
+                let name = if count == 1 {
+                    worker_name.to_string()
+                } else {
+                    format!("{worker_name}-{i}")
+                };
+                Self::spawn_named(
+                    name,
+                    config.clone(),
+                    tokio_handle.clone(),
+                    Arc::clone(&mapper),
+                )
             })
             .collect()
     }

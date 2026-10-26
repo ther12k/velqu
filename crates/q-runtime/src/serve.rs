@@ -320,15 +320,82 @@ mod route_metrics_tests {
 /// position. Rendered at drain/shutdown only (bounded emissions; there is
 /// deliberately no high-frequency emitter — the M8-002 native `/metrics`
 /// endpoint is the on-demand scrape surface).
+/// #1423: aggregated multi-engine health handle. Lock-free queries across
+/// all initialized worker engines without taking any engine mutex.
+#[derive(Clone)]
+pub struct MultiEngineHealth {
+    workers: Vec<q_engine_quickjs::EngineHealth>,
+}
+
+impl MultiEngineHealth {
+    pub fn new(workers: Vec<q_engine_quickjs::EngineHealth>) -> Self {
+        MultiEngineHealth { workers }
+    }
+
+    #[inline]
+    pub fn is_quarantined(&self) -> bool {
+        self.workers.iter().any(|w| w.is_quarantined())
+    }
+
+    #[inline]
+    pub fn is_ready(&self) -> bool {
+        !self.workers.is_empty() && self.workers.iter().all(|w| w.is_ready())
+    }
+
+    #[inline]
+    pub fn poison_events(&self) -> u64 {
+        self.workers.iter().map(|w| w.poison_events()).sum()
+    }
+
+    #[inline]
+    pub fn native_tasks_started(&self) -> u64 {
+        self.workers.iter().map(|w| w.native_tasks_started()).sum()
+    }
+
+    #[inline]
+    pub fn native_tasks_completed(&self) -> u64 {
+        self.workers
+            .iter()
+            .map(|w| w.native_tasks_completed())
+            .sum()
+    }
+
+    #[inline]
+    pub fn native_tasks_aborted(&self) -> u64 {
+        self.workers.iter().map(|w| w.native_tasks_aborted()).sum()
+    }
+
+    #[inline]
+    pub fn live_slots(&self) -> u64 {
+        self.workers.iter().map(|w| w.live_slots()).sum()
+    }
+}
+
+/// #1423: aggregated worker operations status across all initialized engines.
+/// Rendered at drain/shutdown only (bounded emissions; there is
+/// deliberately no high-frequency emitter — the M8-002 native `/metrics`
+/// endpoint is the on-demand scrape surface).
 pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
     use q_engine::Engine;
     let stage = state.metrics.snapshot();
     let ownership = state.ownership.stats();
-    let eng = state.engine.lock().expect("engine mutex");
-    let stats = eng.stats();
-    let health = eng.health();
-    let bridge = eng.bridge_snapshot();
-    drop(eng);
+    let mut stats = q_engine::EngineStats::default();
+    let mut total_live_slots = 0u64;
+    for eng in &state.engines {
+        let e = eng.lock().expect("engine mutex");
+        let s = e.stats();
+        stats.invocations += s.invocations;
+        stats.policy_calls += s.policy_calls;
+        stats.handler_calls += s.handler_calls;
+        stats.heap_used += s.heap_used;
+        stats.native_tasks_started += s.native_tasks_started;
+        stats.native_tasks_alive += s.native_tasks_alive;
+        stats.native_tasks_completed += s.native_tasks_completed;
+        stats.native_tasks_aborted += s.native_tasks_aborted;
+        stats.queue_poisoned |= s.queue_poisoned;
+        stats.poison_events += s.poison_events;
+        total_live_slots += e.bridge_snapshot().live_slots;
+    }
     // BETA-006-C: fetch + db pool observability (bounded snapshots only)
     let fetch = crate::fetch_stack::shared_pool().stats();
     let postgres = match state.postgres_dialer.as_ref() {
@@ -349,7 +416,7 @@ pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
             "invocationsPending": ownership.pending,
         },
         "worker": {
-            "quarantined": health.is_quarantined(),
+            "quarantined": state.health.is_quarantined(),
             "queuePoisoned": stats.queue_poisoned,
             "poisonEvents": stats.poison_events,
         },
@@ -364,7 +431,7 @@ pub fn worker_ops_status(state: &ServeState) -> serde_json::Value {
             "nativeAborted": stats.native_tasks_aborted,
         },
         "slots": {
-            "live": bridge.live_slots,
+            "live": total_live_slots,
             "capacity": state.request_slot_capacity,
         },
         "drain": {
@@ -411,8 +478,13 @@ pub struct ServeState {
     /// ADR-0045: per-route context construction plans (dense, indexed by
     /// route index — same ordering as pack.routes).
     pub context_plans: Vec<q_engine::ContextPlan>,
-    pub engine: Mutex<QuickJsEngine>,
-    pub health: q_engine_quickjs::EngineHealth,
+    /// #1423: fleet of initialized worker engines (ADR-0036 §1/§2). Exactly one
+    /// engine for serverless profile; N independent engines for service:N.
+    pub engines: Vec<Mutex<QuickJsEngine>>,
+    /// #1423: multi-engine health aggregator.
+    pub health: MultiEngineHealth,
+    /// #1423: round-robin selection cursor across the engines fleet.
+    pub next_worker: std::sync::atomic::AtomicUsize,
     /// BETA-006-C: linked Postgres pool dialer, if the pack requires
     /// `runtime:postgres` and the runtime configured it. Absent -> the
     /// pools snapshot reports unlinked (zero-cost posture).
@@ -1096,12 +1168,16 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
             state.metrics.bridge.fetch_add(1, Ordering::Relaxed);
             state.metrics.js.fetch_add(1, Ordering::Relaxed);
             let invocation_id = state.invocation_clock.fetch_add(1, Ordering::Relaxed);
+            // #1423: round-robin selection across initialized worker engines (ADR-0036 §1/§6).
+            // Binds the invocation to its owning worker before the job reaches the engine.
+            let worker_count = state.engines.len().max(1);
+            let worker_idx = state.next_worker.fetch_add(1, Ordering::Relaxed) % worker_count;
             // M3-007-A: bind the invocation to its owning worker BEFORE
             // the job reaches the engine. The tracking capacity is sized
             // above every admission bound, so exhaustion is a contract
             // condition, not steady state — both rejections fail closed
             // with typed problems and the stage metrics unwind.
-            if let Err(track_err) = state.ownership.track(invocation_id, 0) {
+            if let Err(track_err) = state.ownership.track(invocation_id, worker_idx) {
                 state.metrics.queue_pending.fetch_sub(1, Ordering::Relaxed);
                 return match track_err {
                     q_capabilities::TrackError::AtCapacity { capacity } => {
@@ -1242,7 +1318,7 @@ async fn pipeline(state: &ServeState, req: NativeRequest) -> (HandlerResult, Str
                 armed: true,
             };
             {
-                let mut eng = state.engine.lock().unwrap();
+                let mut eng = state.engines[worker_idx].lock().unwrap();
                 eng.invoke(spec, tx);
             }
             let outcome = tokio::time::timeout(Duration::from_millis(route.deadline_ms + 1000), rx)
@@ -1741,14 +1817,16 @@ impl CancelOnDrop<'_> {
 impl Drop for CancelOnDrop<'_> {
     fn drop(&mut self) {
         if self.armed {
-            // M3-007-A: cancellation routes through the ownership
+            // M3-007-A + #1423: cancellation routes through the ownership
             // binding, and settling IS the exactly-once gate: the guard
-            // delivers `cancel` to the engine only when this drop IS the
+            // delivers `cancel` to the owning engine only when this drop IS the
             // terminal transition. A racing delivered outcome consumed
             // the binding first, so the cancel is never re-delivered.
-            if self.state.ownership.settle(self.invocation_id).is_some() {
-                if let Ok(mut eng) = self.state.engine.lock() {
-                    eng.cancel(self.invocation_id);
+            if let Some(owner) = self.state.ownership.settle(self.invocation_id) {
+                if owner < self.state.engines.len() {
+                    if let Ok(mut eng) = self.state.engines[owner].lock() {
+                        eng.cancel(self.invocation_id);
+                    }
                 }
             }
         }
