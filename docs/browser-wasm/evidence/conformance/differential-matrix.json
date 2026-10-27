@@ -1,8 +1,8 @@
 {
  "schemaVersion": 1,
  "suite": "bwasm-q-001-differential",
- "sourceCommit": "52ff582f44f8533f22f37989aea9bd122c1ea5ca",
- "nativeBinarySha256": "6e9ecdf1d854a626602b40e6cece62d0cc69891828b5dd33574af98b8b3a1a26",
+ "sourceCommit": "2e79ae5eb5147e635656d16ca03f9b715b4b3baf",
+ "nativeBinarySha256": "73c32f9e4a686b92dff951bbe608270467fe6ab4c1e527df95b0cda6dab87468",
  "kernelWasmSha256": "bea82fc73370ede9c7d9b72c1e4913c37545e86366026d2f6b304f757aa2f94d",
  "nativePackSha256": "34d789da9507acef2fde00a4d74b463afed29c275dcd2acec4c550af6c7aaeb6",
  "browserBuildId": "b0cea02502101642ea0bfaf2dede8b584674cf2bb589ab32d4956984af813e59",
