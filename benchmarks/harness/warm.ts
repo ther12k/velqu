@@ -6,7 +6,17 @@
  * Produces benchmarks/raw/warm/summary.json and raw JSONL records.
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+
+// #1429: summaries self-identify the runtime binary they measured.
+function sha256File(path: string): string {
+  try {
+    return createHash("sha256").update(readFileSync(path)).digest("hex");
+  } catch {
+    return "missing";
+  }
+}
 
 const ROOT = import.meta.dir + "/../..";
 
@@ -229,6 +239,9 @@ async function main() {
     randomizedCandidateOrder: true,
     durationSec,
     concurrencyLevels,
+    // #1429: raw evidence self-identifies the binary that produced it; the
+    // manifest refresh refuses to bind summaries recorded by another binary.
+    binaryHashes: { "target/release/velqu-runtime": sha256File(`${ROOT}/target/release/velqu-runtime`) },
     raw: rawRelative,
     results,
   };

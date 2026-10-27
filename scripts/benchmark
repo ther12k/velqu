@@ -5,11 +5,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Match release hashes across checkout paths; rquickjs-sys embeds C OUT_DIR.
+if [ -n "${RUSTFLAGS:-}" ] || [ -n "${CFLAGS:-}" ]; then
+  echo "note: ambient RUSTFLAGS/CFLAGS detected — they will be composed into this build; canonical byte identity (benchmark manifest, release packets) requires a clean flag environment (#1429)"
+fi
 export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$(pwd)=/velqu-src"
 export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src"
 
 bun install --silent
 cargo build --release --workspace --quiet
+# Canonical binary mode LAST (#1429): the harness must run — and summary.json
+# must record — the package-pair build that release packets and the manifest
+# use; a workspace-only build leaves a byte-different velqu-runtime behind.
+cargo build --release -p velqu-runtime -p q-bytecode-tool --quiet
 (cd baselines/raw-rust && cargo build --release --quiet)
 # The elysia2 baseline has its own lockfile and deps; a fresh checkout has
 # no node_modules there and the baseline fails to boot without them (#1303).

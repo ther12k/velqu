@@ -1,0 +1,63 @@
+# Benchmark-manifest byte-identity root cause — 2026-10-27 (#1429)
+#
+# Workstation reference builds (capture host), canonical remaps (REBUILD.md §3),
+# user-space toolchain: cc 12.2.0 (Debian 12.2.0-14+deb12u1,
+# ~/Workspace/.toolchain/sysroot), rustc 1.96.0 (ac68faa20 2026-05-25),
+# GNU ld (Binutils for Ubuntu) 2.42. Kernel at test time 7.0.0-38-generic
+# (capture-time kernel was 7.0.0-31-generic; the kernel does not reach output
+# bytes — proven by the exact reproduction below).
+
+## Manifest under test (committed at master 2990d3a0)
+
+manifest.generatedAt  = 2026-09-16T06:34:52Z
+manifest.commit       = 1638c44abca88cf076f2ddda8eb5874ef8d6e445 (c1-b, committed 2026-09-16T06:24:12Z)
+manifest.qRuntimeRelease = 34076ab68b3dbdbbdb1a0cfe6883bdcdd0cfb06e428a52540b7b792eb5118df7
+
+## Evidence timeline (from committed raw evidence)
+
+runIds decode to: cold 2026-09-10T15:37:02Z, route-count 15:38:14Z and
+15:41:59Z, warm 15:42:00Z — the committed benchmark runs were captured
+2026-09-10, six days before the manifest refresh.
+
+benchmarks/raw/route-count/summary.json
+  binaryHashes["target/release/velqu-runtime"]
+  = c52385af2d560538ec7285c445c433eb6429c53b3eb5d6b12c505f6864d855f4
+  -> the binary that actually produced the committed evidence (2026-09-10).
+  != manifest.qRuntimeRelease (34076ab6...) — the manifest has never
+     described the binary that produced the evidence.
+
+## Fresh rebuilds 2026-10-27 (clean worktrees on this host)
+
+# At the capture commit 1638c44 — cross-time, cross-path reproduction:
+cargo build --release -p velqu-runtime                    -> 34076ab6... (= manifest hash, byte-exact six weeks after capture)
+cargo build --release -p velqu-runtime -p q-bytecode-tool -> 34076ab6... (canonical pair; identical to single-package here)
+cargo build --release --workspace                         -> 1a5888fc3a8990aa9663710ccc8c87316c73442e138bb3ac38b629c7ace7c404 (byte-DIFFERENT)
+
+# At master HEAD 2990d3a0 — same-commit, cross-checkout-path reproduction:
+cargo build --release --workspace (clean room A, main checkout)   -> e8701319d371ef9cc488631200f6b3df62555185cb700f62ffd5a6f12e3ad048
+cargo build --release --workspace (clean room B, worktree)        -> e8701319... (byte-identical across paths)
+cargo build --release -p velqu-runtime                            -> 11012a5f68976aec149440b22d4693c6c520a6afd0ee9960e9510b242729f2fc
+cargo build --release -p velqu-runtime -p q-bytecode-tool         -> 11012a5f...
+
+## Conclusions
+
+1. Reproducibility is sound: same commit + same mode + same toolchain
+   reproduces byte-exact across six weeks and across checkout paths. No
+   toolchain drift on the capture host.
+2. The build-mode split is real and inherent: package-pair and workspace
+   builds of the same tree differ (34076ab6 vs 1a5888fc at 1638c44;
+   11012a5f vs e8701319 at HEAD). The first mode switch in a target dir
+   recompiles ~108 dependency units under different feature unification;
+   subsequent mode switches are relink-only.
+3. The 2026-09-16 manifest refresh ran standalone, without a benchmark
+   recapture: it bound 2026-09-10 evidence (harness binary c52385af...) to a
+   2026-09-16 package-mode build at 1638c44 (34076ab6...). The manifest has
+   been internally inconsistent since its creation.
+4. scripts/verify builds workspace-mode and could therefore never reproduce
+   the manifest hash at any commit: the byte-identity gate has been
+   structurally unpassable since 2026-09-16 — ADR-0040's "a gate that cannot
+   pass anywhere protects nothing".
+5. The "actual 2d9b6866" hash cited in issue #1429 is not reproducible from
+   any canonical build of 2990d3a0 (workspace: e8701319; package: 11012a5f);
+   it came from a non-canonical build (packet-worktree dependency graph or
+   composed ambient flags).

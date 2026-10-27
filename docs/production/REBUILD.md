@@ -86,6 +86,8 @@ python3 scripts/generate-provenance.py --verify release/provenance.json
 | --- | --- | --- |
 | `RUSTFLAGS` | `--remap-path-prefix=<repo>=/velqu-src` | rquickjs-sys embeds absolute `OUT_DIR` paths in QuickJS objects; without the remap, binaries differ per checkout path |
 | `CFLAGS` | `-ffile-prefix-map=<repo>=/velqu-src -fdebug-prefix-map=<repo>=/velqu-src` | same class of path leakage for C sources |
+| build mode | `cargo build --release -p velqu-runtime -p q-bytecode-tool` (§2) | workspace-wide feature unification compiles ~100 dependency units under different feature sets and produces a **byte-different** `velqu-runtime`; `scripts/verify` and `scripts/benchmark` build the workspace for compile coverage but finish with this canonical pair so `target/release/velqu-runtime` is always the release-mode binary (#1429) |
+| ambient flags | none (beyond the remaps above) | `verify`/`benchmark` compose ambient `RUSTFLAGS`/`CFLAGS` into the build; a capture made under extra ambient flags cannot be reproduced by a clean environment — the manifest refresh refuses them |
 | profile | `--release` (AGENTS.md: release Rust builds use `--release` only) | |
 | lockfiles | frozen (`--frozen-lockfile`, committed locks) | floating resolution would change inputs silently |
 | engine/binding | exact (Cargo.lock) | constraint 1; bumps are dedicated packets per ADR-0043 §3 |

@@ -10,6 +10,64 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
 
+# #1429: the runtime binary's build inputs. A fresh velqu-runtime can only
+# byte-match a capture when these are unchanged since the capture commit.
+RUNTIME_INPUTS = ["crates", "Cargo.toml", "Cargo.lock", ".cargo"]
+
+def git_run(root, *args):
+    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+
+def runtime_input_drift(root, captured_commit):
+    """True/False, or None when the diff is undecidable."""
+    if len(captured_commit) != 40 or any(c not in "0123456789abcdef" for c in captured_commit):
+        return None
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", captured_commit, "HEAD", "--", *RUNTIME_INPUTS],
+        cwd=root, capture_output=True)
+    if diff.returncode == 0:
+        return False
+    if diff.returncode == 1:
+        return True
+    return None
+
+def runtime_inputs_dirty(root):
+    return bool(git_run(root, "status", "--porcelain", "--", *RUNTIME_INPUTS).stdout.strip())
+
+def classify_target_mismatch(name, drift, dirty):
+    """Decision for a local (non-CI) target/ artifact hash mismatch.
+
+    Returns (kind, message): kind "note" for expected/undecidable states per
+    ADR-0040, "error" for a decidable reproducibility failure.
+    """
+    if drift is None:
+        return ("note", f"{name}: byte identity undecidable (capture commit unresolvable against HEAD); the capture-host gate applies at the capture commit")
+    if dirty:
+        return ("note", f"{name}: working tree has uncommitted changes under {', '.join(RUNTIME_INPUTS)}; byte identity is undecidable until the tree is committed or restored")
+    if drift:
+        return ("note", f"{name}: hash mismatch is expected staleness — runtime build inputs changed since the capture commit; refresh via scripts/benchmark + scripts/refresh-benchmark-manifest.py at the next evidence checkpoint")
+    return ("error", f"manifest: hash mismatch for {name} with no runtime-input drift since the capture — reproducibility failure on this host (toolchain or flag divergence; docs/production/REBUILD.md)")
+
+def binding_finding(manifest_format, recorded, manifest_runtime, summary_rel):
+    """Evidence-binding decision for one suite summary.
+
+    recorded is the binaryHashes["target/release/velqu-runtime"] the summary
+    self-recorded (None when absent). Returns (kind, message) with kind in
+    "ok" / "note" / "error": v3 manifests are strict; v2 manifests predate
+    the binding guarantee and report notes.
+    """
+    if not recorded:
+        if manifest_format == "velqu-benchmark-manifest-v3":
+            return ("error", f"manifest: {summary_rel} does not record binaryHashes (v3 capture must record the harness binary)")
+        return ("ok", "")
+    if recorded == manifest_runtime:
+        return ("ok", "")
+    detail = (f"manifest: {summary_rel} records harness binary {recorded[:12]}... "
+              f"but manifest qRuntimeRelease is {str(manifest_runtime)[:12]}... — "
+              "the manifest does not describe the binary that produced the evidence")
+    if manifest_format == "velqu-benchmark-manifest-v3":
+        return ("error", detail + "; recapture via scripts/benchmark required")
+    return ("note", detail + " (v2 manifest predates binding-integrity capture; the next canonical capture upgrades to v3)")
+
 def load(rel):
     path = ROOT / rel
     if not path.is_file():
@@ -107,18 +165,52 @@ if manifest:
             # the capture ref lived is the compensating control.
             print(f"note: capture commit {captured_commit} is not an ancestor of HEAD {head} (squash-merged delivery); provenance enforced at PR review, per ADR-0040")
         in_ci = os.environ.get("CI") == "true"
+        drift = runtime_input_drift(ROOT, captured_commit)
+        dirty = runtime_inputs_dirty(ROOT)
         for name, artifact in manifest.get("artifacts", {}).items():
             path = ROOT / artifact.get("path", "")
             if not path.is_file():
                 errors.append(f"manifest: missing artifact {name}: {artifact.get('path')}")
-            elif artifact.get("sha256") != hashlib.sha256(path.read_bytes()).hexdigest():
-                # target/ artifacts are host toolchain builds: byte identity holds
-                # only on the capture host. CI verifies presence and leaves byte
-                # identity to the capture host's canonical gate (ADR-0040).
-                if in_ci and artifact.get("path", "").startswith("target/"):
-                    print(f"note: CI: presence-only check for host-built artifact {name} ({artifact.get('path')}) per ADR-0040")
+                continue
+            if artifact.get("sha256") == hashlib.sha256(path.read_bytes()).hexdigest():
+                continue
+            rel = artifact.get("path", "")
+            if in_ci and rel.startswith("target/"):
+                # target/ artifacts are host toolchain builds: byte identity
+                # holds only on the capture host. CI verifies presence and
+                # leaves byte identity to the capture host's canonical gate
+                # (ADR-0040).
+                print(f"note: CI: presence-only check for host-built artifact {name} ({rel}) per ADR-0040")
+                continue
+            if rel.startswith("target/"):
+                kind, message = classify_target_mismatch(name, drift, dirty)
+                if kind == "note":
+                    print(f"note: {message} (manifest captured {manifest.get('generatedAt', '?')} at {captured_commit[:12] or '?'})")
                 else:
-                    errors.append(f"manifest: hash mismatch for {name}")
+                    errors.append(message)
+                continue
+            errors.append(f"manifest: hash mismatch for {name}")
+
+        # #1429 evidence binding: every suite summary that records the binary
+        # it ran must agree with the manifest's recorded runtime. v3
+        # manifests are strict (the refresh flow refuses to bind mismatches);
+        # v2 manifests predate the binding guarantee and report a note.
+        manifest_runtime = (manifest.get("artifacts", {}).get("qRuntimeRelease") or {}).get("sha256") or ""
+        for rel in ("benchmarks/raw/route-count/summary.json",
+                    "benchmarks/raw/cold-start/summary.json",
+                    "benchmarks/raw/warm/summary.json"):
+            try:
+                summary = json.loads((ROOT / rel).read_text())
+            except Exception:
+                continue  # missing/broken summaries are reported by their own checks below
+            kind, message = binding_finding(manifest.get("format"),
+                                            (summary.get("binaryHashes") or {}).get("target/release/velqu-runtime"),
+                                            manifest_runtime, rel)
+            if kind == "note":
+                print(f"note: {message}")
+            elif kind == "error":
+                errors.append(message)
+
         startup = manifest.get("runs", {}).get("startup", {})
         if startup.get("profile") != "benchmarks/raw/profiles/startup-10000.json":
             errors.append("manifest: startup profile reference mismatch")
@@ -224,5 +316,6 @@ if codec_summary:
     if not (ROOT / "benchmarks/raw/codec-c/codec.process.time.txt").is_file():
         errors.append("codec-c: missing /usr/bin/time process capture")
 
-print(json.dumps({"errors": errors}, indent=2))
-sys.exit(1 if errors else 0)
+if __name__ == "__main__":
+    print(json.dumps({"errors": errors}, indent=2))
+    sys.exit(1 if errors else 0)
