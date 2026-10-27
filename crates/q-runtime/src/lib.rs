@@ -445,8 +445,18 @@ pub fn run(source: PackSource, cfg: RunConfig) -> i32 {
         let decoder_table = q_schema_runtime::DecoderTable::from_schemas(&schema_vector);
         // M25-005-A: direct response encoders from the same dense schema
         // vector, plus each route's declared response statuses resolved to
-        // SchemaIds once at startup (production startup performs zero
-        // compilation — both tables are precompiled programs keyed by id).
+        // SchemaIds once at startup. #1428 (honest reconciliation): these
+        // from_schemas calls COMPILE decoder/encoder programs from the
+        // pack's SchemaIr at startup — the request path then uses them as
+        // precompiled, id-keyed tables. Constraint 5's zero-schema-
+        // compilation invariant is therefore NOT met by the default
+        // legacy-v1 load path; the measured cost (linear in schema count,
+        // ~1.8ms at 10k routes) and the forward options — precompiled
+        // tables carried in the pack — are recorded in
+        // docs/reports/codec-table-startup-cost.md. Note the tables are
+        // built AFTER the ready line prints: this cost sits between
+        // startupMs and the first accepted request and is invisible in the
+        // recorded startup stages.
         let encoder_table = q_schema_runtime::EncoderTable::from_schemas(&schema_vector);
         #[cfg(feature = "bench-instrumentation")]
         q_bridge::stage_timing::start_dumper("serve");
