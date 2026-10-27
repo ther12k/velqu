@@ -33,13 +33,16 @@ use std::time::{Duration, Instant};
 
 pub use dialer::{
     parse_params_json, pool_config_from_lookup, pool_from_url, pool_from_url_and_env,
-    PostgresQueryDialer, PostgresQueryHandle, ENV_POOL_CONNECT_TIMEOUT_MS,
+    result_budget_from_lookup, BudgetedQueryPool, PostgresQueryDialer, PostgresQueryHandle,
+    ENV_MAX_RESULT_BYTES, ENV_MAX_RESULT_ROWS, ENV_POOL_CONNECT_TIMEOUT_MS,
     ENV_POOL_IDLE_TIMEOUT_MS, ENV_POOL_MAX,
 };
 pub use executor::ClientExecutor;
 pub use query::{
-    validate_deadline, validate_query, QueryError, QueryExecutor, SqlParam, SqlRow, SqlValue,
+    estimate_row_bytes, validate_deadline, validate_query, QueryError, QueryExecutor, ResultBudget,
+    SqlParam, SqlRow, SqlValue, DEFAULT_MAX_RESULT_BYTES, DEFAULT_MAX_RESULT_ROWS,
     DEFAULT_QUERY_DEADLINE_MS, MAX_PARAM_COUNT, MAX_QUERY_DEADLINE_MS, MAX_QUERY_TEXT_LEN,
+    MAX_RESULT_BYTES_CEILING, MAX_RESULT_ROWS_CEILING,
 };
 pub use transaction::{run_transaction, Outcome};
 
@@ -521,6 +524,19 @@ impl<F: Connector> PooledConnection<F> {
             .expect("connection present while leased")
             .conn
             .as_ref()
+            .expect("connection present while leased")
+    }
+
+    /// Mutable connection access for executors that must drive
+    /// transaction-scoped protocol (BEGIN/portal fetches/COMMIT,
+    /// #1425). The lease owns the connection exclusively, so `&mut`
+    /// never aliases another user of the same connection.
+    pub fn get_mut(&mut self) -> &mut F::Conn {
+        self.inner
+            .as_mut()
+            .expect("connection present while leased")
+            .conn
+            .as_mut()
             .expect("connection present while leased")
     }
 }

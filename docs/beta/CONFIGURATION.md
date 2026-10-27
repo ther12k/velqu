@@ -84,7 +84,7 @@ runtime's concern, and the check is case-sensitive.
 | Group | Names |
 | ------------------- | ------------------------------------------------ |
 | Runtime configuration | `VELQU_CONFIG`, `VELQU_HOST`, `VELQU_LOG`, `VELQU_LOG_SAMPLE`, `VELQU_MAX_BODY_BYTES`, `VELQU_MAX_QUEUE`, `VELQU_METRICS`, `VELQU_PORT`, `VELQU_PROFILE`, `VELQU_PROXY_MODE` |
-| Postgres capability | `VELQU_DATABASE_URL`, `VELQU_PG_POOL_MAX`, `VELQU_PG_POOL_CONNECT_TIMEOUT_MS`, `VELQU_PG_POOL_IDLE_TIMEOUT_MS` |
+| Postgres capability | `VELQU_DATABASE_URL`, `VELQU_PG_POOL_MAX`, `VELQU_PG_POOL_CONNECT_TIMEOUT_MS`, `VELQU_PG_POOL_IDLE_TIMEOUT_MS`, `VELQU_PG_MAX_RESULT_ROWS` (per-query row budget, default 10,000, ceiling 1,000,000), `VELQU_PG_MAX_RESULT_BYTES` (per-query estimated serialized-byte budget, default 16 MiB, ceiling 256 MiB — #1425: results are fetched in bounded portal pages and the budget is enforced per row, fail-closed, never clamped) |
 | Build-time | `VELQU_STANDALONE_PACK` |
 | Tooling-only (never consumed by the serving runtime; recognized for dev/test convenience) | `VELQU_ALLOC_PROFILE`, `VELQU_BENCH_DEBUG`, `VELQU_PACK`, `VELQU_PG_LIVE_TEST`, `VELQU_RUNTIME`, `VELQU_TEST_TRUST_KEYS` |
 

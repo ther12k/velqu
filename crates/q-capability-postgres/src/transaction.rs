@@ -9,6 +9,8 @@
 
 use std::future::Future;
 
+use std::pin::Pin;
+
 use crate::query::{QueryError, QueryExecutor, DEFAULT_QUERY_DEADLINE_MS};
 
 /// Outcome of a [`run_transaction`] closure.
@@ -21,18 +23,26 @@ pub enum Outcome<T> {
 /// BEGIN/ROLLBACK each use the same bounded deadline as the work; any
 /// error from BEGIN, the work, or COMMIT produces a ROLLBACK followed
 /// by the original error.
-pub async fn run_transaction<T, F, Fut>(
-    executor: &dyn QueryExecutor,
+pub async fn run_transaction<T, F>(
+    executor: &mut dyn QueryExecutor,
     work: F,
 ) -> Result<T, QueryError>
 where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = Result<Outcome<T>, QueryError>>,
+    // #1425: QueryExecutor now takes &mut self (transaction-scoped portal
+    // protocol), so the work closure receives the executor by exclusive
+    // reborrow instead of capturing it alongside run_transaction's borrow.
+    // Higher-ranked over the reborrow lifetime: the work future must end
+    // before COMMIT/ROLLBACK re-borrows the executor.
+    F: for<'tx> FnOnce(
+        &'tx mut dyn QueryExecutor,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Outcome<T>, QueryError>> + Send + 'tx>,
+    >,
 {
     executor
         .execute("BEGIN", &[], DEFAULT_QUERY_DEADLINE_MS)
         .await?;
-    match work().await {
+    match work(&mut *executor).await {
         Ok(Outcome::Commit(value)) => {
             executor
                 .execute("COMMIT", &[], DEFAULT_QUERY_DEADLINE_MS)
@@ -93,7 +103,7 @@ mod tests {
 
     impl QueryExecutor for RecordingExecutor {
         fn execute(
-            &self,
+            &mut self,
             text: &str,
             _params: &[SqlParam],
             _deadline_ms: u64,
@@ -104,7 +114,7 @@ mod tests {
         }
 
         fn query(
-            &self,
+            &mut self,
             text: &str,
             _params: &[SqlParam],
             _deadline_ms: u64,
@@ -120,19 +130,23 @@ mod tests {
 
     #[tokio::test]
     async fn commit_path_runs_begin_work_commit_in_order() {
-        let exec = RecordingExecutor::scripted(&[None, None, None]);
-        let value = run_transaction(&exec, || async { Ok::<_, QueryError>(Outcome::Commit(42)) })
-            .await
-            .unwrap();
+        let mut exec = RecordingExecutor::scripted(&[None, None, None]);
+        let value = run_transaction(&mut exec, |_tx| {
+            Box::pin(async { Ok::<_, QueryError>(Outcome::Commit(42)) })
+        })
+        .await
+        .unwrap();
         assert_eq!(value, 42);
         assert_eq!(exec.log(), vec!["BEGIN", "COMMIT"]);
     }
 
     #[tokio::test]
     async fn explicit_rollback_runs_begin_rollback_in_order() {
-        let exec = RecordingExecutor::scripted(&[None, None]);
-        let value = run_transaction(&exec, || async {
-            Ok::<_, QueryError>(Outcome::Rollback("changed my mind".to_string()))
+        let mut exec = RecordingExecutor::scripted(&[None, None]);
+        let value = run_transaction(&mut exec, |_tx| {
+            Box::pin(async {
+                Ok::<_, QueryError>(Outcome::Rollback("changed my mind".to_string()))
+            })
         })
         .await
         .unwrap();
@@ -142,9 +156,9 @@ mod tests {
 
     #[tokio::test]
     async fn work_error_triggers_rollback_and_surfaces_the_work_error() {
-        let exec = RecordingExecutor::scripted(&[None, None]);
-        let err = run_transaction(&exec, || async {
-            Err::<Outcome<()>, _>(QueryError::Backend("insert conflict".into()))
+        let mut exec = RecordingExecutor::scripted(&[None, None]);
+        let err = run_transaction(&mut exec, |_tx| {
+            Box::pin(async { Err::<Outcome<()>, _>(QueryError::Backend("insert conflict".into())) })
         })
         .await
         .unwrap_err();
@@ -154,25 +168,29 @@ mod tests {
 
     #[tokio::test]
     async fn begin_failure_produces_the_error_without_commit_or_rollback() {
-        let exec = RecordingExecutor::scripted(&[Some(QueryError::Backend(
+        let mut exec = RecordingExecutor::scripted(&[Some(QueryError::Backend(
             "already in a transaction".into(),
         ))]);
-        let err = run_transaction(&exec, || async { Ok::<_, QueryError>(Outcome::Commit(())) })
-            .await
-            .unwrap_err();
+        let err = run_transaction(&mut exec, |_tx| {
+            Box::pin(async { Ok::<_, QueryError>(Outcome::Commit(())) })
+        })
+        .await
+        .unwrap_err();
         assert_eq!(err, QueryError::Backend("already in a transaction".into()));
         assert_eq!(exec.log(), vec!["BEGIN"]);
     }
 
     #[tokio::test]
     async fn commit_failure_still_surfaces_the_commit_error() {
-        let exec = RecordingExecutor::scripted(&[
+        let mut exec = RecordingExecutor::scripted(&[
             None,
             Some(QueryError::Backend("serialization failure".into())),
         ]);
-        let err = run_transaction(&exec, || async { Ok::<_, QueryError>(Outcome::Commit(())) })
-            .await
-            .unwrap_err();
+        let err = run_transaction(&mut exec, |_tx| {
+            Box::pin(async { Ok::<_, QueryError>(Outcome::Commit(())) })
+        })
+        .await
+        .unwrap_err();
         assert_eq!(err, QueryError::Backend("serialization failure".into()));
         assert_eq!(exec.log(), vec!["BEGIN", "COMMIT"]);
     }
@@ -181,16 +199,13 @@ mod tests {
     async fn early_return_via_question_mark_rolls_back() {
         // models `?` propagation from inside the closure: the transaction
         // must not be left open
-        let exec = RecordingExecutor::scripted(&[None, None]);
-        let inner = exec.clone();
-        let result: Result<(), QueryError> = run_transaction(&exec, move || {
-            let inner = inner.clone();
-            async move {
-                inner
-                    .execute("INSERT INTO orders VALUES (1)", &[], 1_000)
+        let mut exec = RecordingExecutor::scripted(&[None, None]);
+        let result: Result<(), QueryError> = run_transaction(&mut exec, |tx| {
+            Box::pin(async move {
+                tx.execute("INSERT INTO orders VALUES (1)", &[], 1_000)
                     .await?;
                 Err::<Outcome<()>, _>(QueryError::Backend("constraint violation".into()))
-            }
+            })
         })
         .await;
         assert!(result.is_err());
