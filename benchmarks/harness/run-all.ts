@@ -82,7 +82,7 @@ async function main() {
 
   // 8. Emit master manifest
   const manifest = {
-    format: "velqu-benchmark-manifest-v2",
+    format: "velqu-benchmark-manifest-v3",
     generatedAt: new Date().toISOString(),
     commit: (await runGitRevParse()) ?? "unknown",
     reviewedImplementationCommit: "4e6904951729ea14b48ca39a9564a950cc83e98e",

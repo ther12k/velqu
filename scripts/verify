@@ -7,6 +7,9 @@ cd "$(dirname "$0")/.."
 
 # Keep release artifacts byte-identical across checkout paths. rquickjs-sys
 # compiles QuickJS C sources and otherwise embeds absolute OUT_DIR paths.
+if [ -n "${RUSTFLAGS:-}" ] || [ -n "${CFLAGS:-}" ]; then
+  echo "note: ambient RUSTFLAGS/CFLAGS detected — they will be composed into this build; canonical byte identity (benchmark manifest, release packets) requires a clean flag environment (#1429)"
+fi
 export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$(pwd)=/velqu-src"
 export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$(pwd)=/velqu-src -fdebug-prefix-map=$(pwd)=/velqu-src"
 
@@ -19,6 +22,7 @@ step "OKF bundle structural validation"
 ./scripts/validate-production-plan || fail "validate-production-plan"
 python3 scripts/generate-benchmark-reports.py --check || fail "benchmark-reports"
 python3 scripts/analyze-soak.test.py || fail "analyze-soak"
+python3 scripts/validate-benchmark-evidence.test.py || fail "validate-benchmark-evidence-test"
 python3 scripts/generate-conformance-report.py --check || fail "conformance-reports"
 
 step "Rust workspace formatting"
@@ -46,6 +50,16 @@ rm -f test.log
 step "Rust release builds (runtime + baselines)"
 if ! cargo build --release --workspace --quiet 2>build.log; then
   tail -20 build.log; fail "cargo build release"
+fi
+rm -f build.log
+# Canonical release-binary mode (#1429): release packets (REBUILD.md §3) and
+# the ga-native-repro lane build -p velqu-runtime -p q-bytecode-tool, while
+# workspace-wide feature unification produces a byte-different runtime. The
+# workspace build above stays as whole-workspace release coverage; the
+# canonical pair runs last so target/release/velqu-runtime is the binary the
+# benchmark manifest describes.
+if ! cargo build --release -p velqu-runtime -p q-bytecode-tool --quiet 2>build.log; then
+  tail -20 build.log; fail "cargo build release (canonical pair)"
 fi
 rm -f build.log
 if ! (cd baselines/raw-rust && cargo build --release --quiet 2>rustbase.log); then
