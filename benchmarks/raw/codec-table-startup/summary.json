@@ -1,0 +1,150 @@
+{
+  "format": "velqu-codec-table-startup-cost-v1",
+  "runId": "codec-table-1793121517003",
+  "generatedAtUnixEpoch": 1793121518,
+  "purpose": "#1428 — measured startup codec-table compilation cost on the default legacy-v1 JSON load path (raw samples retained)",
+  "method": "DecoderTable::from_schemas + EncoderTable::from_schemas over the dense schema vector of each route-count ladder pack, mirroring crates/q-runtime/src/lib.rs startup construction; tables build AFTER the ready line so this cost is outside the recorded startupMs",
+  "environment": {
+    "cpu": "model name\t: 13th Gen Intel(R) Core(TM) i5-13420H",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "profile": "release"
+  },
+  "samples": 40,
+  "results": [
+    {
+      "n": 25,
+      "routes": 26,
+      "schemas": 25,
+      "warmFirstTotalUs": 13.212,
+      "decoderUs": {
+        "n": 40,
+        "mean": 7.907625000000001,
+        "p50": 7.579,
+        "p95": 10.457,
+        "p99": 11.559000000000001
+      },
+      "encoderUs": {
+        "n": 40,
+        "mean": 0.7771999999999999,
+        "p50": 0.782,
+        "p95": 0.884,
+        "p99": 0.926
+      },
+      "totalUs": {
+        "n": 40,
+        "mean": 8.684825,
+        "p50": 8.46,
+        "p95": 11.237,
+        "p99": 12.485000000000001
+      }
+    },
+    {
+      "n": 100,
+      "routes": 101,
+      "schemas": 100,
+      "warmFirstTotalUs": 24.265,
+      "decoderUs": {
+        "n": 40,
+        "mean": 19.467899999999993,
+        "p50": 19.588,
+        "p95": 21.433999999999997,
+        "p99": 22.929
+      },
+      "encoderUs": {
+        "n": 40,
+        "mean": 2.4775500000000004,
+        "p50": 2.311,
+        "p95": 2.468,
+        "p99": 8.668999999999999
+      },
+      "totalUs": {
+        "n": 40,
+        "mean": 21.94545,
+        "p50": 21.89,
+        "p95": 23.921,
+        "p99": 29.007999999999996
+      }
+    },
+    {
+      "n": 1000,
+      "routes": 1001,
+      "schemas": 1000,
+      "warmFirstTotalUs": 172.93699999999998,
+      "decoderUs": {
+        "n": 40,
+        "mean": 125.606075,
+        "p50": 123.45100000000001,
+        "p95": 140.631,
+        "p99": 160.898
+      },
+      "encoderUs": {
+        "n": 40,
+        "mean": 16.272299999999994,
+        "p50": 15.991,
+        "p95": 18.131999999999998,
+        "p99": 19.951
+      },
+      "totalUs": {
+        "n": 40,
+        "mean": 141.87837500000003,
+        "p50": 139.617,
+        "p95": 156.851,
+        "p99": 177.26
+      }
+    },
+    {
+      "n": 5000,
+      "routes": 5001,
+      "schemas": 5000,
+      "warmFirstTotalUs": 889.699,
+      "decoderUs": {
+        "n": 40,
+        "mean": 654.030525,
+        "p50": 653.526,
+        "p95": 698.126,
+        "p99": 713.212
+      },
+      "encoderUs": {
+        "n": 40,
+        "mean": 98.50444999999999,
+        "p50": 98.414,
+        "p95": 109.961,
+        "p99": 118.669
+      },
+      "totalUs": {
+        "n": 40,
+        "mean": 752.5349749999998,
+        "p50": 753.4019999999999,
+        "p95": 807.79,
+        "p99": 821.197
+      }
+    },
+    {
+      "n": 10000,
+      "routes": 10001,
+      "schemas": 10000,
+      "warmFirstTotalUs": 1806.0240000000001,
+      "decoderUs": {
+        "n": 40,
+        "mean": 1502.0486000000003,
+        "p50": 1518.8129999999999,
+        "p95": 1588.818,
+        "p99": 1620.852
+      },
+      "encoderUs": {
+        "n": 40,
+        "mean": 256.2847,
+        "p50": 257.277,
+        "p95": 273.149,
+        "p99": 307.796
+      },
+      "totalUs": {
+        "n": 40,
+        "mean": 1758.3333000000002,
+        "p50": 1765.3819999999998,
+        "p95": 1861.967,
+        "p99": 1892.6770000000001
+      }
+    }
+  ]
+}
